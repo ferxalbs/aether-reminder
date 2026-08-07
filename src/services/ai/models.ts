@@ -23,6 +23,16 @@ export interface OpenRouterModelsResponse {
 }
 
 function formatProviderName(providerId: string): string {
+  const brandedNames: Record<string, string> = {
+    anthropic: 'Anthropic',
+    google: 'Google',
+    meta: 'Meta',
+    'meta-llama': 'Meta Llama',
+    openai: 'OpenAI',
+  };
+
+  if (brandedNames[providerId]) return brandedNames[providerId];
+
   return providerId.split(/[-_]/g).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
@@ -49,7 +59,7 @@ export function normalizeOpenRouterModels(payload: OpenRouterModelsResponse): AI
         provider: formatProviderName(providerId),
         description: model.description?.trim() || 'OpenAI-compatible text model',
         contextLength: model.context_length,
-        availability: isExpired(model.expiration_date) ? 'unavailable' : 'available',
+        availability: (isExpired(model.expiration_date) ? 'unavailable' : 'available') as AIModelAvailability,
       };
     })
     .sort((left, right) => left.availability === right.availability ? left.name.localeCompare(right.name) : left.availability === 'available' ? -1 : 1);
@@ -59,4 +69,3 @@ export function maskApiKey(apiKey?: string): string {
   const normalizedKey = apiKey?.trim();
   return normalizedKey ? `••••••••••••${normalizedKey.slice(-4)}` : '';
 }
-

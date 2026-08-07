@@ -9,29 +9,36 @@ import { IconButton } from '@/components/ui/IconButton';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useTasksStore } from '@/stores/tasks.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { generateTaskSummary } from '@/services/ai/openrouter';
+import { generateFallbackSummary, generateTaskSummary } from '@/services/ai/openrouter';
+import { getAIErrorMessage } from '@/services/ai/providers';
 import { AIResponse } from '@/types';
 import * as Haptics from 'expo-haptics';
 
 export default function AIScreen() {
   const [loading, setLoading] = useState(false);
   const [aiData, setAiData] = useState<AIResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const theme = useSettingsStore((s) => s.theme);
   const isDark = theme === 'dark' || (theme === 'system' && true);
 
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
+  const apiKeyLoaded = useSettingsStore((s) => s.apiKeyLoaded);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
   const tasks = useTasksStore((s) => s.tasks);
 
   const fetchAnalysis = async () => {
+    if (!apiKeyLoaded) return;
+
     setLoading(true);
+    setErrorMessage(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
       setAiData(result);
-    } catch {
-      // Handled via internal fallback in openrouter.ts
+    } catch (error) {
+      setAiData(generateFallbackSummary(tasks));
+      setErrorMessage(getAIErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -40,12 +47,18 @@ export default function AIScreen() {
   useEffect(() => {
     let isMounted = true;
     const runAnalysis = async () => {
+      if (!apiKeyLoaded) return;
+
       setLoading(true);
+      setErrorMessage(null);
       try {
         const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
         if (isMounted) setAiData(result);
-      } catch {
-        // Handled via fallback
+      } catch (error) {
+        if (isMounted) {
+          setAiData(generateFallbackSummary(tasks));
+          setErrorMessage(getAIErrorMessage(error));
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -54,7 +67,7 @@ export default function AIScreen() {
     return () => {
       isMounted = false;
     };
-  }, [tasks, selectedModel, openRouterApiKey]);
+  }, [apiKeyLoaded, tasks, selectedModel, openRouterApiKey]);
 
   return (
     <SafeAreaView
@@ -105,10 +118,26 @@ export default function AIScreen() {
           <Typography variant="caption" color={Colors.zinc400}>
             Active Model:{' '}
             <Typography variant="caption" color={isDark ? Colors.white : Colors.black}>
-              {selectedModel}
+              {selectedModel || 'Auto-selected from OpenRouter'}
             </Typography>
           </Typography>
         </View>
+
+        {errorMessage ? (
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100,
+                borderColor: isDark ? Colors.zinc700 : Colors.zinc300,
+              },
+            ]}
+          >
+            <Typography variant="caption" color={Colors.zinc400}>
+              {errorMessage}
+            </Typography>
+          </View>
+        ) : null}
 
         {/* Workload Executive Summary */}
         <Card variant="elevated" style={styles.summaryCard}>
@@ -229,6 +258,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     gap: 6,
     borderWidth: 1,
+  },
+  errorBanner: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
   },
   summaryCard: {
     marginBottom: Spacing.md,

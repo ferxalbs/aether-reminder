@@ -6,6 +6,7 @@ import { UserSettings } from '@/types';
 import { AIProviderError } from '@/services/ai/providers';
 
 const OPENROUTER_API_KEY_STORAGE_KEY = 'aether-reminder.openrouter-api-key';
+const LEGACY_SETTINGS_STORAGE_KEY = 'taskflow-settings-storage';
 
 interface SettingsState extends UserSettings {
   /** Loaded into memory only; excluded from the persisted Zustand snapshot below. */
@@ -51,6 +52,9 @@ export const useSettingsStore = create<SettingsState>()(
 
       loadApiKey: async () => {
         const available = await getSecureStoreAvailability();
+        // Remove the pre-BYOK settings blob, which could contain a legacy plaintext key.
+        await AsyncStorage.removeItem(LEGACY_SETTINGS_STORAGE_KEY).catch(() => {});
+
         if (!available) {
           set({ apiKeyLoaded: true, secureStoreAvailable: false, openRouterApiKey: '' });
           return;
@@ -112,4 +116,3 @@ export const useSettingsStore = create<SettingsState>()(
     }
   )
 );
-

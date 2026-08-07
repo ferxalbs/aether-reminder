@@ -12,7 +12,7 @@ type OpenRouterErrorPayload = {
 };
 
 type OpenRouterCompletionResponse = OpenRouterErrorPayload & {
-  choices?: Array<{ message?: { content?: string }; error?: OpenRouterErrorPayload['error'] }>;
+  choices?: { message?: { content?: string }; error?: OpenRouterErrorPayload['error'] }[];
 };
 
 let modelsCache: { models: AIModel[]; fetchedAt: number } | null = null;
@@ -196,4 +196,3 @@ export const openRouterProvider: AIProvider<AIModel> = {
   listModels: fetchAvailableModels,
   testConnection: testOpenRouterConnection,
 };
-
