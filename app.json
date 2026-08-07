@@ -37,6 +37,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2edaaed9-ef66-4c65-bdfe-334f11a1ddc5"
+      }
+    },
+    "owner": "enosislabs"
   }
 }
