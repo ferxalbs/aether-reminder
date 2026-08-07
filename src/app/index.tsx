@@ -1,98 +1,229 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import React, { useState } from 'react';
+import { StyleSheet, View, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { Plus, Sparkles, CheckCircle2 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Colors, Spacing, Radius } from '@/theme/tokens';
+import { Typography } from '@/components/ui/Typography';
+import { TaskCard } from '@/components/ui/TaskCard';
+import { IconButton } from '@/components/ui/IconButton';
+import { Card } from '@/components/ui/Card';
+import { AddTaskModal } from '@/components/ui/AddTaskModal';
+import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
+import { useTasksStore } from '@/stores/tasks.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const theme = useSettingsStore((s) => s.theme);
+  const isDark = theme === 'dark' || (theme === 'system' && true);
+
+  const toggleTask = useTasksStore((s) => s.toggleTask);
+  const deleteTask = useTasksStore((s) => s.deleteTask);
+  const getTodayTasks = useTasksStore((s) => s.getTodayTasks);
+
+  const todayTasks = getTodayTasks();
+  const completedCount = todayTasks.filter((t) => t.completed).length;
+  const totalCount = todayTasks.length;
+  const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { backgroundColor: isDark ? Colors.black : Colors.zinc50 },
+      ]}
+    >
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Bar */}
+        <View style={styles.header}>
+          <View>
+            <Typography variant="caption" color={Colors.zinc500}>
+              {formattedDate.toUpperCase()}
+            </Typography>
+            <Typography variant="display" style={styles.greetingText}>
+              {getGreeting()}
+            </Typography>
+          </View>
+          <View style={styles.headerActions}>
+            <IconButton
+              icon={<Sparkles size={18} color={isDark ? Colors.white : Colors.black} />}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                router.push('/ai');
+              }}
+              variant="glass"
+              size={44}
+            />
+            <IconButton
+              icon={<Plus size={20} color={isDark ? Colors.black : Colors.white} />}
+              onPress={() => setModalVisible(true)}
+              variant="solid"
+              size={44}
+            />
+          </View>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        {/* Progress Card */}
+        <Card variant="elevated" style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <View style={styles.progressTitleRow}>
+              <CheckCircle2 size={16} color={isDark ? Colors.white : Colors.black} />
+              <Typography variant="bodyBold">{"Today's Momentum"}</Typography>
+            </View>
+            <Typography variant="caption" color={Colors.zinc500}>
+              {completedCount} of {totalCount} completed
+            </Typography>
+          </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          {/* Progress Bar track */}
+          <View
+            style={[
+              styles.progressTrack,
+              { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 },
+            ]}
+          >
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.round(progressRatio * 100)}%`,
+                  backgroundColor: isDark ? Colors.white : Colors.black,
+                },
+              ]}
+            />
+          </View>
+        </Card>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        {/* Tasks Section Header */}
+        <View style={styles.sectionHeader}>
+          <Typography variant="title">Daily Focus</Typography>
+          <Typography variant="caption" color={Colors.zinc500}>
+            {todayTasks.length} {todayTasks.length === 1 ? 'task' : 'tasks'}
+          </Typography>
+        </View>
+
+        {/* Task List */}
+        {todayTasks.length > 0 ? (
+          todayTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onToggle={toggleTask}
+              onDelete={deleteTask}
+            />
+          ))
+        ) : (
+          /* Illustration-Free Typography Empty State */
+          <View style={styles.emptyStateContainer}>
+            <Typography variant="headline" align="center" style={styles.emptyTitle}>
+              All Clear
+            </Typography>
+            <Typography
+              variant="body"
+              align="center"
+              color={Colors.zinc500}
+              style={styles.emptySubtitle}
+            >
+              No pending tasks for today. Tap the button below or use voice to capture your next goal.
+            </Typography>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+      />
+
+      {/* Floating Bottom Glass Toolbar */}
+      <FloatingToolbar />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
   },
-  heroSection: {
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: 110, // Space for floating toolbar
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.lg,
+  },
+  greetingText: {
+    marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    alignItems: 'center',
+  },
+  progressCard: {
+    marginBottom: Spacing.xl,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  progressTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: Radius.pill,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  emptyStateContainer: {
+    paddingVertical: Spacing.huge,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
+  emptyTitle: {
+    marginBottom: Spacing.xs,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  emptySubtitle: {
+    maxWidth: 280,
+    lineHeight: 22,
   },
 });
