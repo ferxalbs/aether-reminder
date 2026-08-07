@@ -6,7 +6,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
+  Pressable,
   Keyboard,
 } from 'react-native';
 import { X, Flag, Sparkles } from 'lucide-react-native';
@@ -60,12 +60,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
+      <Pressable style={styles.overlay} onPress={() => Keyboard.dismiss()}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
             <View
               style={[
                 styles.modalContent,
@@ -186,9 +185,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 />
               </View>
             </View>
-          </KeyboardAvoidingView>
-        </View>
-      </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Pressable>
     </Modal>
   );
 };

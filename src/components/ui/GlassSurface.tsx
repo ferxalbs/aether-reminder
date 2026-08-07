@@ -54,10 +54,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.15)',
     elevation: 6,
   },
   content: {

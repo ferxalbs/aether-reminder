@@ -31,10 +31,9 @@ export const Card: React.FC<CardProps> = ({
           backgroundColor: isDark ? Colors.zinc900 : Colors.white,
           borderColor: isDark ? Colors.zinc800 : Colors.zinc200,
           borderWidth: 1,
-          shadowColor: Colors.black,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: isDark ? 0.4 : 0.06,
-          shadowRadius: 12,
+          boxShadow: isDark
+            ? '0px 4px 12px rgba(0, 0, 0, 0.4)'
+            : '0px 4px 12px rgba(0, 0, 0, 0.06)',
           elevation: 3,
         };
       case 'glass':

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, SafeAreaView, StatusBar, Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
 import { Mic, MicOff, Plus, Sparkles, Check } from 'lucide-react-native';
 import { Colors, Spacing } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
@@ -16,7 +21,6 @@ import { TranscriptionResult } from '@/types';
 import * as Haptics from 'expo-haptics';
 
 export default function TranscribeScreen() {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [transcription, setTranscription] = useState<TranscriptionResult | null>(null);
@@ -26,6 +30,7 @@ export default function TranscribeScreen() {
   const isDark = theme === 'dark' || (theme === 'system' && true);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const addTasksBatch = useTasksStore((s) => s.addTasksBatch);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -43,22 +48,20 @@ export default function TranscribeScreen() {
     try {
       setRecordingDuration(0);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (permission.status !== 'granted') {
         // Fallback demo recording if permission missing or in simulator
         setIsRecording(true);
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(newRecording);
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setIsRecording(true);
     } catch {
       // Fallback state if native audio recorder unavailable
@@ -73,11 +76,10 @@ export default function TranscribeScreen() {
       setIsProcessing(true);
 
       let uri: string = 'mock://voice-recording';
-      if (recording) {
-        await recording.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-        uri = recording.getURI() || uri;
-        setRecording(null);
+      if (audioRecorder.isRecording) {
+        await audioRecorder.stop();
+        await setAudioModeAsync({ allowsRecording: false });
+        uri = audioRecorder.uri || uri;
       }
 
       const result = await defaultTranscriptionProvider.transcribeAudio(
@@ -277,10 +279,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    boxShadow: '0px 6px 10px rgba(0, 0, 0, 0.2)',
     elevation: 4,
   },
   resultCard: {

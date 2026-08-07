@@ -56,7 +56,7 @@ export const FloatingToolbar: React.FC = () => {
   };
 
   return (
-    <View style={styles.floatingContainer} pointerEvents="box-none">
+    <View style={styles.floatingContainer}>
       <GlassSurface
         intensity={75}
         borderRadius={Radius.pill}
@@ -107,6 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 99,
+    pointerEvents: 'box-none',
   },
   glassBar: {
     paddingHorizontal: Spacing.xs,
