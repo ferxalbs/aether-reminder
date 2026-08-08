@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { AnimatedPressable } from './AnimatedPressable';
-import { Colors, Radius } from '@/theme/tokens';
+import { Colors } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { selectionAsync } from '@/lib/haptics';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -47,25 +47,20 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 
   const animatedTrackStyle = useAnimatedStyle(() => {
     const activeColor = isDark ? Colors.systemGreenDark : Colors.systemGreenLight;
-    const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+    const inactiveColor = isDark ? '#39393D' : '#E9E9EA';
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
     return { backgroundColor };
   });
 
   const animatedThumbStyle = useAnimatedStyle(() => {
-    const activeThumbColor = isDark ? Colors.black : Colors.white;
-    const inactiveThumbColor = isDark ? Colors.zinc400 : Colors.zinc600;
-    const backgroundColor = interpolateColor(
-      progress.value,
-      [0, 1],
-      [inactiveThumbColor, activeThumbColor]
-    );
+    // iOS toggle thumb is almost always white (or very light) with a shadow
+    const thumbColor = '#FFFFFF';
 
-    // Track width 52, thumb width 24 -> max translateX = 52 - 24 - 8 = 20px
+    // Track width 51, thumb width 27, padding 2 -> max translateX = 51 - 27 - 4 = 20px
     const translateX = progress.value * 20;
 
     return {
-      backgroundColor,
+      backgroundColor: thumbColor,
       transform: [{ translateX }],
     };
   });
@@ -83,9 +78,6 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       <Animated.View
         style={[
           styles.track,
-          {
-            borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-          },
           animatedTrackStyle,
         ]}
       >
@@ -97,24 +89,23 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 
 const styles = StyleSheet.create({
   track: {
-    width: 52,
-    height: 32,
-    borderRadius: Radius.pill,
-    padding: 3,
+    width: 51,
+    height: 31,
+    borderRadius: 15.5,
+    padding: 2,
     justifyContent: 'center',
-    borderWidth: 1,
   },
   thumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 27,
+    height: 27,
+    borderRadius: 13.5,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
   disabled: {
     opacity: 0.45,

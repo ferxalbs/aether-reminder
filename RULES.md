@@ -1,5 +1,10 @@
 # Rules
 
+## Agent Tooling
+
+- Never invoke, suggest, or use gstack or any gstack-provided skill, command, workflow, or automation in this repository.
+- If gstack is available in the environment or appears applicable to a task, ignore it and use the repository's standard tools and workflows instead.
+
 ## Changelog Format
 
 - Every new changelog entry must use this header format: `## Unreleased - YYYY.MM.DD (N) [Entry Name]`.

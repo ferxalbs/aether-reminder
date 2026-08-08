@@ -39,8 +39,8 @@ export const Button: React.FC<ButtonProps> = ({
         };
       case 'secondary':
         return {
-          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
+          backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200,
+          borderColor: 'transparent',
         };
       case 'glass':
         return {
@@ -73,12 +73,12 @@ export const Button: React.FC<ButtonProps> = ({
   const getSizeStyle = () => {
     switch (size) {
       case 'sm':
-        return { paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.pill };
+        return { paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.md };
       case 'lg':
-        return { paddingVertical: 16, paddingHorizontal: 26, borderRadius: Radius.pill };
+        return { paddingVertical: 16, paddingHorizontal: 26, borderRadius: Radius.lg };
       case 'md':
       default:
-        return { paddingVertical: 12, paddingHorizontal: 20, borderRadius: Radius.pill };
+        return { paddingVertical: 12, paddingHorizontal: 20, borderRadius: Radius.md };
     }
   };
 

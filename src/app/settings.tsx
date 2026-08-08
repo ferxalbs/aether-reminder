@@ -304,7 +304,7 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <View style={[styles.statusBanner, { backgroundColor: openRouterConfigured ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.08)') : (isDark ? 'rgba(113,113,122,0.15)' : 'rgba(113,113,122,0.1)') }]}>
+            <View style={[styles.statusBanner, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
               <View style={{ flex: 1 }}>
                 <Typography variant="tiny" color={openRouterConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500}>
                   KEY STATUS
@@ -313,7 +313,7 @@ export default function SettingsScreen() {
                   {openRouterKeyLoaded ? (openRouterConfigured ? 'Saved in SecureStore' : 'No key configured') : 'Checking SecureStore…'}
                 </Typography>
               </View>
-              <Shield size={18} color={openRouterConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500} />
+              {openRouterConfigured && <Shield size={18} color={isDark ? '#4ADE80' : '#16A34A'} />}
             </View>
 
             <View style={styles.inputWrapper}>
@@ -349,38 +349,34 @@ export default function SettingsScreen() {
               {storageDescription}
             </Typography>
 
-            <View style={styles.buttonRow}>
+            <View style={styles.buttonStack}>
               <Button
                 label="Save Key"
                 onPress={() => void saveKey('OpenRouter')}
-                variant="primary"
-                size="sm"
+                variant={openRouterConfigured ? 'secondary' : 'primary'}
                 loading={savingProvider === 'OpenRouter'}
                 disabled={!secureStoreAvailable || !openRouterKeyLoaded || testingProvider !== null || !openRouterInput.trim()}
-                style={styles.flexButton}
+                fullWidth
               />
               <Button
-                label="Test Key"
+                label="Test Connection"
                 onPress={() => void testConnection('OpenRouter')}
                 variant="secondary"
-                size="sm"
                 loading={testingProvider === 'OpenRouter'}
                 disabled={!openRouterKeyLoaded || savingProvider !== null}
-                style={styles.flexButton}
+                fullWidth
               />
+              {openRouterConfigured || openRouterInput.trim() ? (
+                <Button
+                  label="Delete Key"
+                  onPress={() => deleteKey('OpenRouter')}
+                  variant="destructive"
+                  icon={<Trash2 size={16} color={isDark ? '#FCA5A5' : '#DC2626'} />}
+                  disabled={!openRouterKeyLoaded || savingProvider !== null || testingProvider !== null}
+                  fullWidth
+                />
+              ) : null}
             </View>
-
-            {openRouterConfigured || openRouterInput.trim() ? (
-              <Button
-                label="Delete Key"
-                onPress={() => deleteKey('OpenRouter')}
-                variant="destructive"
-                size="sm"
-                icon={<Trash2 size={14} color={isDark ? '#FCA5A5' : '#DC2626'} />}
-                disabled={!openRouterKeyLoaded || savingProvider !== null || testingProvider !== null}
-                style={styles.deleteButton}
-              />
-            ) : null}
 
             {openRouterMessage ? (
               <Typography
@@ -412,7 +408,7 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <View style={[styles.statusBanner, { backgroundColor: openAiConfigured ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.08)') : (isDark ? 'rgba(113,113,122,0.15)' : 'rgba(113,113,122,0.1)') }]}>
+            <View style={[styles.statusBanner, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
               <View style={{ flex: 1 }}>
                 <Typography variant="tiny" color={openAiConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500}>
                   KEY STATUS
@@ -421,7 +417,7 @@ export default function SettingsScreen() {
                   {openAiKeyLoaded ? (openAiConfigured ? 'Saved in SecureStore' : 'No key configured') : 'Checking SecureStore…'}
                 </Typography>
               </View>
-              <Shield size={18} color={openAiConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500} />
+              {openAiConfigured && <Shield size={18} color={isDark ? '#4ADE80' : '#16A34A'} />}
             </View>
 
             <View style={styles.inputWrapper}>
@@ -457,38 +453,34 @@ export default function SettingsScreen() {
               {storageDescription}
             </Typography>
 
-            <View style={styles.buttonRow}>
+            <View style={styles.buttonStack}>
               <Button
                 label="Save Key"
                 onPress={() => void saveKey('OpenAI')}
-                variant="primary"
-                size="sm"
+                variant={openAiConfigured ? 'secondary' : 'primary'}
                 loading={savingProvider === 'OpenAI'}
                 disabled={!secureStoreAvailable || !openAiKeyLoaded || testingProvider !== null || !openAiInput.trim()}
-                style={styles.flexButton}
+                fullWidth
               />
               <Button
-                label="Test Key"
+                label="Test Connection"
                 onPress={() => void testConnection('OpenAI')}
                 variant="secondary"
-                size="sm"
                 loading={testingProvider === 'OpenAI'}
                 disabled={!openAiKeyLoaded || savingProvider !== null}
-                style={styles.flexButton}
+                fullWidth
               />
+              {openAiConfigured || openAiInput.trim() ? (
+                <Button
+                  label="Delete Key"
+                  onPress={() => deleteKey('OpenAI')}
+                  variant="destructive"
+                  icon={<Trash2 size={16} color={isDark ? '#FCA5A5' : '#DC2626'} />}
+                  disabled={!openAiKeyLoaded || savingProvider !== null || testingProvider !== null}
+                  fullWidth
+                />
+              ) : null}
             </View>
-
-            {openAiConfigured || openAiInput.trim() ? (
-              <Button
-                label="Delete Key"
-                onPress={() => deleteKey('OpenAI')}
-                variant="destructive"
-                size="sm"
-                icon={<Trash2 size={14} color={isDark ? '#FCA5A5' : '#DC2626'} />}
-                disabled={!openAiKeyLoaded || savingProvider !== null || testingProvider !== null}
-                style={styles.deleteButton}
-              />
-            ) : null}
 
             {openAiMessage ? (
               <Typography
@@ -620,16 +612,17 @@ export default function SettingsScreen() {
                         styles.segmentedItem,
                         {
                           backgroundColor: isActive
-                            ? (isDark ? Colors.white : Colors.black)
+                            ? (isDark ? 'rgba(255,255,255,0.15)' : '#FFFFFF')
                             : 'transparent',
+                          shadowOpacity: isActive && !isDark ? 0.1 : 0,
                         },
                       ]}
                     >
                       <Typography
                         variant="caption"
                         style={{
-                          color: isActive ? (isDark ? Colors.black : Colors.white) : Colors.zinc400,
-                          fontWeight: isActive ? '700' : '500',
+                          color: isActive ? (isDark ? Colors.white : Colors.zinc950) : Colors.zinc500,
+                          fontWeight: isActive ? '600' : '500',
                         }}
                       >
                         {label}
@@ -978,17 +971,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     lineHeight: 18,
   },
-  buttonRow: {
-    flexDirection: 'row',
+  buttonStack: {
+    flexDirection: 'column',
     gap: Spacing.sm,
     marginTop: Spacing.md,
-  },
-  flexButton: {
-    flex: 1,
-  },
-  deleteButton: {
-    alignSelf: 'flex-start',
-    marginTop: Spacing.xs,
   },
   statusMessage: {
     marginTop: Spacing.sm,

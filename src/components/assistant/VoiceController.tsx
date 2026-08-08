@@ -48,6 +48,15 @@ interface VoiceControllerResult {
   cancel: () => void;
 }
 
+export function getVoiceReleaseAction(
+  state: VoiceState,
+  active: boolean,
+  locked: boolean
+): 'ignore' | 'defer' | 'commit' {
+  if (locked || !active) return 'ignore';
+  return state === 'connecting' ? 'defer' : 'commit';
+}
+
 function haptic(kind: 'start' | 'stop' | 'cancel' | 'error'): void {
   if (!useSettingsStore.getState().hapticsEnabled) return;
   const action = kind === 'error'
@@ -72,6 +81,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const snapshotRef = useRef<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
   const audioBytesRef = useRef(0);
   const finishingRef = useRef(false);
+  const releaseRequestedRef = useRef(false);
   const finalSubmittedRef = useRef(false);
   const lastAudioLevelAtRef = useRef(0);
   const mountedRef = useRef(true);
@@ -99,6 +109,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     abortControllerRef.current = null;
     activeRef.current = false;
     finishingRef.current = false;
+    releaseRequestedRef.current = false;
     streamRef.current?.stop();
     streamRef.current = null;
     const session = sessionRef.current;
@@ -180,6 +191,17 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
       const normalized = normalizePcm16(buffer.data, buffer.sampleRate, buffer.channels, OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE);
       session.appendPcm16(normalized);
       audioBytesRef.current += normalized.byteLength;
+      if (releaseRequestedRef.current && !finishingRef.current) {
+        releaseRequestedRef.current = false;
+        finishingRef.current = true;
+        setVoiceState('finalizing');
+        setRealtimeSnapshot(reduceRealtimeTranscription(snapshotRef.current, { type: 'client.commit' }));
+        haptic('stop');
+        streamRef.current?.stop();
+        streamRef.current = null;
+        session.commit();
+        return;
+      }
       const now = Date.now();
       if (now - lastAudioLevelAtRef.current >= 50) {
         // Kept local to the voice controller; this never enters Zustand or persistence.
@@ -191,7 +213,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     } catch (caught) {
       fail(caught);
     }
-  }, [audioLevel, fail]);
+  }, [audioLevel, fail, setRealtimeSnapshot, setVoiceState]);
 
   const audioStream = useAudioStream({
     sampleRate: OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,
@@ -242,7 +264,13 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   }, [fail, setRealtimeSnapshot, setVoiceState]);
 
   const release = useCallback(() => {
-    if (!locked) stopAndSend();
+    const action = getVoiceReleaseAction(stateRef.current, activeRef.current, locked);
+    if (action === 'ignore') return;
+    if (action === 'defer') {
+      releaseRequestedRef.current = true;
+      return;
+    }
+    stopAndSend();
   }, [locked, stopAndSend]);
 
   const lock = useCallback(() => {
@@ -255,6 +283,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     if (activeRef.current || !['idle', 'error'].includes(stateRef.current)) return;
     activeRef.current = true;
     finishingRef.current = false;
+    releaseRequestedRef.current = false;
     finalSubmittedRef.current = false;
     audioBytesRef.current = 0;
     setError(null);

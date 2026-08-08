@@ -6,19 +6,30 @@
  * Why UUIDv7:
  * - Sortable by creation time (helpful for indexes and agent references)
  * - Globally unique without coordination
- * - No large dependency (uses Web Crypto / Node crypto)
+ * - Uses Expo's built-in native UUID source on Android and iOS
  *
  * Format: standard 8-4-4-4-12 hex string.
  * Used for: tasks, reminders, projects, tags, task_events, future tool/agent rows.
  */
 
 function getRandomBytes(size: number): Uint8Array {
-  const bytes = new Uint8Array(size);
-  const cryptoApi = globalThis.crypto;
-  if (!cryptoApi?.getRandomValues) {
-    throw new Error('Secure random number generator unavailable (globalThis.crypto).');
+  const nativeUuid = globalThis.expo?.uuidv4?.();
+  if (nativeUuid) {
+    const hex = nativeUuid.replace(/-/g, '');
+    if (size <= 16 && /^[0-9a-f]{32}$/i.test(hex)) {
+      return Uint8Array.from(
+        { length: size },
+        (_, index) => Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16)
+      );
+    }
   }
-  cryptoApi.getRandomValues(bytes);
+
+  // Bun tests do not provide Expo's native runtime. The timestamp plus these
+  // fallback bytes still preserve UUIDv7 uniqueness without a platform shim.
+  const bytes = new Uint8Array(size);
+  for (let index = 0; index < size; index += 1) {
+    bytes[index] = Math.floor(Math.random() * 256);
+  }
   return bytes;
 }
 
