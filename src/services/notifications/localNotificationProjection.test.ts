@@ -5,6 +5,7 @@ import { createRepositories } from '@/db/repositories';
 import type { Reminder } from '@/domain/entities';
 import {
   LocalNotificationProjection,
+  NOTIFICATION_RECONCILIATION_BATCH_SIZE,
   resolveReminderNotificationDate,
   type LocalNotificationAdapter,
 } from './localNotificationProjection';
@@ -109,6 +110,49 @@ describe('local notification projection', () => {
       .toEqual({ repaired: 0, failed: 0, failures: [] });
     expect(cancelled).toHaveLength(0);
     expect(await repos.reminders.listAll()).toHaveLength(201);
+    await db.closeAsync?.();
+  });
+
+  test('reconciliation repairs reminders in bounded batches', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db); await runMigrations(db);
+    const repos = createRepositories(db);
+    const task = await repos.tasks.create({ title: 'Bounded reminder set' });
+    const reminderCount = NOTIFICATION_RECONCILIATION_BATCH_SIZE + 3;
+    for (let index = 0; index < reminderCount; index += 1) {
+      await repos.reminders.create({
+        id: `bounded-reminder-${index}`,
+        taskId: task.id,
+        scheduledDate: '2030-01-02',
+        scheduledTime: '09:00',
+      });
+    }
+
+    let activeSchedules = 0;
+    let maxActiveSchedules = 0;
+    let scheduledCount = 0;
+    const adapter: LocalNotificationAdapter = {
+      list: async () => [],
+      schedule: async ({ reminderId }) => {
+        activeSchedules += 1;
+        maxActiveSchedules = Math.max(maxActiveSchedules, activeSchedules);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        scheduledCount += 1;
+        activeSchedules -= 1;
+        return `native-${reminderId}`;
+      },
+      cancel: async () => {},
+    };
+
+    const result = await new LocalNotificationProjection(
+      repos.reminders,
+      repos.tasks,
+      adapter,
+    ).reconcile();
+
+    expect(result).toEqual({ repaired: reminderCount, failed: 0, failures: [] });
+    expect(scheduledCount).toBe(reminderCount);
+    expect(maxActiveSchedules).toBeLessThanOrEqual(NOTIFICATION_RECONCILIATION_BATCH_SIZE);
     await db.closeAsync?.();
   });
 });

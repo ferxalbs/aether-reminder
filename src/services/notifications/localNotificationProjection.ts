@@ -76,6 +76,32 @@ export function resolveReminderNotificationDate(
   );
 }
 
+/**
+ * Keep startup reconciliation responsive when a user has a large reminder set.
+ * The adapter and SQLite work for one reminder can still be expensive, so the
+ * projection is repaired in bounded batches instead of launching unbounded
+ * work or blocking on one reminder at a time.
+ */
+export const NOTIFICATION_RECONCILIATION_BATCH_SIZE = 8;
+
+async function mapInBatches<T, R>(
+  items: readonly T[],
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let offset = 0; offset < items.length; offset += NOTIFICATION_RECONCILIATION_BATCH_SIZE) {
+    const batch = items.slice(offset, offset + NOTIFICATION_RECONCILIATION_BATCH_SIZE);
+    results.push(...await Promise.all(batch.map(worker)));
+  }
+  return results;
+}
+
+interface ReconciliationOperationResult {
+  repaired: number;
+  failed: number;
+  failures: NotificationReconciliationFailure[];
+}
+
 export class LocalNotificationProjection {
   constructor(
     private readonly reminders: RemindersRepository,
@@ -126,64 +152,94 @@ export class LocalNotificationProjection {
     const failures: NotificationReconciliationFailure[] = [];
     const reminders = await this.reminders.listAll();
     const reminderIds = new Set(reminders.map((reminder) => reminder.id));
-    for (const item of native) {
-      if (!item.reminderId || reminderIds.has(item.reminderId)) continue;
-      try {
-        await this.adapter.cancel(item.identifier);
-        repaired += 1;
-      } catch (error) {
-        failed += 1;
-        failures.push({
-          kind: 'orphan_cancel',
-          error: toNotificationError(
-            error,
-            'RECONCILIATION_FAILED',
-            'An obsolete device notification could not be removed.',
-          ),
-        });
+
+    const addResults = (results: readonly ReconciliationOperationResult[]) => {
+      for (const result of results) {
+        repaired += result.repaired;
+        failed += result.failed;
+        failures.push(...result.failures);
       }
-    }
-    for (const reminder of reminders) {
-      const actualId = nativeByReminder.get(reminder.id);
-      if (!reminder.enabled) {
-        const id = actualId ?? reminder.nativeNotificationId;
+    };
+
+    const orphanResults = await mapInBatches(
+      native.filter((item) => item.reminderId && !reminderIds.has(item.reminderId)),
+      async (item): Promise<ReconciliationOperationResult> => {
         try {
-          if (id) {
-            await this.adapter.cancel(id);
-            repaired += 1;
-          }
-          await this.reminders.setProjection(reminder.id, null, null);
+          await this.adapter.cancel(item.identifier);
+          return { repaired: 1, failed: 0, failures: [] };
         } catch (error) {
-          failed += 1;
-          failures.push({
-            kind: 'disabled_cancel',
-            reminderId: reminder.id,
-            error: toNotificationError(
-              error,
-              'RECONCILIATION_FAILED',
-              'A disabled reminder could not be removed from device notifications.',
-            ),
-          });
+          return {
+            repaired: 0,
+            failed: 1,
+            failures: [{
+              kind: 'orphan_cancel',
+              error: toNotificationError(
+                error,
+                'RECONCILIATION_FAILED',
+                'An obsolete device notification could not be removed.',
+              ),
+            }],
+          };
         }
-        continue;
-      }
-      if (actualId && actualId === reminder.nativeNotificationId && !reminder.projectionError) continue;
-      try {
-        await this.project({ ...reminder, nativeNotificationId: actualId ?? reminder.nativeNotificationId });
-        repaired += 1;
-      } catch (error) {
-        failed += 1;
-        failures.push({
-          kind: 'reminder_projection',
-          reminderId: reminder.id,
-          error: toNotificationError(
-            error,
-            'RECONCILIATION_FAILED',
-            'A reminder could not be scheduled on this device.',
-          ),
-        });
-      }
-    }
+      },
+    );
+    addResults(orphanResults);
+
+    const reminderResults = await mapInBatches(
+      reminders,
+      async (reminder): Promise<ReconciliationOperationResult> => {
+        const actualId = nativeByReminder.get(reminder.id);
+        if (!reminder.enabled) {
+          const id = actualId ?? reminder.nativeNotificationId;
+          try {
+            let reminderRepaired = 0;
+            if (id) {
+              await this.adapter.cancel(id);
+              reminderRepaired = 1;
+            }
+            await this.reminders.setProjection(reminder.id, null, null);
+            return { repaired: reminderRepaired, failed: 0, failures: [] };
+          } catch (error) {
+            return {
+              repaired: 0,
+              failed: 1,
+              failures: [{
+                kind: 'disabled_cancel',
+                reminderId: reminder.id,
+                error: toNotificationError(
+                  error,
+                  'RECONCILIATION_FAILED',
+                  'A disabled reminder could not be removed from device notifications.',
+                ),
+              }],
+            };
+          }
+        }
+        if (actualId && actualId === reminder.nativeNotificationId && !reminder.projectionError) {
+          return { repaired: 0, failed: 0, failures: [] };
+        }
+        try {
+          await this.project({ ...reminder, nativeNotificationId: actualId ?? reminder.nativeNotificationId });
+          return { repaired: 1, failed: 0, failures: [] };
+        } catch (error) {
+          return {
+            repaired: 0,
+            failed: 1,
+            failures: [{
+              kind: 'reminder_projection',
+              reminderId: reminder.id,
+              error: toNotificationError(
+                error,
+                'RECONCILIATION_FAILED',
+                'A reminder could not be scheduled on this device.',
+              ),
+            }],
+          };
+        }
+      },
+    );
+    addResults(reminderResults);
+
     return { repaired, failed, failures };
   }
 }

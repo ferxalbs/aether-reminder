@@ -31,24 +31,36 @@ export async function runMigrations(
         `Migration versions must be strictly increasing (saw ${ordered[i - 1].version} then ${ordered[i].version}).`
       );
     }
+    if (ordered[i].version !== ordered[i - 1].version + 1) {
+      throw new DatabaseError(
+        'MIGRATION_FAILED',
+        `Migration versions must be contiguous (expected v${ordered[i - 1].version + 1}, saw v${ordered[i].version}).`
+      );
+    }
   }
 
   const fromVersion = await getSchemaVersion(db);
+  const firstMigration = ordered[0];
+  if (firstMigration && fromVersion === 0 && firstMigration.version !== 1) {
+    throw new DatabaseError(
+      'MIGRATION_FAILED',
+      `Migration versions must start at v1 when the database is empty (saw v${firstMigration.version}).`
+    );
+  }
+
+  const nextPendingMigration = ordered.find((migration) => migration.version > fromVersion);
+  if (nextPendingMigration && nextPendingMigration.version !== fromVersion + 1) {
+    throw new DatabaseError(
+      'MIGRATION_FAILED',
+      `Migration chain has a gap after v${fromVersion} (expected v${fromVersion + 1}, saw v${nextPendingMigration.version}).`
+    );
+  }
+
   const applied: string[] = [];
   let current = fromVersion;
 
   for (const migration of ordered) {
     if (migration.version <= current) continue;
-
-    if (migration.version !== current + 1 && current !== 0) {
-      // Allow jumping only when starting from empty (0 → 1 is fine even if we have gaps later).
-      // For non-empty, require contiguous versions relative to current chain.
-      const nextExpected = current + 1;
-      const hasNext = ordered.some((m) => m.version === nextExpected);
-      if (hasNext && migration.version > nextExpected) {
-        // Will be applied after intermediate ones; loop continues in order
-      }
-    }
 
     try {
       await db.withTransactionAsync(async () => {

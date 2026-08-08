@@ -69,6 +69,23 @@ describe('schema migrations', () => {
     await db.closeAsync?.();
   });
 
+  test('rejects a missing migration version before applying a later migration', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db);
+    const skipped: Migration = {
+      version: 3,
+      name: '0003_skipped',
+      async up() {},
+    };
+
+    await expect(runMigrations(db, [migration0001Core, skipped])).rejects.toMatchObject({
+      code: 'MIGRATION_FAILED',
+      message: 'Migration versions must be contiguous (expected v2, saw v3).',
+    });
+    expect(await getSchemaVersion(db)).toBe(0);
+    await db.closeAsync?.();
+  });
+
   test('repeated migration execution is a no-op', async () => {
     const db = createBunSqliteDatabase();
     await applyPragmas(db);
