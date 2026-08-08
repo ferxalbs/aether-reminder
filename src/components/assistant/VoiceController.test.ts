@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { getVoiceReleaseAction } from './VoiceController';
+import { getVoiceReleaseAction } from './voiceRelease';
 
 describe('getVoiceReleaseAction', () => {
   test('defers release while the realtime session is still connecting', () => {

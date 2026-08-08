@@ -21,6 +21,7 @@ import {
 } from '@/services/transcription';
 import { useSettingsStore } from '@/stores/settings.store';
 import { impactAsync, notificationAsync } from '@/lib/haptics';
+import { getVoiceReleaseAction } from './voiceRelease';
 
 export type VoiceState = RealtimeTranscriptionState;
 
@@ -46,15 +47,6 @@ interface VoiceControllerResult {
   lock: () => void;
   stopAndSend: () => void;
   cancel: () => void;
-}
-
-export function getVoiceReleaseAction(
-  state: VoiceState,
-  active: boolean,
-  locked: boolean
-): 'ignore' | 'defer' | 'commit' {
-  if (locked || !active) return 'ignore';
-  return state === 'connecting' ? 'defer' : 'commit';
 }
 
 function haptic(kind: 'start' | 'stop' | 'cancel' | 'error'): void {
