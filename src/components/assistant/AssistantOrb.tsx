@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Sparkles, TriangleAlert } from 'lucide-react-native';
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Colors, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -40,6 +41,8 @@ const stateLabels: Record<AssistantOrbState, string> = {
 
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({ state, expanded, onPress, onPressIn, onPressOut, onPressMove }) => {
   const isDark = useIsDark();
+  const useLiquidGlass =
+    Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const [reduceMotion, setReduceMotion] = useState(false);
   const motion = useSharedValue(0);
   const isBusy = state === 'thinking' || state === 'executing' || state === 'responding' || state === 'requesting_permission' || state === 'preparing' || state === 'listening' || state === 'finalizing' || state === 'transcribing';
@@ -98,11 +101,19 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({ state, expanded, onP
           styles.orb,
           animatedStyle,
           {
-            backgroundColor: background,
+            backgroundColor: useLiquidGlass ? 'transparent' : background,
             borderColor: isError ? '#FDA29B' : isAttention ? '#FBD38D' : foreground,
           },
         ]}
       >
+        {useLiquidGlass ? (
+          <GlassView
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+            isInteractive
+            colorScheme={isDark ? 'dark' : 'light'}
+          />
+        ) : null}
         {isError ? (
           <TriangleAlert size={22} color={foreground} strokeWidth={2.4} />
         ) : (

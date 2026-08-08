@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, ScrollView, StatusBar, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -199,7 +199,7 @@ export default function HomeScreen() {
               <Sparkles size={36} color={isDark ? Colors.zinc500 : Colors.zinc400} strokeWidth={1.5} />
             </View>
             <Typography variant="headline" align="center" style={styles.emptyTitle}>
-              You're All Clear
+              You&apos;re All Clear
             </Typography>
             <Typography
               variant="body"

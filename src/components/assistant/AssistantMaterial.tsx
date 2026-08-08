@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   content: {
+    flex: 1,
     zIndex: 1,
   },
 });

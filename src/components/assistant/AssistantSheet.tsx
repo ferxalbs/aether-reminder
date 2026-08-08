@@ -13,6 +13,7 @@ import { Check, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '@/components/ui/Typography';
 import { Button } from '@/components/ui/Button';
 import { AssistantMaterial } from './AssistantMaterial';
@@ -85,6 +86,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onVoiceMic,
 }) => {
   const isDark = useIsDark();
+  const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const height = useSharedValue(0);
   const isVisible = surface !== 'closed';
@@ -109,7 +111,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   if (!isVisible) return null;
 
   return (
-    <Animated.View style={[styles.wrapper, animatedStyle]} pointerEvents="box-none">
+    <Animated.View
+      style={[styles.wrapper, { bottom: Math.max(insets.bottom, 12) + 88 }, animatedStyle]}
+      pointerEvents="box-none"
+    >
       <AssistantMaterial style={styles.sheet} borderRadius={Radius.xl}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

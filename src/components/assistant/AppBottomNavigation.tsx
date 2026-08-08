@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
 import { CheckSquare, ListTodo, Settings } from 'lucide-react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
   withSpring, 
-  interpolateColor
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -56,7 +55,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   };
 
   return (
-    <View pointerEvents="box-none" style={[styles.host, { bottom: insets.bottom + 12 }]}>
+    <View pointerEvents="box-none" style={[styles.host, { bottom: Math.max(insets.bottom, 12) + 24 }]}>
       <AssistantMaterial style={styles.bar} borderRadius={Radius.pill}>
         <View style={styles.navRow}>
           <View style={styles.leftGroup}>
@@ -81,7 +80,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
           </View>
         </View>
       </AssistantMaterial>
-      <View style={styles.orbContainer}>
+      <View pointerEvents="box-none" style={styles.orbContainer}>
         <AssistantOrb 
           state={orbState} 
           expanded={assistantExpanded} 
@@ -178,19 +177,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.md,
     right: Spacing.md,
-    height: 72,
+    height: 144,
     zIndex: 30,
     alignItems: 'center',
+    overflow: 'visible',
     shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: Platform.OS === 'android' ? 12 : 0,
   },
   bar: {
+    position: 'absolute',
+    bottom: 0,
     width: '100%',
-    height: 72,
-    paddingHorizontal: Spacing.sm,
+    height: 68,
+    paddingHorizontal: Spacing.xs,
+    overflow: 'visible',
   },
   navRow: {
     flex: 1,
@@ -201,19 +204,20 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    paddingRight: 24,
+    paddingRight: 28,
   },
   rightGroup: {
     flex: 1,
     alignItems: 'center',
-    paddingLeft: 24,
+    paddingLeft: 28,
   },
   centerGap: {
-    width: 76,
+    width: 72,
   },
   navButton: {
-    width: 64,
-    height: 64,
+    minWidth: 64,
+    height: 60,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -233,8 +237,9 @@ const styles = StyleSheet.create({
   },
   orbContainer: {
     position: 'absolute',
-    top: -24,
+    bottom: 76,
     left: '50%',
     marginLeft: -38,
+    zIndex: 2,
   },
 });
