@@ -2,6 +2,26 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (3) [P0 AETHER Core Execution Boundary]
+
+### In-process execution ownership
+
+- Added a small `AetherCore` composition root and shared `AetherCommandExecutor`; manual task actions, agent tools, confirmation, and notification lifecycle reconciliation now enter through this application boundary while domain services retain business rules and repositories retain SQL.
+- Reduced `AssistantHost` and its session controller to presentation, context, navigation, feedback, and event consumption responsibilities; no server, RPC, worker, backend, or alternate provider path was introduced.
+
+### Exact confirmation and native convergence
+
+- Confirmation now reloads the exact validated arguments from the durable pending execution instead of trusting the UI-carried copy, atomically claims its stable app-owned execution identity, and replays completed receipts without duplicating mutations or inference.
+- Kept terminal mutation receipts on the first model turn, kept transient streaming/state events out of SQLite, and preserved exact OpenRouter model selection plus OpenAI-only realtime transcription.
+- Added the Android reminder channel, retained honest projection failures, and extended startup/foreground reconciliation to cancel orphaned AETHER notifications absent from authoritative SQLite state.
+
+### Regression coverage and validation
+
+- Added coverage for shared manual/agent command execution, tamper-resistant exact pending-action confirmation, and orphan notification repair; retained coverage for one-turn mutations, hot-path streaming, PCM normalization, bounded audio backpressure, voice timeouts/exactly-once final transcript delivery, and notification create/reschedule/cancel recovery.
+- `bun test`: 79 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 248 expectations across 80 tests and 21 files.
+- `bun run typecheck`, `bun run lint`, `bun x expo config --type public`, and `bun x expo install --check`: passed.
+- No build was deployed or published. Physical-device notification delivery/reconciliation, hardware-rate audio normalization, slow-network voice backpressure, and lifecycle interruption remain device-only validation.
+
 ## Unreleased - 2026.08.08 (2) [P0 Production Safety and Latency Corrections]
 
 ### Exact confirmation and terminal mutations
@@ -22,7 +42,7 @@ All notable changes to AETHER are documented here.
 - Reminder schedule, reschedule, and cancel operations now update OS-local notifications and report projection failure honestly while preserving successful domain mutations.
 - Reconciliation repairs missing or stale schedules after app startup and foreground resume and removes notifications for disabled reminders.
 
-### Regression coverage and validation
+### Regression coverage and validation 4
 
 - Added or updated coverage for exact confirmation replay, terminal mutation turns, absent hot-path event persistence, PCM resampling, bounded queue/backpressure, connection timeout cleanup, and notification projection/reconciliation.
 - `bun test`: 77 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 242 expectations across 78 tests and 20 files.

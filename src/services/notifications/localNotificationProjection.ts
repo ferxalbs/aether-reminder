@@ -18,12 +18,23 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
   },
   async schedule(input) {
     const Notifications = await import('expo-notifications');
+    const { Platform } = await import('react-native');
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('aether-reminders', {
+        name: 'AETHER Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+      });
+    }
     const permissions = await Notifications.getPermissionsAsync();
     const granted = permissions.granted ? permissions : await Notifications.requestPermissionsAsync();
     if (!granted.granted) throw new Error('Notification permission was denied.');
     return Notifications.scheduleNotificationAsync({
       content: { title: 'AETHER Reminder', body: input.title, data: { reminderId: input.reminderId } },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: input.date },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: input.date,
+        channelId: 'aether-reminders',
+      },
     });
   },
   async cancel(identifier) {
@@ -70,7 +81,18 @@ export class LocalNotificationProjection {
     const nativeByReminder = new Map(native.filter((n) => n.reminderId).map((n) => [n.reminderId!, n.identifier]));
     let repaired = 0;
     let failed = 0;
-    for (const reminder of await this.reminders.listAll()) {
+    const reminders = await this.reminders.listAll();
+    const reminderIds = new Set(reminders.map((reminder) => reminder.id));
+    for (const item of native) {
+      if (!item.reminderId || reminderIds.has(item.reminderId)) continue;
+      try {
+        await this.adapter.cancel(item.identifier);
+        repaired += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    for (const reminder of reminders) {
       const actualId = nativeByReminder.get(reminder.id);
       if (!reminder.enabled) {
         const id = actualId ?? reminder.nativeNotificationId;

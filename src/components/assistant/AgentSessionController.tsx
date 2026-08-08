@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createAgentRuntime, type AgentEvent, type ContextSnapshot } from '@/services/agent';
+import { type AgentEvent, type ContextSnapshot } from '@/services/agent';
 import { getDatabase } from '@/db';
+import { getAetherCore } from '@/core';
 import type { ActionReceipt } from '@/domain/receipts';
 import { useSettingsStore } from '@/stores/settings.store';
 import { resolveAgentModel } from '@/services/ai/modelSelection';
@@ -38,7 +39,8 @@ export function useAgentSessionController({
   const apiKey = useSettingsStore((state) => state.openRouterApiKey);
   const apiKeyLoaded = useSettingsStore((state) => state.openRouterKeyLoaded);
   const selectedModel = useSettingsStore((state) => state.selectedModel);
-  const runtime = useMemo(() => createAgentRuntime({ db: getDatabase() }), []);
+  const core = useMemo(() => getAetherCore(getDatabase()), []);
+  const runtime = core.agent;
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [receipts, setReceipts] = useState<AssistantReceipt[]>([]);
   const [pendingConfirmation, setPendingConfirmation] =

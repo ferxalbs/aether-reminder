@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { getDatabase, getDatabaseErrorMessage, isDatabaseReady } from '@/db';
 import type { CreateTaskInput, Task, TaskListItem, TaskPriority } from '@/domain/entities';
 import { toTaskListItem } from '@/domain/entities';
-import { createDomainServices, type DomainServices } from '@/domain/services';
+import { getAetherCore, type AetherCore } from '@/core';
 import { getLocalDateString } from '@/temporal/localCalendar';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -44,11 +44,11 @@ interface TasksUiState {
   softDeleteTask: (id: string) => Promise<void>;
 }
 
-function services(): DomainServices {
+function core(): AetherCore {
   if (!isDatabaseReady()) {
     throw new Error('Database not ready');
   }
-  return createDomainServices(getDatabase());
+  return getAetherCore(getDatabase());
 }
 
 export const useTasksUiStore = create<TasksUiState>((set, get) => ({
@@ -61,7 +61,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshToday: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await services().tasks.listTasks({
+      const tasks = await core().services.tasks.listTasks({
         scope: 'today',
         localDate: getLocalDateString(),
       });
@@ -81,7 +81,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshUpcoming: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await services().tasks.listTasks({
+      const tasks = await core().services.tasks.listTasks({
         scope: 'upcoming',
         localDate: getLocalDateString(),
         limit: 100,
@@ -100,7 +100,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   createTask: async (input) => {
-    const { value } = await services().tasks.createTask({
+    const { value } = await core().commands.createTask({
       title: input.title,
       notes: input.notes ?? null,
       priority: input.priority ?? 'medium',
@@ -115,9 +115,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   createTasksBatch: async (inputs) => {
-    const svc = services().tasks;
+    const commands = core().commands;
     for (const input of inputs) {
-      await svc.createTask({
+      await commands.createTask({
         title: input.title,
         notes: input.notes ?? null,
         priority: input.priority ?? 'medium',
@@ -149,11 +149,11 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      const svc = services().tasks;
+      const commands = core().commands;
       if (nextCompleted) {
-        await svc.completeTask(id);
+        await commands.completeTask(id);
       } else {
-        await svc.reopenTask(id);
+        await commands.reopenTask(id);
       }
     } catch (error) {
       set({
@@ -177,7 +177,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      await services().tasks.deleteTask(id);
+      await core().commands.deleteTask(id);
     } catch (error) {
       set({
         todayTasks: previousTodayTasks,

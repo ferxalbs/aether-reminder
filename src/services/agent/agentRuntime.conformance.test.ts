@@ -234,7 +234,12 @@ describe('agent runtime conformance', () => {
     expect(pending?.type).toBe('tool.confirmation_required');
     const second: AgentEvent[] = [];
     if (pending?.type === 'tool.confirmation_required') {
-      for await (const event of runtime.confirm(pending.pendingAction, {
+      // The UI-carried copy is not authoritative; confirmation reloads persisted args.
+      const tampered = {
+        ...pending.pendingAction,
+        args: { ids: ['not-the-validated-action'] },
+      };
+      for await (const event of runtime.confirm(tampered, {
         context: baseContext({ invocationSource: 'voice' }),
       })) second.push(event);
     }

@@ -73,7 +73,7 @@ export const remindersSchedule: AgentTool<{
         time: asString(input?.scheduledTime),
         timezone: ctx.context.timezone,
       });
-      const result = await ctx.services.reminders.scheduleReminder({
+      const result = await ctx.commands.scheduleReminder({
         taskId,
         scheduledDate,
         scheduledTime: asString(input?.scheduledTime),
@@ -120,7 +120,7 @@ export const remindersReschedule: AgentTool<{
     const scheduledDate = asString(input?.scheduledDate);
     if (!id || !scheduledDate) return { ok: false, error: 'id and scheduledDate are required' };
     try {
-      const result = await ctx.services.reminders.rescheduleReminder(id, {
+      const result = await ctx.commands.rescheduleReminder(id, {
         scheduledDate,
         scheduledTime: asString(input?.scheduledTime),
         timezone: ctx.context.timezone,
@@ -157,7 +157,7 @@ export const remindersCancel: AgentTool<{ id: string }> = {
     const id = asString(input?.id);
     if (!id) return { ok: false, error: 'id is required' };
     try {
-      const result = await ctx.services.reminders.cancelReminder(id);
+      const result = await ctx.commands.cancelReminder(id);
       return {
         ok: true,
         data: {

@@ -1,9 +1,11 @@
 import type { ActionReceipt } from '@/domain/receipts';
 import type { DomainServices } from '@/domain/services';
+import type { AetherCommandExecutor } from '@/core/commands';
 import type { ContextSnapshot, ToolRisk } from '../types';
 
 export interface ToolExecutionContext {
   services: DomainServices;
+  commands: AetherCommandExecutor;
   context: ContextSnapshot;
   runId: string;
   eventSource: string;

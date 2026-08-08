@@ -325,6 +325,21 @@ export class AgentRuntimeRepository {
     );
   }
 
+  /** Atomically grants one caller ownership of a pending execution. */
+  async claimToolExecution(
+    executionId: string,
+    expectedStatus: ToolExecutionStatus
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE tool_executions
+       SET status = 'running', started_at = COALESCE(started_at, ?), updated_at = ?
+       WHERE id = ? AND status = ?`,
+      [now, now, executionId, expectedStatus]
+    );
+    return result.changes === 1;
+  }
+
   async getToolExecutionByIdempotencyKey(key: string): Promise<ToolExecutionRow | null> {
     return this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE idempotency_key = ?`,

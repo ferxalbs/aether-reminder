@@ -16,6 +16,7 @@ import { evaluateToolPolicy, isWriteRisk } from "./policy";
 import { AGENT_SYSTEM_PROMPT, buildContextMessage } from "./prompt";
 import { defaultToolRegistry, type ToolRegistry } from "./tools";
 import type { ToolExecutionContext } from "./tools/types";
+import { AetherCommandExecutor } from '@/core/commands';
 import type {
   AgentBudget,
   AgentEvent,
@@ -31,6 +32,7 @@ import { DEFAULT_AGENT_BUDGET as DEFAULT_BUDGET } from "./types";
 export interface AetherAgentRuntimeOptions {
   db: SqlDatabase;
   services?: DomainServices;
+  commands?: AetherCommandExecutor;
   provider?: InferenceProvider;
   tools?: ToolRegistry;
   /** Override clock for tests. */
@@ -50,6 +52,7 @@ type PendingToolCall = {
 export class AetherAgentRuntime implements AgentRuntime {
   private readonly services: DomainServices;
   private readonly provider: InferenceProvider;
+  private readonly commands: AetherCommandExecutor;
   private readonly tools: ToolRegistry;
   private readonly persistence: AgentRuntimeRepository;
   private readonly now: () => number;
@@ -58,6 +61,7 @@ export class AetherAgentRuntime implements AgentRuntime {
 
   constructor(options: AetherAgentRuntimeOptions) {
     this.services = options.services ?? createDomainServices(options.db);
+    this.commands = options.commands ?? new AetherCommandExecutor(this.services);
     this.provider = options.provider ?? openRouterInferenceProvider;
     this.tools = options.tools ?? defaultToolRegistry;
     this.persistence = new AgentRuntimeRepository(options.db);
@@ -85,7 +89,13 @@ export class AetherAgentRuntime implements AgentRuntime {
     input: Pick<AgentInput, "context" | "onNavigate">,
   ): AsyncIterable<AgentEvent> {
     const row = await this.persistence.getToolExecution(action.id);
-    if (!row || row.run_id !== action.runId || row.tool_id !== action.toolId || row.status === "skipped") {
+    if (
+      !row ||
+      row.run_id !== action.runId ||
+      row.tool_call_id !== action.toolCallId ||
+      row.tool_id !== action.toolId ||
+      row.status === "skipped"
+    ) {
       yield { type: "run.failed", runId: action.runId, code: "PENDING_ACTION_INVALID", message: "This confirmation is no longer valid.", state: "error" };
       return;
     }
@@ -97,13 +107,31 @@ export class AetherAgentRuntime implements AgentRuntime {
       }
       return;
     }
+    const persistedArgs = row.args_json
+      ? JSON.parse(row.args_json) as Record<string, unknown>
+      : null;
+    if (!persistedArgs || row.status !== 'awaiting_confirmation') {
+      yield { type: "run.failed", runId: action.runId, code: "PENDING_ACTION_INVALID", message: "This confirmation is no longer valid.", state: "error" };
+      return;
+    }
+    const claimed = await this.persistence.claimToolExecution(action.id, 'awaiting_confirmation');
+    if (!claimed) {
+      const replay = await this.persistence.getToolExecution(action.id);
+      if (replay?.status === 'completed' && replay.result_json) {
+        const stored = JSON.parse(replay.result_json) as { receipt?: ActionReceipt };
+        yield { type: "tool.completed", runId: action.runId, toolCallId: action.toolCallId, toolId: action.toolId, result: stored, receipt: stored.receipt, state: "executing" };
+        if (stored.receipt) yield { type: "response.completed", runId: action.runId, response: { text: stored.receipt.summary, receipts: [stored.receipt] }, state: "responding" };
+      }
+      return;
+    }
     const result = await this.enqueueWrite(() => this.executeToolCall({
       runId: action.runId,
-      call: { toolCallId: action.toolCallId, toolId: action.toolId, argsText: JSON.stringify(action.args) },
+      call: { toolCallId: action.toolCallId, toolId: action.toolId, argsText: JSON.stringify(persistedArgs) },
       input: { message: "", context: input.context, modelId: "", apiKey: "", onNavigate: input.onNavigate },
       capabilities: { textInput: true, textOutput: true, streaming: false, tools: true, toolChoice: true, structuredOutputs: false, compatibility: "FULL_AGENT" },
       controller: new AbortController(),
       approvedExecutionId: action.id,
+      executionAlreadyClaimed: true,
     }));
     for (const event of result.events) yield event;
     if (result.receipt) {
@@ -590,6 +618,7 @@ export class AetherAgentRuntime implements AgentRuntime {
     capabilities: ModelCapabilities;
     controller: AbortController;
     approvedExecutionId?: string;
+    executionAlreadyClaimed?: boolean;
   }): Promise<{
     events: AgentEvent[];
     toolMessage?: InferenceMessage;
@@ -658,6 +687,7 @@ export class AetherAgentRuntime implements AgentRuntime {
 
     const ctx: ToolExecutionContext = {
       services: this.services,
+      commands: this.commands,
       context: input.context,
       runId,
       eventSource: "agent",
@@ -808,10 +838,12 @@ export class AetherAgentRuntime implements AgentRuntime {
       state: "executing",
     });
 
-    await this.persistence.updateToolExecution(executionId, {
-      status: "running",
-      started: true,
-    });
+    if (!options.executionAlreadyClaimed) {
+      await this.persistence.updateToolExecution(executionId, {
+        status: "running",
+        started: true,
+      });
+    }
 
     try {
       const result = await tool.execute(args, ctx);

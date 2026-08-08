@@ -169,7 +169,7 @@ export const tasksCreate: AgentTool<{
       return { ok: false, error: e instanceof Error ? e.message : 'Invalid due date' };
     }
 
-    const { value, receipt } = await ctx.services.tasks.createTask(
+    const { value, receipt } = await ctx.commands.createTask(
       {
         title,
         notes: asString(input?.notes) ?? null,
@@ -229,7 +229,7 @@ export const tasksUpdate: AgentTool<{
           timezone: ctx.context.timezone,
         });
       }
-      const { value, receipt } = await ctx.services.tasks.updateTask(
+      const { value, receipt } = await ctx.commands.updateTask(
         id,
         {
           title: asString(input?.title),
@@ -267,7 +267,7 @@ export const tasksComplete: AgentTool<{ id: string }> = {
     const id = asString(input?.id);
     if (!id) return { ok: false, error: 'id is required' };
     try {
-      const { value, receipt } = await ctx.services.tasks.completeTask(id, ctx.eventSource);
+      const { value, receipt } = await ctx.commands.completeTask(id, ctx.eventSource);
       return {
         ok: true,
         data: { task: { id: value.id, title: value.title, completed: true } },
@@ -295,7 +295,7 @@ export const tasksReopen: AgentTool<{ id: string }> = {
     const id = asString(input?.id);
     if (!id) return { ok: false, error: 'id is required' };
     try {
-      const { value, receipt } = await ctx.services.tasks.reopenTask(id, ctx.eventSource);
+      const { value, receipt } = await ctx.commands.reopenTask(id, ctx.eventSource);
       return {
         ok: true,
         data: { task: { id: value.id, title: value.title, completed: false } },
@@ -341,7 +341,7 @@ export const tasksDelete: AgentTool<{ id?: string; ids?: string[] }> = {
     const receipts = [];
     for (const id of unique) {
       try {
-        const { receipt } = await ctx.services.tasks.deleteTask(id, ctx.eventSource);
+        const { receipt } = await ctx.commands.deleteTask(id, ctx.eventSource);
         deleted.push(id);
         receipts.push({ ...receipt, toolId: 'tasks.delete' });
       } catch (e) {

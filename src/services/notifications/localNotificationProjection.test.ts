@@ -37,4 +37,28 @@ describe('local notification projection', () => {
     expect((await repos.reminders.getById(reminder.id))?.nativeNotificationId).toBeNull();
     await db.closeAsync?.();
   });
+
+  test('reconciliation removes projected notifications with no SQLite reminder', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db); await runMigrations(db);
+    const repos = createRepositories(db);
+    let scheduled = [{ identifier: 'orphan-native', reminderId: 'missing-reminder' }];
+    const adapter: LocalNotificationAdapter = {
+      list: async () => scheduled,
+      schedule: async () => 'unused',
+      cancel: async (identifier) => {
+        scheduled = scheduled.filter((item) => item.identifier !== identifier);
+      },
+    };
+
+    const result = await new LocalNotificationProjection(
+      repos.reminders,
+      repos.tasks,
+      adapter,
+    ).reconcile();
+
+    expect(result).toEqual({ repaired: 1, failed: 0 });
+    expect(scheduled).toHaveLength(0);
+    await db.closeAsync?.();
+  });
 });
