@@ -1,7 +1,8 @@
 import React, { useEffect, type RefObject } from 'react';
 import {
   Pressable,
-  ScrollView,
+  Platform,
+  FlatList,
   StyleSheet,
   Text,
   View,
@@ -125,7 +126,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           : 0;
 
   useEffect(() => {
-    height.value = reduceMotion
+    height.value = reduceMotion || Platform.OS === 'android'
       ? withTiming(targetHeight, { duration: 140 })
       : withSpring(targetHeight, { damping: 24, stiffness: 240, mass: 0.8 });
   }, [height, reduceMotion, targetHeight]);
@@ -175,57 +176,63 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           ) : null}
 
           {showConversation ? (
-            <ScrollView
+            <FlatList
               style={styles.conversation}
               contentContainerStyle={styles.conversationContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-            >
-              {messages.length === 0 ? (
-                <Typography variant="body" color={Colors.zinc500} style={styles.welcome}>
-                  Ask about your tasks, or tell me what to change.
-                </Typography>
-              ) : (
-                messages.map((message) => (
-                  <View key={message.id} style={[styles.messageRow, message.role === 'user' && styles.userMessageRow]}>
+              data={messages}
+              keyExtractor={(message) => message.id}
+              renderItem={({ item: message }) => {
+                if (!message.text && !(isRunning && message.role === 'assistant')) return null;
+                return (
+                  <View style={[styles.messageRow, message.role === 'user' && styles.userMessageRow]}>
                     <View style={[styles.messageBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble, { backgroundColor: message.role === 'user' ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.zinc800 : Colors.zinc100) }]}>
                       <Typography variant="body" color={message.role === 'user' ? (isDark ? Colors.black : Colors.white) : undefined}>
-                        {message.text || (isRunning && message.role === 'assistant' ? ' ' : 'No response text.')}
+                        {message.text || ' '}
                       </Typography>
                     </View>
                   </View>
-                ))
+                );
+              }}
+              ListEmptyComponent={(
+                <Typography variant="body" color={Colors.zinc500} style={styles.welcome}>
+                  Ask about your tasks, or tell me what to change.
+                </Typography>
               )}
+              ListFooterComponent={(
+                <View style={styles.conversationFooter}>
+                  {receipts.map(({ receipt, toolId }) => (
+                    <View key={receipt.id} style={[styles.receipt, { borderColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}>
+                      <View style={styles.receiptIcon}><Check size={14} color="#2F855A" strokeWidth={2.8} /></View>
+                      <View style={styles.receiptCopy}>
+                        <Typography variant="bodyBold">{receipt.summary}</Typography>
+                        <Typography variant="tiny" color={Colors.zinc500}>{toolId}</Typography>
+                      </View>
+                    </View>
+                  ))}
 
-              {receipts.map(({ receipt, toolId }) => (
-                <View key={receipt.id} style={[styles.receipt, { borderColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}>
-                  <View style={styles.receiptIcon}><Check size={14} color="#2F855A" strokeWidth={2.8} /></View>
-                  <View style={styles.receiptCopy}>
-                    <Typography variant="bodyBold">{receipt.summary}</Typography>
-                    <Typography variant="tiny" color={Colors.zinc500}>{toolId}</Typography>
+                  {pendingConfirmation ? (
+                    <View style={[styles.confirmation, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
+                      <Typography variant="bodyBold">{confirmationTitle(pendingConfirmation)}</Typography>
+                      <Typography variant="caption" color={Colors.zinc500} style={styles.confirmationReason}>
+                        {pendingConfirmation.reason}
+                      </Typography>
+                      <View style={styles.confirmationActions}>
+                        <Button label="Cancel" variant="secondary" size="sm" onPress={onCancelConfirmation} style={styles.confirmationButton} />
+                        <Button label="Confirm" variant="primary" size="sm" onPress={onConfirm} loading={isRunning} style={styles.confirmationButton} />
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {error ? (
+                    <View accessibilityLiveRegion="assertive" style={styles.errorMessage}>
+                      <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{error}</Text>
+                    </View>
+                  ) : null}
                   </View>
-                </View>
-              ))}
-
-              {pendingConfirmation ? (
-                <View style={[styles.confirmation, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
-                  <Typography variant="bodyBold">{confirmationTitle(pendingConfirmation)}</Typography>
-                  <Typography variant="caption" color={Colors.zinc500} style={styles.confirmationReason}>
-                    {pendingConfirmation.reason}
-                  </Typography>
-                  <View style={styles.confirmationActions}>
-                    <Button label="Cancel" variant="secondary" size="sm" onPress={onCancelConfirmation} style={styles.confirmationButton} />
-                    <Button label="Confirm" variant="primary" size="sm" onPress={onConfirm} loading={isRunning} style={styles.confirmationButton} />
-                  </View>
-                </View>
-              ) : null}
-
-              {error ? (
-                <View accessibilityLiveRegion="assertive" style={styles.errorMessage}>
-                  <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{error}</Text>
-                </View>
-              ) : null}
-            </ScrollView>
+              )}
+            />
           ) : null}
 
           <View style={styles.composerContainer}>
@@ -306,6 +313,9 @@ const styles = StyleSheet.create({
   },
   conversationContent: {
     paddingVertical: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  conversationFooter: {
     gap: Spacing.sm,
   },
   welcome: {

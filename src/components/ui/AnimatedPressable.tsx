@@ -8,12 +8,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSettingsStore } from '@/stores/settings.store';
+import { impactAsync } from '@/lib/haptics';
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
 export interface AnimatedPressableProps extends PressableProps {
   scaleTo?: number;
-  hapticStyle?: Haptics.ImpactFeedbackStyle;
+  hapticStyle?: Haptics.ImpactFeedbackStyle | null;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
@@ -45,7 +46,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
     });
     const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled && hapticStyle) {
-      Haptics.impactAsync(hapticStyle).catch(() => {});
+      impactAsync(hapticStyle).catch(() => {});
     }
     onPressIn?.(e);
   };

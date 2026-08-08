@@ -170,21 +170,30 @@ export class AetherAgentRuntime implements AgentRuntime {
 
   async *run(input: AgentInput): AsyncIterable<AgentEvent> {
     const budget = resolveBudget(input.budget, this.now);
-    const sessionId =
-      input.sessionId ??
-      (await this.persistence.createSession({
-        surface: input.context.surface,
-        locale: input.context.locale,
-        timezone: input.context.timezone,
-      }));
+    let sessionId: string;
+    let runId: string;
+    try {
+      sessionId =
+        input.sessionId ??
+        (await this.persistence.createSession({
+          surface: input.context.surface,
+          locale: input.context.locale,
+          timezone: input.context.timezone,
+        }));
 
-    const runId = await this.persistence.createRun({
-      sessionId,
-      modelId: input.modelId,
-      invocationSource: input.context.invocationSource,
-      userMessage: input.message,
-      budget,
-    });
+      runId = await this.persistence.createRun({
+        sessionId,
+        modelId: input.modelId,
+        invocationSource: input.context.invocationSource,
+        userMessage: input.message,
+        budget,
+      });
+    } catch (caught) {
+      const detail = caught instanceof Error && caught.message
+        ? ` ${caught.message}`
+        : '';
+      throw new Error(`AETHER could not initialize local run storage.${detail}`, { cause: caught });
+    }
 
     const controller = new AbortController();
     this.controllers.set(runId, controller);

@@ -20,6 +20,7 @@ import {
   type RealtimeTranscriptionState,
 } from '@/services/transcription';
 import { useSettingsStore } from '@/stores/settings.store';
+import { impactAsync, notificationAsync } from '@/lib/haptics';
 
 export type VoiceState = RealtimeTranscriptionState;
 
@@ -50,10 +51,10 @@ interface VoiceControllerResult {
 function haptic(kind: 'start' | 'stop' | 'cancel' | 'error'): void {
   if (!useSettingsStore.getState().hapticsEnabled) return;
   const action = kind === 'error'
-    ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+    ? notificationAsync(Haptics.NotificationFeedbackType.Error)
     : kind === 'cancel'
-      ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-      : Haptics.impactAsync(kind === 'start' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+      ? notificationAsync(Haptics.NotificationFeedbackType.Warning)
+      : impactAsync(kind === 'start' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
   action.catch(() => {});
 }
 

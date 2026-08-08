@@ -12,6 +12,7 @@ import { AppBottomNavigation } from './AppBottomNavigation';
 import { AssistantSheet } from './AssistantSheet';
 import type { AssistantOrbState, AssistantSurfaceState } from './assistantTypes';
 import { useVoiceController } from './VoiceController';
+import { impactAsync, notificationAsync } from '@/lib/haptics';
 
 interface AssistantHostProps {
   blurTarget?: RefObject<View | null>;
@@ -119,7 +120,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const onReceipt = useCallback((receipt: ActionReceipt) => {
     // Keep feedback tied to a real completed receipt; no animation-only success state.
     if (receipt.risk !== 'READ' && useSettingsStore.getState().hapticsEnabled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
   }, []);
 
@@ -168,6 +169,9 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       suppressNextTapRef.current = false;
       holdStartedRef.current = false;
       return;
+    }
+    if (useSettingsStore.getState().hapticsEnabled) {
+      impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     if (surface === 'closed' || surface === 'closing') {

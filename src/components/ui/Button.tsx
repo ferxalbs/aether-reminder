@@ -8,7 +8,7 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 export interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'glass' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'glass' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
   loading?: boolean;
@@ -39,8 +39,8 @@ export const Button: React.FC<ButtonProps> = ({
         };
       case 'secondary':
         return {
-          backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200,
-          borderColor: isDark ? Colors.zinc700 : Colors.zinc300,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
         };
       case 'glass':
         return {
@@ -48,7 +48,13 @@ export const Button: React.FC<ButtonProps> = ({
           borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
           borderWidth: 1,
         };
+      case 'destructive':
+        return {
+          backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : 'rgba(239, 68, 68, 0.1)',
+          borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+        };
       case 'ghost':
+      default:
         return {
           backgroundColor: 'transparent',
           borderColor: 'transparent',
@@ -59,6 +65,7 @@ export const Button: React.FC<ButtonProps> = ({
   const getTextColor = () => {
     if (disabled) return Colors.zinc500;
     if (variant === 'primary') return isDark ? Colors.black : Colors.white;
+    if (variant === 'destructive') return isDark ? '#FCA5A5' : '#DC2626';
     if (variant === 'ghost') return isDark ? Colors.zinc300 : Colors.zinc700;
     return isDark ? Colors.white : Colors.zinc950;
   };
@@ -66,12 +73,12 @@ export const Button: React.FC<ButtonProps> = ({
   const getSizeStyle = () => {
     switch (size) {
       case 'sm':
-        return { paddingVertical: 8, paddingHorizontal: 14, borderRadius: Radius.md };
+        return { paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.pill };
       case 'lg':
-        return { paddingVertical: 16, paddingHorizontal: 24, borderRadius: Radius.xl };
+        return { paddingVertical: 16, paddingHorizontal: 26, borderRadius: Radius.pill };
       case 'md':
       default:
-        return { paddingVertical: 12, paddingHorizontal: 18, borderRadius: Radius.lg };
+        return { paddingVertical: 12, paddingHorizontal: 20, borderRadius: Radius.pill };
     }
   };
 
@@ -79,7 +86,7 @@ export const Button: React.FC<ButtonProps> = ({
     <AnimatedPressable
       onPress={onPress}
       disabled={disabled || loading}
-      scaleTo={0.96}
+      scaleTo={0.97}
       style={[
         styles.base,
         getSizeStyle(),
@@ -97,6 +104,7 @@ export const Button: React.FC<ButtonProps> = ({
           <Typography
             variant={size === 'sm' ? 'caption' : 'bodyBold'}
             color={getTextColor()}
+            style={{ fontWeight: '600' }}
           >
             {label}
           </Typography>
@@ -122,9 +130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconMargin: {
-    marginRight: Spacing.sm,
+    marginRight: Spacing.xs,
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
 });

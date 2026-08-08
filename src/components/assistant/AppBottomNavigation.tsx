@@ -2,7 +2,6 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
-import * as Haptics from 'expo-haptics';
 import { usePathname, useRouter } from 'expo-router';
 import { Brain, CheckSquare, ListTodo, Mic, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
@@ -62,7 +61,6 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   const navigate = (destination: Destination) => {
     const isHome = destination === '/' && (pathname === '/' || pathname === '/index');
     if (pathname === destination || isHome) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     router.replace(destination as never);
   };
 

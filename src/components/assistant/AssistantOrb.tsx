@@ -114,6 +114,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
   return (
     <AnimatedPressable
+      hapticStyle={null}
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}

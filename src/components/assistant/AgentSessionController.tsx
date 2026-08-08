@@ -28,6 +28,12 @@ function messageId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function runStartErrorMessage(caught: unknown): string {
+  if (caught instanceof AIProviderError) return getAIErrorMessage(caught);
+  if (caught instanceof Error && caught.message) return caught.message;
+  return 'AETHER could not start this run.';
+}
+
 export { resolveAgentModel } from '@/services/ai/modelSelection';
 
 export function useAgentSessionController({
@@ -122,9 +128,14 @@ export function useAgentSessionController({
           handleEventRef.current(event, assistantMessageId);
         }
       } catch (caught) {
-        const messageText = caught instanceof AIProviderError
-          ? getAIErrorMessage(caught)
-          : 'AETHER could not start this run.';
+        const messageText = runStartErrorMessage(caught);
+        setMessages((previous) =>
+          previous.map((item) =>
+            item.id === assistantMessageId && item.text.length === 0
+              ? { ...item, text: messageText }
+              : item
+          )
+        );
         setSemanticState('error');
         setError(messageText);
       } finally {
@@ -183,9 +194,23 @@ export function useAgentSessionController({
           }
           break;
         case 'run.failed':
+          setMessages((previous) =>
+            previous.map((item) =>
+              item.id === assistantMessageId && item.text.length === 0
+                ? { ...item, text: event.message }
+                : item
+            )
+          );
           setError(event.message);
           break;
         case 'run.cancelled':
+          setMessages((previous) =>
+            previous.map((item) =>
+              item.id === assistantMessageId && item.text.length === 0
+                ? { ...item, text: 'Run cancelled.' }
+                : item
+            )
+          );
           setError('Run cancelled.');
           break;
         default:
@@ -211,6 +236,15 @@ export function useAgentSessionController({
         for await (const event of runtime.confirm(pending.action, { context, onNavigate })) {
           handleEventRef.current(event, assistantMessageId);
         }
+      } catch (caught) {
+        const messageText = runStartErrorMessage(caught);
+        setMessages((previous) =>
+          previous.map((item) =>
+            item.id === assistantMessageId ? { ...item, text: messageText } : item
+          )
+        );
+        setSemanticState('error');
+        setError(messageText);
       } finally {
         runningRef.current = false;
         setIsRunning(false);

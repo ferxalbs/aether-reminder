@@ -2,6 +2,71 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (8) [Custom iOS 26 and Material 3 ToggleSwitch Component]
+
+### iOS 26 and Material 3 Animated Toggle Switch
+
+- Added custom `ToggleSwitch.tsx` component matching [Apple HIG Toggles](https://developer.apple.com/design/human-interface-guidelines/toggles) and Material 3 specifications.
+- Features capsule pill tracks (`52px` × `32px`), spring-animated thumb knobs (`react-native-reanimated`), embedded checkmark (`Check`) icons on active states, and selection haptics (`Haptics.selectionAsync`).
+- Replaced standard native switches for Haptic Feedback and Auto Task Summarize preferences in `SettingsScreen`.
+
+### Validation
+
+- `bun test`: 84 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed across 85 tests in 22 files.
+- `bun run typecheck` and `bun run lint`: passed cleanly with 0 errors.
+
+## Unreleased - 2026.08.08 (7) [Apple HIG Button System and Control Redesign]
+
+### Apple HIG Button Architecture and Destructive Variant
+
+- Redesigned `Button.tsx` according to [Apple HIG Button Guidelines](https://developer.apple.com/design/human-interface-guidelines/buttons) with capsule pill geometry (`Radius.pill`), tactile micro-haptic responses (`Haptics.impactAsync`), and refined typography.
+- Added `variant="destructive"` support with dedicated red accent surface fills (`isDark ? 'rgba(239,68,68,0.16)' : 'rgba(239,68,68,0.1)'`) and text contrast.
+- Updated API key controls in `SettingsScreen` to utilize `variant="destructive"` with `Trash2` icons for key deletion.
+
+### Validation
+
+- `bun test`: 84 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed across 85 tests in 22 files.
+- `bun run typecheck` and `bun run lint`: passed cleanly with 0 errors.
+
+## Unreleased - 2026.08.08 (6) [Settings 60FPS Performance Optimization and Apple HIG Pickers]
+
+### 60FPS Performance and Zero-Lag Architecture
+
+- Replaced stacked GPU-intensive `BlurView` instances on Android with hardware-accelerated flat surfaces (`Colors.zinc900` / `Colors.white` with subtle border), reserving native `GlassView` for iOS 26+.
+- Removed heavy entrance animation delay waterfalls (`FadeInDown.delay(...)`) on section cards, ensuring 0ms mount lag and instant navigation into Settings.
+
+### Apple HIG Segmented Pickers and Model Sheet
+
+- Rebuilt Theme Selection as an authentic [Apple HIG Segmented Control Picker](https://developer.apple.com/design/human-interface-guidelines/pickers) (`System`, `Dark`, `Light`) embedded directly in the card with an active pill indicator and 0ms tap latency.
+- Replaced inline nested scroll lists with a compact Active Model hero card and Pull-Down Button (`Change Reasoning Model… ▾`) opening a high-performance Model Selector Sheet with real-time search.
+
+### Validation
+
+- `bun test`: 84 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed across 85 tests in 22 files.
+- `bun run typecheck` and `bun run lint`: passed cleanly with 0 errors.
+
+## Unreleased - 2026.08.08 (5) [Settings UI Redesign and Detail Corrections]
+
+### Apple iOS 26 Liquid Glass Settings Redesign
+
+- Completely redesigned `SettingsScreen` from scratch with inset grouped cards, translucent materials (`GlassView` / `GlassSurface`), refined typography, and spring physics.
+- Added active model hero badge displaying the currently selected model, provider, and capability tier with a quick "Reset to Default" action.
+- Added secure key status indicators (`Saved in SecureStore` / `No key configured`), masked key input option, and intelligent button states.
+- Rebuilt theme selection with a segmented liquid glass pill control (`system`, `dark`, `light`).
+- Added interactive expandable accordions for "About AETHER" and "Privacy Information" with Reanimated spring physics and haptics.
+
+### Setting details and feature fixes
+
+- Restored missing **Auto Task Summarize** setting toggle to the Preferences section, connected to `useSettingsStore`.
+- Added `forceRefresh` support to `fetchAvailableModels` in OpenRouter service so manual catalog refreshes bypass in-memory caching and send live network requests with user API key credentials.
+- Enhanced `GlassSurface` component to support `expo-glass-effect`'s native Liquid Glass `GlassView` on iOS 26+ devices with platform-safe fallbacks on Android and older iOS.
+
+### Regression coverage and validation
+
+- Added unit tests for `fetchAvailableModels` force-refresh behavior and cache bypass in `src/services/ai/openrouter.test.ts`.
+- `bun test`: 84 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 274 expectations across 85 tests and 22 files.
+- `bun run typecheck` and `bun run lint`: passed cleanly.
+
 ## Unreleased - 2026.08.08 (4) [Final P0 Correctness and Transport Hardening]
 
 ### Bounded voice transport and truthful audio packets

@@ -58,8 +58,8 @@ async function openRouterRequest<T>(url: string, init: RequestInit, apiKey?: str
 }
 
 /** Model metadata is public; inference always validates a user key above. */
-export async function fetchAvailableModels(apiKey?: string): Promise<AIModel[]> {
-  if (modelsCache && Date.now() - modelsCache.fetchedAt < MODELS_CACHE_TTL_MS) return modelsCache.models;
+export async function fetchAvailableModels(apiKey?: string, forceRefresh = false): Promise<AIModel[]> {
+  if (!forceRefresh && modelsCache && Date.now() - modelsCache.fetchedAt < MODELS_CACHE_TTL_MS) return modelsCache.models;
 
   const response = await openRouterRequest<OpenRouterModelsResponse>(OPENROUTER_MODELS_URL, { method: 'GET' }, apiKey);
   const models = normalizeOpenRouterModels(response ?? {});

@@ -43,6 +43,21 @@ function types(events: AgentEvent[]): string[] {
 }
 
 describe('agent runtime conformance', () => {
+  test('preserves local storage details when a run cannot be initialized', async () => {
+    const db = createBunSqliteDatabase();
+    const provider = new ScriptedInferenceProvider();
+    const runtime = createAgentRuntime({ db, provider });
+
+    await expect(collect(runtime, {
+      message: 'hello',
+      context: baseContext(),
+      modelId: 'scripted/full',
+      apiKey: 'test-key',
+    })).rejects.toThrow(/could not initialize local run storage.*agent_sessions/i);
+
+    await db.closeAsync?.();
+  });
+
   test('"What do I have today?" → read tools only', async () => {
     const db = await readyDb();
     const services = createDomainServices(db);

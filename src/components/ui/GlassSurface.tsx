@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { BlurView, BlurViewProps } from 'expo-blur';
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Colors, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   intensity?: number;
   tint?: BlurViewProps['tint'];
   borderRadius?: number;
@@ -16,6 +18,7 @@ export interface GlassSurfaceProps {
 export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   style,
+  contentStyle,
   intensity = 60,
   tint,
   borderRadius = Radius.lg,
@@ -25,7 +28,11 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
   const activeTint = tint || (isDark ? 'dark' : 'light');
   const borderColor = isDark ? Colors.glassBorderDark : Colors.glassBorderLight;
-  const backgroundColor = isDark ? Colors.glassDark : Colors.glassLight;
+  const backgroundColor = isDark ? (process.env.EXPO_OS === 'android' ? Colors.zinc900 : Colors.glassDark) : (process.env.EXPO_OS === 'android' ? Colors.white : Colors.glassLight);
+
+  const useLiquidGlass =
+    process.env.EXPO_OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  const useBlurView = process.env.EXPO_OS === 'ios';
 
   return (
     <View
@@ -40,12 +47,21 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
         style,
       ]}
     >
-      <BlurView
-        tint={activeTint}
-        intensity={intensity}
-        style={[StyleSheet.absoluteFill, { borderRadius }]}
-      />
-      <View style={styles.content}>{children}</View>
+      {useLiquidGlass ? (
+        <GlassView
+          style={StyleSheet.absoluteFill}
+          glassEffectStyle="regular"
+          isInteractive
+          colorScheme={isDark ? 'dark' : 'light'}
+        />
+      ) : useBlurView ? (
+        <BlurView
+          tint={activeTint}
+          intensity={intensity}
+          style={[StyleSheet.absoluteFill, { borderRadius }]}
+        />
+      ) : null}
+      <View style={[styles.content, contentStyle]}>{children}</View>
     </View>
   );
 };

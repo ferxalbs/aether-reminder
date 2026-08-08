@@ -12,7 +12,7 @@ export interface IconButtonProps {
   size?: number;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
-  hapticStyle?: Haptics.ImpactFeedbackStyle;
+  hapticStyle?: Haptics.ImpactFeedbackStyle | null;
 }
 
 export const IconButton: React.FC<IconButtonProps> = ({

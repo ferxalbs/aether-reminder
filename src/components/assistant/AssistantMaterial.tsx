@@ -21,12 +21,10 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   children,
   style,
   borderRadius = Radius.xl,
-  blurTarget,
 }) => {
   const isDark = useIsDark();
   const useLiquidGlass =
     process.env.EXPO_OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  const useAndroidBlur = process.env.EXPO_OS === 'android' && Boolean(blurTarget);
 
   if (useLiquidGlass) {
     return (
@@ -55,17 +53,11 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         style,
       ]}
     >
-      {Platform.OS === 'ios' || useAndroidBlur ? (
+      {Platform.OS === 'ios' ? (
         <BlurView
           tint={isDark ? 'dark' : 'light'}
           intensity={72}
           style={[StyleSheet.absoluteFill, { borderRadius }]}
-          {...(useAndroidBlur
-            ? {
-                blurTarget,
-                blurMethod: 'dimezisBlurViewSdk31Plus' as const,
-              }
-            : {})}
         />
       ) : null}
       <View

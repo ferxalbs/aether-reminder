@@ -15,6 +15,7 @@ import { AnimatedPressable } from './AnimatedPressable';
 import { IconButton } from './IconButton';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as Haptics from 'expo-haptics';
+import { notificationAsync } from '@/lib/haptics';
 
 export interface TaskCardProps {
   task: TaskListItem;
@@ -56,7 +57,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   const handleToggle = () => {
     const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled) {
-      Haptics.notificationAsync(
+      notificationAsync(
         task.completed
           ? Haptics.NotificationFeedbackType.Warning
           : Haptics.NotificationFeedbackType.Success
@@ -101,7 +102,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         <AnimatedPressable
           onPress={handleToggle}
           scaleTo={0.88}
-          hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
+          hapticStyle={null}
           style={[
             styles.checkbox,
             {

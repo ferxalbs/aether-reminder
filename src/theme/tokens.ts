@@ -25,6 +25,10 @@ export const Colors = {
   // Shadows & Elevators
   shadowDark: 'rgba(0, 0, 0, 0.5)',
   shadowLight: 'rgba(0, 0, 0, 0.05)',
+
+  // System
+  systemGreenLight: '#34C759',
+  systemGreenDark: '#30D158',
 } as const;
 
 export const Spacing = {
