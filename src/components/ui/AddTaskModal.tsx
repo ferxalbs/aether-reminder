@@ -12,11 +12,12 @@ import {
 import { X, Flag, Sparkles } from 'lucide-react-native';
 import { TaskPriority } from '@/types';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
+import { getLocalDateString } from '@/temporal/localCalendar';
 import { Typography } from './Typography';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
 import { AnimatedPressable } from './AnimatedPressable';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useTasksStore } from '@/stores/tasks.store';
 
 export interface AddTaskModalProps {
@@ -33,9 +34,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
-
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
   const addTask = useTasksStore((s) => s.addTask);
 
   const handleSave = () => {
@@ -44,7 +43,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       title: title.trim(),
       notes: notes.trim() || undefined,
       priority,
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: getLocalDateString(),
     });
 
     setTitle('');

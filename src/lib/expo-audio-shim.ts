@@ -1,7 +1,9 @@
 /**
- * expo-audio shim for Expo Go / environments where the native module is unavailable.
- * All APIs are no-ops that resolve safely. The transcribe screen's try/catch blocks
- * handle the fallback UX automatically.
+ * expo-audio shim for Expo Go only.
+ *
+ * Enable via EXPO_AUDIO_SHIM=1 in metro (see metro.config.js).
+ * When active, permissions report denied and the recorder is a no-op.
+ * Callers MUST treat that as failure — never fabricate a recording or transcript.
  */
 
 export const RecordingPresets = {

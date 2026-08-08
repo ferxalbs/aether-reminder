@@ -1,6 +1,7 @@
 import { AIResponse, Task } from '@/types';
 import { AICompletionRequest, AIConnectionTestResult, AIProvider, AIProviderError, getAIErrorMessage, requireUserApiKey } from './providers';
 import { AIModel, normalizeOpenRouterModels, OpenRouterModelsResponse } from './models';
+import { getLocalDateString, isLocalDateBefore } from '@/temporal/localCalendar';
 
 const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 const OPENROUTER_API_URL = `${OPENROUTER_API_BASE_URL}/chat/completions`;
@@ -90,7 +91,7 @@ export async function fetchOpenRouterCompletion(messages: AICompletionRequest['m
   const modelToUse = await resolveModel(model, keyToUse);
   const response = await openRouterRequest<OpenRouterCompletionResponse>(OPENROUTER_API_URL, {
     method: 'POST',
-    headers: { 'HTTP-Referer': 'https://taskflow.ai', 'X-Title': 'TaskFlow AI' },
+    headers: { 'HTTP-Referer': 'https://aether-reminder.app', 'X-Title': 'AETHER Reminder' },
     body: JSON.stringify({ model: modelToUse, messages, temperature: 0.4, max_tokens: 800 }),
   }, keyToUse, true);
 
@@ -116,16 +117,24 @@ export async function testOpenRouterConnection(apiKey: string): Promise<AIConnec
 }
 
 export async function generateTaskSummary(tasks: Task[], model?: string, apiKey?: string): Promise<AIResponse> {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const pendingTasks = tasks.filter((t) => !t.completed);
   const completedTasks = tasks.filter((t) => t.completed);
-  const overdueTasks = tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
+  const overdueTasks = tasks.filter(
+    (t) => !t.completed && t.dueDate && isLocalDateBefore(t.dueDate, todayStr)
+  );
+  // Temporary: full task dump. Phase 5+ replaces this with agent tools + small context.
   const taskContext = JSON.stringify({
     totalTasks: tasks.length,
     pendingCount: pendingTasks.length,
     completedCount: completedTasks.length,
     overdueCount: overdueTasks.length,
-    pendingTasksList: pendingTasks.map((t) => ({ title: t.title, priority: t.priority, dueDate: t.dueDate, notes: t.notes })),
+    pendingTasksList: pendingTasks.map((t) => ({
+      title: t.title,
+      priority: t.priority,
+      dueDate: t.dueDate,
+      notes: t.notes,
+    })),
     overdueTasksList: overdueTasks.map((t) => ({ title: t.title, dueDate: t.dueDate })),
   });
   const prompt = `Analyze these user TODO tasks and respond with ONLY a valid JSON object matching this schema:
@@ -139,11 +148,20 @@ export async function generateTaskSummary(tasks: Task[], model?: string, apiKey?
 Do not format with markdown codeblocks if possible, or return strictly valid JSON.
 Tasks Data: ${taskContext}`;
 
-  const rawResult = await fetchOpenRouterCompletion([
-    { role: 'system', content: 'You are TaskFlow AI, an elite executive productivity co-pilot.' },
-    { role: 'user', content: prompt },
-  ], model, apiKey);
+  const rawResult = await fetchOpenRouterCompletion(
+    [
+      {
+        role: 'system',
+        content:
+          'You are AETHER, a personal execution assistant for tasks and reminders. Be concise and factual. Do not invent tasks.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    model,
+    apiKey
+  );
 
+  // Temporary free-form parse. Replaced by structured outputs in the agent runtime phase.
   const cleaned = rawResult.replace(/```json/g, '').replace(/```/g, '').trim();
   let parsed: Partial<AIResponse>;
   try {
@@ -160,25 +178,32 @@ Tasks Data: ${taskContext}`;
   };
 }
 
-export function generateFallbackSummary(tasks: Task[]): AIResponse {
-  const todayStr = new Date().toISOString().split('T')[0];
+/**
+ * Deterministic local stats only — never labeled as an AI success.
+ * Used when the provider fails so the UI can still show ground-truth counts.
+ */
+export function buildLocalWorkloadStats(tasks: Task[]): AIResponse {
+  const todayStr = getLocalDateString();
   const pending = tasks.filter((t) => !t.completed);
   const completed = tasks.filter((t) => t.completed);
-  const overdue = tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
+  const overdue = tasks.filter(
+    (t) => !t.completed && t.dueDate && isLocalDateBefore(t.dueDate, todayStr)
+  );
   const highPriority = pending.filter((t) => t.priority === 'high');
-  const completionRate = tasks.length > 0 ? Math.round((completed.length / tasks.length) * 100) : 0;
 
   return {
-    summary: `You have ${pending.length} pending task${pending.length === 1 ? '' : 's'} and completed ${completed.length} today (${completionRate}% momentum). ${overdue.length > 0 ? `${overdue.length} items require immediate attention.` : 'All schedules are on track.'}`,
-    priorities: highPriority.length > 0 ? highPriority.slice(0, 3).map((t) => `[High Priority] ${t.title}`) : pending.slice(0, 3).map((t) => t.title),
+    summary: `Local counts only (AI unavailable): ${pending.length} pending, ${completed.length} completed, ${overdue.length} overdue.`,
+    priorities:
+      highPriority.length > 0
+        ? highPriority.slice(0, 3).map((t) => t.title)
+        : pending.slice(0, 3).map((t) => t.title),
     overdueAlerts: overdue.map((t) => `Overdue: "${t.title}" (Due ${t.dueDate})`),
-    insights: [
-      `Completion velocity is at ${completionRate}%. Tackling high priority items first maintains momentum.`,
-      'Consider grouping quick notes into micro-blocks of 15 minutes.',
-      'Configure your OpenRouter API key in Settings to unlock AI analysis.',
-    ],
+    insights: [],
   };
 }
+
+/** @deprecated Use buildLocalWorkloadStats — name kept briefly for any external imports. */
+export const generateFallbackSummary = buildLocalWorkloadStats;
 
 export async function prioritizeTasks(tasks: Task[], model?: string, apiKey?: string): Promise<string[]> {
   const summary = await generateTaskSummary(tasks, model, apiKey);

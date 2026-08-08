@@ -1,19 +1,20 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export default function RootLayout() {
   const loadApiKey = useSettingsStore((s) => s.loadApiKey);
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   useEffect(() => {
     void loadApiKey();
   }, [loadApiKey]);
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -29,6 +30,6 @@ export default function RootLayout() {
         <Stack.Screen name="transcribe" />
         <Stack.Screen name="settings" />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StatusBar, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Cpu, Eye, EyeOff, Info, Key, Moon, RefreshCw, Search, Shield, Trash2, Vibrate } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -44,7 +46,7 @@ export default function SettingsScreen() {
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
   const maskedKey = apiKeyLoaded ? maskApiKey(openRouterApiKey) : '';
 
   useEffect(() => {

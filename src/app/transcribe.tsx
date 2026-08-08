@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView, SafeAreaView, StatusBar, Alert } from 'react-native';
 import {
   AudioModule,
@@ -8,6 +8,7 @@ import {
 } from 'expo-audio';
 import { Mic, MicOff, Plus, Sparkles, Check } from 'lucide-react-native';
 import { Colors, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -16,25 +17,45 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTasksStore } from '@/stores/tasks.store';
-import { defaultTranscriptionProvider } from '@/services/transcription';
+import {
+  defaultTranscriptionProvider,
+  getTranscriptionErrorMessage,
+  TranscriptionError,
+} from '@/services/transcription';
 import { TranscriptionResult } from '@/types';
+import { getLocalDateString } from '@/temporal/localCalendar';
 import * as Haptics from 'expo-haptics';
 
+type CaptureState =
+  | 'idle'
+  | 'requesting_permission'
+  | 'preparing'
+  | 'listening'
+  | 'finalizing'
+  | 'transcribing'
+  | 'ready'
+  | 'failed'
+  | 'cancelled';
+
 export default function TranscribeScreen() {
-  const [isRecording, setIsRecording] = useState(false);
+  const [captureState, setCaptureState] = useState<CaptureState>('idle');
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [transcription, setTranscription] = useState<TranscriptionResult | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const activelyRecordingRef = useRef(false);
 
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const addTasksBatch = useTasksStore((s) => s.addTasksBatch);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
+  const isListening = captureState === 'listening';
+  const isProcessing =
+    captureState === 'finalizing' || captureState === 'transcribing';
+
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
-    if (isRecording) {
+    if (isListening) {
       timer = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
@@ -42,55 +63,116 @@ export default function TranscribeScreen() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isRecording]);
+  }, [isListening]);
 
   async function startRecording() {
-    try {
-      setRecordingDuration(0);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
-      if (permission.status !== 'granted') {
-        // Fallback demo recording if permission missing or in simulator
-        setIsRecording(true);
-        return;
-      }
+    setErrorMessage(null);
+    setTranscription(null);
+    setRecordingDuration(0);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
 
+    setCaptureState('requesting_permission');
+    let permission;
+    try {
+      permission = await AudioModule.requestRecordingPermissionsAsync();
+    } catch {
+      setCaptureState('failed');
+      setErrorMessage(
+        getTranscriptionErrorMessage(
+          new TranscriptionError('AUDIO_UNAVAILABLE', 'Could not request microphone permission.')
+        )
+      );
+      return;
+    }
+
+    if (permission.status !== 'granted') {
+      setCaptureState('failed');
+      setErrorMessage(
+        getTranscriptionErrorMessage(
+          new TranscriptionError('PERMISSION_DENIED', 'Microphone permission denied.')
+        )
+      );
+      return;
+    }
+
+    setCaptureState('preparing');
+    try {
       await setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
       });
-
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
-      setIsRecording(true);
+      activelyRecordingRef.current = true;
+      setCaptureState('listening');
     } catch {
-      // Fallback state if native audio recorder unavailable
-      setIsRecording(true);
+      activelyRecordingRef.current = false;
+      setCaptureState('failed');
+      setErrorMessage(
+        getTranscriptionErrorMessage(
+          new TranscriptionError(
+            'AUDIO_UNAVAILABLE',
+            'Audio recording is unavailable. Use a development build with native audio support.'
+          )
+        )
+      );
+      try {
+        await setAudioModeAsync({ allowsRecording: false });
+      } catch {
+        // best-effort cleanup
+      }
     }
   }
 
   async function stopRecording() {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      setIsRecording(false);
-      setIsProcessing(true);
+    if (captureState !== 'listening') return;
 
-      let uri: string = 'mock://voice-recording';
-      if (audioRecorder.isRecording) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setCaptureState('finalizing');
+    setErrorMessage(null);
+
+    let uri: string | null = null;
+    try {
+      if (activelyRecordingRef.current || audioRecorder.isRecording) {
         await audioRecorder.stop();
         await setAudioModeAsync({ allowsRecording: false });
-        uri = audioRecorder.uri || uri;
+        uri = audioRecorder.uri ?? null;
       }
-
-      const result = await defaultTranscriptionProvider.transcribeAudio(
-        uri,
-        openRouterApiKey
-      );
-      setTranscription(result);
     } catch {
-      Alert.alert('Transcription Failed', 'Could not process audio. Please try again.');
+      activelyRecordingRef.current = false;
+      setCaptureState('failed');
+      setErrorMessage(
+        getTranscriptionErrorMessage(
+          new TranscriptionError('AUDIO_UNAVAILABLE', 'Failed to finalize the recording.')
+        )
+      );
+      return;
     } finally {
-      setIsProcessing(false);
+      activelyRecordingRef.current = false;
+    }
+
+    if (!uri) {
+      setCaptureState('failed');
+      setErrorMessage(
+        getTranscriptionErrorMessage(
+          new TranscriptionError(
+            'INVALID_AUDIO',
+            'No recording was produced. Microphone capture may be unavailable.'
+          )
+        )
+      );
+      return;
+    }
+
+    setCaptureState('transcribing');
+    try {
+      const result = await defaultTranscriptionProvider.transcribeAudio(uri, openRouterApiKey);
+      setTranscription(result);
+      setCaptureState('ready');
+    } catch (error) {
+      setTranscription(null);
+      setCaptureState('failed');
+      setErrorMessage(getTranscriptionErrorMessage(error));
     }
   }
 
@@ -103,15 +185,16 @@ export default function TranscribeScreen() {
         title: cand.title,
         priority: cand.priority,
         notes: cand.notes,
-        dueDate: new Date().toISOString().split('T')[0],
+        dueDate: getLocalDateString(),
       }))
     );
 
     Alert.alert(
       'Tasks Added',
-      `Successfully added ${transcription.taskCandidates.length} tasks from your voice note!`
+      `Added ${transcription.taskCandidates.length} task${transcription.taskCandidates.length === 1 ? '' : 's'} from your voice note.`
     );
     setTranscription(null);
+    setCaptureState('idle');
   };
 
   const formatTimer = (seconds: number) => {
@@ -119,6 +202,27 @@ export default function TranscribeScreen() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const statusLabel = (() => {
+    switch (captureState) {
+      case 'requesting_permission':
+        return 'REQUESTING MICROPHONE…';
+      case 'preparing':
+        return 'PREPARING RECORDER…';
+      case 'listening':
+        return `RECORDING… (${formatTimer(recordingDuration)})`;
+      case 'finalizing':
+        return 'FINALIZING AUDIO…';
+      case 'transcribing':
+        return 'TRANSCRIBING…';
+      case 'failed':
+        return 'CAPTURE FAILED';
+      case 'ready':
+        return 'TRANSCRIPT READY';
+      default:
+        return 'TAP MIC TO START SPEAKING';
+    }
+  })();
 
   return (
     <SafeAreaView
@@ -132,7 +236,6 @@ export default function TranscribeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Typography variant="caption" color={Colors.zinc500}>
             VOICE CAPTURE
@@ -140,44 +243,52 @@ export default function TranscribeScreen() {
           <Typography variant="display">Transcribe</Typography>
         </View>
 
-        {/* Central Mic Record Card */}
         <Card variant="elevated" style={styles.micCard}>
           <Typography variant="caption" color={Colors.zinc500} align="center">
-            {isRecording
-              ? `RECORDING... (${formatTimer(recordingDuration)})`
-              : 'TAP MIC TO START SPEAKING'}
+            {statusLabel}
           </Typography>
 
-          {/* Animated Waveform */}
-          <WaveformView isRecording={isRecording} barCount={18} />
+          <WaveformView isRecording={isListening} barCount={18} />
 
-          {/* Record Button */}
           <View style={styles.micButtonWrapper}>
             <AnimatedPressable
-              onPress={isRecording ? stopRecording : startRecording}
+              onPress={isListening ? stopRecording : startRecording}
+              disabled={
+                captureState === 'requesting_permission' ||
+                captureState === 'preparing' ||
+                captureState === 'finalizing' ||
+                captureState === 'transcribing'
+              }
               scaleTo={0.9}
               hapticStyle={Haptics.ImpactFeedbackStyle.Heavy}
               style={[
                 styles.micCircle,
                 {
-                  backgroundColor: isRecording
+                  backgroundColor: isListening
                     ? isDark
                       ? Colors.white
                       : Colors.black
                     : isDark
                     ? Colors.zinc900
                     : Colors.zinc100,
-                  borderColor: isRecording
+                  borderColor: isListening
                     ? isDark
                       ? Colors.white
                       : Colors.black
                     : isDark
                     ? Colors.zinc700
                     : Colors.zinc300,
+                  opacity:
+                    captureState === 'requesting_permission' ||
+                    captureState === 'preparing' ||
+                    captureState === 'finalizing' ||
+                    captureState === 'transcribing'
+                      ? 0.6
+                      : 1,
                 },
               ]}
             >
-              {isRecording ? (
+              {isListening ? (
                 <MicOff size={32} color={isDark ? Colors.black : Colors.white} />
               ) : (
                 <Mic size={32} color={isDark ? Colors.white : Colors.black} />
@@ -186,11 +297,20 @@ export default function TranscribeScreen() {
           </View>
         </Card>
 
-        {/* Transcript Preview Section */}
+        {errorMessage ? (
+          <Card variant="outline" style={styles.errorCard}>
+            <Typography variant="body" color={Colors.zinc400} align="center">
+              {errorMessage}
+            </Typography>
+          </Card>
+        ) : null}
+
         {isProcessing ? (
           <Card variant="elevated" style={styles.resultCard}>
             <Typography variant="body" align="center" color={Colors.zinc500}>
-              Processing speech audio with AI...
+              {captureState === 'finalizing'
+                ? 'Finalizing recording…'
+                : 'Sending audio to OpenRouter for transcription…'}
             </Typography>
           </Card>
         ) : transcription ? (
@@ -228,23 +348,30 @@ export default function TranscribeScreen() {
               </View>
             ))}
 
-            <View style={styles.actionRow}>
-              <Button
-                label="Add All as Tasks"
-                onPress={handleCreateTasks}
-                variant="primary"
-                icon={<Plus size={16} color={isDark ? Colors.black : Colors.white} />}
-                fullWidth
-              />
-            </View>
+            {transcription.taskCandidates.length > 0 ? (
+              <View style={styles.actionRow}>
+                <Button
+                  label="Add All as Tasks"
+                  onPress={handleCreateTasks}
+                  variant="primary"
+                  icon={<Plus size={16} color={isDark ? Colors.black : Colors.white} />}
+                  fullWidth
+                />
+              </View>
+            ) : (
+              <Typography variant="caption" color={Colors.zinc500} style={{ marginTop: Spacing.sm }}>
+                No task candidates found in this transcript.
+              </Typography>
+            )}
           </Card>
-        ) : (
+        ) : !errorMessage ? (
           <Card variant="outline" style={styles.hintCard}>
             <Typography variant="body" color={Colors.zinc500} align="center">
-              Speak naturally like &quot;Remind me to submit product roadmap tomorrow&quot;. TaskFlow AI will automatically extract actionable tasks.
+              Speak naturally like &quot;Remind me to submit product roadmap tomorrow&quot;.
+              Voice is transcribed via OpenRouter — failures are shown, never simulated.
             </Typography>
           </Card>
-        )}
+        ) : null}
       </ScrollView>
 
       <FloatingToolbar />
@@ -284,6 +411,11 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     marginBottom: Spacing.lg,
+  },
+  errorCard: {
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
   resultHeader: {
     flexDirection: 'row',

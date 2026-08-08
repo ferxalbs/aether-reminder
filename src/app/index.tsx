@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Sparkles, CheckCircle2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskCard } from '@/components/ui/TaskCard';
 import { IconButton } from '@/components/ui/IconButton';
@@ -10,15 +12,12 @@ import { Card } from '@/components/ui/Card';
 import { AddTaskModal } from '@/components/ui/AddTaskModal';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useTasksStore } from '@/stores/tasks.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const toggleTask = useTasksStore((s) => s.toggleTask);
   const deleteTask = useTasksStore((s) => s.deleteTask);

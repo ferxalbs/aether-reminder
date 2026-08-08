@@ -8,6 +8,7 @@ import Animated, {
 import { Check, Trash2, Clock, Sparkles } from 'lucide-react-native';
 import { Task } from '@/types';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from './Typography';
 import { AnimatedPressable } from './AnimatedPressable';
 import { IconButton } from './IconButton';
@@ -27,8 +28,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onDelete,
   onPress,
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
 
   const checkScale = useAnimatedStyle(() => ({
@@ -193,7 +193,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     marginVertical: Spacing.xs,
     borderWidth: 1,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
   row: {

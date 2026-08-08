@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { Sparkles, AlertTriangle, ArrowRight, RefreshCw, Cpu } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,18 +10,20 @@ import { IconButton } from '@/components/ui/IconButton';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useTasksStore } from '@/stores/tasks.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { generateFallbackSummary, generateTaskSummary } from '@/services/ai/openrouter';
+import { buildLocalWorkloadStats, generateTaskSummary } from '@/services/ai/openrouter';
 import { getAIErrorMessage } from '@/services/ai/providers';
 import { AIResponse } from '@/types';
 import * as Haptics from 'expo-haptics';
+
+type AnalysisSource = 'ai' | 'local' | null;
 
 export default function AIScreen() {
   const [loading, setLoading] = useState(false);
   const [aiData, setAiData] = useState<AIResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [analysisSource, setAnalysisSource] = useState<AnalysisSource>(null);
 
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const apiKeyLoaded = useSettingsStore((s) => s.apiKeyLoaded);
@@ -36,8 +39,11 @@ export default function AIScreen() {
     try {
       const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
       setAiData(result);
+      setAnalysisSource('ai');
     } catch (error) {
-      setAiData(generateFallbackSummary(tasks));
+      // Honest failure: do not pretend AI succeeded. Local stats are labeled separately.
+      setAiData(buildLocalWorkloadStats(tasks));
+      setAnalysisSource('local');
       setErrorMessage(getAIErrorMessage(error));
     } finally {
       setLoading(false);
@@ -53,10 +59,14 @@ export default function AIScreen() {
       setErrorMessage(null);
       try {
         const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
-        if (isMounted) setAiData(result);
+        if (isMounted) {
+          setAiData(result);
+          setAnalysisSource('ai');
+        }
       } catch (error) {
         if (isMounted) {
-          setAiData(generateFallbackSummary(tasks));
+          setAiData(buildLocalWorkloadStats(tasks));
+          setAnalysisSource('local');
           setErrorMessage(getAIErrorMessage(error));
         }
       } finally {
@@ -81,11 +91,10 @@ export default function AIScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Typography variant="caption" color={Colors.zinc500}>
-              TASKFLOW CO-PILOT
+              ASSISTANT
             </Typography>
             <Typography variant="display">AI Overview</Typography>
           </View>
@@ -104,7 +113,6 @@ export default function AIScreen() {
           />
         </View>
 
-        {/* Model info banner */}
         <View
           style={[
             styles.modelBanner,
@@ -134,27 +142,32 @@ export default function AIScreen() {
             ]}
           >
             <Typography variant="caption" color={Colors.zinc400}>
-              {errorMessage}
+              AI request failed: {errorMessage}
             </Typography>
+            {analysisSource === 'local' ? (
+              <Typography variant="caption" color={Colors.zinc500} style={{ marginTop: 4 }}>
+                Showing local counts only — not an AI analysis.
+              </Typography>
+            ) : null}
           </View>
         ) : null}
 
-        {/* Workload Executive Summary */}
         <Card variant="elevated" style={styles.summaryCard}>
           <View style={styles.cardHeaderRow}>
             <Sparkles size={18} color={isDark ? Colors.white : Colors.black} />
-            <Typography variant="title">Daily Executive Brief</Typography>
+            <Typography variant="title">
+              {analysisSource === 'local' ? 'Local Workload Counts' : 'Daily Executive Brief'}
+            </Typography>
           </View>
           {loading ? (
             <ActivityIndicator style={{ marginVertical: 20 }} color={isDark ? Colors.white : Colors.black} />
           ) : (
             <Typography variant="body" color={isDark ? Colors.zinc200 : Colors.zinc800} style={styles.summaryBody}>
-              {aiData?.summary || 'Analyzing your tasks with AI...'}
+              {aiData?.summary || 'Waiting for analysis…'}
             </Typography>
           )}
         </Card>
 
-        {/* Overdue Alerts if any */}
         {aiData?.overdueAlerts && aiData.overdueAlerts.length > 0 ? (
           <Card variant="elevated" style={styles.alertCard}>
             <View style={styles.cardHeaderRow}>
@@ -172,10 +185,9 @@ export default function AIScreen() {
           </Card>
         ) : null}
 
-        {/* Suggested Priorities */}
         <Card variant="elevated" style={styles.sectionCard}>
           <Typography variant="title" style={styles.cardTitle}>
-            Suggested Priorities
+            {analysisSource === 'local' ? 'Priority Queue (local)' : 'Suggested Priorities'}
           </Typography>
           {aiData?.priorities && aiData.priorities.length > 0 ? (
             aiData.priorities.map((item, idx) => (
@@ -192,31 +204,32 @@ export default function AIScreen() {
             ))
           ) : (
             <Typography variant="body" color={Colors.zinc500}>
-              No specific priority recommendations right now.
+              No priority items.
             </Typography>
           )}
         </Card>
 
-        {/* Productivity Insights */}
-        <Card variant="elevated" style={styles.sectionCard}>
-          <Typography variant="title" style={styles.cardTitle}>
-            Productivity Insights
-          </Typography>
-          {aiData?.insights && aiData.insights.length > 0 ? (
-            aiData.insights.map((insight, idx) => (
-              <View key={idx} style={styles.insightRow}>
-                <ArrowRight size={14} color={Colors.zinc500} style={{ marginTop: 3 }} />
-                <Typography variant="body" color={isDark ? Colors.zinc300 : Colors.zinc700} style={{ flex: 1 }}>
-                  {insight}
-                </Typography>
-              </View>
-            ))
-          ) : (
-            <Typography variant="body" color={Colors.zinc500}>
-              Gathering activity telemetry for insights...
+        {analysisSource === 'ai' ? (
+          <Card variant="elevated" style={styles.sectionCard}>
+            <Typography variant="title" style={styles.cardTitle}>
+              Productivity Insights
             </Typography>
-          )}
-        </Card>
+            {aiData?.insights && aiData.insights.length > 0 ? (
+              aiData.insights.map((insight, idx) => (
+                <View key={idx} style={styles.insightRow}>
+                  <ArrowRight size={14} color={Colors.zinc500} style={{ marginTop: 3 }} />
+                  <Typography variant="body" color={isDark ? Colors.zinc300 : Colors.zinc700} style={{ flex: 1 }}>
+                    {insight}
+                  </Typography>
+                </View>
+              ))
+            ) : (
+              <Typography variant="body" color={Colors.zinc500}>
+                No insights returned.
+              </Typography>
+            )}
+          </Card>
+        ) : null}
 
         <Button
           label="Re-Analyze Workload"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, TextProps } from 'react-native';
 import { Colors, TypographyTokens } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface TypographyProps extends TextProps {
   variant?: 'display' | 'headline' | 'title' | 'body' | 'bodyBold' | 'caption' | 'tiny';
@@ -18,8 +18,7 @@ export const Typography: React.FC<TypographyProps> = ({
   children,
   ...rest
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const defaultColor = color || (isDark ? Colors.white : Colors.zinc950);
   const token = TypographyTokens[variant];

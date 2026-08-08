@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface WaveformViewProps {
   isRecording: boolean;
@@ -20,8 +20,7 @@ const WaveformBar: React.FC<{ isRecording: boolean; index: number }> = ({
   index,
 }) => {
   const height = useSharedValue(12);
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   useEffect(() => {
     if (isRecording) {

@@ -5,7 +5,7 @@ import { CheckSquare, Sparkles, Mic, Settings } from 'lucide-react-native';
 import { GlassSurface } from './GlassSurface';
 import { AnimatedPressable } from './AnimatedPressable';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import * as Haptics from 'expo-haptics';
 
 interface NavItem {
@@ -45,8 +45,7 @@ const navItems: NavItem[] = [
 export const FloatingToolbar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const handleNavigate = (route: string) => {
     if (pathname !== route) {

@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
 import { Colors, Radius } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import * as Haptics from 'expo-haptics';
 
 export interface IconButtonProps {
@@ -24,8 +24,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   style,
   hapticStyle = Haptics.ImpactFeedbackStyle.Light,
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const getContainerStyle = () => {
     switch (variant) {

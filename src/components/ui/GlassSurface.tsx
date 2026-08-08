@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { BlurView, BlurViewProps } from 'expo-blur';
 import { Colors, Radius } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode;
@@ -21,8 +21,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   borderRadius = Radius.lg,
   borderWidth = 1,
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const activeTint = tint || (isDark ? 'dark' : 'light');
   const borderColor = isDark ? Colors.glassBorderDark : Colors.glassBorderLight;
@@ -54,7 +53,10 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.15)',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
     elevation: 6,
   },
   content: {

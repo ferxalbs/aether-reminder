@@ -3,7 +3,7 @@ import { StyleSheet, ActivityIndicator, View, StyleProp, ViewStyle } from 'react
 import { AnimatedPressable } from './AnimatedPressable';
 import { Typography } from './Typography';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface ButtonProps {
   label: string;
@@ -28,8 +28,7 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   style,
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const getContainerStyle = () => {
     switch (variant) {

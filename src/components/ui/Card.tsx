@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface CardProps {
   children: React.ReactNode;
@@ -21,8 +21,7 @@ export const Card: React.FC<CardProps> = ({
   padding = Spacing.md,
   borderRadius = Radius.xl,
 }) => {
-  const theme = useSettingsStore((s) => s.theme);
-  const isDark = theme === 'dark' || (theme === 'system' && true);
+  const isDark = useIsDark();
 
   const getVariantStyle = () => {
     switch (variant) {
@@ -31,9 +30,10 @@ export const Card: React.FC<CardProps> = ({
           backgroundColor: isDark ? Colors.zinc900 : Colors.white,
           borderColor: isDark ? Colors.zinc800 : Colors.zinc200,
           borderWidth: 1,
-          boxShadow: isDark
-            ? '0px 4px 12px rgba(0, 0, 0, 0.4)'
-            : '0px 4px 12px rgba(0, 0, 0, 0.06)',
+          shadowColor: Colors.black,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDark ? 0.4 : 0.06,
+          shadowRadius: 12,
           elevation: 3,
         };
       case 'glass':

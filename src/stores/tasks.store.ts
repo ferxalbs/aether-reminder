@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task } from '@/types';
+import { getLocalDateString, isLocalDateAfter, isLocalDateBefore } from '@/temporal/localCalendar';
 
 interface TasksState {
   tasks: Task[];
@@ -16,6 +17,18 @@ interface TasksState {
   getUpcomingTasks: () => Task[];
 }
 
+function createTaskId(): string {
+  // Temporary until domain layer uses deterministic ULIDs. Still unique enough for local UI.
+  return `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function localYesterday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getLocalDateString(d);
+}
+
+/** Seed data for first launch only — removed when SQLite migration lands. */
 const sampleTasks: Task[] = [
   {
     id: 'demo-1',
@@ -23,7 +36,7 @@ const sampleTasks: Task[] = [
     notes: 'Focus on frame-rate performance and instant haptic touch responses',
     completed: false,
     createdAt: new Date().toISOString(),
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: getLocalDateString(),
     priority: 'high',
     reminderDate: new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -33,7 +46,7 @@ const sampleTasks: Task[] = [
     notes: 'Support dynamic model swapping without altering screen components',
     completed: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: getLocalDateString(),
     priority: 'high',
   },
   {
@@ -42,7 +55,7 @@ const sampleTasks: Task[] = [
     notes: 'Ensure waveform animation responds to microphone activity',
     completed: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: getLocalDateString(),
     priority: 'medium',
   },
   {
@@ -51,7 +64,7 @@ const sampleTasks: Task[] = [
     notes: 'Verify spacing follows 8pt grid across all card components',
     completed: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    dueDate: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString().split('T')[0], // Overdue
+    dueDate: localYesterday(),
     priority: 'medium',
   },
 ];
@@ -64,21 +77,22 @@ export const useTasksStore = create<TasksState>()(
       addTask: (taskData) => {
         const newTask: Task = {
           ...taskData,
-          id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: createTaskId(),
           createdAt: new Date().toISOString(),
           completed: false,
-          dueDate: taskData.dueDate || new Date().toISOString().split('T')[0],
+          dueDate: taskData.dueDate || getLocalDateString(),
         };
         set((state) => ({ tasks: [newTask, ...state.tasks] }));
       },
 
       addTasksBatch: (tasksData) => {
+        const today = getLocalDateString();
         const newTasks: Task[] = tasksData.map((t) => ({
           ...t,
-          id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: createTaskId(),
           createdAt: new Date().toISOString(),
           completed: false,
-          dueDate: t.dueDate || new Date().toISOString().split('T')[0],
+          dueDate: t.dueDate || today,
         }));
         set((state) => ({ tasks: [...newTasks, ...state.tasks] }));
       },
@@ -112,18 +126,20 @@ export const useTasksStore = create<TasksState>()(
       },
 
       getTodayTasks: () => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateString();
         return get().tasks.filter((t) => t.dueDate === todayStr || !t.dueDate);
       },
 
       getOverdueTasks: () => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return get().tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
+        const todayStr = getLocalDateString();
+        return get().tasks.filter(
+          (t) => !t.completed && t.dueDate && isLocalDateBefore(t.dueDate, todayStr)
+        );
       },
 
       getUpcomingTasks: () => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        return get().tasks.filter((t) => t.dueDate && t.dueDate > todayStr);
+        const todayStr = getLocalDateString();
+        return get().tasks.filter((t) => t.dueDate && isLocalDateAfter(t.dueDate, todayStr));
       },
     }),
     {
