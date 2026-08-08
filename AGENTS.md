@@ -33,18 +33,19 @@ eas build --platform android --profile development
 
 ## Cross-Platform UI Design Rules
 
-Every UI feature must have functional and visual parity on iOS and Android, while
-respecting each platform's native conventions rather than forcing an identical
-implementation. On iOS, use Liquid Glass and design as natively as possible when the
-platform supports it, using `expo-glass-effect`'s `GlassView` or `GlassContainer` on
-iOS 26 and later. Account for the documented fallback to a regular `View` on
-unsupported platforms. On Android, provide an equivalent native-feeling treatment
-with a flatter visual language; do not copy Liquid Glass. Use `expo-blur` when blur is
-actually needed, following its Android API requirements (`BlurTargetView` and an
-appropriate `blurMethod`) and its documented performance limitations on older Android
-versions. For example, a floating action or control introduced for an iOS 26-style
-interface must also be implemented on Android as an appropriate native Android
-equivalent, not omitted.
+Every UI feature must maintain product and interaction parity on iOS and Android; do
+not require pixel-perfect visual equivalence, since each platform has different native
+capabilities. Use the iOS 26+ / 27 design direction as the shared product reference:
+Liquid Glass on iOS where supported, using `expo-glass-effect`'s `GlassView` or
+`GlassContainer`, and account for its documented fallback to a regular `View` on
+unsupported platforms. On Android, translate that same direction into a practical
+Android version rather than copying iOS code or omitting the pattern. This includes
+floating buttons, floating tab bars, segmented controls, rounded surfaces, and floating
+composers or input bars; their Android implementations may use flatter surfaces,
+native Android spacing and interaction conventions, and different exact geometry.
+Use `expo-blur` only when blur is needed, following its Android API requirements
+(`BlurTargetView` and an appropriate `blurMethod`) and its documented performance
+limitations on older Android versions.
 
 ## Coding Style & Naming Conventions
 
