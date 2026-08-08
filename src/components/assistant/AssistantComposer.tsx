@@ -117,7 +117,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
       ) : null}
       {!hasText ? (
         <Typography variant="tiny" color={Colors.zinc500} style={styles.hint}>
-          Hold orb to talk
+          Tap orb to talk
         </Typography>
       ) : null}
     </View>

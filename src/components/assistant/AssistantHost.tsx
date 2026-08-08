@@ -161,7 +161,8 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       return;
     }
     if (voice.state !== 'idle' && voice.state !== 'error') {
-      voice.stopAndSend();
+      if (voice.state === 'connecting') void voice.cancel();
+      else voice.stopAndSend();
       return;
     }
     if (useSettingsStore.getState().hapticsEnabled) {

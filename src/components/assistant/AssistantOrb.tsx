@@ -125,8 +125,8 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       onPressMove={onPressMove}
       scaleTo={0.9}
       accessibilityRole="button"
-      accessibilityLabel={expanded ? 'Close AETHER assistant' : 'Open AETHER assistant'}
-      accessibilityHint="Tap to open AETHER. Hold to talk."
+      accessibilityLabel="AETHER voice and text input"
+      accessibilityHint="Tap to start voice input. Press and hold to type."
       accessibilityState={{ expanded, busy: isBusy }}
       style={[styles.touchTarget, size === 'composer' && styles.composerTouchTarget]}
     >

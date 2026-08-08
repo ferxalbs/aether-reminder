@@ -44,9 +44,9 @@ export default function TranscribeScreen() {
           <View style={styles.micOrb}>
             <Mic size={26} color={isDark ? Colors.white : Colors.black} />
           </View>
-          <Typography variant="headline" style={styles.heroTitle}>Hold to talk</Typography>
+          <Typography variant="headline" style={styles.heroTitle}>Tap to talk</Typography>
           <Typography variant="body" color={Colors.zinc500}>
-            Press and hold the AETHER orb in the bottom dock. Release to commit the audio, or swipe up while holding to stop manually.
+            Tap the AETHER orb to start hands-free voice input. Tap it again or use Stop &amp; Send to finish. Press and hold the orb to type instead.
           </Typography>
           <AnimatedPressable
             onPress={() => router.replace('/')}
@@ -83,7 +83,7 @@ export default function TranscribeScreen() {
 
         <View style={styles.tipRow}>
           <ArrowUp size={16} color={Colors.zinc500} />
-          <Typography variant="caption" color={Colors.zinc500}>Swipe up while holding to lock the session</Typography>
+          <Typography variant="caption" color={Colors.zinc500}>Voice starts hands-free; press and hold when you want the keyboard</Typography>
         </View>
       </ScrollView>
     </SafeAreaView>
