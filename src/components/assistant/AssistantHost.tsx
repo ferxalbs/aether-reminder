@@ -11,6 +11,7 @@ import { useAgentSessionController } from './AgentSessionController';
 import { AppBottomNavigation } from './AppBottomNavigation';
 import { AssistantSheet } from './AssistantSheet';
 import type { AssistantOrbState, AssistantSurfaceState } from './assistantTypes';
+import { useVoiceController } from './VoiceController';
 
 const defaultSnapshot: ContextSnapshot = {
   surface: 'home',
@@ -54,6 +55,10 @@ export const AssistantHost: React.FC = () => {
   const [composerValue, setComposerValue] = useState('');
   const [reduceMotion, setReduceMotion] = useState(false);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdStartedRef = useRef(false);
+  const suppressNextTapRef = useRef(false);
+  const orbStartYRef = useRef<number | null>(null);
   const refreshToday = useTasksUiStore((state) => state.refreshToday);
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
 
@@ -103,23 +108,58 @@ export const AssistantHost: React.FC = () => {
     onReceipt,
   });
 
+  const onVoiceTranscript = useCallback((text: string) => {
+    setComposerValue('');
+    setSurface('medium');
+    void controller.submit(text, { invocationSource: 'voice' });
+  }, [controller]);
+  const voice = useVoiceController({ onTranscript: onVoiceTranscript });
+
+  const onOrbPressIn = useCallback(() => {
+    orbStartYRef.current = null;
+    holdStartedRef.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      holdStartedRef.current = true;
+      suppressNextTapRef.current = true;
+      voice.begin();
+    }, 180);
+  }, [voice]);
+
+  const onOrbPressOut = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
+    if (holdStartedRef.current) voice.release();
+    orbStartYRef.current = null;
+  }, [voice]);
+
+  const onOrbPressMove = useCallback((event: { nativeEvent: { pageY: number } }) => {
+    orbStartYRef.current ??= event.nativeEvent.pageY;
+    if (orbStartYRef.current - event.nativeEvent.pageY > 64) voice.lock();
+  }, [voice]);
+
   const openAssistant = useCallback(() => {
+    if (suppressNextTapRef.current) {
+      suppressNextTapRef.current = false;
+      holdStartedRef.current = false;
+      return;
+    }
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     if (surface === 'closed' || surface === 'closing') {
       setSurface('opening');
       transitionTimerRef.current = setTimeout(() => setSurface('compact'), reduceMotion ? 80 : 220);
     } else {
-      setSurface((current) => (current === 'compact' ? 'medium' : 'closed'));
+      setSurface('closed');
     }
     if (surface === 'medium' || surface === 'full') Keyboard.dismiss();
   }, [reduceMotion, surface]);
 
   const closeAssistant = useCallback(() => {
+    if (voice.state !== 'idle') void voice.cancel();
     Keyboard.dismiss();
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     setSurface('closing');
     transitionTimerRef.current = setTimeout(() => setSurface('closed'), reduceMotion ? 100 : 220);
-  }, [reduceMotion]);
+  }, [reduceMotion, voice]);
 
   const submit = useCallback(() => {
     const value = composerValue.trim();
@@ -133,6 +173,10 @@ export const AssistantHost: React.FC = () => {
     ? 'opening'
     : surface === 'closing'
       ? 'closing'
+      : voice.state === 'requesting_permission' || voice.state === 'preparing' || voice.state === 'listening' || voice.state === 'finalizing' || voice.state === 'transcribing'
+        ? voice.state
+        : voice.state === 'error'
+          ? 'error'
       : controller.semanticState;
   const showScrim = surface === 'medium' || surface === 'full';
 
@@ -161,11 +205,20 @@ export const AssistantHost: React.FC = () => {
         onConfirm={controller.confirm}
         onCancelConfirmation={controller.cancelConfirmation}
         reduceMotion={reduceMotion}
+        voiceState={voice.state}
+        voiceLocked={voice.locked}
+        voiceError={voice.error}
+        onVoiceStop={voice.stopAndSend}
+        onVoiceCancel={voice.cancel}
+        onVoiceMic={() => { Keyboard.dismiss(); voice.begin(); }}
       />
       <AppBottomNavigation
         orbState={orbState}
         assistantExpanded={surface !== 'closed' && surface !== 'closing'}
         onOrbPress={openAssistant}
+        onOrbPressIn={onOrbPressIn}
+        onOrbPressOut={onOrbPressOut}
+        onOrbPressMove={onOrbPressMove}
       />
     </View>
   );

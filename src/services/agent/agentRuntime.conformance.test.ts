@@ -204,6 +204,46 @@ describe('agent runtime conformance', () => {
     await db.closeAsync?.();
   });
 
+  test('voice confirmation replay → exactly one mutation', async () => {
+    const db = await readyDb();
+    const services = createDomainServices(db);
+    const provider = new ScriptedInferenceProvider();
+    const created = await Promise.all([
+      services.tasks.createTask({ title: 'Voice A' }),
+      services.tasks.createTask({ title: 'Voice B' }),
+      services.tasks.createTask({ title: 'Voice C' }),
+      services.tasks.createTask({ title: 'Voice D' }),
+    ]);
+    const args = { ids: created.map((task) => task.value.id) };
+    provider.pushToolTurn([{ id: 'voice-confirm', name: 'tasks.delete', arguments: args }]);
+    provider.pushToolTurn([{ id: 'voice-confirm', name: 'tasks.delete', arguments: args }]);
+    provider.pushTextTurn('Confirmed.');
+
+    const runtime = createAgentRuntime({ db, services, provider });
+    const first = await collect(runtime, {
+      message: 'Delete everything I said by voice',
+      context: baseContext({ invocationSource: 'voice' }),
+      modelId: 'scripted/full',
+      apiKey: 'test-key',
+    });
+    expect(types(first)).toContain('tool.confirmation_required');
+    const sessionId = first.find((event) => event.type === 'run.started')?.type === 'run.started'
+      ? first.find((event) => event.type === 'run.started')?.sessionId
+      : undefined;
+    expect(sessionId).toBeTruthy();
+    const second = await collect(runtime, {
+      message: 'Delete everything I said by voice',
+      context: baseContext({ invocationSource: 'voice' }),
+      modelId: 'scripted/full',
+      apiKey: 'test-key',
+      sessionId,
+      confirmations: { approveAll: true },
+    });
+    expect(types(second)).toContain('tool.completed');
+    expect(await services.tasks.listTasks({ scope: 'active' })).toHaveLength(0);
+    await db.closeAsync?.();
+  });
+
   test('OpenRouter timeout → run fails honestly', async () => {
     const db = await readyDb();
     const provider = new ScriptedInferenceProvider();

@@ -1,13 +1,14 @@
 import { TranscriptionResult } from '@/types';
 import { TranscriptionError, TranscriptionErrorCode } from './errors';
 import { parseSpeechToTasks } from './parseSpeech';
+import { openRouterSpeechConfiguration } from './config';
 
 const OPENROUTER_STT_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
 
 export interface SpeechToTextProvider {
   readonly id: string;
   readonly name: string;
-  transcribeAudio(audioUri: string, apiKey?: string): Promise<TranscriptionResult>;
+  transcribeAudio(audioUri: string, apiKey?: string, signal?: AbortSignal): Promise<TranscriptionResult>;
 }
 
 function getRetryAfterSeconds(response: Response): number | undefined {
@@ -33,8 +34,8 @@ export class OpenRouterSTTProvider implements SpeechToTextProvider {
   readonly id = 'openrouter-stt';
   readonly name = 'OpenRouter Speech-to-Text';
 
-  async transcribeAudio(audioUri: string, apiKey?: string): Promise<TranscriptionResult> {
-    if (!audioUri || audioUri.startsWith('mock://')) {
+  async transcribeAudio(audioUri: string, apiKey?: string, signal?: AbortSignal): Promise<TranscriptionResult> {
+    if (!audioUri) {
       throw new TranscriptionError(
         'INVALID_AUDIO',
         'No valid recording URI was provided. Capture audio before transcribing.'
@@ -56,7 +57,7 @@ export class OpenRouterSTTProvider implements SpeechToTextProvider {
       name: 'recording.m4a',
     } as unknown as Blob);
     // OpenRouter-compatible STT model id (Whisper family via OpenRouter).
-    formData.append('model', 'openai/whisper-1');
+    formData.append('model', openRouterSpeechConfiguration.model);
 
     let response: Response;
     try {
@@ -68,6 +69,7 @@ export class OpenRouterSTTProvider implements SpeechToTextProvider {
           'X-Title': 'AETHER Reminder',
         },
         body: formData,
+        signal,
       });
     } catch (cause) {
       throw new TranscriptionError('NETWORK_ERROR', 'Could not reach OpenRouter transcription.', {

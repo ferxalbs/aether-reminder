@@ -3,7 +3,7 @@ import type { AgentSemanticState, ContextSnapshot, EntityReference } from '@/ser
 
 export type AssistantSurfaceState = 'closed' | 'opening' | 'compact' | 'medium' | 'full' | 'closing';
 
-export type AssistantOrbState = AgentSemanticState | 'opening' | 'closing';
+export type AssistantOrbState = AgentSemanticState | 'opening' | 'closing' | 'requesting_permission' | 'preparing' | 'listening' | 'finalizing' | 'transcribing';
 
 export interface AssistantMessage {
   id: string;

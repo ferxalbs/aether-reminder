@@ -6,12 +6,12 @@ import { parseSpeechToTasks } from './parseSpeech';
 describe('OpenRouterSTTProvider honesty', () => {
   const provider = new OpenRouterSTTProvider();
 
-  test('rejects mock:// URIs without inventing a transcript', async () => {
-    await expect(provider.transcribeAudio('mock://voice-recording', 'sk-or-test')).rejects.toBeInstanceOf(
+  test('rejects missing recording URIs without inventing a transcript', async () => {
+    await expect(provider.transcribeAudio('', 'sk-or-test')).rejects.toBeInstanceOf(
       TranscriptionError
     );
     try {
-      await provider.transcribeAudio('mock://voice-recording', 'sk-or-test');
+      await provider.transcribeAudio('', 'sk-or-test');
     } catch (e) {
       expect(e).toBeInstanceOf(TranscriptionError);
       expect((e as TranscriptionError).code).toBe('INVALID_AUDIO');

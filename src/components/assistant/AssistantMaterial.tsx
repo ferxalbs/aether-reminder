@@ -70,11 +70,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     borderWidth: 1,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 10,
   },
   content: {
     zIndex: 1,

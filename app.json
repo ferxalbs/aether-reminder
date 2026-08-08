@@ -41,7 +41,12 @@
         }
       ],
       "expo-secure-store",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to record voice commands."
+        }
+      ],
       "expo-asset",
       "expo-sqlite"
     ],

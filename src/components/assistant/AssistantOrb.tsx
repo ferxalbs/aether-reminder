@@ -16,6 +16,9 @@ interface AssistantOrbProps {
   state: AssistantOrbState;
   expanded: boolean;
   onPress: () => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
+  onPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
 
 const stateLabels: Record<AssistantOrbState, string> = {
@@ -28,13 +31,18 @@ const stateLabels: Record<AssistantOrbState, string> = {
   responding: 'Responding',
   error: 'Needs attention',
   closing: 'Closing',
+  requesting_permission: 'Requesting microphone permission',
+  preparing: 'Preparing microphone',
+  listening: 'Listening',
+  finalizing: 'Finalizing recording',
+  transcribing: 'Transcribing',
 };
 
-export const AssistantOrb: React.FC<AssistantOrbProps> = ({ state, expanded, onPress }) => {
+export const AssistantOrb: React.FC<AssistantOrbProps> = ({ state, expanded, onPress, onPressIn, onPressOut, onPressMove }) => {
   const isDark = useIsDark();
   const [reduceMotion, setReduceMotion] = useState(false);
   const motion = useSharedValue(0);
-  const isBusy = state === 'thinking' || state === 'executing' || state === 'responding';
+  const isBusy = state === 'thinking' || state === 'executing' || state === 'responding' || state === 'requesting_permission' || state === 'preparing' || state === 'listening' || state === 'finalizing' || state === 'transcribing';
   const isError = state === 'error';
   const isAttention = state === 'waiting_confirmation';
 
@@ -75,6 +83,9 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({ state, expanded, onP
   return (
     <AnimatedPressable
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPressMove={onPressMove}
       scaleTo={0.93}
       accessibilityRole="button"
       accessibilityLabel={expanded ? 'Close AETHER assistant' : 'Open AETHER assistant'}

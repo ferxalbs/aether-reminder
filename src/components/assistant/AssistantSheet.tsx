@@ -25,6 +25,7 @@ import type {
 } from './assistantTypes';
 import { assistantStateLabel } from './AssistantOrb';
 import type { AgentSemanticState } from '@/services/agent';
+import type { VoiceState } from './VoiceController';
 
 interface AssistantSheetProps {
   surface: AssistantSurfaceState;
@@ -42,6 +43,12 @@ interface AssistantSheetProps {
   onConfirm: () => void;
   onCancelConfirmation: () => void;
   reduceMotion: boolean;
+  voiceState: VoiceState;
+  voiceLocked: boolean;
+  voiceError: string | null;
+  onVoiceStop: () => void;
+  onVoiceCancel: () => void;
+  onVoiceMic: () => void;
 }
 
 function confirmationTitle(pending: PendingAssistantConfirmation): string {
@@ -70,11 +77,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onConfirm,
   onCancelConfirmation,
   reduceMotion,
+  voiceState,
+  voiceLocked,
+  voiceError,
+  onVoiceStop,
+  onVoiceCancel,
+  onVoiceMic,
 }) => {
   const isDark = useIsDark();
   const { height: windowHeight } = useWindowDimensions();
   const height = useSharedValue(0);
   const isVisible = surface !== 'closed';
+  const showHeader = surface === 'medium' || surface === 'full';
   const showConversation = surface === 'medium' || surface === 'full';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
@@ -101,18 +115,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}
         >
-          <View style={styles.header}>
-            <View style={styles.headerTitle}>
-              <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? '#B42318' : isDark ? Colors.white : Colors.black }]} />
-              <View>
-                <Typography variant="bodyBold">AETHER</Typography>
-                <Typography variant="tiny" color={Colors.zinc500} accessibilityLiveRegion="polite">
-                  {assistantStateLabel(semanticState)}
-                </Typography>
+          {showHeader ? (
+            <View style={styles.header}>
+              <View style={styles.headerTitle}>
+                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? '#B42318' : isDark ? Colors.white : Colors.black }]} />
+                <View>
+                  <Typography variant="bodyBold">AETHER</Typography>
+                  <Typography variant="tiny" color={Colors.zinc500} accessibilityLiveRegion="polite">
+                    {assistantStateLabel(semanticState)}
+                  </Typography>
+                </View>
               </View>
-            </View>
-            <View style={styles.headerActions}>
-              {showConversation ? (
+              <View style={styles.headerActions}>
                 <Pressable
                   onPress={onExpand}
                   accessibilityRole="button"
@@ -121,12 +135,12 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 >
                   {surface === 'full' ? <ChevronDown size={19} color={Colors.zinc500} /> : <ChevronUp size={19} color={Colors.zinc500} />}
                 </Pressable>
-              ) : null}
-              <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close assistant" style={styles.headerButton}>
-                <X size={19} color={Colors.zinc500} />
-              </Pressable>
+                <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close assistant" style={styles.headerButton}>
+                  <X size={19} color={Colors.zinc500} />
+                </Pressable>
+              </View>
             </View>
-          </View>
+          ) : null}
 
           {showConversation ? (
             <ScrollView
@@ -183,12 +197,20 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           ) : null}
 
           <View style={styles.composerContainer}>
+            {voiceState !== 'idle' && voiceState !== 'error' ? (
+              <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
+                <Typography variant="bodyBold">{voiceLocked ? 'Recording locked' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Preparing microphone…'}</Typography>
+                {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
+              </View>
+            ) : null}
+            {voiceError ? <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{voiceError}</Text> : null}
             <AssistantComposer
               value={composerValue}
               onChangeText={onComposerChange}
               onSubmit={onSubmit}
               disabled={isRunning}
               autoFocus={surface === 'compact'}
+              onMicPress={onVoiceMic}
             />
           </View>
         </KeyboardAvoidingView>
@@ -312,5 +334,16 @@ const styles = StyleSheet.create({
   },
   composerContainer: {
     paddingTop: Spacing.xs,
+  },
+  voiceControls: {
+    borderRadius: Radius.lg,
+    padding: Spacing.sm,
+    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  voiceActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.xs,
   },
 });

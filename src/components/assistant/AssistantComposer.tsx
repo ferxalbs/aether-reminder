@@ -17,6 +17,7 @@ interface AssistantComposerProps {
   onSubmit: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  onMicPress?: () => void;
 }
 
 export const AssistantComposer: React.FC<AssistantComposerProps> = ({
@@ -25,6 +26,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   onSubmit,
   disabled = false,
   autoFocus = false,
+  onMicPress,
 }) => {
   const isDark = useIsDark();
   const inputRef = useRef<TextInput>(null);
@@ -70,11 +72,12 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         style={[styles.input, { color: foreground }]}
       />
       <Pressable
+        onPress={onMicPress}
         accessibilityRole="button"
         accessibilityLabel="Voice capture"
-        accessibilityHint="Voice capture will be available in Slice 5"
-        accessibilityState={{ disabled: true }}
-        disabled
+        accessibilityHint="Starts microphone capture"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         style={styles.iconButton}
       >
         <Mic size={19} color={Colors.zinc500} />

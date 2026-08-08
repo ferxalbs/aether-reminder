@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
+Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> before writing any code.
 
 ## Project Structure & Module Organization
 
@@ -30,6 +30,21 @@ Android development EAS build before considering the change validated:
 ```bash
 eas build --platform android --profile development
 ```
+
+## Cross-Platform UI Design Rules
+
+Every UI feature must have functional and visual parity on iOS and Android, while
+respecting each platform's native conventions rather than forcing an identical
+implementation. On iOS, use Liquid Glass and design as natively as possible when the
+platform supports it, using `expo-glass-effect`'s `GlassView` or `GlassContainer` on
+iOS 26 and later. Account for the documented fallback to a regular `View` on
+unsupported platforms. On Android, provide an equivalent native-feeling treatment
+with a flatter visual language; do not copy Liquid Glass. Use `expo-blur` when blur is
+actually needed, following its Android API requirements (`BlurTargetView` and an
+appropriate `blurMethod`) and its documented performance limitations on older Android
+versions. For example, a floating action or control introduced for an iOS 26-style
+interface must also be implemented on Android as an appropriate native Android
+equivalent, not omitted.
 
 ## Coding Style & Naming Conventions
 

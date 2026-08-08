@@ -20,6 +20,7 @@ interface AgentSessionControllerOptions {
 interface SubmitOptions {
   approveAll?: boolean;
   appendUserMessage?: boolean;
+  invocationSource?: ContextSnapshot['invocationSource'];
 }
 
 function messageId(prefix: string): string {
@@ -103,7 +104,7 @@ export function useAgentSessionController({
         const modelId = await resolveAgentModel(selectedModel, apiKey);
         const runContext: ContextSnapshot = {
           ...context,
-          invocationSource: 'assistant',
+          invocationSource: options.invocationSource ?? 'assistant',
           conversationEntities: entitiesRef.current.slice(-8),
         };
         for await (const event of runtime.run({
