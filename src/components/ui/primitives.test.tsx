@@ -1,18 +1,23 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, mock, test } from 'bun:test';
+import { Colors } from '@/theme/tokens';
 
 // React 19's renderer requires this flag for act()-based interaction tests.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const motionState = { reduceMotion: false };
+const platformState = { os: 'ios' as 'ios' | 'android' };
 const springCalls: { target: number; config: Record<string, unknown> }[] = [];
 
 mock.module('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator',
+  Modal: 'Modal',
   Platform: {
-    OS: 'ios',
-    select: (options: Record<string, unknown>) => options.ios ?? options.default,
+    get OS() {
+      return platformState.os;
+    },
+    select: (options: Record<string, unknown>) => options[platformState.os] ?? options.default,
   },
   Pressable: 'Pressable',
   StyleSheet: {
@@ -20,6 +25,7 @@ mock.module('react-native', () => ({
     create: <T,>(styles: T): T => styles,
   },
   Text: 'Text',
+  TextInput: 'TextInput',
   View: 'View',
 }));
 
@@ -79,6 +85,7 @@ mock.module('@/theme/useResolvedTheme', () => ({
 
 mock.module('lucide-react-native', () => ({
   Check: 'Check',
+  ChevronDown: 'ChevronDown',
   Clock: 'Clock',
   Sparkles: 'Sparkles',
   Trash2: 'Trash2',
@@ -111,13 +118,16 @@ const unmount = (renderer: ReactTestRenderer): void => {
 };
 
 const loadPrimitives = async () => {
-  const [animatedPressable, button, card, glassSurface, iconButton, toggleSwitch, typography] =
+  const [animatedPressable, button, card, glassSurface, iconButton, picker, sheet, textField, toggleSwitch, typography] =
     await Promise.all([
       import('./AnimatedPressable'),
       import('./Button'),
       import('./Card'),
       import('./GlassSurface'),
       import('./IconButton'),
+      import('./Picker'),
+      import('./Sheet'),
+      import('./TextField'),
       import('./ToggleSwitch'),
       import('./Typography'),
     ]);
@@ -128,6 +138,9 @@ const loadPrimitives = async () => {
     Card: card.Card,
     GlassSurface: glassSurface.GlassSurface,
     IconButton: iconButton.IconButton,
+    Picker: picker.Picker,
+    Sheet: sheet.Sheet,
+    TextField: textField.TextField,
     ToggleSwitch: toggleSwitch.ToggleSwitch,
     Typography: typography.Typography,
   };
@@ -250,6 +263,201 @@ describe('unified UI primitives', () => {
     expect(style.minHeight).toBe(44);
     expect(springCalls).toHaveLength(0);
     unmount(renderer);
+  });
+
+  test('TextField renders a labeled, accessible input with helper and error states', async () => {
+    const { TextField } = await loadPrimitives();
+    const renderer = render(
+      React.createElement(TextField, {
+        label: 'Task title',
+        value: 'Ship unified UI',
+        onChangeText: () => undefined,
+        error: 'A title is required.',
+        accessibilityHint: 'Enter the reminder title',
+        leading: React.createElement('Icon'),
+        trailing: React.createElement('ClearButton'),
+      }),
+    );
+    const input = renderer.root.findByType('TextInput');
+    const inputStyle = flattenStyle(input.props.style);
+    const textNodes = renderer.root.findAllByType('Text');
+
+    expect(input.props.accessibilityRole).toBe('text');
+    expect(input.props.accessibilityLabel).toBe('Task title');
+    expect(input.props.accessibilityHint).toBe('Enter the reminder title');
+    expect(input.props.accessibilityState).toEqual({ disabled: false });
+    expect(input.props.placeholderTextColor).toBe(Colors.zinc500);
+    expect(inputStyle.minHeight).toBe(42);
+    expect(textNodes.some((node) => node.props.accessibilityRole === 'alert')).toBe(true);
+    expect(textNodes.find((node) => node.props.accessibilityRole === 'alert')?.props.children).toBe(
+      'A title is required.',
+    );
+
+    act(() => {
+      input.props.onFocus({});
+      input.props.onBlur({});
+    });
+    unmount(renderer);
+  });
+
+  test('Picker renders iOS segmented options with radio semantics and touch targets', async () => {
+    const { Picker } = await loadPrimitives();
+    platformState.os = 'ios';
+    motionState.reduceMotion = true;
+    const onValueChange = mock(() => undefined);
+    const renderer = render(
+      React.createElement(Picker, {
+        label: 'Theme',
+        value: 'system',
+        onValueChange,
+        options: [
+          { value: 'dark', label: 'Dark' },
+          { value: 'light', label: 'Light' },
+          { value: 'system', label: 'System' },
+        ],
+      }),
+    );
+    const options = renderer.root.findAllByType('Pressable');
+
+    expect(options).toHaveLength(3);
+    expect(options[0].props.accessibilityRole).toBe('radio');
+    expect(options[0].props.accessibilityLabel).toBe('Theme: Dark');
+    expect(options[0].props.accessibilityState).toEqual({
+      checked: false,
+      selected: false,
+      disabled: false,
+    });
+    expect(options[2].props.accessibilityState).toEqual({
+      checked: true,
+      selected: true,
+      disabled: false,
+    });
+    expect(flattenStyle(options[0].props.style).minHeight).toBe(44);
+
+    act(() => {
+      options[1].props.onPress();
+    });
+    expect(onValueChange).toHaveBeenCalledWith('light');
+    unmount(renderer);
+  });
+
+  test('Picker renders an Android dropdown, exposes expanded state, and honors disabled options', async () => {
+    const { Picker } = await loadPrimitives();
+    platformState.os = 'android';
+    motionState.reduceMotion = true;
+    const onValueChange = mock(() => undefined);
+    const renderer = render(
+      React.createElement(Picker, {
+        label: 'Priority',
+        value: 'medium',
+        onValueChange,
+        options: [
+          { value: 'low', label: 'Low' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'high', label: 'High', disabled: true },
+        ],
+      }),
+    );
+    const trigger = renderer.root.findAllByType('Pressable')[0];
+
+    expect(trigger.props.accessibilityRole).toBe('combobox');
+    expect(trigger.props.accessibilityState).toEqual({ disabled: false, expanded: false });
+    expect(trigger.props.accessibilityValue).toEqual({ text: 'Medium' });
+    expect(flattenStyle(trigger.props.style).minHeight).toBe(48);
+
+    act(() => {
+      trigger.props.onPress();
+    });
+    const options = renderer.root.findAllByType('Pressable');
+    expect(options).toHaveLength(4);
+    expect(options[3].props.accessibilityState).toEqual({
+      checked: false,
+      selected: false,
+      disabled: true,
+    });
+
+    act(() => {
+      options[1].props.onPress();
+      options[3].props.onPress();
+    });
+    expect(onValueChange).toHaveBeenCalledWith('low');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    unmount(renderer);
+    platformState.os = 'ios';
+  });
+
+  test('Sheet uses native iOS page-sheet presentation with dialog semantics', async () => {
+    const { Sheet } = await loadPrimitives();
+    platformState.os = 'ios';
+    motionState.reduceMotion = false;
+    const onRequestClose = mock(() => undefined);
+    const renderer = render(
+      React.createElement(
+        Sheet,
+        {
+          visible: true,
+          onRequestClose,
+          title: 'Choose a model',
+          subtitle: 'Select a tool-capable model',
+          accessibilityHint: 'Choose one model',
+        },
+        React.createElement('Content'),
+      ),
+    );
+    const modal = renderer.root.findByType('Modal');
+    const dialog = renderer.root.findAllByType('View').find(
+      (node) => node.props.role === 'dialog',
+    );
+
+    expect(modal.props.presentationStyle).toBe('pageSheet');
+    expect(modal.props.transparent).toBe(false);
+    expect(modal.props.animationType).toBe('slide');
+    expect(modal.props.allowSwipeDismissal).toBe(true);
+    expect(dialog?.props.accessibilityLabel).toBe('Choose a model');
+    expect(dialog?.props.accessibilityViewIsModal).toBe(true);
+
+    act(() => {
+      modal.props.onRequestClose();
+    });
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
+    unmount(renderer);
+  });
+
+  test('Sheet uses an Android bottom surface, scrim dismissal, and Reduce Motion', async () => {
+    const { Sheet } = await loadPrimitives();
+    platformState.os = 'android';
+    motionState.reduceMotion = true;
+    const onRequestClose = mock(() => undefined);
+    const renderer = render(
+      React.createElement(
+        Sheet,
+        {
+          visible: true,
+          onRequestClose,
+          title: 'Choose a model',
+        },
+        React.createElement('Content'),
+      ),
+    );
+    const modal = renderer.root.findByType('Modal');
+    const backdrop = renderer.root.findByProps({ accessibilityLabel: 'Dismiss Choose a model' });
+    const dialog = renderer.root.findAllByType('View').find(
+      (node) => node.props.role === 'dialog',
+    );
+
+    expect(modal.props.transparent).toBe(true);
+    expect(modal.props.animationType).toBe('none');
+    expect(modal.props.statusBarTranslucent).toBe(true);
+    expect(modal.props.navigationBarTranslucent).toBe(true);
+    expect(backdrop.props.accessibilityRole).toBe('button');
+    expect(dialog?.props.accessibilityLabel).toBe('Choose a model');
+
+    act(() => {
+      backdrop.props.onPress();
+    });
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
+    unmount(renderer);
+    platformState.os = 'ios';
   });
 
   test('Card, GlassSurface, and Typography preserve semantic surface contracts', async () => {

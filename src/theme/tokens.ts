@@ -45,6 +45,8 @@ export const Colors = {
   // Platform feedback surfaces
   rippleLight: 'rgba(0, 0, 0, 0.12)',
   rippleDark: 'rgba(255, 255, 255, 0.18)',
+  scrimLight: 'rgba(0, 0, 0, 0.18)',
+  scrimDark: 'rgba(0, 0, 0, 0.50)',
 } as const;
 
 export const Spacing = {
@@ -63,6 +65,27 @@ export const Radius = {
   lg: 20,
   xl: 28,
   pill: 9999,
+} as const;
+
+export const ControlTokens = {
+  borderWidth: 1,
+  fieldPaddingHorizontal: Spacing.md,
+  fieldPaddingVertical: Spacing.sm,
+  fieldContentGap: Spacing.sm,
+  fieldLabelGap: Spacing.xs,
+  fieldMessageGap: Spacing.xs,
+  fieldIconSize: 18,
+  disabledOpacity: 0.55,
+  pickerOptionPaddingHorizontal: Spacing.md,
+  pickerOptionPaddingVertical: Spacing.sm,
+  pickerChevronSize: 18,
+  sheetHandleWidth: Spacing.xl,
+  sheetHandleHeight: Spacing.xs,
+  sheetHorizontalPadding: Spacing.md,
+  sheetContentGap: Spacing.sm,
+  sheetTopRadius: Radius.xl,
+  sheetElevation: 8,
+  sheetMaxHeight: '90%',
 } as const;
 
 export const TouchTargets = {

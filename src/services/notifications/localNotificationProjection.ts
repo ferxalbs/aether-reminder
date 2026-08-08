@@ -81,6 +81,7 @@ export function resolveReminderNotificationDate(
  * The adapter and SQLite work for one reminder can still be expensive, so the
  * projection is repaired in bounded batches instead of launching unbounded
  * work or blocking on one reminder at a time.
+ * See docs/KNOWN_TRADEOFFS.md for the deferred batch-size decision and its risks.
  */
 export const NOTIFICATION_RECONCILIATION_BATCH_SIZE = 8;
 

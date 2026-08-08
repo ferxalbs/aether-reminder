@@ -160,6 +160,7 @@ export default function RootLayout() {
               <Stack.Screen name="ai" />
               <Stack.Screen name="transcribe" />
               <Stack.Screen name="settings" />
+              <Stack.Screen name="ui-review" />
             </Stack>
           </BlurTargetView>
           <AssistantHost blurTarget={blurTarget} />
