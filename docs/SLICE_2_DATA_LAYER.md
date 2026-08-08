@@ -16,9 +16,16 @@
 - Failure → rollback → version not advanced (fail closed)
 - Never edit shipped migrations; append new files
 
-## Demo data handling
+## Demo data handling (contamination filter — not product seeds)
 
-Known seed IDs `demo-1`…`demo-4` and known demo titles are **excluded** from legacy AsyncStorage import. Production bootstrap seeds **no** sample tasks.
+**There is no seed system.** Production and development must never insert demo tasks, sample productivity data, fake AI output, fake voice transcripts, or mock successful operations.
+
+The legacy migration retains narrowly scoped knowledge of historical `demo-*` records **only** to **prevent** those records from entering SQLite during one-time AsyncStorage import:
+
+- Known seed IDs `demo-1`…`demo-4` and known demo titles are **excluded** (contamination filter)
+- This is **not** product seed data and must not be extended into a demo catalog
+- Test-only fixtures may exist **only** inside test code
+- No demo seed CLI, no runtime sample tasks, no development sample dataset
 
 ## Legacy import
 

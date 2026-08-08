@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -22,25 +23,38 @@ export interface TaskCardProps {
   onPress?: (task: TaskListItem) => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   task,
   onToggle,
   onDelete,
   onPress,
 }) => {
   const isDark = useIsDark();
-  const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
 
-  const checkScale = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(task.completed ? 1 : 0.85, { damping: 15 }) }],
-    opacity: withTiming(task.completed ? 1 : 0.5, { duration: 180 }),
+  const completionScale = useSharedValue(task.completed ? 1 : 0.85);
+  const completionOpacity = useSharedValue(task.completed ? 1 : 0.5);
+  const contentOpacity = useSharedValue(task.completed ? 0.45 : 1);
+
+  useEffect(() => {
+    completionScale.value = withSpring(task.completed ? 1 : 0.85, {
+      damping: 20,
+      stiffness: 300,
+    });
+    completionOpacity.value = withTiming(task.completed ? 1 : 0.5, { duration: 160 });
+    contentOpacity.value = withTiming(task.completed ? 0.45 : 1, { duration: 160 });
+  }, [task.completed, completionScale, completionOpacity, contentOpacity]);
+
+  const checkScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: completionScale.value }],
+    opacity: completionOpacity.value,
   }));
 
-  const textOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(task.completed ? 0.45 : 1, { duration: 200 }),
+  const textOpacityStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
   }));
 
   const handleToggle = () => {
+    const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled) {
       Haptics.notificationAsync(
         task.completed
@@ -104,7 +118,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             },
           ]}
         >
-          <Animated.View style={checkScale}>
+          <Animated.View style={checkScaleStyle}>
             {task.completed && (
               <Check
                 size={14}
@@ -116,7 +130,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </AnimatedPressable>
 
         {/* Task Content */}
-        <Animated.View style={[styles.content, textOpacity]}>
+        <Animated.View style={[styles.content, textOpacityStyle]}>
           <View style={styles.headerLine}>
             <Typography
               variant="bodyBold"
@@ -184,7 +198,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       </View>
     </AnimatedPressable>
   );
-};
+});
+TaskCard.displayName = 'TaskCard';
 
 const styles = StyleSheet.create({
   card: {

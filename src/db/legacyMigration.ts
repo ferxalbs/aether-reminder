@@ -13,8 +13,12 @@ export const LEGACY_TASKS_STORAGE_KEY = 'taskflow-tasks-storage';
 export const LEGACY_MIGRATION_META_KEY = 'legacy_tasks_migrated_v1';
 
 /**
- * Known demo/sample task IDs from the historical seed list.
- * These MUST NOT be imported into a real user database.
+ * Contamination filter only — NOT product seed data.
+ *
+ * Historical pre-SQLite builds sometimes persisted known demo IDs/titles in
+ * AsyncStorage. These constants exist solely so one-time legacy import can
+ * DROP those rows and keep them out of SQLite. Do not use them to insert
+ * sample tasks. There is no seed CLI and no runtime demo dataset.
  */
 export const KNOWN_DEMO_TASK_IDS = new Set(['demo-1', 'demo-2', 'demo-3', 'demo-4']);
 

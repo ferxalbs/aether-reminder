@@ -15,12 +15,12 @@ export interface WaveformViewProps {
   barCount?: number;
 }
 
-const WaveformBar: React.FC<{ isRecording: boolean; index: number }> = ({
+const WaveformBar: React.FC<{ isRecording: boolean; index: number; isDark: boolean }> = React.memo(({
   isRecording,
   index,
+  isDark,
 }) => {
   const height = useSharedValue(12);
-  const isDark = useIsDark();
 
   useEffect(() => {
     if (isRecording) {
@@ -58,18 +58,19 @@ const WaveformBar: React.FC<{ isRecording: boolean; index: number }> = ({
       ]}
     />
   );
-};
+});
 
 export const WaveformView: React.FC<WaveformViewProps> = ({
   isRecording,
   barCount = 14,
 }) => {
+  const isDark = useIsDark();
   const bars = Array.from({ length: barCount }, (_, i) => i);
 
   return (
     <View style={styles.container}>
       {bars.map((i) => (
-        <WaveformBar key={i} isRecording={isRecording} index={i} />
+        <WaveformBar key={i} isRecording={isRecording} index={i} isDark={isDark} />
       ))}
     </View>
   );

@@ -1,3 +1,9 @@
+import {
+  capabilitiesFromOpenRouterMetadata,
+  type OpenRouterModelMetadata,
+} from './inference/capabilities';
+import type { ModelCapabilities, ModelCompatibilityClass } from './inference/types';
+
 export type AIModelAvailability = 'available' | 'unavailable';
 
 export interface AIModel {
@@ -7,16 +13,11 @@ export interface AIModel {
   description: string;
   contextLength?: number;
   availability: AIModelAvailability;
+  capabilities: ModelCapabilities;
+  compatibility: ModelCompatibilityClass;
 }
 
-export interface OpenRouterModelPayload {
-  id?: string;
-  name?: string;
-  description?: string;
-  context_length?: number;
-  expiration_date?: string | null;
-  architecture?: { input_modalities?: string[]; output_modalities?: string[] };
-}
+export type OpenRouterModelPayload = OpenRouterModelMetadata;
 
 export interface OpenRouterModelsResponse {
   data?: OpenRouterModelPayload[];
@@ -50,19 +51,32 @@ function isExpired(expirationDate?: string | null): boolean {
 
 export function normalizeOpenRouterModels(payload: OpenRouterModelsResponse): AIModel[] {
   return (payload.data ?? [])
-    .filter((model): model is OpenRouterModelPayload & { id: string } => Boolean(model.id && supportsTextChat(model)))
+    .filter((model): model is OpenRouterModelPayload & { id: string } =>
+      Boolean(model.id && supportsTextChat(model))
+    )
     .map((model) => {
       const providerId = model.id.split('/')[0] || 'OpenRouter';
+      const capabilities = capabilitiesFromOpenRouterMetadata(model);
       return {
         id: model.id,
         name: model.name?.trim() || model.id,
         provider: formatProviderName(providerId),
         description: model.description?.trim() || 'OpenAI-compatible text model',
-        contextLength: model.context_length,
-        availability: (isExpired(model.expiration_date) ? 'unavailable' : 'available') as AIModelAvailability,
+        contextLength: model.context_length ?? capabilities.contextLength,
+        availability: (isExpired(model.expiration_date)
+          ? 'unavailable'
+          : 'available') as AIModelAvailability,
+        capabilities,
+        compatibility: capabilities.compatibility,
       };
     })
-    .sort((left, right) => left.availability === right.availability ? left.name.localeCompare(right.name) : left.availability === 'available' ? -1 : 1);
+    .sort((left, right) =>
+      left.availability === right.availability
+        ? left.name.localeCompare(right.name)
+        : left.availability === 'available'
+          ? -1
+          : 1
+    );
 }
 
 export function maskApiKey(apiKey?: string): string {

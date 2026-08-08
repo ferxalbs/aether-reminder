@@ -108,22 +108,52 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   toggleTask: async (id) => {
-    const { tasks } = repos();
-    const current = await tasks.getById(id);
-    if (!current) return;
-    if (current.completed) {
-      await tasks.reopen(id);
-    } else {
-      await tasks.complete(id);
+    const previousTasks = get().todayTasks;
+    const target = previousTasks.find((t) => t.id === id);
+    if (!target) return;
+
+    const nextCompleted = !target.completed;
+    // Optimistic UI update - zero delay
+    set((s) => ({
+      todayTasks: s.todayTasks.map((t) =>
+        t.id === id ? { ...t, completed: nextCompleted } : t
+      ),
+      revision: s.revision + 1,
+    }));
+
+    try {
+      const { tasks } = repos();
+      if (nextCompleted) {
+        await tasks.complete(id);
+      } else {
+        await tasks.reopen(id);
+      }
+    } catch (error) {
+      // Rollback on failure
+      set({
+        todayTasks: previousTasks,
+        error: getDatabaseErrorMessage(error),
+      });
     }
-    set((s) => ({ revision: s.revision + 1 }));
-    await get().refreshToday();
   },
 
   softDeleteTask: async (id) => {
-    await repos().tasks.softDelete(id);
-    set((s) => ({ revision: s.revision + 1 }));
-    await get().refreshToday();
+    const previousTasks = get().todayTasks;
+    // Optimistic UI removal - zero delay
+    set((s) => ({
+      todayTasks: s.todayTasks.filter((t) => t.id !== id),
+      revision: s.revision + 1,
+    }));
+
+    try {
+      await repos().tasks.softDelete(id);
+    } catch (error) {
+      // Rollback on failure
+      set({
+        todayTasks: previousTasks,
+        error: getDatabaseErrorMessage(error),
+      });
+    }
   },
 
   loadActiveForAnalysis: async (limit = 80) => {

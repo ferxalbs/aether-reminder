@@ -30,7 +30,6 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   ...rest
 }) => {
   const scale = useSharedValue(1);
-  const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -38,11 +37,13 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
 
   const handlePressIn = (e: any) => {
     if (disabled) return;
+    // Critically damped Apple UI spring (instant response, zero sluggish bounce)
     scale.value = withSpring(scaleTo, {
-      damping: 18,
-      stiffness: 300,
+      damping: 24,
+      stiffness: 350,
       mass: 0.5,
     });
+    const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled && hapticStyle) {
       Haptics.impactAsync(hapticStyle).catch(() => {});
     }
@@ -52,8 +53,8 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   const handlePressOut = (e: any) => {
     if (disabled) return;
     scale.value = withSpring(1, {
-      damping: 18,
-      stiffness: 300,
+      damping: 24,
+      stiffness: 350,
       mass: 0.5,
     });
     onPressOut?.(e);

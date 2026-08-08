@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Plus, Sparkles, CheckCircle2 } from 'lucide-react-native';
@@ -35,6 +36,32 @@ export default function HomeScreen() {
   const completedCount = todayTasks.filter((t) => t.completed).length;
   const totalCount = todayTasks.length;
   const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
+
+  const animatedProgress = useSharedValue(progressRatio);
+  useEffect(() => {
+    animatedProgress.value = withSpring(progressRatio, {
+      damping: 24,
+      stiffness: 300,
+    });
+  }, [progressRatio, animatedProgress]);
+
+  const animatedProgressStyle = useAnimatedStyle(() => ({
+    width: `${Math.min(100, Math.max(0, animatedProgress.value * 100))}%`,
+  }));
+
+  const handleToggle = useCallback(
+    (id: string) => {
+      void toggleTask(id);
+    },
+    [toggleTask]
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      void softDeleteTask(id);
+    },
+    [softDeleteTask]
+  );
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -109,13 +136,13 @@ export default function HomeScreen() {
               { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 },
             ]}
           >
-            <View
+            <Animated.View
               style={[
                 styles.progressFill,
                 {
-                  width: `${Math.round(progressRatio * 100)}%`,
                   backgroundColor: isDark ? Colors.white : Colors.black,
                 },
+                animatedProgressStyle,
               ]}
             />
           </View>
@@ -143,12 +170,8 @@ export default function HomeScreen() {
             <TaskCard
               key={task.id}
               task={task}
-              onToggle={(id) => {
-                void toggleTask(id);
-              }}
-              onDelete={(id) => {
-                void softDeleteTask(id);
-              }}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
             />
           ))
         ) : status !== 'loading' ? (

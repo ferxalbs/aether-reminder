@@ -43,6 +43,14 @@ export class RemindersRepository {
     return rows.map(mapReminderRow);
   }
 
+  async listAll(limit = 200): Promise<Reminder[]> {
+    const rows = await this.db.getAllAsync<ReminderRow>(
+      `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC LIMIT ?`,
+      [limit]
+    );
+    return rows.map(mapReminderRow);
+  }
+
   async create(input: CreateReminderInput): Promise<Reminder> {
     if (!input.taskId) {
       throw new DatabaseError('VALIDATION_FAILED', 'Reminder requires taskId.');
@@ -78,6 +86,37 @@ export class RemindersRepository {
     );
     const reminder = await this.getById(id);
     if (!reminder) throw new DatabaseError('NOT_FOUND', 'Reminder not found.');
+    return reminder;
+  }
+
+  async updateSchedule(
+    id: string,
+    input: {
+      scheduledDate?: string | null;
+      scheduledTime?: string | null;
+      timezone?: string | null;
+      semantics?: TemporalSemantics;
+    }
+  ): Promise<Reminder> {
+    const existing = await this.getById(id);
+    if (!existing) throw new DatabaseError('NOT_FOUND', 'Reminder not found.');
+
+    const now = new Date().toISOString();
+    await this.db.runAsync(
+      `UPDATE reminders SET
+        scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        input.scheduledDate !== undefined ? input.scheduledDate : existing.scheduledDate,
+        input.scheduledTime !== undefined ? input.scheduledTime : existing.scheduledTime,
+        input.timezone !== undefined ? input.timezone : existing.timezone,
+        input.semantics ?? existing.semantics,
+        now,
+        id,
+      ]
+    );
+    const reminder = await this.getById(id);
+    if (!reminder) throw new DatabaseError('QUERY_FAILED', 'Reminder update verification failed.');
     return reminder;
   }
 }

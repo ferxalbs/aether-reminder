@@ -104,7 +104,7 @@ export default function AIScreen() {
     return () => {
       isMounted = false;
     };
-  }, [apiKeyLoaded, selectedModel, openRouterApiKey, loadActiveForAnalysis, revision]);
+  }, [apiKeyLoaded, selectedModel, openRouterApiKey]);
 
   return (
     <SafeAreaView
