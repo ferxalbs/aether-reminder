@@ -21,6 +21,7 @@ interface AppBottomNavigationProps {
   blurTarget?: RefObject<View | null>;
   onOrbPress: () => void;
   onOrbPressIn?: () => void;
+  onOrbLongPress?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
@@ -49,6 +50,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   blurTarget,
   onOrbPress,
   onOrbPressIn,
+  onOrbLongPress,
   onOrbPressOut,
   onOrbPressMove,
 }) => {
@@ -86,6 +88,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
               orbState={orbState}
               assistantExpanded={assistantExpanded}
               onOrbPressIn={onOrbPressIn}
+              onOrbLongPress={onOrbLongPress}
               onOrbPressOut={onOrbPressOut}
               onOrbPressMove={onOrbPressMove}
               audioLevel={audioLevel}
@@ -105,6 +108,7 @@ function NavigationButton({
   orbState,
   assistantExpanded,
   onOrbPressIn,
+  onOrbLongPress,
   onOrbPressOut,
   onOrbPressMove,
   audioLevel,
@@ -116,6 +120,7 @@ function NavigationButton({
   orbState: AssistantOrbState;
   assistantExpanded: boolean;
   onOrbPressIn?: () => void;
+  onOrbLongPress?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
   audioLevel?: SharedValue<number>;
@@ -151,6 +156,7 @@ function NavigationButton({
             size="dock"
             onPress={onPress}
             onPressIn={onOrbPressIn}
+            onLongPress={onOrbLongPress}
             onPressOut={onOrbPressOut}
             onPressMove={onOrbPressMove}
             audioLevel={audioLevel}

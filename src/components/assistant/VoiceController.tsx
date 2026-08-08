@@ -43,6 +43,7 @@ interface VoiceControllerResult {
   transcript: string;
   audioLevel: SharedValue<number>;
   begin: () => void;
+  beginLocked: () => void;
   release: () => void;
   lock: () => void;
   stopAndSend: () => void;
@@ -74,6 +75,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const audioBytesRef = useRef(0);
   const finishingRef = useRef(false);
   const releaseRequestedRef = useRef(false);
+  const lockRequestedRef = useRef(false);
   const finalSubmittedRef = useRef(false);
   const lastAudioLevelAtRef = useRef(0);
   const mountedRef = useRef(true);
@@ -102,6 +104,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     activeRef.current = false;
     finishingRef.current = false;
     releaseRequestedRef.current = false;
+    lockRequestedRef.current = false;
     streamRef.current?.stop();
     streamRef.current = null;
     const session = sessionRef.current;
@@ -271,11 +274,12 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     haptic('start');
   }, []);
 
-  const begin = useCallback(() => {
+  const beginSession = useCallback((startLocked: boolean) => {
     if (activeRef.current || !['idle', 'error'].includes(stateRef.current)) return;
     activeRef.current = true;
     finishingRef.current = false;
     releaseRequestedRef.current = false;
+    lockRequestedRef.current = startLocked;
     finalSubmittedRef.current = false;
     audioBytesRef.current = 0;
     setError(null);
@@ -304,12 +308,16 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
         await audioStream.stream.start();
         if (abortController.signal.aborted || !activeRef.current) return;
         setVoiceState('listening');
+        if (lockRequestedRef.current) setLocked(true);
         haptic('start');
       } catch (caught) {
         if (activeRef.current) fail(caught);
       }
     })();
   }, [audioStream.stream, fail, handleRealtimeEvent, openAiApiKey, openAiKeyLoaded, setRealtimeSnapshot, setVoiceState]);
+
+  const begin = useCallback(() => beginSession(false), [beginSession]);
+  const beginLocked = useCallback(() => beginSession(true), [beginSession]);
 
   useEffect(() => {
     const onAppStateChange = (next: AppStateStatus) => {
@@ -334,6 +342,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     transcript: snapshot.finalText || snapshot.partialText,
     audioLevel,
     begin,
+    beginLocked,
     release,
     lock,
     stopAndSend,

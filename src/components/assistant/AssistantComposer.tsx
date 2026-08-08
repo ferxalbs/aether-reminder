@@ -23,6 +23,7 @@ interface AssistantComposerProps {
   assistantExpanded: boolean;
   onOrbPress: () => void;
   onOrbPressIn?: () => void;
+  onOrbLongPress?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
   audioLevel?: SharedValue<number>;
@@ -38,6 +39,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   assistantExpanded,
   onOrbPress,
   onOrbPressIn,
+  onOrbLongPress,
   onOrbPressOut,
   onOrbPressMove,
   audioLevel,
@@ -72,6 +74,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         size="composer"
         onPress={onOrbPress}
         onPressIn={onOrbPressIn}
+        onLongPress={onOrbLongPress}
         onPressOut={onOrbPressOut}
         onPressMove={onOrbPressMove}
         audioLevel={audioLevel}

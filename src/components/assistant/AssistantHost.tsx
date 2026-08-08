@@ -61,8 +61,6 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdStartedRef = useRef(false);
   const suppressNextTapRef = useRef(false);
   const orbStartYRef = useRef<number | null>(null);
   const refreshToday = useTasksUiStore((state) => state.refreshToday);
@@ -140,24 +138,17 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
 
   const onOrbPressIn = useCallback(() => {
     orbStartYRef.current = null;
-    holdStartedRef.current = false;
-    holdTimerRef.current = setTimeout(() => {
-      holdStartedRef.current = true;
-      suppressNextTapRef.current = true;
-      Keyboard.dismiss();
-      if (surface === 'closed' || surface === 'closing') {
-        setSurface('compact');
-      }
-      voice.begin();
-    }, 180);
-  }, [surface, voice]);
+  }, []);
+
+  const onOrbLongPress = useCallback(() => {
+    suppressNextTapRef.current = true;
+    if (voice.state !== 'idle') void voice.cancel();
+    setSurface('compact');
+  }, [voice]);
 
   const onOrbPressOut = useCallback(() => {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = null;
-    if (holdStartedRef.current) voice.release();
     orbStartYRef.current = null;
-  }, [voice]);
+  }, []);
 
   const onOrbPressMove = useCallback((event: { nativeEvent: { pageY: number } }) => {
     orbStartYRef.current ??= event.nativeEvent.pageY;
@@ -167,22 +158,20 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const openAssistant = useCallback(() => {
     if (suppressNextTapRef.current) {
       suppressNextTapRef.current = false;
-      holdStartedRef.current = false;
+      return;
+    }
+    if (voice.state !== 'idle' && voice.state !== 'error') {
+      voice.stopAndSend();
       return;
     }
     if (useSettingsStore.getState().hapticsEnabled) {
       impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-    if (surface === 'closed' || surface === 'closing') {
-      setSurface('opening');
-      transitionTimerRef.current = setTimeout(() => setSurface('compact'), reduceMotion ? 80 : 220);
-    } else {
-      if (voice.state !== 'idle') void voice.cancel();
-      setSurface('closed');
-    }
-    if (surface !== 'closed' && surface !== 'closing') Keyboard.dismiss();
-  }, [reduceMotion, surface, voice]);
+    Keyboard.dismiss();
+    setSurface('compact');
+    voice.beginLocked();
+  }, [voice]);
 
   const closeAssistant = useCallback(() => {
     if (voice.state !== 'idle') void voice.cancel();
@@ -249,6 +238,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         assistantExpanded={surface !== 'closed' && surface !== 'closing'}
         onOrbPress={openAssistant}
         onOrbPressIn={onOrbPressIn}
+        onOrbLongPress={onOrbLongPress}
         onOrbPressOut={onOrbPressOut}
         onOrbPressMove={onOrbPressMove}
       />
@@ -260,6 +250,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         blurTarget={blurTarget}
         onOrbPress={openAssistant}
         onOrbPressIn={onOrbPressIn}
+        onOrbLongPress={onOrbLongPress}
         onOrbPressOut={onOrbPressOut}
         onOrbPressMove={onOrbPressMove}
       />

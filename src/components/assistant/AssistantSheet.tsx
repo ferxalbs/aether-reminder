@@ -58,6 +58,7 @@ interface AssistantSheetProps {
   assistantExpanded: boolean;
   onOrbPress: () => void;
   onOrbPressIn?: () => void;
+  onOrbLongPress?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
@@ -101,6 +102,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   assistantExpanded,
   onOrbPress,
   onOrbPressIn,
+  onOrbLongPress,
   onOrbPressOut,
   onOrbPressMove,
 }) => {
@@ -255,6 +257,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               assistantExpanded={assistantExpanded}
               onOrbPress={onOrbPress}
               onOrbPressIn={onOrbPressIn}
+              onOrbLongPress={onOrbLongPress}
               onOrbPressOut={onOrbPressOut}
               onOrbPressMove={onOrbPressMove}
               audioLevel={voiceAudioLevel}

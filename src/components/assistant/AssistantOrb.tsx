@@ -19,6 +19,7 @@ interface AssistantOrbProps {
   size?: 'dock' | 'composer';
   onPress: () => void;
   onPressIn?: () => void;
+  onLongPress?: () => void;
   onPressOut?: () => void;
   onPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
   audioLevel?: SharedValue<number>;
@@ -54,6 +55,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   size = 'dock',
   onPress,
   onPressIn,
+  onLongPress,
   onPressOut,
   onPressMove,
   audioLevel,
@@ -117,6 +119,8 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       hapticStyle={null}
       onPress={onPress}
       onPressIn={onPressIn}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       onPressOut={onPressOut}
       onPressMove={onPressMove}
       scaleTo={0.9}
