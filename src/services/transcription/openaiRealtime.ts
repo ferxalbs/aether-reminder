@@ -1,12 +1,15 @@
 import { AIProviderError, getAIErrorMessage } from '@/services/ai/providers';
 import { TranscriptionError, type TranscriptionErrorCode } from './errors';
 import { pcm16ArrayBufferToBase64 } from './audio';
+import { createTimeoutSignal, retryWithBackoff } from '@/lib/retry';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export const OPENAI_REALTIME_TRANSCRIPTION_MODEL = 'gpt-realtime-whisper';
 export const OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE = 24000;
 export const OPENAI_REALTIME_TRANSCRIPTION_CHANNELS = 1;
 const OPENAI_API_BASE_URL = 'https://api.openai.com/v1';
 const OPENAI_REALTIME_URL = `${OPENAI_API_BASE_URL}/realtime?model=${encodeURIComponent(OPENAI_REALTIME_TRANSCRIPTION_MODEL)}`;
+const OPENAI_CONNECTION_TEST_TIMEOUT_MS = 15_000;
 
 type SocketMessage = { data: unknown };
 
@@ -85,6 +88,8 @@ function openAiRequestError(status: number): AIProviderError {
     ? 'INVALID_API_KEY'
     : status === 429
       ? 'RATE_LIMITED'
+      : status === 408 || status === 504
+        ? 'TIMEOUT'
       : status >= 500
         ? 'PROVIDER_UNAVAILABLE'
         : 'INVALID_REQUEST';
@@ -128,7 +133,7 @@ export function createOpenAIRealtimeTranscriptionSession(
     commitRequested = false;
     if (sessionTimer) clearTimeout(sessionTimer);
     sessionTimer = null;
-    finalTimer = setTimeout(() => fail(new TranscriptionError('SESSION_FAILED', 'Final transcript timed out.')), options.finalTranscriptTimeoutMs ?? 15000);
+    finalTimer = setTimeout(() => fail(new TranscriptionError('TIMEOUT', 'Final transcript timed out.')), options.finalTranscriptTimeoutMs ?? 15000);
     send({ type: 'input_audio_buffer.commit' });
   };
   const flushPackets = () => {
@@ -234,7 +239,7 @@ export function createOpenAIRealtimeTranscriptionSession(
           if (eventType === 'session.updated') {
             if (connectionTimer) clearTimeout(connectionTimer);
             connectionTimer = null;
-            sessionTimer = setTimeout(() => fail(new TranscriptionError('SESSION_FAILED', 'Realtime transcription session timed out.')), options.sessionTimeoutMs ?? 120000);
+            sessionTimer = setTimeout(() => fail(new TranscriptionError('TIMEOUT', 'Realtime transcription session timed out.')), options.sessionTimeoutMs ?? 120000);
             resolveConnect?.();
             resolveConnect = null;
             rejectConnect = null;
@@ -269,7 +274,7 @@ export function createOpenAIRealtimeTranscriptionSession(
         };
         rejectConnect = reject;
         attachSocket();
-        connectionTimer = setTimeout(() => fail(new TranscriptionError('NETWORK_ERROR', 'Realtime transcription connection timed out.')), options.connectionTimeoutMs ?? 10000);
+        connectionTimer = setTimeout(() => fail(new TranscriptionError('TIMEOUT', 'Realtime transcription connection timed out.')), options.connectionTimeoutMs ?? 10000);
       });
       return connectPromise;
     },
@@ -357,15 +362,36 @@ export function createOpenAIRealtimeTranscriptionSession(
 /** Validate an OpenAI key against the current realtime transcription model only. */
 export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ provider: 'OpenAI'; connected: true }> {
   const key = requireOpenAiKey(apiKey);
-  let response: Response;
-  try {
-    response = await fetch(`${OPENAI_API_BASE_URL}/models/${encodeURIComponent(OPENAI_REALTIME_TRANSCRIPTION_MODEL)}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${key}` },
-    });
-  } catch {
-    throw new AIProviderError('NETWORK_ERROR', 'Could not reach OpenAI.', { provider: 'OpenAI' });
-  }
-  if (!response.ok) throw openAiRequestError(response.status);
+  await retryWithBackoff(
+    async () => {
+      const timeout = createTimeoutSignal(undefined, OPENAI_CONNECTION_TEST_TIMEOUT_MS);
+      try {
+        let response: Response;
+        try {
+          response = await fetch(`${OPENAI_API_BASE_URL}/models/${encodeURIComponent(OPENAI_REALTIME_TRANSCRIPTION_MODEL)}`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${key}` },
+            signal: timeout.signal,
+          });
+        } catch {
+          throw new AIProviderError(
+            timeout.didTimeout() ? 'TIMEOUT' : 'NETWORK_ERROR',
+            timeout.didTimeout() ? 'OpenAI connection test timed out.' : 'Could not reach OpenAI.',
+            { provider: 'OpenAI' }
+          );
+        }
+        if (!response.ok) throw openAiRequestError(response.status);
+      } finally {
+        timeout.cleanup();
+      }
+    },
+    {
+      shouldRetry: (error) => error instanceof AIProviderError
+        && ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE'].includes(error.code),
+      onRetry: (nextAttempt, delayMs, error) => {
+        reportNonFatalError('openai-connection-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof AIProviderError ? error.code : 'unknown'}`));
+      },
+    }
+  );
   return { provider: 'OpenAI', connected: true };
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
+import { FlatList, Platform, StyleSheet, View, StatusBar } from 'react-native';
+import type { ListRenderItemInfo } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -11,10 +12,14 @@ import { TaskCard } from '@/components/ui/TaskCard';
 import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { AddTaskModal } from '@/components/ui/AddTaskModal';
+import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import type { TaskListItem } from '@/domain/entities';
+import { canUndoTaskReceipt } from '@/stores/taskUndo';
 
 export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -26,6 +31,11 @@ export default function HomeScreen() {
   const refreshToday = useTasksUiStore((s) => s.refreshToday);
   const toggleTask = useTasksUiStore((s) => s.toggleTask);
   const softDeleteTask = useTasksUiStore((s) => s.softDeleteTask);
+  const undoReceipt = useTasksUiStore((s) => s.undoReceipt);
+  const undoError = useTasksUiStore((s) => s.undoError);
+  const undoing = useTasksUiStore((s) => s.undoing);
+  const undoLastMutation = useTasksUiStore((s) => s.undoLastMutation);
+  const dismissUndo = useTasksUiStore((s) => s.dismissUndo);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,16 +74,31 @@ export default function HomeScreen() {
 
   const handleToggle = useCallback(
     (id: string) => {
-      void toggleTask(id);
+      void toggleTask(id).catch((error: unknown) => {
+        reportNonFatalError('home-task-toggle', error);
+      });
     },
     [toggleTask]
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      void softDeleteTask(id);
+      void softDeleteTask(id).catch((error: unknown) => {
+        reportNonFatalError('home-task-delete', error);
+      });
     },
     [softDeleteTask]
+  );
+
+  const renderTask = useCallback(
+    ({ item }: ListRenderItemInfo<TaskListItem>) => (
+      <TaskCard
+        task={item}
+        onToggle={handleToggle}
+        onDelete={handleDelete}
+      />
+    ),
+    [handleDelete, handleToggle]
   );
 
   const getGreeting = () => {
@@ -97,10 +122,27 @@ export default function HomeScreen() {
       ]}
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView
+      {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
+        <TaskUndoBanner
+          receipt={undoReceipt}
+          error={undoError}
+          undoing={undoing}
+          onUndo={() => void undoLastMutation()}
+          onDismiss={dismissUndo}
+        />
+      ) : null}
+      <FlatList
+        data={todayTasks}
+        keyExtractor={(task) => task.id}
+        renderItem={renderTask}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      >
+        ListHeaderComponent={
+          <>
         {/* Header Bar */}
         <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
           <View>
@@ -181,19 +223,10 @@ export default function HomeScreen() {
           </Typography>
         ) : null}
 
-        {/* Task List */}
-        {todayTasks.length > 0 ? (
-          <Animated.View entering={FadeInDown.duration(600).delay(300).springify()} style={styles.tasksContainer}>
-            {todayTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-              />
-            ))}
-          </Animated.View>
-        ) : status !== 'loading' ? (
+          </>
+        }
+
+        ListEmptyComponent={status !== 'loading' ? (
           <Animated.View entering={FadeIn.duration(800).delay(400)} style={styles.emptyStateContainer}>
             <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? Colors.zinc900 : Colors.white, borderColor: isDark ? Colors.zinc800 : Colors.zinc200, borderWidth: 1 }]}>
               <Sparkles size={36} color={isDark ? Colors.zinc500 : Colors.zinc400} strokeWidth={1.5} />
@@ -215,7 +248,7 @@ export default function HomeScreen() {
             </AnimatedPressable>
           </Animated.View>
         ) : null}
-      </ScrollView>
+      />
 
       {/* Add Task Modal */}
       <AddTaskModal
@@ -301,9 +334,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: Radius.pill,
-  },
-  tasksContainer: {
-    gap: Spacing.sm,
   },
   emptyStateContainer: {
     paddingVertical: Spacing.huge * 1.5,

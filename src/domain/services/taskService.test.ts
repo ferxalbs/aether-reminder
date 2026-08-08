@@ -3,6 +3,7 @@ import { createBunSqliteDatabase } from '@/db/bunSqliteAdapter';
 import { applyPragmas, runMigrations } from '@/db/migrator';
 import { createDomainServices } from './index';
 import { resolveTomorrow } from '@/temporal/resolve';
+import { getLocalDateString } from '@/temporal/localCalendar';
 
 async function ready() {
   const db = createBunSqliteDatabase();
@@ -28,8 +29,14 @@ describe('TaskService', () => {
     const open = await services.tasks.reopenTask(value.id);
     expect(open.value.completed).toBe(false);
 
-    await services.tasks.deleteTask(value.id);
+    const deleted = await services.tasks.deleteTask(value.id);
+    expect(deleted.receipt.undo?.kind).toBe('task.restore_soft_deleted');
     expect(await services.tasks.getTask(value.id)).toBeNull();
+
+    const restored = await services.tasks.restoreTask(value.id);
+    expect(restored.value.deletedAt).toBeNull();
+    expect(restored.receipt.undo?.kind).toBe('task.soft_delete');
+    expect(await services.tasks.getTask(value.id)).not.toBeNull();
     await db.closeAsync?.();
   });
 
@@ -45,6 +52,30 @@ describe('TaskService', () => {
         dueDate: '2026-08-07T00:00:00.000Z',
       })
     ).rejects.toThrow();
+    await db.closeAsync?.();
+  });
+
+  test('upcoming list propagates its limit to SQLite', async () => {
+    const { db, services } = await ready();
+    const today = getLocalDateString();
+    const tomorrow = resolveTomorrow().date;
+    await services.tasks.createTask({ title: 'Upcoming one', dueDate: tomorrow });
+    await services.tasks.createTask({ title: 'Upcoming two', dueDate: tomorrow });
+    await services.tasks.createTask({ title: 'Upcoming three', dueDate: tomorrow });
+
+    const upcoming = await services.tasks.listTasks({
+      scope: 'upcoming',
+      localDate: tomorrow,
+      limit: 2,
+    });
+    expect(upcoming).toHaveLength(0);
+
+    const fromToday = await services.tasks.listTasks({
+      scope: 'upcoming',
+      localDate: today,
+      limit: 2,
+    });
+    expect(fromToday).toHaveLength(2);
     await db.closeAsync?.();
   });
 });

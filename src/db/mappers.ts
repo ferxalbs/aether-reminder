@@ -8,6 +8,7 @@ import type {
   TaskSource,
   TemporalSemantics,
 } from '@/domain/entities';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export interface TaskRow {
   id: string;
@@ -116,7 +117,8 @@ export function mapTaskEventRow(row: TaskEventRow): TaskEvent {
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         payload = parsed as Record<string, unknown>;
       }
-    } catch {
+    } catch (error) {
+      reportNonFatalError('task-event-payload', error);
       payload = null;
     }
   }

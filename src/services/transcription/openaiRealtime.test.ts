@@ -113,6 +113,22 @@ describe('OpenAI realtime transcription transport', () => {
     expect(authorization).toBe('Bearer openai-key');
   });
 
+  test('retries transient OpenAI connection-test failures', async () => {
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('offline');
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+    try {
+      await expect(testOpenAIRealtimeConnection('openai-key')).resolves.toEqual({ provider: 'OpenAI', connected: true });
+      expect(calls).toBe(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('aggregates capture chunks into truthful 100 ms transport packets', async () => {
     const socket = new FakeSocket();
     const session = createOpenAIRealtimeTranscriptionSession('openai-key', {

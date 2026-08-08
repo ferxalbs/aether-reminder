@@ -218,6 +218,21 @@ export class TaskService {
     };
   }
 
+  async restoreTask(id: string, eventSource = 'undo'): Promise<MutationResult<Task>> {
+    const task = await this.tasks.restoreSoftDeleted(id, eventSource);
+    return {
+      value: task,
+      receipt: createReceipt({
+        risk: 'REVERSIBLE_WRITE',
+        action: 'tasks.restore',
+        entityType: 'task',
+        entityId: id,
+        summary: `Restored task “${task.title}”`,
+        undo: { kind: 'task.soft_delete', payload: { taskId: id } },
+      }),
+    };
+  }
+
   async getTask(id: string, options?: { includeDeleted?: boolean }): Promise<Task | null> {
     return this.tasks.getById(id, options);
   }
@@ -230,7 +245,7 @@ export class TaskService {
       case 'overdue':
         return this.tasks.listOverdue(options.localDate);
       case 'upcoming':
-        return this.tasks.listUpcoming(options.localDate);
+        return this.tasks.listUpcoming(options.localDate, options.limit ?? 100);
       case 'all_active':
       case 'active':
         if (options.projectId) return this.tasks.listByProject(options.projectId);

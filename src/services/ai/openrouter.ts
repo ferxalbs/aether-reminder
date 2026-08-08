@@ -1,9 +1,12 @@
 import { AIConnectionTestResult, AIProviderError, getAIErrorMessage, requireUserApiKey } from './providers';
 import { AIModel, normalizeOpenRouterModels, OpenRouterModelsResponse } from './models';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import { createTimeoutSignal, retryWithBackoff } from '@/lib/retry';
 
 const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 const OPENROUTER_MODELS_URL = `${OPENROUTER_API_BASE_URL}/models`;
 const OPENROUTER_KEY_URL = `${OPENROUTER_API_BASE_URL}/key`;
+const OPENROUTER_REQUEST_TIMEOUT_MS = 15_000;
 
 type OpenRouterErrorPayload = {
   error?: { code?: number | string; message?: string; metadata?: { error_type?: string } };
@@ -21,6 +24,7 @@ function getErrorCode(status: number, errorType?: string): AIProviderError['code
   if (status === 401 || errorType === 'authentication') return 'INVALID_API_KEY';
   if (status === 402) return 'INSUFFICIENT_CREDITS';
   if (status === 429 || errorType === 'rate_limit_exceeded') return 'RATE_LIMITED';
+  if (status === 408 || status === 504) return 'TIMEOUT';
   if (status === 400 || status === 404 || errorType === 'invalid_request' || errorType === 'not_found') return 'INVALID_REQUEST';
   if (status === 502 || status === 503 || errorType === 'provider_unavailable' || errorType === 'provider_overloaded') return 'PROVIDER_UNAVAILABLE';
   return 'UNKNOWN';
@@ -36,7 +40,12 @@ function createOpenRouterError(response: Response, payload?: OpenRouterErrorPayl
 }
 
 async function readJson(response: Response): Promise<unknown> {
-  return response.json().catch(() => undefined);
+  try {
+    return await response.json();
+  } catch (error) {
+    reportNonFatalError('openrouter-json-response', error);
+    return undefined;
+  }
 }
 
 async function openRouterRequest<T>(url: string, init: RequestInit, apiKey?: string, requiresApiKey = false): Promise<T> {
@@ -45,16 +54,46 @@ async function openRouterRequest<T>(url: string, init: RequestInit, apiKey?: str
   headers.set('Content-Type', 'application/json');
   if (normalizedKey) headers.set('Authorization', `Bearer ${normalizedKey}`);
 
-  let response: Response;
+  const callerSignal = init.signal ?? undefined;
   try {
-    response = await fetch(url, { ...init, headers });
-  } catch {
-    throw new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.');
-  }
+    return await retryWithBackoff(
+      async () => {
+        const timeout = createTimeoutSignal(callerSignal, OPENROUTER_REQUEST_TIMEOUT_MS);
+        try {
+          let response: Response;
+          try {
+            response = await fetch(url, { ...init, headers, signal: timeout.signal });
+          } catch (error) {
+            if (callerSignal?.aborted) throw error;
+            if (timeout.didTimeout()) {
+              throw new AIProviderError('TIMEOUT', 'OpenRouter request timed out.');
+            }
+            throw new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.');
+          }
 
-  const payload = (await readJson(response)) as OpenRouterErrorPayload | T | undefined;
-  if (!response.ok) throw createOpenRouterError(response, payload as OpenRouterErrorPayload | undefined);
-  return payload as T;
+          const payload = (await readJson(response)) as OpenRouterErrorPayload | T | undefined;
+          if (!response.ok) throw createOpenRouterError(response, payload as OpenRouterErrorPayload | undefined);
+          return payload as T;
+        } finally {
+          timeout.cleanup();
+        }
+      },
+      {
+        signal: callerSignal ?? undefined,
+        shouldRetry: (error) => error instanceof AIProviderError
+          && ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE'].includes(error.code),
+        getRetryAfterMs: (error) => error instanceof AIProviderError && error.retryAfterSeconds
+          ? error.retryAfterSeconds * 1000
+          : undefined,
+        onRetry: (nextAttempt, delayMs, error) => {
+          reportNonFatalError('openrouter-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof AIProviderError ? error.code : 'unknown'}`));
+        },
+      }
+    );
+  } catch (error) {
+    reportNonFatalError('openrouter-request', error);
+    throw error;
+  }
 }
 
 /** Model metadata is public; inference always validates a user key above. */

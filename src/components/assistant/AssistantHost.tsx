@@ -6,6 +6,7 @@ import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import type { ContextSnapshot } from '@/services/agent';
+import { TranscriptionError } from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
 import { useAgentSessionController } from './AgentSessionController';
 import { AppBottomNavigation } from './AppBottomNavigation';
@@ -13,6 +14,7 @@ import { AssistantSheet } from './AssistantSheet';
 import type { AssistantOrbState, AssistantSurfaceState } from './assistantTypes';
 import { useVoiceController } from './VoiceController';
 import { impactAsync, notificationAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 interface AssistantHostProps {
   blurTarget?: RefObject<View | null>;
@@ -65,9 +67,14 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const orbStartYRef = useRef<number | null>(null);
   const refreshToday = useTasksUiStore((state) => state.refreshToday);
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
+  const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
 
   useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then(setReduceMotion)
+      .catch((error: unknown) => {
+        reportNonFatalError('assistant-reduce-motion', error);
+      });
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => subscription.remove();
   }, []);
@@ -109,18 +116,25 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const onMutation = useCallback(
     (toolId: string) => {
       if (!['tasks.create', 'tasks.update', 'tasks.complete', 'tasks.reopen', 'tasks.delete'].includes(toolId)) return;
-      void refreshToday();
-      void refreshUpcoming();
+      void refreshToday().catch((error: unknown) => {
+        reportNonFatalError('assistant-refresh-today', error);
+      });
+      void refreshUpcoming().catch((error: unknown) => {
+        reportNonFatalError('assistant-refresh-upcoming', error);
+      });
     },
     [refreshToday, refreshUpcoming]
   );
 
   const onReceipt = useCallback((receipt: ActionReceipt) => {
+    setUndoReceipt(receipt);
     // Keep feedback tied to a real completed receipt; no animation-only success state.
     if (receipt.risk !== 'READ' && useSettingsStore.getState().hapticsEnabled) {
-      notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      notificationAsync(Haptics.NotificationFeedbackType.Success).catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
     }
-  }, []);
+  }, [setUndoReceipt]);
 
   const controller = useAgentSessionController({
     context: snapshot,
@@ -129,10 +143,13 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     onReceipt,
   });
 
-  const onVoiceTranscript = useCallback((text: string) => {
+  const onVoiceTranscript = useCallback(async (text: string) => {
     setComposerValue('');
     setSurface('medium');
-    void controller.submit(text, { invocationSource: 'voice' });
+    const accepted = await controller.submit(text, { invocationSource: 'voice' });
+    if (!accepted) {
+      throw new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.');
+    }
   }, [controller]);
   const voice = useVoiceController({ onTranscript: onVoiceTranscript });
 
@@ -166,7 +183,9 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       return;
     }
     if (useSettingsStore.getState().hapticsEnabled) {
-      impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
     }
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     Keyboard.dismiss();
@@ -187,7 +206,9 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     if (!value) return;
     setComposerValue('');
     setSurface('medium');
-    void controller.submit(value);
+    void controller.submit(value).catch((error: unknown) => {
+      reportNonFatalError('assistant-submit', error);
+    });
   }, [composerValue, controller]);
 
   const orbState: AssistantOrbState = surface === 'opening'
@@ -216,6 +237,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         receipts={controller.receipts}
         semanticState={controller.semanticState}
         error={controller.error}
+        canRetry={controller.canRetry}
         isRunning={controller.isRunning}
         pendingConfirmation={controller.pendingConfirmation}
         composerValue={composerValue}
@@ -225,14 +247,18 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         onExpand={() => setSurface((current) => (current === 'full' ? 'medium' : 'full'))}
         onConfirm={controller.confirm}
         onCancelConfirmation={controller.cancelConfirmation}
+        onRetry={controller.retry}
         reduceMotion={reduceMotion}
         voiceState={voice.state}
         voiceLocked={voice.locked}
         voiceError={voice.error}
+        voiceCanRetry={voice.canRetry}
+        voiceRetryAttempt={voice.retryAttempt}
         voiceTranscript={voice.transcript}
         voiceAudioLevel={voice.audioLevel}
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
+        onVoiceRetry={openAssistant}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
         orbState={orbState}

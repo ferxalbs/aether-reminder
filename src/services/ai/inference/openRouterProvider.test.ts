@@ -70,4 +70,41 @@ describe('OpenRouter capability validation', () => {
       __clearOpenRouterModelsCache();
     }
   });
+
+  test('turns malformed SSE JSON into a visible stream error instead of false completion', async () => {
+    const originalFetch = globalThis.fetch;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {not-json}\n\ndata: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    globalThis.fetch = (async (input) => {
+      if (String(input).endsWith('/models')) {
+        return new Response(JSON.stringify({ data: [compatibleModel] }), { status: 200 });
+      }
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    }) as typeof fetch;
+
+    try {
+      __clearOpenRouterModelsCache();
+      const events = [];
+      for await (const event of new OpenRouterProvider().stream({
+        modelId: compatibleModel.id,
+        messages: [{ role: 'user', content: 'hello' }],
+        apiKey: 'openrouter-key',
+      }, new AbortController().signal)) {
+        events.push(event);
+      }
+      expect(events).toContainEqual(expect.objectContaining({
+        type: 'stream.error',
+        error: expect.objectContaining({ code: 'INVALID_RESPONSE' }),
+      }));
+      expect(events.some((event) => event.type === 'stream.completed')).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      __clearOpenRouterModelsCache();
+    }
+  });
 });

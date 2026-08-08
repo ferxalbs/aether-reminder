@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CreateTaskInput, TaskPriority } from '@/domain/entities';
 import { isPlausibleId } from '@/lib/id';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { DatabaseError } from './errors';
 import type { SqlDatabase } from './types';
@@ -288,8 +289,9 @@ export async function migrateLegacyTasks(
     (async () => {
       try {
         await AsyncStorage.removeItem(LEGACY_TASKS_STORAGE_KEY);
-      } catch {
-        // Do not fail migration if cleanup fails — meta flag prevents re-import.
+      } catch (error) {
+        // Do not fail migration if cleanup fails; the meta flag prevents re-import.
+        reportNonFatalError('legacy-task-cleanup', error);
       }
     });
   await clear();

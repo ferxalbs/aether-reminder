@@ -19,6 +19,7 @@ import { Button } from './Button';
 import { IconButton } from './IconButton';
 import { AnimatedPressable } from './AnimatedPressable';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
+import { runTaskMutation } from '@/lib/taskMutation';
 
 export interface AddTaskModalProps {
   visible: boolean;
@@ -37,18 +38,25 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const isDark = useIsDark();
   const createTask = useTasksUiStore((s) => s.createTask);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSave = () => {
     if (!title.trim() || saving) return;
     setSaving(true);
-    void createTask({
-      title: title.trim(),
-      notes: notes.trim() || undefined,
-      priority,
-      dueDate: getLocalDateString(),
-      source: 'manual',
-    })
-      .then(() => {
+    setSaveError(null);
+    void runTaskMutation(
+      () => createTask({
+        title: title.trim(),
+        notes: notes.trim() || undefined,
+        priority,
+        dueDate: getLocalDateString(),
+        source: 'manual',
+      }),
+      'task-create',
+      setSaveError,
+    )
+      .then((result) => {
+        if (!result.ok) return;
         setTitle('');
         setNotes('');
         setPriority('medium');
@@ -99,7 +107,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               {/* Title Input */}
               <TextInput
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={(value) => {
+                  setTitle(value);
+                  if (saveError) setSaveError(null);
+                }}
                 placeholder="What needs to be done?"
                 placeholderTextColor={Colors.zinc500}
                 autoFocus
@@ -180,6 +191,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 })}
               </View>
 
+              {saveError ? (
+                <Typography
+                  variant="caption"
+                  color={isDark ? '#FCA5A5' : '#B91C1C'}
+                  style={styles.errorMessage}
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite"
+                >
+                  {saveError} Try again when local storage is available.
+                </Typography>
+              ) : null}
+
               {/* Submit Action */}
               <View style={styles.actions}>
                 <Button
@@ -187,7 +210,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   onPress={handleSave}
                   variant="primary"
                   fullWidth
-                  disabled={!title.trim()}
+                  loading={saving}
+                  disabled={!title.trim() || saving}
                 />
               </View>
             </View>
@@ -263,5 +287,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: Spacing.xs,
+  },
+  errorMessage: {
+    marginTop: Spacing.md,
   },
 });

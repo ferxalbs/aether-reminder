@@ -15,7 +15,6 @@ bun install              # Install dependencies from bun.lock
 bun start                # Start the Expo development server
 bun run ios              # Build and run the iOS development app
 bun run android          # Build and run Android
-bun run web              # Start the web target
 bun test                 # Run the Bun test suite
 bun run lint             # Run Expo ESLint checks
 bun run typecheck        # Run strict TypeScript checking

@@ -9,6 +9,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { useSettingsStore } from '@/stores/settings.store';
 import { impactAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
@@ -46,7 +47,9 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
     });
     const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled && hapticStyle) {
-      impactAsync(hapticStyle).catch(() => {});
+      impactAsync(hapticStyle).catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
     }
     onPressIn?.(e);
   };

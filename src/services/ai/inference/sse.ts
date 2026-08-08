@@ -3,6 +3,8 @@
  * Emits data payloads only (ignores comments / event names).
  */
 
+import { reportNonFatalError } from '@/lib/nonFatalError';
+
 export async function* parseSseStream(
   body: ReadableStream<Uint8Array> | null,
   signal: AbortSignal
@@ -12,11 +14,17 @@ export async function* parseSseStream(
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
+  const cancelReader = () => {
+    void reader.cancel().catch((error: unknown) => {
+      reportNonFatalError('sse-reader-cancel', error);
+    });
+  };
+  signal.addEventListener('abort', cancelReader, { once: true });
 
   try {
     while (true) {
       if (signal.aborted) {
-        await reader.cancel().catch(() => undefined);
+        cancelReader();
         return;
       }
 
@@ -43,10 +51,11 @@ export async function* parseSseStream(
       if (data) yield data;
     }
   } finally {
+    signal.removeEventListener('abort', cancelReader);
     try {
       reader.releaseLock();
-    } catch {
-      // ignore
+    } catch (error) {
+      reportNonFatalError('sse-reader-release', error);
     }
   }
 }

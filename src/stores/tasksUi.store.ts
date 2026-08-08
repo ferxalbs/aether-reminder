@@ -9,10 +9,13 @@ import type { CreateTaskInput, Task, TaskListItem, TaskPriority } from '@/domain
 import { toTaskListItem } from '@/domain/entities';
 import { getAetherCore, type AetherCore } from '@/core';
 import { getLocalDateString } from '@/temporal/localCalendar';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import type { ActionReceipt } from '@/domain/receipts';
+import { getTaskUndoAction, getTaskUndoTaskId } from './taskUndo';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-interface TasksUiState {
+export interface TasksUiState {
   status: TasksUiStatus;
   error: string | null;
   /** Current Home query: today + undated active tasks (list items for TaskCard). */
@@ -21,6 +24,10 @@ interface TasksUiState {
   upcomingTasks: TaskListItem[];
   /** Bumps on every successful mutation so listeners can refetch other surfaces. */
   revision: number;
+  /** Most recent reversible task mutation, kept outside persisted state. */
+  undoReceipt: ActionReceipt | null;
+  undoError: string | null;
+  undoing: boolean;
 
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
@@ -42,6 +49,9 @@ interface TasksUiState {
   ) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
+  setUndoReceipt: (receipt: ActionReceipt) => void;
+  undoLastMutation: () => Promise<void>;
+  dismissUndo: () => void;
 }
 
 function core(): AetherCore {
@@ -57,6 +67,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   todayTasks: [],
   upcomingTasks: [],
   revision: 0,
+  undoReceipt: null,
+  undoError: null,
+  undoing: false,
 
   refreshToday: async () => {
     set({ status: 'loading', error: null });
@@ -71,6 +84,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         error: null,
       });
     } catch (error) {
+      reportNonFatalError('tasks-refresh-today', error);
       set({
         status: 'error',
         error: getDatabaseErrorMessage(error),
@@ -92,6 +106,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         error: null,
       });
     } catch (error) {
+      reportNonFatalError('tasks-refresh-upcoming', error);
       set({
         status: 'error',
         error: getDatabaseErrorMessage(error),
@@ -100,14 +115,23 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   createTask: async (input) => {
-    const { value } = await core().commands.createTask({
-      title: input.title,
-      notes: input.notes ?? null,
-      priority: input.priority ?? 'medium',
-      dueDate: input.dueDate ?? getLocalDateString(),
-      source: input.source ?? 'manual',
-      creationOrigin: input.source ?? 'manual',
-    });
+    let value: Task;
+    let receipt: ActionReceipt;
+    try {
+      ({ value, receipt } = await core().commands.createTask({
+        title: input.title,
+        notes: input.notes ?? null,
+        priority: input.priority ?? 'medium',
+        dueDate: input.dueDate ?? getLocalDateString(),
+        source: input.source ?? 'manual',
+        creationOrigin: input.source ?? 'manual',
+      }));
+    } catch (error) {
+      reportNonFatalError('task-create', error);
+      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+    set({ undoReceipt: receipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
     await get().refreshUpcoming();
@@ -115,17 +139,30 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   createTasksBatch: async (inputs) => {
-    const commands = core().commands;
-    for (const input of inputs) {
-      await commands.createTask({
-        title: input.title,
-        notes: input.notes ?? null,
-        priority: input.priority ?? 'medium',
-        dueDate: input.dueDate ?? getLocalDateString(),
-        source: input.source ?? 'voice',
-        creationOrigin: input.source ?? 'voice',
+    let lastReceipt: ActionReceipt | null = null;
+    try {
+      const commands = core().commands;
+      for (const input of inputs) {
+        const result = await commands.createTask({
+          title: input.title,
+          notes: input.notes ?? null,
+          priority: input.priority ?? 'medium',
+          dueDate: input.dueDate ?? getLocalDateString(),
+          source: input.source ?? 'voice',
+          creationOrigin: input.source ?? 'voice',
+        });
+        lastReceipt = result.receipt;
+      }
+    } catch (error) {
+      reportNonFatalError('tasks-create-batch', error);
+      set({
+        status: 'error',
+        error: getDatabaseErrorMessage(error),
+        ...(lastReceipt ? { undoReceipt: lastReceipt, undoError: null } : {}),
       });
+      throw error;
     }
+    if (lastReceipt) set({ undoReceipt: lastReceipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
     await get().refreshUpcoming();
@@ -150,13 +187,14 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
     try {
       const commands = core().commands;
-      if (nextCompleted) {
-        await commands.completeTask(id);
-      } else {
-        await commands.reopenTask(id);
-      }
+      const result = nextCompleted
+        ? await commands.completeTask(id)
+        : await commands.reopenTask(id);
+      set({ undoReceipt: result.receipt, undoError: null });
     } catch (error) {
+      reportNonFatalError('task-toggle', error);
       set({
+        status: 'error',
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
         error: getDatabaseErrorMessage(error),
@@ -177,9 +215,12 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      await core().commands.deleteTask(id);
+      const result = await core().commands.deleteTask(id);
+      set({ undoReceipt: result.receipt, undoError: null });
     } catch (error) {
+      reportNonFatalError('task-delete', error);
       set({
+        status: 'error',
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
         error: getDatabaseErrorMessage(error),
@@ -189,5 +230,60 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     await get().refreshToday();
     await get().refreshUpcoming();
   },
+
+  setUndoReceipt: (receipt) => {
+    // Read receipts must not erase a still-actionable task undo. Any write
+    // receipt replaces it, even when this UI cannot execute that undo kind.
+    if (receipt.risk === 'READ') return;
+    set({ undoReceipt: receipt, undoError: null, undoing: false });
+  },
+
+  undoLastMutation: async () => {
+    const receipt = get().undoReceipt;
+    const action = getTaskUndoAction(receipt);
+    const taskId = getTaskUndoTaskId(receipt);
+    if (!action || !taskId) {
+      set({ undoReceipt: null, undoError: null, undoing: false });
+      return;
+    }
+
+    set({ undoing: true, undoError: null });
+    try {
+      const commands = core().commands;
+      switch (action) {
+        case 'task.soft_delete':
+          await commands.deleteTask(taskId, 'undo');
+          break;
+        case 'task.reopen':
+          await commands.reopenTask(taskId, 'undo');
+          break;
+        case 'task.complete':
+          await commands.completeTask(taskId, 'undo');
+          break;
+        case 'task.restore_soft_deleted':
+          await commands.restoreTask(taskId, 'undo');
+          break;
+      }
+
+      set((s) => ({
+        undoReceipt: null,
+        undoError: null,
+        undoing: false,
+        revision: s.revision + 1,
+      }));
+      await get().refreshToday();
+      await get().refreshUpcoming();
+    } catch (error) {
+      reportNonFatalError('task-undo', error);
+      set({
+        status: 'error',
+        undoing: false,
+        undoError: getDatabaseErrorMessage(error),
+        error: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
+  dismissUndo: () => set({ undoReceipt: null, undoError: null, undoing: false }),
 
 }));

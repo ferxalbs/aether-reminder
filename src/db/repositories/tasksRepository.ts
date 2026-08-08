@@ -52,15 +52,18 @@ export class TasksRepository {
     return rows.map(mapTaskRow);
   }
 
-  async listUpcoming(localDate: string = getLocalDateString()): Promise<Task[]> {
+  async listUpcoming(localDate: string = getLocalDateString(), limit = 100): Promise<Task[]> {
     const rows = await this.db.getAllAsync<TaskRow>(
       `SELECT * FROM tasks
        WHERE ${ACTIVE}
          AND due_date IS NOT NULL
          AND due_date > ?
        ORDER BY due_date ASC,
-         CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`,
-      [localDate]
+         CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+         created_at DESC,
+         id ASC
+       LIMIT ?`,
+      [localDate, Math.max(1, Math.floor(limit))]
     );
     return rows.map(mapTaskRow);
   }
@@ -315,6 +318,32 @@ export class TasksRepository {
         createdAt: now,
       });
     });
+  }
+
+  /** Restore a soft-deleted task without reconstructing it from UI state. */
+  async restoreSoftDeleted(id: string, eventSource = 'manual'): Promise<Task> {
+    const existing = await this.getById(id, { includeDeleted: true });
+    if (!existing) throw new DatabaseError('NOT_FOUND', 'Task not found.');
+    if (!existing.deletedAt) return existing;
+
+    const now = new Date().toISOString();
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE tasks SET deleted_at = NULL, updated_at = ? WHERE id = ?`,
+        [now, id]
+      );
+      await this.events.append({
+        taskId: id,
+        type: 'updated',
+        source: eventSource,
+        payload: { restored: true },
+        createdAt: now,
+      });
+    });
+
+    const task = await this.getById(id);
+    if (!task) throw new DatabaseError('QUERY_FAILED', 'Task restore verification failed.');
+    return task;
   }
 
   async countActive(): Promise<number> {

@@ -32,4 +32,19 @@ describe('parseSseStream', () => {
     }
     expect(chunks).toEqual(['hi']);
   });
+
+  test('cancels a pending reader when the stream signal aborts', async () => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const controller = new AbortController();
+    const iterator = parseSseStream(body, controller.signal);
+    const next = iterator.next();
+    controller.abort();
+    await next;
+    expect(cancelled).toBe(true);
+  });
 });

@@ -35,6 +35,7 @@ interface AssistantSheetProps {
   receipts: AssistantReceipt[];
   semanticState: AgentSemanticState;
   error: string | null;
+  canRetry: boolean;
   isRunning: boolean;
   pendingConfirmation: PendingAssistantConfirmation | null;
   composerValue: string;
@@ -44,14 +45,18 @@ interface AssistantSheetProps {
   onExpand: () => void;
   onConfirm: () => void;
   onCancelConfirmation: () => void;
+  onRetry: () => void;
   reduceMotion: boolean;
   voiceState: VoiceState;
   voiceLocked: boolean;
   voiceError: string | null;
+  voiceCanRetry: boolean;
+  voiceRetryAttempt: number;
   voiceTranscript: string;
   voiceAudioLevel: SharedValue<number>;
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
+  onVoiceRetry: () => void;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
   orbState: AssistantOrbState;
@@ -79,6 +84,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   receipts,
   semanticState,
   error,
+  canRetry,
   isRunning,
   pendingConfirmation,
   composerValue,
@@ -88,14 +94,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onExpand,
   onConfirm,
   onCancelConfirmation,
+  onRetry,
   reduceMotion,
   voiceState,
   voiceLocked,
   voiceError,
+  voiceCanRetry,
+  voiceRetryAttempt,
   voiceTranscript,
   voiceAudioLevel,
   onVoiceStop,
   onVoiceCancel,
+  onVoiceRetry,
   keyboardOffset,
   blurTarget,
   orbState,
@@ -230,6 +240,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   {error ? (
                     <View accessibilityLiveRegion="assertive" style={styles.errorMessage}>
                       <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{error}</Text>
+                      {canRetry ? <Button label="Retry" variant="secondary" size="sm" onPress={onRetry} loading={isRunning} style={styles.retryButton} /> : null}
                     </View>
                   ) : null}
                   </View>
@@ -240,13 +251,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           <View style={styles.composerContainer}>
             {voiceState !== 'idle' && voiceState !== 'error' ? (
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
-                <Typography variant="bodyBold">{voiceState === 'connecting' ? 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
+                <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
                 {voiceTranscript ? <Typography variant="caption" color={Colors.zinc500} numberOfLines={3}>{voiceTranscript}</Typography> : null}
                 {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: '#65D6C0' }, voiceLevelStyle]} /></View> : null}
                 {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
               </View>
             ) : null}
-            {voiceError ? <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{voiceError}</Text> : null}
+            {voiceError ? (
+              <View accessibilityLiveRegion="assertive" style={styles.voiceError}>
+                <Text style={[styles.errorText, { color: isDark ? '#FDA29B' : '#B42318' }]}>{voiceError}</Text>
+                {voiceCanRetry ? <Button label="Try again" variant="secondary" size="sm" onPress={onVoiceRetry} style={styles.retryButton} /> : null}
+              </View>
+            ) : null}
             <AssistantComposer
               value={composerValue}
               onChangeText={onComposerChange}
@@ -380,6 +396,10 @@ const styles = StyleSheet.create({
   errorMessage: {
     paddingVertical: Spacing.xs,
   },
+  retryButton: {
+    alignSelf: 'flex-start',
+    marginTop: Spacing.xs,
+  },
   errorText: {
     fontSize: 13,
     lineHeight: 18,
@@ -396,6 +416,10 @@ const styles = StyleSheet.create({
   voiceActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    gap: Spacing.xs,
+  },
+  voiceError: {
+    paddingVertical: Spacing.xs,
     gap: Spacing.xs,
   },
   voiceLevelTrack: {

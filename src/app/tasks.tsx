@@ -1,14 +1,19 @@
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { FlatList, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import type { ListRenderItemInfo } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskCard } from '@/components/ui/TaskCard';
+import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import type { TaskListItem } from '@/domain/entities';
+import { canUndoTaskReceipt } from '@/stores/taskUndo';
 
 export default function TasksScreen() {
   const isDark = useIsDark();
@@ -18,6 +23,30 @@ export default function TasksScreen() {
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
+  const undoReceipt = useTasksUiStore((state) => state.undoReceipt);
+  const undoError = useTasksUiStore((state) => state.undoError);
+  const undoing = useTasksUiStore((state) => state.undoing);
+  const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
+  const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
+
+  const handleToggle = useCallback((id: string) => {
+    void toggleTask(id).catch((error: unknown) => {
+      reportNonFatalError('tasks-task-toggle', error);
+    });
+  }, [toggleTask]);
+
+  const handleDelete = useCallback((id: string) => {
+    void softDeleteTask(id).catch((error: unknown) => {
+      reportNonFatalError('tasks-task-delete', error);
+    });
+  }, [softDeleteTask]);
+
+  const renderTask = useCallback(
+    ({ item }: ListRenderItemInfo<TaskListItem>) => (
+      <TaskCard task={item} onToggle={handleToggle} onDelete={handleDelete} />
+    ),
+    [handleDelete, handleToggle]
+  );
 
   const assistantContext = useMemo(
     () => ({
@@ -41,20 +70,38 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Typography variant="caption" color={Colors.zinc500}>UPCOMING</Typography>
-          <Typography variant="display">Tasks</Typography>
-          <Typography variant="body" color={Colors.zinc500} style={styles.subtitle}>
-            Keep the next few steps in view.
-          </Typography>
-        </View>
-        {error ? <Typography variant="caption" color={Colors.zinc500} style={styles.error}>{error}</Typography> : null}
-        {upcomingTasks.length > 0 ? (
-          upcomingTasks.map((task) => (
-            <TaskCard key={task.id} task={task} onToggle={(id) => void toggleTask(id)} onDelete={(id) => void softDeleteTask(id)} />
-          ))
-        ) : status !== 'loading' ? (
+      {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
+        <TaskUndoBanner
+          receipt={undoReceipt}
+          error={undoError}
+          undoing={undoing}
+          onUndo={() => void undoLastMutation()}
+          onDismiss={dismissUndo}
+        />
+      ) : null}
+      <FlatList
+        data={upcomingTasks}
+        keyExtractor={(task) => task.id}
+        renderItem={renderTask}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Typography variant="caption" color={Colors.zinc500}>UPCOMING</Typography>
+              <Typography variant="display">Tasks</Typography>
+              <Typography variant="body" color={Colors.zinc500} style={styles.subtitle}>
+                Keep the next few steps in view.
+              </Typography>
+            </View>
+            {error ? <Typography variant="caption" color={Colors.zinc500} style={styles.error}>{error}</Typography> : null}
+          </>
+        }
+        ListEmptyComponent={status !== 'loading' ? (
           <View style={styles.emptyState}>
             <Typography variant="headline" align="center">Nothing scheduled.</Typography>
             <Typography variant="body" color={Colors.zinc500} align="center" style={styles.emptyCopy}>
@@ -62,7 +109,7 @@ export default function TasksScreen() {
             </Typography>
           </View>
         ) : null}
-      </ScrollView>
+      />
     </SafeAreaView>
   );
 }

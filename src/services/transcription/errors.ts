@@ -5,11 +5,13 @@ export type TranscriptionErrorCode =
   | 'INVALID_API_KEY'
   | 'RATE_LIMITED'
   | 'NETWORK_ERROR'
+  | 'TIMEOUT'
   | 'INVALID_AUDIO'
   | 'PROVIDER_UNAVAILABLE'
   | 'INVALID_EVENT'
   | 'SESSION_FAILED'
   | 'EMPTY_TRANSCRIPT'
+  | 'HANDOFF_FAILED'
   | 'CANCELLED'
   | 'UNKNOWN';
 
@@ -48,6 +50,8 @@ export function getTranscriptionErrorMessage(error: unknown): string {
           : 'OpenAI rate limit reached. Try again shortly.';
       case 'NETWORK_ERROR':
         return 'Could not reach OpenAI realtime transcription. Check your connection.';
+      case 'TIMEOUT':
+        return 'OpenAI realtime transcription took too long to respond. Try again.';
       case 'INVALID_AUDIO':
         return 'The microphone did not provide the required 24 kHz mono PCM audio.';
       case 'PROVIDER_UNAVAILABLE':
@@ -58,6 +62,8 @@ export function getTranscriptionErrorMessage(error: unknown): string {
         return 'The OpenAI realtime transcription session failed.';
       case 'EMPTY_TRANSCRIPT':
         return 'No speech was captured. Nothing was sent to AETHER.';
+      case 'HANDOFF_FAILED':
+        return 'AETHER could not receive that transcript. Try voice capture again.';
       case 'CANCELLED':
         return 'Voice capture was cancelled.';
       default:
@@ -65,4 +71,15 @@ export function getTranscriptionErrorMessage(error: unknown): string {
     }
   }
   return 'Voice transcription failed. Try again.';
+}
+
+export function isRetryableTranscriptionErrorCode(code: string): boolean {
+  return code === 'NETWORK_ERROR'
+    || code === 'TIMEOUT'
+    || code === 'RATE_LIMITED'
+    || code === 'PROVIDER_UNAVAILABLE';
+}
+
+export function isRetryableTranscriptionError(error: unknown): error is TranscriptionError {
+  return error instanceof TranscriptionError && isRetryableTranscriptionErrorCode(error.code);
 }

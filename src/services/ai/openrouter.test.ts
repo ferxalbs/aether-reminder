@@ -42,4 +42,22 @@ describe('fetchAvailableModels force refresh', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test('retries transient network failures with backoff before surfacing the result', async () => {
+    let callCount = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      callCount += 1;
+      if (callCount === 1) throw new Error('offline');
+      return new Response(JSON.stringify({ data: [mockModel] }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const models = await fetchAvailableModels('sk-test', true);
+      expect(models).toHaveLength(1);
+      expect(callCount).toBe(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

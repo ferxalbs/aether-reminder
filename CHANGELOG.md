@@ -2,6 +2,21 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (9) [Native-only Target and Recoverable Task Actions]
+
+### Explicit Android and iOS target
+
+- Restricted the Expo app target to iOS and Android in `app.json`; the repository has no web route, web resolver branch, or direct `react-dom`/`react-native-web` dependency.
+- Removed the obsolete web development command from `AGENTS.md` and the unused `web-build/` ignore rule. Expo's transitive optional web peers remain in the generated lockfile because they are declared by Expo tooling, not by this app.
+
+### Receipt-backed task recovery
+
+- Added an accessible Undo/Dismiss banner on Home and Tasks for task creation, completion/reopening, and soft deletion, backed by the domain restore receipt.
+
+### Validation scope
+
+- Native notification delivery, voice transport, lifecycle transitions, and EAS signing still require the device/provider checks documented in the Part 2 handoff.
+
 ## Unreleased - 2026.08.08 (8) [Custom iOS 26 and Material 3 ToggleSwitch Component]
 
 ### iOS 26 and Material 3 Animated Toggle Switch
@@ -86,7 +101,7 @@ All notable changes to AETHER are documented here.
 
 ### Validation scope
 
-- Added focused transport, temporal projection, reconciliation, and agent hot-path regression coverage. No server, provider-routing, web, deployment, or product-feature changes were introduced.
+- Added focused transport, temporal projection, reconciliation, and agent hot-path regression coverage. No server, provider-routing, deployment, or product-feature changes were introduced.
 - Physical-device validation remains required for native WebSocket pressure behavior, notification delivery across timezone changes, and lifecycle interruption.
 
 ## Unreleased - 2026.08.08 (3) [P0 AETHER Core Execution Boundary]
@@ -228,7 +243,6 @@ All notable changes to AETHER are documented here.
 - `bun run lint`: passed.
 - Android bundle export: passed.
 - Android EAS development build: submitted and still `IN_PROGRESS` when this entry was written — [build status](https://expo.dev/accounts/enosislabs/projects/aether-reminder/builds/ad35f7c8-3732-48b0-95fb-b80288714ae3).
-- Web export remains blocked by the existing missing `expo-sqlite` `wa-sqlite.wasm` asset.
 
 ### Implementation references 2
 
@@ -351,8 +365,8 @@ All notable changes to AETHER are documented here.
 ### Boundaries carried forward
 
 - The live OpenRouter smoke test requires a user-supplied API key and agent-capable model, so it was not run automatically.
-- The web target remains limited by the existing missing Expo SQLite WASM asset; native iOS and Android bundles export successfully.
-- Undo is not shown for actions because a functional restore UI is not yet available.
+- Native iOS and Android bundles export successfully for this historical slice.
+- Undo was not shown in this historical slice; the current receipt-backed restore UI is documented in the latest Unreleased entry.
 - Voice capture, notifications, widgets, and local inference remain out of scope for this release.
 
 ### Slice 4 reference points

@@ -10,6 +10,7 @@ import { AnimatedPressable } from './AnimatedPressable';
 import { Colors } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { selectionAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export interface ToggleSwitchProps {
@@ -40,7 +41,9 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   const handlePress = () => {
     if (disabled) return;
     if (useSettingsStore.getState().hapticsEnabled) {
-      selectionAsync().catch(() => {});
+      selectionAsync().catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
     }
     onValueChange(!value);
   };

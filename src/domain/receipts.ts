@@ -1,5 +1,5 @@
 /**
- * Action receipts for reversible mutations (future Undo UI).
+ * Action receipts for reversible mutations and their Undo UI.
  * Produced by domain services / tools — never invented by the model.
  */
 
@@ -23,7 +23,7 @@ export interface ActionReceipt {
   entityType: ReceiptEntityType;
   entityId: string;
   summary: string;
-  /** Opaque undo payload for a future Undo surface — not auto-executed. */
+  /** Opaque undo payload — executed only by an explicit, app-owned UI action. */
   undo?: {
     kind: string;
     payload: Record<string, unknown>;

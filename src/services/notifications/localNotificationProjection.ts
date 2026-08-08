@@ -3,6 +3,10 @@ import type { RemindersRepository } from '@/db/repositories/remindersRepository'
 import type { TasksRepository } from '@/db/repositories/tasksRepository';
 import { getDeviceTimeZone } from '@/temporal/localCalendar';
 import { localDateTimeInZoneToDate } from '@/temporal/resolve';
+import {
+  NotificationError,
+  toNotificationError,
+} from './errors';
 
 export interface LocalNotificationAdapter {
   list(): Promise<{ identifier: string; reminderId?: string }[]>;
@@ -29,7 +33,12 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
     }
     const permissions = await Notifications.getPermissionsAsync();
     const granted = permissions.granted ? permissions : await Notifications.requestPermissionsAsync();
-    if (!granted.granted) throw new Error('Notification permission was denied.');
+    if (!granted.granted) {
+      throw new NotificationError(
+        'PERMISSION_DENIED',
+        'Notifications are disabled. Enable them in system settings, then retry.',
+      );
+    }
     return Notifications.scheduleNotificationAsync({
       content: { title: 'AETHER Reminder', body: input.title, data: { reminderId: input.reminderId } },
       trigger: {
@@ -91,17 +100,30 @@ export class LocalNotificationProjection {
       await this.reminders.setProjection(reminder.id, nativeId, null);
       return 'scheduled';
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Local notification projection failed.';
-      await this.reminders.setProjection(reminder.id, null, message);
-      throw new Error(message);
+      const notificationError = toNotificationError(
+        error,
+        'PROJECTION_FAILED',
+        'This reminder could not be synchronized with device notifications.',
+      );
+      try {
+        await this.reminders.setProjection(reminder.id, null, notificationError.message);
+      } catch (projectionError) {
+        throw toNotificationError(
+          projectionError,
+          'PROJECTION_FAILED',
+          'The notification synchronization state could not be saved.',
+        );
+      }
+      throw notificationError;
     }
   }
 
-  async reconcile(): Promise<{ repaired: number; failed: number }> {
+  async reconcile(): Promise<NotificationReconciliationResult> {
     const native = await this.adapter.list();
     const nativeByReminder = new Map(native.filter((n) => n.reminderId).map((n) => [n.reminderId!, n.identifier]));
     let repaired = 0;
     let failed = 0;
+    const failures: NotificationReconciliationFailure[] = [];
     const reminders = await this.reminders.listAll();
     const reminderIds = new Set(reminders.map((reminder) => reminder.id));
     for (const item of native) {
@@ -109,34 +131,96 @@ export class LocalNotificationProjection {
       try {
         await this.adapter.cancel(item.identifier);
         repaired += 1;
-      } catch {
+      } catch (error) {
         failed += 1;
+        failures.push({
+          kind: 'orphan_cancel',
+          error: toNotificationError(
+            error,
+            'RECONCILIATION_FAILED',
+            'An obsolete device notification could not be removed.',
+          ),
+        });
       }
     }
     for (const reminder of reminders) {
       const actualId = nativeByReminder.get(reminder.id);
       if (!reminder.enabled) {
         const id = actualId ?? reminder.nativeNotificationId;
-        if (id) await this.adapter.cancel(id).catch(() => undefined);
-        await this.reminders.setProjection(reminder.id, null, null);
+        try {
+          if (id) {
+            await this.adapter.cancel(id);
+            repaired += 1;
+          }
+          await this.reminders.setProjection(reminder.id, null, null);
+        } catch (error) {
+          failed += 1;
+          failures.push({
+            kind: 'disabled_cancel',
+            reminderId: reminder.id,
+            error: toNotificationError(
+              error,
+              'RECONCILIATION_FAILED',
+              'A disabled reminder could not be removed from device notifications.',
+            ),
+          });
+        }
         continue;
       }
       if (actualId && actualId === reminder.nativeNotificationId && !reminder.projectionError) continue;
-      try { await this.project({ ...reminder, nativeNotificationId: actualId ?? reminder.nativeNotificationId }); repaired += 1; }
-      catch { failed += 1; }
+      try {
+        await this.project({ ...reminder, nativeNotificationId: actualId ?? reminder.nativeNotificationId });
+        repaired += 1;
+      } catch (error) {
+        failed += 1;
+        failures.push({
+          kind: 'reminder_projection',
+          reminderId: reminder.id,
+          error: toNotificationError(
+            error,
+            'RECONCILIATION_FAILED',
+            'A reminder could not be scheduled on this device.',
+          ),
+        });
+      }
     }
-    return { repaired, failed };
+    return { repaired, failed, failures };
   }
 }
 
+export type NotificationReconciliationFailureKind =
+  | 'orphan_cancel'
+  | 'disabled_cancel'
+  | 'reminder_projection';
+
+export interface NotificationReconciliationFailure {
+  kind: NotificationReconciliationFailureKind;
+  reminderId?: string;
+  error: NotificationError;
+}
+
+export interface NotificationReconciliationResult {
+  repaired: number;
+  failed: number;
+  failures: NotificationReconciliationFailure[];
+}
+
 export async function configureLocalNotifications(): Promise<void> {
-  const Notifications = await import('expo-notifications');
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  try {
+    const Notifications = await import('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch (error) {
+    throw toNotificationError(
+      error,
+      'CONFIGURATION_FAILED',
+      'Local notifications could not be initialized. Try again.',
+    );
+  }
 }

@@ -11,6 +11,7 @@ export type AIProviderErrorCode =
   | 'PROVIDER_UNAVAILABLE'
   | 'INVALID_REQUEST'
   | 'NETWORK_ERROR'
+  | 'TIMEOUT'
   | 'INVALID_RESPONSE'
   | 'MODEL_NOT_FOUND'
   | 'INCOMPATIBLE_MODEL'
@@ -79,6 +80,7 @@ export function getAIErrorMessage(error: unknown): string {
       case 'PROVIDER_UNAVAILABLE': return `The selected ${provider} service is temporarily unavailable. Try another model or retry shortly.`;
       case 'INVALID_REQUEST': return `${provider} rejected the request. Try again with supported settings.`;
       case 'NETWORK_ERROR': return `Could not reach ${provider}. Check your connection and try again.`;
+      case 'TIMEOUT': return `${provider} took too long to respond. Check your connection and try again.`;
       case 'INVALID_RESPONSE': return `${provider} returned an unexpected response. Try again.`;
       case 'MODEL_NOT_FOUND': return `OpenRouter could not find the selected model in its current catalog.`;
       case 'INCOMPATIBLE_MODEL': return `The selected OpenRouter model cannot run AETHER's tool-enabled agent.`;
@@ -87,4 +89,15 @@ export function getAIErrorMessage(error: unknown): string {
     }
   }
   return 'The AI provider could not complete the request. Try again shortly.';
+}
+
+export function isRetryableAIProviderErrorCode(code: string): boolean {
+  return code === 'NETWORK_ERROR'
+    || code === 'TIMEOUT'
+    || code === 'RATE_LIMITED'
+    || code === 'PROVIDER_UNAVAILABLE';
+}
+
+export function isRetryableAIProviderError(error: unknown): error is AIProviderError {
+  return error instanceof AIProviderError && isRetryableAIProviderErrorCode(error.code);
 }

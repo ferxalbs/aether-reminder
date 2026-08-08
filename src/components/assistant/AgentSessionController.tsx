@@ -5,7 +5,13 @@ import { getAetherCore } from '@/core';
 import type { ActionReceipt } from '@/domain/receipts';
 import { useSettingsStore } from '@/stores/settings.store';
 import { resolveAgentModel } from '@/services/ai/modelSelection';
-import { AIProviderError, getAIErrorMessage } from '@/services/ai/providers';
+import {
+  AIProviderError,
+  getAIErrorMessage,
+  isRetryableAIProviderError,
+  isRetryableAIProviderErrorCode,
+} from '@/services/ai/providers';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import type {
   AssistantMessage,
   AssistantReceipt,
@@ -30,7 +36,6 @@ function messageId(prefix: string): string {
 
 function runStartErrorMessage(caught: unknown): string {
   if (caught instanceof AIProviderError) return getAIErrorMessage(caught);
-  if (caught instanceof Error && caught.message) return caught.message;
   return 'AETHER could not start this run.';
 }
 
@@ -62,34 +67,44 @@ export function useAgentSessionController({
   const runningRef = useRef(false);
   const entitiesRef = useRef(entities);
   const handleEventRef = useRef<(event: AgentEvent, assistantMessageId: string) => void>(() => undefined);
+  const retrySubmissionRef = useRef<{ message: string; options: SubmitOptions } | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
 
   const submit = useCallback(
     async (rawMessage: string, options: SubmitOptions = {}) => {
       const message = rawMessage.trim();
-      if (!message || runningRef.current) return;
+      if (!message || runningRef.current) return false;
       if (!apiKeyLoaded) {
         setError('Secure storage is still loading. Try again in a moment.');
-        return;
+        setCanRetry(false);
+        return false;
       }
       if (!apiKey) {
         setError('Add an OpenRouter API key in Settings to ask AETHER.');
-        return;
+        setCanRetry(false);
+        return false;
       }
 
       // Claim the single active submission before asynchronous model validation.
       runningRef.current = true;
+      setCanRetry(false);
+      retrySubmissionRef.current = null;
       let modelId: string;
       try {
         modelId = await resolveAgentModel(selectedModel, apiKey);
       } catch (caught) {
         runningRef.current = false;
         setSemanticState('error');
+        reportNonFatalError('agent-model-validation', caught);
+        const retryable = isRetryableAIProviderError(caught);
+        setCanRetry(retryable);
+        if (retryable) retrySubmissionRef.current = { message, options: { ...options, appendUserMessage: true } };
         setError(
           caught instanceof AIProviderError
             ? getAIErrorMessage(caught)
             : 'The selected OpenRouter model could not be validated.'
         );
-        return;
+        return false;
       }
 
       const appendUserMessage = options.appendUserMessage !== false;
@@ -110,6 +125,7 @@ export function useAgentSessionController({
       setPendingConfirmation(null);
       setIsRunning(true);
       setSemanticState('contextualizing');
+      retrySubmissionRef.current = { message, options: { ...options, appendUserMessage: false } };
 
       try {
         const runContext: ContextSnapshot = {
@@ -129,6 +145,10 @@ export function useAgentSessionController({
         }
       } catch (caught) {
         const messageText = runStartErrorMessage(caught);
+        reportNonFatalError('agent-run', caught);
+        const retryable = isRetryableAIProviderError(caught);
+        setCanRetry(retryable);
+        if (!retryable) retrySubmissionRef.current = null;
         setMessages((previous) =>
           previous.map((item) =>
             item.id === assistantMessageId && item.text.length === 0
@@ -143,6 +163,7 @@ export function useAgentSessionController({
         setIsRunning(false);
         currentRunRef.current = undefined;
       }
+      return true;
     },
     // The runtime is intentionally stable; the context is captured at send time.
     [apiKey, apiKeyLoaded, context, onNavigate, runtime, selectedModel]
@@ -178,6 +199,7 @@ export function useAgentSessionController({
           });
           break;
         case 'tool.failed':
+          setCanRetry(false);
           setError(event.error);
           break;
         case 'response.completed':
@@ -194,6 +216,8 @@ export function useAgentSessionController({
           }
           break;
         case 'run.failed':
+          setCanRetry(isRetryableAIProviderErrorCode(event.code));
+          if (!isRetryableAIProviderErrorCode(event.code)) retrySubmissionRef.current = null;
           setMessages((previous) =>
             previous.map((item) =>
               item.id === assistantMessageId && item.text.length === 0
@@ -238,6 +262,7 @@ export function useAgentSessionController({
         }
       } catch (caught) {
         const messageText = runStartErrorMessage(caught);
+        reportNonFatalError('agent-confirm', caught);
         setMessages((previous) =>
           previous.map((item) =>
             item.id === assistantMessageId ? { ...item, text: messageText } : item
@@ -253,7 +278,12 @@ export function useAgentSessionController({
   }, [context, onNavigate, pendingConfirmation, runtime]);
 
   const cancelConfirmation = useCallback(() => {
-    if (pendingConfirmation) void runtime.discard(pendingConfirmation.action);
+    if (pendingConfirmation) {
+      void runtime.discard(pendingConfirmation.action).catch((caught: unknown) => {
+        reportNonFatalError('agent-discard', caught);
+        setError('AETHER could not discard the pending action. Try again.');
+      });
+    }
     setPendingConfirmation(null);
     setSemanticState('idle');
     setError(null);
@@ -261,8 +291,19 @@ export function useAgentSessionController({
 
   const cancel = useCallback(() => {
     const runId = currentRunRef.current;
-    if (runId) void runtime.cancel(runId);
+    if (runId) {
+      void runtime.cancel(runId).catch((caught: unknown) => {
+        reportNonFatalError('agent-cancel', caught);
+        setError('AETHER could not cancel the run. Try again.');
+      });
+    }
   }, [runtime]);
+
+  const retry = useCallback(() => {
+    const submission = retrySubmissionRef.current;
+    if (!submission || runningRef.current) return;
+    void submit(submission.message, submission.options);
+  }, [submit]);
 
   return {
     messages,
@@ -270,9 +311,11 @@ export function useAgentSessionController({
     pendingConfirmation,
     semanticState,
     error,
+    canRetry,
     isRunning,
     entities,
     submit,
+    retry,
     confirm,
     cancelConfirmation,
     cancel,

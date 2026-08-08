@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { UserSettings } from '@/types';
 import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import {
   persistedSettingsSnapshot,
 } from './settingsPersistence';
@@ -73,7 +74,9 @@ export const useSettingsStore = create<SettingsState>()(
       loadCredentials: async () => {
         const available = await isSecureStoreAvailable(secureStoreAdapter);
         // Remove the pre-BYOK settings blob, which could contain a legacy plaintext key.
-        await AsyncStorage.removeItem(LEGACY_SETTINGS_STORAGE_KEY).catch(() => {});
+        await AsyncStorage.removeItem(LEGACY_SETTINGS_STORAGE_KEY).catch((error: unknown) => {
+          reportNonFatalError('legacy-settings-cleanup', error);
+        });
 
         if (!available) {
           set({

@@ -17,10 +17,15 @@ import type {
   ModelCapabilities,
   ModelEvent,
 } from './types';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import { createTimeoutSignal, retryWithBackoff } from '@/lib/retry';
 
 const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 const OPENROUTER_API_URL = `${OPENROUTER_API_BASE_URL}/chat/completions`;
 const OPENROUTER_MODELS_URL = `${OPENROUTER_API_BASE_URL}/models`;
+const OPENROUTER_METADATA_TIMEOUT_MS = 15_000;
+const OPENROUTER_STREAM_CONNECT_TIMEOUT_MS = 15_000;
+const OPENROUTER_STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 type OpenRouterErrorPayload = {
   error?: { code?: number | string; message?: string; metadata?: { error_type?: string } };
@@ -70,6 +75,7 @@ function getErrorCode(status: number, errorType?: string): AIProviderError['code
   if (status === 401 || errorType === 'authentication') return 'INVALID_API_KEY';
   if (status === 402) return 'INSUFFICIENT_CREDITS';
   if (status === 429 || errorType === 'rate_limit_exceeded') return 'RATE_LIMITED';
+  if (status === 408 || status === 504) return 'TIMEOUT';
   if (
     status === 400 ||
     status === 404 ||
@@ -108,6 +114,55 @@ function mapUsage(usage: StreamChunk['usage']): InferenceUsage | undefined {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseStreamChunk(data: string): StreamChunk {
+  const parsed: unknown = JSON.parse(data);
+  if (!isRecord(parsed)) throw new Error('OpenRouter stream event was not an object.');
+  if ('error' in parsed && parsed.error !== undefined && !isRecord(parsed.error)) {
+    throw new Error('OpenRouter stream error payload was malformed.');
+  }
+  if ('choices' in parsed && parsed.choices !== undefined) {
+    if (!Array.isArray(parsed.choices)) throw new Error('OpenRouter choices payload was malformed.');
+    for (const choice of parsed.choices) {
+      if (!isRecord(choice)) throw new Error('OpenRouter choice payload was malformed.');
+      if ('error' in choice && choice.error !== undefined && !isRecord(choice.error)) {
+        throw new Error('OpenRouter choice error payload was malformed.');
+      }
+      if ('delta' in choice && choice.delta !== undefined) {
+        if (!isRecord(choice.delta)) throw new Error('OpenRouter delta payload was malformed.');
+        if ('content' in choice.delta && choice.delta.content !== undefined && choice.delta.content !== null && typeof choice.delta.content !== 'string') {
+          throw new Error('OpenRouter text delta was malformed.');
+        }
+        if ('tool_calls' in choice.delta && choice.delta.tool_calls !== undefined && !Array.isArray(choice.delta.tool_calls)) {
+          throw new Error('OpenRouter tool call payload was malformed.');
+        }
+        for (const toolCall of (choice.delta.tool_calls as unknown[] | undefined) ?? []) {
+          if (!isRecord(toolCall)) throw new Error('OpenRouter tool call item was malformed.');
+          if ('function' in toolCall && toolCall.function !== undefined && !isRecord(toolCall.function)) {
+            throw new Error('OpenRouter tool function payload was malformed.');
+          }
+        }
+      }
+    }
+  }
+  return parsed as StreamChunk;
+}
+
+function streamError(error: AIProviderError): ModelEvent {
+  return {
+    type: 'stream.error',
+    error: {
+      code: error.code,
+      message: getAIErrorMessage(error),
+      status: error.status,
+      retryAfterSeconds: error.retryAfterSeconds,
+    },
+  };
+}
+
 async function loadModelsMetadata(apiKey?: string): Promise<Map<string, OpenRouterModelMetadata>> {
   if (modelsMetaCache && Date.now() - modelsMetaCache.fetchedAt < MODELS_CACHE_TTL_MS) {
     return modelsMetaCache.byId;
@@ -117,25 +172,68 @@ async function loadModelsMetadata(apiKey?: string): Promise<Map<string, OpenRout
   const key = apiKey?.trim();
   if (key) headers.set('Authorization', `Bearer ${key}`);
 
-  let response: Response;
-  try {
-    response = await fetch(OPENROUTER_MODELS_URL, { method: 'GET', headers });
-  } catch {
-    throw new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.');
-  }
+  return retryWithBackoff(
+    async () => {
+      const timeout = createTimeoutSignal(undefined, OPENROUTER_METADATA_TIMEOUT_MS);
+      try {
+        let response: Response;
+        try {
+          response = await fetch(OPENROUTER_MODELS_URL, {
+            method: 'GET',
+            headers,
+            signal: timeout.signal,
+          });
+        } catch {
+          throw new AIProviderError(
+            timeout.didTimeout() ? 'TIMEOUT' : 'NETWORK_ERROR',
+            timeout.didTimeout() ? 'OpenRouter model catalog timed out.' : 'Could not reach OpenRouter.'
+          );
+        }
 
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => undefined)) as OpenRouterErrorPayload | undefined;
-    throw toProviderError(response, payload);
-  }
+        if (!response.ok) {
+          let payload: OpenRouterErrorPayload | undefined;
+          try {
+            payload = (await response.json()) as OpenRouterErrorPayload;
+          } catch (error) {
+            reportNonFatalError('openrouter-error-response', error);
+          }
+          throw toProviderError(response, payload);
+        }
 
-  const body = (await response.json()) as OpenRouterModelsResponse;
-  const byId = new Map<string, OpenRouterModelMetadata>();
-  for (const model of body.data ?? []) {
-    if (model.id) byId.set(model.id, model);
-  }
-  modelsMetaCache = { byId, fetchedAt: Date.now() };
-  return byId;
+        let body: OpenRouterModelsResponse;
+        try {
+          body = (await response.json()) as OpenRouterModelsResponse;
+        } catch (error) {
+          reportNonFatalError('openrouter-models-response', error);
+          throw new AIProviderError('INVALID_RESPONSE', 'OpenRouter returned malformed model metadata.');
+        }
+        if (!body || !Array.isArray(body.data)) {
+          throw new AIProviderError('INVALID_RESPONSE', 'OpenRouter returned malformed model metadata.');
+        }
+
+        const byId = new Map<string, OpenRouterModelMetadata>();
+        for (const model of body.data) {
+          if (model && typeof model === 'object' && typeof model.id === 'string' && model.id) {
+            byId.set(model.id, model);
+          }
+        }
+        modelsMetaCache = { byId, fetchedAt: Date.now() };
+        return byId;
+      } finally {
+        timeout.cleanup();
+      }
+    },
+    {
+      shouldRetry: (error) => error instanceof AIProviderError
+        && ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE'].includes(error.code),
+      getRetryAfterMs: (error) => error instanceof AIProviderError && error.retryAfterSeconds
+        ? error.retryAfterSeconds * 1000
+        : undefined,
+      onRetry: (nextAttempt, delayMs, error) => {
+        reportNonFatalError('openrouter-models-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof AIProviderError ? error.code : 'unknown'}`));
+      },
+    }
+  );
 }
 
 /** Test-only: clear model metadata cache. */
@@ -185,6 +283,7 @@ export class OpenRouterProvider implements InferenceProvider {
     try {
       metadata = (await loadModelsMetadata(apiKey)).get(modelId);
     } catch (error) {
+      reportNonFatalError('openrouter-models-request', error);
       const providerError = error instanceof AIProviderError
         ? error
         : new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.', { provider: 'OpenRouter' });
@@ -247,43 +346,66 @@ export class OpenRouterProvider implements InferenceProvider {
 
     let response: Response;
     try {
-      response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://aether-reminder.app',
-          'X-Title': 'AETHER Reminder',
+      response = await retryWithBackoff(
+        async () => {
+          const timeout = createTimeoutSignal(signal, OPENROUTER_STREAM_CONNECT_TIMEOUT_MS);
+          try {
+            let nextResponse: Response;
+            try {
+              nextResponse = await fetch(OPENROUTER_API_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${apiKey}`,
+                  'HTTP-Referer': 'https://aether-reminder.app',
+                  'X-Title': 'AETHER Reminder',
+                },
+                body: JSON.stringify(body),
+                signal: timeout.signal,
+              });
+            } catch (error) {
+              if (signal.aborted) throw error;
+              throw new AIProviderError(
+                timeout.didTimeout() ? 'TIMEOUT' : 'NETWORK_ERROR',
+                timeout.didTimeout() ? 'OpenRouter stream connection timed out.' : 'Could not reach OpenRouter.',
+                { provider: 'OpenRouter' }
+              );
+            }
+            if (!nextResponse.ok) {
+              let payload: OpenRouterErrorPayload | undefined;
+              try {
+                payload = (await nextResponse.json()) as OpenRouterErrorPayload;
+              } catch (error) {
+                reportNonFatalError('openrouter-error-response', error);
+              }
+              throw toProviderError(nextResponse, payload);
+            }
+            return nextResponse;
+          } finally {
+            timeout.cleanup();
+          }
         },
-        body: JSON.stringify(body),
-        signal,
-      });
+        {
+          signal,
+          shouldRetry: (error) => error instanceof AIProviderError
+            && ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE'].includes(error.code),
+          getRetryAfterMs: (error) => error instanceof AIProviderError && error.retryAfterSeconds
+            ? error.retryAfterSeconds * 1000
+            : undefined,
+          onRetry: (nextAttempt, delayMs, error) => {
+            reportNonFatalError('openrouter-stream-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof AIProviderError ? error.code : 'unknown'}`));
+          },
+        }
+      );
     } catch (error) {
       if (signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
         yield { type: 'stream.aborted' };
         return;
       }
-      yield {
-        type: 'stream.error',
-        error: { code: 'NETWORK_ERROR', message: 'Could not reach OpenRouter.' },
-      };
-      return;
-    }
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => undefined)) as
-        | OpenRouterErrorPayload
-        | undefined;
-      const err = toProviderError(response, payload);
-      yield {
-        type: 'stream.error',
-        error: {
-          code: err.code,
-          message: err.message,
-          status: err.status,
-          retryAfterSeconds: err.retryAfterSeconds,
-        },
-      };
+      const providerError = error instanceof AIProviderError
+        ? error
+        : new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.', { provider: 'OpenRouter' });
+      yield streamError(providerError);
       return;
     }
 
@@ -296,25 +418,45 @@ export class OpenRouterProvider implements InferenceProvider {
     >();
     let finishReason: string | null | undefined;
     let usage: InferenceUsage | undefined;
-    let sawContent = false;
+    let sawData = false;
+    let sawDone = false;
+    const streamTimeout = createTimeoutSignal(signal, OPENROUTER_STREAM_IDLE_TIMEOUT_MS);
 
     try {
-      for await (const data of parseSseStream(response.body, signal)) {
+      if (!response.body) {
+        yield streamError(new AIProviderError('INVALID_RESPONSE', 'OpenRouter returned no stream body.', { provider: 'OpenRouter' }));
+        return;
+      }
+      for await (const data of parseSseStream(response.body, streamTimeout.signal)) {
         if (signal.aborted) {
           yield { type: 'stream.aborted' };
           return;
         }
+        if (streamTimeout.didTimeout()) {
+          yield streamError(new AIProviderError('TIMEOUT', 'OpenRouter stream timed out.', { provider: 'OpenRouter' }));
+          return;
+        }
+
+        sawData = true;
 
         if (data === '[DONE]') {
+          sawDone = true;
           break;
         }
 
         let chunk: StreamChunk;
         try {
-          chunk = JSON.parse(data) as StreamChunk;
-        } catch {
-          // Malformed event — skip; do not fail the whole stream on a single bad line
-          continue;
+          chunk = parseStreamChunk(data);
+        } catch (error) {
+          reportNonFatalError('openrouter-malformed-event', error);
+          yield streamError(new AIProviderError('INVALID_RESPONSE', 'OpenRouter returned a malformed stream event.', { provider: 'OpenRouter' }));
+          return;
+        }
+
+        if (!chunk.error && !chunk.usage && (!chunk.choices || chunk.choices.length === 0)) {
+          reportNonFatalError('openrouter-invalid-event-shape', new Error('Missing choices or usage.'));
+          yield streamError(new AIProviderError('INVALID_RESPONSE', 'OpenRouter returned an incomplete stream event.', { provider: 'OpenRouter' }));
+          return;
         }
 
         if (chunk.error) {
@@ -358,7 +500,6 @@ export class OpenRouterProvider implements InferenceProvider {
 
         const delta = choice?.delta;
         if (delta?.content) {
-          sawContent = true;
           yield { type: 'text.delta', text: delta.content };
         }
 
@@ -390,15 +531,32 @@ export class OpenRouterProvider implements InferenceProvider {
         yield { type: 'stream.aborted' };
         return;
       }
+      if (streamTimeout.didTimeout()) {
+        yield streamError(new AIProviderError('TIMEOUT', 'OpenRouter stream timed out.', { provider: 'OpenRouter' }));
+        return;
+      }
+      reportNonFatalError('openrouter-stream', error);
       yield {
         type: 'stream.error',
         error: { code: 'NETWORK_ERROR', message: 'Stream interrupted.' },
       };
       return;
+    } finally {
+      streamTimeout.cleanup();
     }
 
     if (signal.aborted) {
       yield { type: 'stream.aborted' };
+      return;
+    }
+
+    if (streamTimeout.didTimeout()) {
+      yield streamError(new AIProviderError('TIMEOUT', 'OpenRouter stream timed out.', { provider: 'OpenRouter' }));
+      return;
+    }
+    if (!sawData || !sawDone) {
+      reportNonFatalError('openrouter-incomplete-stream', new Error('Stream ended before [DONE].'));
+      yield streamError(new AIProviderError('INVALID_RESPONSE', 'OpenRouter ended the stream unexpectedly.', { provider: 'OpenRouter' }));
       return;
     }
 
@@ -413,9 +571,6 @@ export class OpenRouterProvider implements InferenceProvider {
       };
     }
 
-    // Empty successful stream with no content and no tools is still a completed stream
-    // (caller decides if invalid). Usage may arrive on the final chunk.
-    void sawContent;
     yield {
       type: 'stream.completed',
       finishReason: finishReason ?? null,

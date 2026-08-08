@@ -10,6 +10,7 @@ import Animated, {
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Colors, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import type { AssistantOrbState } from './assistantTypes';
 
@@ -78,9 +79,13 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (mounted) setReduceMotion(enabled);
-    });
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (mounted) setReduceMotion(enabled);
+      })
+      .catch((error: unknown) => {
+        reportNonFatalError('assistant-orb-reduce-motion', error);
+      });
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => {
       mounted = false;

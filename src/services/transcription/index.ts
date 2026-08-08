@@ -10,6 +10,8 @@ export {
 export {
   TranscriptionError,
   getTranscriptionErrorMessage,
+  isRetryableTranscriptionError,
+  isRetryableTranscriptionErrorCode,
   type TranscriptionErrorCode,
 } from './errors';
 export {

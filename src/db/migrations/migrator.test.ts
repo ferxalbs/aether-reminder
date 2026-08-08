@@ -13,7 +13,13 @@ describe('schema migrations', () => {
     const result = await runMigrations(db);
     expect(result.fromVersion).toBe(0);
     expect(result.toVersion).toBe(LATEST_SCHEMA_VERSION);
-    expect(result.applied).toEqual(['0001_core', '0002_indexes', '0003_agent_runtime', '0004_notification_projection']);
+    expect(result.applied).toEqual([
+      '0001_core',
+      '0002_indexes',
+      '0003_agent_runtime',
+      '0004_notification_projection',
+      '0005_notification_query_indexes',
+    ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
     const tables = await db.getAllAsync<{ name: string }>(
@@ -31,6 +37,17 @@ describe('schema migrations', () => {
     expect(names).toContain('agent_runs');
     expect(names).toContain('agent_events');
     expect(names).toContain('tool_executions');
+
+    const indexes = await db.getAllAsync<{ name: string }>(
+      `SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_reminders_%' ORDER BY name`
+    );
+    expect(indexes.map((index) => index.name)).toEqual(expect.arrayContaining([
+      'idx_reminders_enabled_schedule',
+      'idx_reminders_native_notification',
+      'idx_reminders_schedule',
+      'idx_reminders_task_schedule',
+      'idx_reminders_timezone',
+    ]));
     await db.closeAsync?.();
   });
 
@@ -43,7 +60,12 @@ describe('schema migrations', () => {
     const result = await runMigrations(db, MIGRATIONS);
     expect(result.fromVersion).toBe(1);
     expect(result.toVersion).toBe(LATEST_SCHEMA_VERSION);
-    expect(result.applied).toEqual(['0002_indexes', '0003_agent_runtime', '0004_notification_projection']);
+    expect(result.applied).toEqual([
+      '0002_indexes',
+      '0003_agent_runtime',
+      '0004_notification_projection',
+      '0005_notification_query_indexes',
+    ]);
     await db.closeAsync?.();
   });
 

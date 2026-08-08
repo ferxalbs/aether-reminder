@@ -50,6 +50,7 @@ import { getAIErrorMessage } from '@/services/ai/providers';
 import type { UserSettings } from '@/types';
 import * as Haptics from 'expo-haptics';
 import { notificationAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 const settingsEntering = Platform.OS === 'ios' ? FadeInDown.duration(300).damping(20).stiffness(200) : undefined;
 const settingsLayout = Platform.OS === 'ios' ? Layout.springify().damping(20).stiffness(200) : undefined;
@@ -120,7 +121,9 @@ export default function SettingsScreen() {
   useAssistantSurface(assistantContext);
 
   useEffect(() => {
-    void loadCredentials();
+    void loadCredentials().catch((error: unknown) => {
+      reportNonFatalError('settings-credentials-load', error);
+    });
   }, [loadCredentials]);
 
   const loadModels = (forceRefresh = false) => {
@@ -187,7 +190,9 @@ export default function SettingsScreen() {
         setOpenAiMessage('OpenAI key saved securely in SecureStore.');
       }
       if (hapticsEnabled) {
-        notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        notificationAsync(Haptics.NotificationFeedbackType.Success).catch((error: unknown) => {
+          reportNonFatalError('haptics', error);
+        });
       }
     } catch (error) {
       Alert.alert(`${provider} Key Not Saved`, getAIErrorMessage(error));
@@ -213,7 +218,9 @@ export default function SettingsScreen() {
       if (provider === 'OpenRouter') setOpenRouterMessage(message);
       else setOpenAiMessage(message);
       if (hapticsEnabled) {
-        notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        notificationAsync(Haptics.NotificationFeedbackType.Success).catch((error: unknown) => {
+          reportNonFatalError('haptics', error);
+        });
       }
     } catch (error) {
       const message = `✕ ${getAIErrorMessage(error)}`;
@@ -255,7 +262,9 @@ export default function SettingsScreen() {
                   setOpenAiMessage('OpenAI key deleted from SecureStore.');
                 }
                 if (hapticsEnabled) {
-                  notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+                  notificationAsync(Haptics.NotificationFeedbackType.Warning).catch((error: unknown) => {
+                    reportNonFatalError('haptics', error);
+                  });
                 }
               })
               .catch((error: unknown) => Alert.alert(`${provider} Key Not Deleted`, getAIErrorMessage(error)));

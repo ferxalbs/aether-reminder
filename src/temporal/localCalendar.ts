@@ -5,6 +5,8 @@
  * semantics and breaks near local midnight / non-UTC timezones.
  */
 
+import { reportNonFatalError } from '@/lib/nonFatalError';
+
 /** YYYY-MM-DD in the device's local timezone. */
 export function getLocalDateString(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -39,7 +41,8 @@ export function isLocalDateAfter(a: string, b: string): boolean {
 export function getDeviceTimeZone(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
-  } catch {
+  } catch (error) {
+    reportNonFatalError('device-timezone', error);
     return undefined;
   }
 }

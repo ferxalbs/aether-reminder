@@ -16,6 +16,7 @@ import { IconButton } from './IconButton';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as Haptics from 'expo-haptics';
 import { notificationAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export interface TaskCardProps {
   task: TaskListItem;
@@ -61,7 +62,9 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         task.completed
           ? Haptics.NotificationFeedbackType.Warning
           : Haptics.NotificationFeedbackType.Success
-      ).catch(() => {});
+      ).catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
     }
     onToggle(task.id);
   };

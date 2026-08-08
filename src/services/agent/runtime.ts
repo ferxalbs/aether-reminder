@@ -17,6 +17,7 @@ import { AGENT_SYSTEM_PROMPT, buildContextMessage } from "./prompt";
 import { defaultToolRegistry, type ToolRegistry } from "./tools";
 import type { ToolExecutionContext } from "./tools/types";
 import { AetherCommandExecutor } from '@/core/commands';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 import type {
   AgentBudget,
   AgentEvent,
@@ -89,8 +90,9 @@ export class AetherAgentRuntime implements AgentRuntime {
         semanticState: "idle",
         finished: true,
       });
-    } catch {
-      // run may not exist yet
+    } catch (error) {
+      // A cancellation can race run creation; retain the cancellation request and trace the race.
+      reportNonFatalError('agent-cancel', error);
     }
   }
 

@@ -86,6 +86,24 @@ describe('TasksRepository', () => {
     await db.closeAsync?.();
   });
 
+  test('upcoming query enforces its limit and deterministic ordering', async () => {
+    const db = await readyDb();
+    const tasks = new TasksRepository(db);
+    const today = getLocalDateString();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = getLocalDateString(tomorrowDate);
+
+    await tasks.create({ title: 'Later low', priority: 'low', dueDate: tomorrow });
+    await tasks.create({ title: 'Later high', priority: 'high', dueDate: tomorrow });
+    await tasks.create({ title: 'Later medium', priority: 'medium', dueDate: tomorrow });
+
+    const upcoming = await tasks.listUpcoming(today, 2);
+    expect(upcoming).toHaveLength(2);
+    expect(upcoming.map((task) => task.title)).toEqual(['Later high', 'Later medium']);
+    await db.closeAsync?.();
+  });
+
   test('update and search', async () => {
     const db = await readyDb();
     const tasks = new TasksRepository(db);

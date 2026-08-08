@@ -1,4 +1,5 @@
 import { AIProviderError } from '@/services/ai/providers';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export type CredentialProvider = 'OpenRouter' | 'OpenAI';
 
@@ -31,7 +32,8 @@ function missingKeyError(provider: CredentialProvider): AIProviderError {
 export async function isSecureStoreAvailable(adapter: SecureStoreAdapter): Promise<boolean> {
   try {
     return await adapter.isAvailableAsync();
-  } catch {
+  } catch (error) {
+    reportNonFatalError('secure-store-availability', error);
     return false;
   }
 }
@@ -50,7 +52,8 @@ export async function loadProviderCredentials(adapter: SecureStoreAdapter): Prom
 async function readCredential(adapter: SecureStoreAdapter, provider: CredentialProvider): Promise<string> {
   try {
     return (await adapter.getItemAsync(storageKeyForProvider(provider)))?.trim() || '';
-  } catch {
+  } catch (error) {
+    reportNonFatalError('secure-store-read', error);
     return '';
   }
 }
@@ -68,7 +71,8 @@ export async function saveProviderCredential(
     await adapter.setItemAsync(storageKeyForProvider(provider), normalizedKey, {
       keychainAccessible,
     });
-  } catch {
+  } catch (error) {
+    reportNonFatalError('secure-store-save', error);
     throw secureStorageError(provider);
   }
   return normalizedKey;
@@ -81,7 +85,8 @@ export async function deleteProviderCredential(
   if (!(await isSecureStoreAvailable(adapter))) throw secureStorageError(provider);
   try {
     await adapter.deleteItemAsync(storageKeyForProvider(provider));
-  } catch {
+  } catch (error) {
+    reportNonFatalError('secure-store-delete', error);
     throw secureStorageError(provider);
   }
 }

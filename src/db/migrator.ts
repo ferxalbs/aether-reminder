@@ -1,6 +1,7 @@
 import { DatabaseError } from './errors';
 import { LATEST_SCHEMA_VERSION, MIGRATIONS, type Migration } from './migrations';
 import type { SqlDatabase } from './types';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export interface MigrationResult {
   fromVersion: number;
@@ -87,7 +88,8 @@ export async function applyPragmas(db: SqlDatabase): Promise<void> {
   // WAL improves concurrent read performance; ignore if unsupported (e.g. some in-memory modes).
   try {
     await db.execAsync('PRAGMA journal_mode = WAL;');
-  } catch {
-    // best-effort
+  } catch (error) {
+    // WAL is an optimization; retain the usable database if this driver does not support it.
+    reportNonFatalError('sqlite-wal', error);
   }
 }

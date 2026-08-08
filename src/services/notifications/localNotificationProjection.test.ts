@@ -46,7 +46,7 @@ describe('local notification projection', () => {
     expect((await repos.reminders.getById(reminder.id))?.nativeNotificationId).toBe('native-1');
 
     scheduled = [];
-    expect(await projection.reconcile()).toEqual({ repaired: 1, failed: 0 });
+    expect(await projection.reconcile()).toEqual({ repaired: 1, failed: 0, failures: [] });
     const repaired = await repos.reminders.getById(reminder.id);
     expect(repaired?.nativeNotificationId).toBe('native-2');
 
@@ -76,7 +76,7 @@ describe('local notification projection', () => {
       adapter,
     ).reconcile();
 
-    expect(result).toEqual({ repaired: 1, failed: 0 });
+    expect(result).toEqual({ repaired: 1, failed: 0, failures: [] });
     expect(scheduled).toHaveLength(0);
     await db.closeAsync?.();
   });
@@ -106,7 +106,7 @@ describe('local notification projection', () => {
     };
 
     expect(await new LocalNotificationProjection(repos.reminders, repos.tasks, adapter).reconcile())
-      .toEqual({ repaired: 0, failed: 0 });
+      .toEqual({ repaired: 0, failed: 0, failures: [] });
     expect(cancelled).toHaveLength(0);
     expect(await repos.reminders.listAll()).toHaveLength(201);
     await db.closeAsync?.();

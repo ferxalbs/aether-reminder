@@ -37,6 +37,10 @@ export class AetherCommandExecutor {
     return this.services.tasks.deleteTask(id, source);
   }
 
+  restoreTask(id: string, source = 'undo') {
+    return this.services.tasks.restoreTask(id, source);
+  }
+
   scheduleReminder(input: ScheduleReminderInput, source = 'manual') {
     return this.services.reminders.scheduleReminder(input, source);
   }

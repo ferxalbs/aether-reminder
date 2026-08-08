@@ -12,6 +12,7 @@ import {
   reduceRealtimeTranscription,
   TranscriptionError,
   getTranscriptionErrorMessage,
+  isRetryableTranscriptionError,
   deliverFinalTranscript,
   pcm16AudioLevel,
   normalizePcm16,
@@ -21,6 +22,8 @@ import {
 } from '@/services/transcription';
 import { useSettingsStore } from '@/stores/settings.store';
 import { impactAsync, notificationAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import { retryWithBackoff } from '@/lib/retry';
 import { getVoiceReleaseAction } from './voiceRelease';
 
 export type VoiceState = RealtimeTranscriptionState;
@@ -40,6 +43,8 @@ interface VoiceControllerResult {
   state: VoiceState;
   locked: boolean;
   error: string | null;
+  canRetry: boolean;
+  retryAttempt: number;
   transcript: string;
   audioLevel: SharedValue<number>;
   begin: () => void;
@@ -57,7 +62,9 @@ function haptic(kind: 'start' | 'stop' | 'cancel' | 'error'): void {
     : kind === 'cancel'
       ? notificationAsync(Haptics.NotificationFeedbackType.Warning)
       : impactAsync(kind === 'start' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
-  action.catch(() => {});
+  action.catch((error: unknown) => {
+    reportNonFatalError('haptics', error);
+  });
 }
 
 export function useVoiceController({ onTranscript }: VoiceControllerOptions): VoiceControllerResult {
@@ -85,6 +92,8 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const [state, setState] = useState<VoiceState>('idle');
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
   const audioLevel = useSharedValue(0);
 
@@ -125,8 +134,10 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
       : new TranscriptionError('SESSION_FAILED', 'The OpenAI realtime transcription session failed.');
     cleanupResources(true);
     setVoiceState('error');
+    reportNonFatalError('voice-controller', transcriptionError);
     if (mountedRef.current) {
       setError(getTranscriptionErrorMessage(transcriptionError));
+      setCanRetry(isRetryableTranscriptionError(transcriptionError));
       setLocked(false);
     }
     haptic('error');
@@ -156,11 +167,17 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
         submitted = deliverFinalTranscript(finalText, finalSubmittedRef, (committedText) => {
           const callbackResult = onTranscriptRef.current(committedText);
           if (callbackResult && typeof (callbackResult as Promise<void>).catch === 'function') {
-            void (callbackResult as Promise<void>).catch(() => {});
+            void (callbackResult as Promise<void>).catch((error: unknown) => {
+              fail(error instanceof TranscriptionError
+                ? error
+                : new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.'));
+            });
           }
         });
       } catch (caught) {
-        fail(caught);
+        fail(caught instanceof TranscriptionError
+          ? caught
+          : new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.'));
         return;
       }
       if (!submitted) return;
@@ -228,6 +245,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     setVoiceState('idle');
     if (mountedRef.current) {
       setError(null);
+      setCanRetry(false);
       setLocked(false);
     }
     haptic('cancel');
@@ -283,6 +301,8 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     finalSubmittedRef.current = false;
     audioBytesRef.current = 0;
     setError(null);
+    setCanRetry(false);
+    setRetryAttempt(0);
     setLocked(false);
     setRealtimeSnapshot({ ...initialRealtimeTranscriptionSnapshot, state: 'connecting' });
     setVoiceState('connecting');
@@ -298,15 +318,38 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
         if (!permission.granted) throw new TranscriptionError('PERMISSION_DENIED', 'Microphone permission was denied.');
         if (abortController.signal.aborted || !activeRef.current) return;
 
-        const session = createOpenAIRealtimeTranscriptionSession(openAiApiKey, {
-          onEvent: handleRealtimeEvent,
-          onError: fail,
-        });
-        sessionRef.current = session;
-        await session.connect();
+        await retryWithBackoff(
+          async () => {
+            const session = createOpenAIRealtimeTranscriptionSession(openAiApiKey, {
+              onEvent: handleRealtimeEvent,
+              onError: (error) => {
+                if (stateRef.current !== 'connecting') fail(error);
+              },
+            });
+            sessionRef.current = session;
+            try {
+              await session.connect();
+            } catch (caught) {
+              if (sessionRef.current === session) sessionRef.current = null;
+              throw caught;
+            }
+          },
+          {
+            signal: abortController.signal,
+            maxAttempts: 3,
+            baseDelayMs: 300,
+            maxDelayMs: 1_500,
+            shouldRetry: isRetryableTranscriptionError,
+            onRetry: (nextAttempt, delayMs, error) => {
+              setRetryAttempt(nextAttempt);
+              reportNonFatalError('voice-connect-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof TranscriptionError ? error.code : 'unknown'}`));
+            },
+          }
+        );
         if (abortController.signal.aborted || !activeRef.current) return;
         await audioStream.stream.start();
         if (abortController.signal.aborted || !activeRef.current) return;
+        setRetryAttempt(0);
         setVoiceState('listening');
         if (lockRequestedRef.current) setLocked(true);
         haptic('start');
@@ -339,6 +382,8 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     state,
     locked,
     error,
+    canRetry,
+    retryAttempt,
     transcript: snapshot.finalText || snapshot.partialText,
     audioLevel,
     begin,
