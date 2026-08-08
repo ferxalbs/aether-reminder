@@ -1,4 +1,4 @@
-import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseError } from './errors';
 import { applyPragmas, runMigrations, type MigrationResult } from './migrator';
 import type { SqlBindParams, SqlDatabase, SqlRunResult } from './types';
@@ -54,6 +54,7 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
 
   initPromise = (async () => {
     try {
+      const { openDatabaseAsync } = await import('expo-sqlite');
       const native = await openDatabaseAsync(DATABASE_NAME);
       const db = wrapExpoDatabase(native);
       await applyPragmas(db);
