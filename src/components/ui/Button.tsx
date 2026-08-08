@@ -1,8 +1,16 @@
 import React from 'react';
-import { StyleSheet, ActivityIndicator, View, StyleProp, ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  View,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
+import { GlassSurface } from './GlassSurface';
 import { Typography } from './Typography';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, getMinimumTouchTarget, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface ButtonProps {
@@ -15,6 +23,8 @@ export interface ButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -27,8 +37,11 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   fullWidth = false,
   style,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const isDark = useIsDark();
+  const isDisabled = disabled || loading;
 
   const getContainerStyle = () => {
     switch (variant) {
@@ -44,14 +57,18 @@ export const Button: React.FC<ButtonProps> = ({
         };
       case 'glass':
         return {
-          backgroundColor: isDark ? Colors.glassDark : Colors.glassLight,
-          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-          borderWidth: 1,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
         };
       case 'destructive':
         return {
-          backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : 'rgba(239, 68, 68, 0.1)',
-          borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+          backgroundColor: isDark
+            ? Colors.destructiveBackgroundDark
+            : Colors.destructiveBackgroundLight,
+          borderColor: isDark
+            ? Colors.destructiveBorderDark
+            : Colors.destructiveBorderLight,
         };
       case 'ghost':
       default:
@@ -63,9 +80,11 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextColor = () => {
-    if (disabled) return Colors.zinc500;
+    if (isDisabled) return Colors.zinc500;
     if (variant === 'primary') return isDark ? Colors.black : Colors.white;
-    if (variant === 'destructive') return isDark ? '#FCA5A5' : '#DC2626';
+    if (variant === 'destructive') {
+      return isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight;
+    }
     if (variant === 'ghost') return isDark ? Colors.zinc300 : Colors.zinc700;
     return isDark ? Colors.white : Colors.zinc950;
   };
@@ -73,29 +92,58 @@ export const Button: React.FC<ButtonProps> = ({
   const getSizeStyle = () => {
     switch (size) {
       case 'sm':
-        return { paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.md };
+        return {
+          minHeight: getMinimumTouchTarget(Platform.OS),
+          paddingVertical: 8,
+          paddingHorizontal: 16,
+          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.md,
+        };
       case 'lg':
-        return { paddingVertical: 16, paddingHorizontal: 26, borderRadius: Radius.lg };
+        return {
+          minHeight: getMinimumTouchTarget(Platform.OS),
+          paddingVertical: 16,
+          paddingHorizontal: 26,
+          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.lg,
+        };
       case 'md':
       default:
-        return { paddingVertical: 12, paddingHorizontal: 20, borderRadius: Radius.md };
+        return {
+          minHeight: getMinimumTouchTarget(Platform.OS),
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.md,
+        };
     }
   };
+
+  const sizeStyle = getSizeStyle();
 
   return (
     <AnimatedPressable
       onPress={onPress}
-      disabled={disabled || loading}
-      scaleTo={0.97}
+      disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+      scaleTo={Motion.buttonPressScale}
       style={[
         styles.base,
-        getSizeStyle(),
+        sizeStyle,
         getContainerStyle(),
         fullWidth && styles.fullWidth,
-        disabled && styles.disabled,
+        isDisabled && styles.disabled,
         style,
       ]}
     >
+      {variant === 'glass' ? (
+        <GlassSurface
+          pointerEvents="none"
+          borderRadius={sizeStyle.borderRadius}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
@@ -118,6 +166,7 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'transparent',
   },

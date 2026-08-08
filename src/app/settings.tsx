@@ -660,6 +660,7 @@ export default function SettingsScreen() {
               <ToggleSwitch
                 value={hapticsEnabled}
                 onValueChange={(enabled) => setHapticsEnabled(enabled)}
+                accessibilityLabel="Haptic Feedback"
               />
             </View>
 
@@ -681,6 +682,7 @@ export default function SettingsScreen() {
               <ToggleSwitch
                 value={autoSummarize}
                 onValueChange={(enabled) => setAutoSummarize(enabled)}
+                accessibilityLabel="Auto Task Summarize"
               />
             </View>
 

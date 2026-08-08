@@ -99,8 +99,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <IconButton
                   icon={<X size={18} color={Colors.zinc500} />}
                   onPress={onClose}
+                  accessibilityLabel="Close new task dialog"
                   variant="ghost"
-                  size={36}
                 />
               </View>
 
@@ -149,6 +149,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     <AnimatedPressable
                       key={p}
                       onPress={() => setPriority(p)}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${p} priority`}
+                      accessibilityState={{ selected: isSelected }}
                       scaleTo={0.94}
                       style={[
                         styles.priorityChip,

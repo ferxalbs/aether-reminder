@@ -1,13 +1,16 @@
 import React from 'react';
-import { StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
-import { Colors, Radius } from '@/theme/tokens';
+import { GlassSurface } from './GlassSurface';
+import { Colors, getMinimumTouchTarget, Motion, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import * as Haptics from 'expo-haptics';
 
 export interface IconButtonProps {
   icon: React.ReactNode;
   onPress: () => void;
+  accessibilityLabel: string;
+  accessibilityHint?: string;
   variant?: 'solid' | 'glass' | 'ghost';
   size?: number;
   disabled?: boolean;
@@ -18,6 +21,8 @@ export interface IconButtonProps {
 export const IconButton: React.FC<IconButtonProps> = ({
   icon,
   onPress,
+  accessibilityLabel,
+  accessibilityHint,
   variant = 'glass',
   size = 44,
   disabled = false,
@@ -25,6 +30,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   hapticStyle = Haptics.ImpactFeedbackStyle.Light,
 }) => {
   const isDark = useIsDark();
+  const touchTarget = Math.max(size, getMinimumTouchTarget(Platform.OS));
 
   const getContainerStyle = () => {
     switch (variant) {
@@ -35,9 +41,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
         };
       case 'glass':
         return {
-          backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100,
-          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-          borderWidth: 1,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
         };
       case 'ghost':
         return {
@@ -51,13 +57,18 @@ export const IconButton: React.FC<IconButtonProps> = ({
     <AnimatedPressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled }}
+      android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
       hapticStyle={hapticStyle}
-      scaleTo={0.93}
+      scaleTo={Motion.iconPressScale}
       style={[
         styles.base,
         {
-          width: size,
-          height: size,
+          width: touchTarget,
+          height: touchTarget,
           borderRadius: Radius.pill,
         },
         getContainerStyle(),
@@ -65,6 +76,13 @@ export const IconButton: React.FC<IconButtonProps> = ({
         style,
       ]}
     >
+      {variant === 'glass' ? (
+        <GlassSurface
+          pointerEvents="none"
+          borderRadius={Radius.pill}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       {icon}
     </AnimatedPressable>
   );
@@ -74,6 +92,7 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   disabled: {
     opacity: 0.4,

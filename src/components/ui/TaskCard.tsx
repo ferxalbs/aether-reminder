@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
+  ReduceMotion,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { Check, Trash2, Clock, Sparkles } from 'lucide-react-native';
 import type { TaskListItem } from '@/domain/entities';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from './Typography';
 import { AnimatedPressable } from './AnimatedPressable';
@@ -32,19 +34,35 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   onPress,
 }) => {
   const isDark = useIsDark();
+  const reduceMotion = useReducedMotion();
 
   const completionScale = useSharedValue(task.completed ? 1 : 0.85);
   const completionOpacity = useSharedValue(task.completed ? 1 : 0.5);
   const contentOpacity = useSharedValue(task.completed ? 0.45 : 1);
 
   useEffect(() => {
-    completionScale.value = withSpring(task.completed ? 1 : 0.85, {
-      damping: 20,
-      stiffness: 300,
+    const nextScale = task.completed ? 1 : 0.85;
+    const nextCompletionOpacity = task.completed ? 1 : 0.5;
+    const nextContentOpacity = task.completed ? 0.45 : 1;
+
+    if (reduceMotion) {
+      completionScale.value = nextScale;
+      completionOpacity.value = nextCompletionOpacity;
+      contentOpacity.value = nextContentOpacity;
+      return;
+    }
+
+    completionScale.value = withSpring(nextScale, {
+      ...Motion.cardSpring,
+      reduceMotion: ReduceMotion.Never,
     });
-    completionOpacity.value = withTiming(task.completed ? 1 : 0.5, { duration: 160 });
-    contentOpacity.value = withTiming(task.completed ? 0.45 : 1, { duration: 160 });
-  }, [task.completed, completionScale, completionOpacity, contentOpacity]);
+    completionOpacity.value = withTiming(nextCompletionOpacity, {
+      duration: Motion.reducedMotionDuration,
+    });
+    contentOpacity.value = withTiming(nextContentOpacity, {
+      duration: Motion.reducedMotionDuration,
+    });
+  }, [reduceMotion, task.completed, completionScale, completionOpacity, contentOpacity]);
 
   const checkScaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completionScale.value }],
@@ -81,31 +99,33 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   };
 
   const priorityTag = getPriorityTag();
+  const cardStyle = [
+    styles.card,
+    {
+      backgroundColor: isDark ? Colors.zinc900 : Colors.white,
+      borderColor: task.completed
+        ? isDark
+          ? Colors.zinc800
+          : Colors.zinc200
+        : isDark
+          ? Colors.zinc700
+          : Colors.zinc300,
+    },
+  ];
 
-  return (
-    <AnimatedPressable
-      onPress={() => onPress?.(task)}
-      scaleTo={0.98}
-      style={[
-        styles.card,
-        {
-          backgroundColor: isDark ? Colors.zinc900 : Colors.white,
-          borderColor: task.completed
-            ? isDark
-              ? Colors.zinc800
-              : Colors.zinc200
-            : isDark
-            ? Colors.zinc700
-            : Colors.zinc300,
-        },
-      ]}
-    >
-      <View style={styles.row}>
-        {/* Animated Checkbox */}
-        <AnimatedPressable
-          onPress={handleToggle}
-          scaleTo={0.88}
-          hapticStyle={null}
+  const cardContent = (
+    <View style={styles.row}>
+      {/* Animated Checkbox */}
+      <AnimatedPressable
+        onPress={handleToggle}
+        scaleTo={0.88}
+        hapticStyle={null}
+        accessibilityRole="checkbox"
+        accessibilityLabel={`Mark ${task.title} as ${task.completed ? 'incomplete' : 'complete'}`}
+        accessibilityState={{ checked: task.completed }}
+        style={styles.checkboxTouchTarget}
+      >
+        <View
           style={[
             styles.checkbox,
             {
@@ -131,77 +151,103 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
               />
             )}
           </Animated.View>
-        </AnimatedPressable>
+        </View>
+      </AnimatedPressable>
 
-        {/* Task Content */}
-        <Animated.View style={[styles.content, textOpacityStyle]}>
-          <View style={styles.headerLine}>
-            <Typography
-              variant="bodyBold"
-              style={[
-                styles.titleText,
-                task.completed && styles.strikethrough,
-              ]}
-              numberOfLines={2}
-            >
-              {task.title}
-            </Typography>
-          </View>
+      {/* Task Content */}
+      <Animated.View style={[styles.content, textOpacityStyle]}>
+        <View style={styles.headerLine}>
+          <Typography
+            variant="bodyBold"
+            style={[
+              styles.titleText,
+              task.completed && styles.strikethrough,
+            ]}
+            numberOfLines={2}
+          >
+            {task.title}
+          </Typography>
+        </View>
 
-          {task.notes ? (
-            <Typography
-              variant="caption"
-              color={Colors.zinc500}
-              numberOfLines={1}
-              style={styles.notesText}
-            >
-              {task.notes}
-            </Typography>
-          ) : null}
+        {task.notes ? (
+          <Typography
+            variant="caption"
+            color={Colors.zinc500}
+            numberOfLines={1}
+            style={styles.notesText}
+          >
+            {task.notes}
+          </Typography>
+        ) : null}
 
-          {/* Metadata Footer */}
-          <View style={styles.metaRow}>
-            {task.aiSuggested && (
-              <View style={styles.badge}>
-                <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
-                <Typography variant="tiny" style={styles.badgeText}>
-                  AI Suggested
-                </Typography>
-              </View>
-            )}
-
-            {task.dueDate && (
-              <View style={styles.dateMeta}>
-                <Clock size={11} color={Colors.zinc500} />
-                <Typography variant="tiny" color={Colors.zinc500} style={styles.dateText}>
-                  {task.dueDate}
-                </Typography>
-              </View>
-            )}
-
-            <View style={styles.priorityBadge}>
-              <Typography
-                variant="tiny"
-                color={priorityTag.color}
-                style={{ fontWeight: '700' }}
-              >
-                {priorityTag.label}
+        {/* Metadata Footer */}
+        <View style={styles.metaRow}>
+          {task.aiSuggested && (
+            <View style={styles.badge}>
+              <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
+              <Typography variant="tiny" style={styles.badgeText}>
+                AI Suggested
               </Typography>
             </View>
-          </View>
-        </Animated.View>
+          )}
 
-        {/* Delete action button */}
-        <IconButton
-          icon={<Trash2 size={16} color={Colors.zinc500} />}
-          onPress={() => onDelete(task.id)}
-          variant="ghost"
-          size={36}
-          hapticStyle={Haptics.ImpactFeedbackStyle.Light}
-        />
-      </View>
-    </AnimatedPressable>
+          {task.dueDate && (
+            <View style={styles.dateMeta}>
+              <Clock size={11} color={Colors.zinc500} />
+              <Typography variant="tiny" color={Colors.zinc500} style={styles.dateText}>
+                {task.dueDate}
+              </Typography>
+            </View>
+          )}
+
+          <View
+            style={[
+              styles.priorityBadge,
+              {
+                backgroundColor: isDark
+                  ? Colors.priorityBadgeBackgroundDark
+                  : Colors.priorityBadgeBackgroundLight,
+              },
+            ]}
+          >
+            <Typography
+              variant="tiny"
+              color={priorityTag.color}
+              style={{ fontWeight: '700' }}
+            >
+              {priorityTag.label}
+            </Typography>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Delete action button */}
+      <IconButton
+        icon={<Trash2 size={16} color={Colors.zinc500} />}
+        onPress={() => onDelete(task.id)}
+        accessibilityLabel={`Delete ${task.title}`}
+        variant="ghost"
+        hapticStyle={Haptics.ImpactFeedbackStyle.Light}
+      />
+    </View>
   );
+
+  if (onPress) {
+    return (
+      <AnimatedPressable
+        onPress={() => onPress(task)}
+        accessibilityRole="button"
+        accessibilityLabel={`Open task ${task.title}`}
+        accessibilityHint="Opens task details"
+        scaleTo={Motion.cardPressScale}
+        style={cardStyle}
+      >
+        {cardContent}
+      </AnimatedPressable>
+    );
+  }
+
+  return <View style={cardStyle}>{cardContent}</View>;
 });
 TaskCard.displayName = 'TaskCard';
 
@@ -222,6 +268,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  checkboxTouchTarget: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
   checkbox: {
     width: 22,
     height: 22,
@@ -229,8 +280,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
-    marginTop: 2,
   },
   content: {
     flex: 1,
@@ -280,6 +329,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: Radius.sm,
-    backgroundColor: Colors.zinc800 + '33',
   },
 });

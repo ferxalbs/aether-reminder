@@ -1,8 +1,17 @@
 /* eslint-disable react-hooks/immutability */
 import React from 'react';
-import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
+import {
+  GestureResponderEvent,
+  Platform,
+  Pressable,
+  PressableProps,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import Animated, {
+  ReduceMotion,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
@@ -10,12 +19,14 @@ import * as Haptics from 'expo-haptics';
 import { useSettingsStore } from '@/stores/settings.store';
 import { impactAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import { getMinimumTouchTarget, Motion } from '@/theme/tokens';
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
 export interface AnimatedPressableProps extends PressableProps {
   scaleTo?: number;
   hapticStyle?: Haptics.ImpactFeedbackStyle | null;
+  minimumTouchTarget?: boolean;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
@@ -29,22 +40,26 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   onPress,
   children,
   disabled,
+  minimumTouchTarget = true,
   ...rest
 }) => {
   const scale = useSharedValue(1);
+  const reduceMotion = useReducedMotion();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = (e: any) => {
+  const handlePressIn = (e: GestureResponderEvent) => {
     if (disabled) return;
-    // Critically damped Apple UI spring (instant response, zero sluggish bounce)
-    scale.value = withSpring(scaleTo, {
-      damping: 24,
-      stiffness: 350,
-      mass: 0.5,
-    });
+    // Reduced Motion keeps the control visually stable; the regular path uses
+    // the shared critically damped spring for instant platform feedback.
+    scale.value = reduceMotion
+      ? 1
+      : withSpring(scaleTo, {
+          ...Motion.pressSpring,
+          reduceMotion: ReduceMotion.Never,
+        });
     const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
     if (hapticsEnabled && hapticStyle) {
       impactAsync(hapticStyle).catch((error: unknown) => {
@@ -54,13 +69,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
     onPressIn?.(e);
   };
 
-  const handlePressOut = (e: any) => {
+  const handlePressOut = (e: GestureResponderEvent) => {
     if (disabled) return;
-    scale.value = withSpring(1, {
-      damping: 24,
-      stiffness: 350,
-      mass: 0.5,
-    });
+    scale.value = reduceMotion
+      ? 1
+      : withSpring(1, {
+          ...Motion.pressSpring,
+          reduceMotion: ReduceMotion.Never,
+        });
     onPressOut?.(e);
   };
 
@@ -71,7 +87,14 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={[animatedStyle, style]}
+      style={[
+        animatedStyle,
+        minimumTouchTarget && {
+          minWidth: getMinimumTouchTarget(Platform.OS),
+          minHeight: getMinimumTouchTarget(Platform.OS),
+        },
+        style,
+      ]}
     >
       {children}
     </AnimatedPressableBase>

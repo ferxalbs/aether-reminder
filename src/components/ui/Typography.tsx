@@ -14,6 +14,7 @@ export const Typography: React.FC<TypographyProps> = ({
   variant = 'body',
   color,
   align = 'left',
+  allowFontScaling = true,
   style,
   children,
   ...rest
@@ -26,6 +27,7 @@ export const Typography: React.FC<TypographyProps> = ({
   return (
     <Text
       {...rest}
+      allowFontScaling={allowFontScaling}
       style={[
         {
           fontSize: token.fontSize,

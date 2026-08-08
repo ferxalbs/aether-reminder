@@ -29,6 +29,22 @@ export const Colors = {
   // System
   systemGreenLight: '#34C759',
   systemGreenDark: '#30D158',
+  systemGray4Light: '#D1D1D6',
+  systemGray4Dark: '#3A3A3C',
+
+  // Semantic action colors
+  destructiveBackgroundLight: 'rgba(239, 68, 68, 0.10)',
+  destructiveBackgroundDark: 'rgba(239, 68, 68, 0.16)',
+  destructiveBorderLight: 'rgba(239, 68, 68, 0.20)',
+  destructiveBorderDark: 'rgba(239, 68, 68, 0.30)',
+  destructiveTextLight: '#DC2626',
+  destructiveTextDark: '#FCA5A5',
+  priorityBadgeBackgroundLight: 'rgba(39, 39, 42, 0.20)',
+  priorityBadgeBackgroundDark: 'rgba(228, 228, 231, 0.20)',
+
+  // Platform feedback surfaces
+  rippleLight: 'rgba(0, 0, 0, 0.12)',
+  rippleDark: 'rgba(255, 255, 255, 0.18)',
 } as const;
 
 export const Spacing = {
@@ -47,6 +63,37 @@ export const Radius = {
   lg: 20,
   xl: 28,
   pill: 9999,
+} as const;
+
+export const TouchTargets = {
+  ios: 44,
+  android: 48,
+} as const;
+
+export const getMinimumTouchTarget = (platform: string): number =>
+  platform === 'android' ? TouchTargets.android : TouchTargets.ios;
+
+export const Motion = {
+  pressSpring: {
+    damping: 24,
+    stiffness: 350,
+    mass: 0.5,
+  },
+  toggleSpring: {
+    damping: 20,
+    stiffness: 200,
+    mass: 1,
+    overshootClamping: true,
+  },
+  cardSpring: {
+    damping: 20,
+    stiffness: 300,
+  },
+  buttonPressScale: 0.97,
+  cardPressScale: 0.98,
+  iconPressScale: 0.93,
+  pressScale: 0.96,
+  reducedMotionDuration: 120,
 } as const;
 
 export const TypographyTokens = {

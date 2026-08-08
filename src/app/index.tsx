@@ -157,6 +157,7 @@ export default function HomeScreen() {
             <IconButton
               icon={<Plus size={20} color={isDark ? Colors.white : Colors.black} />}
               onPress={() => setModalVisible(true)}
+              accessibilityLabel="Add task"
               variant="glass"
               size={46}
             />

@@ -1,17 +1,24 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { GlassSurface } from './GlassSurface';
+import { Colors, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
-export interface CardProps {
+interface CardBaseProps {
   children: React.ReactNode;
-  onPress?: () => void;
   variant?: 'elevated' | 'glass' | 'outline';
   style?: StyleProp<ViewStyle>;
   padding?: number;
   borderRadius?: number;
+  accessibilityHint?: string;
 }
+
+export type CardProps = CardBaseProps &
+  (
+    | { onPress?: undefined; accessibilityLabel?: string }
+    | { onPress: () => void; accessibilityLabel: string }
+  );
 
 export const Card: React.FC<CardProps> = ({
   children,
@@ -20,6 +27,8 @@ export const Card: React.FC<CardProps> = ({
   style,
   padding = Spacing.md,
   borderRadius = Radius.xl,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const isDark = useIsDark();
 
@@ -38,9 +47,9 @@ export const Card: React.FC<CardProps> = ({
         };
       case 'glass':
         return {
-          backgroundColor: isDark ? Colors.glassDark : Colors.glassLight,
-          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-          borderWidth: 1,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
         };
       case 'outline':
         return {
@@ -57,16 +66,36 @@ export const Card: React.FC<CardProps> = ({
     { borderRadius, padding },
     style,
   ];
+  const content = (
+    <>
+      {variant === 'glass' ? (
+        <GlassSurface
+          pointerEvents="none"
+          borderRadius={borderRadius}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      {children}
+    </>
+  );
 
   if (onPress) {
     return (
-      <AnimatedPressable onPress={onPress} scaleTo={0.97} style={containerStyles}>
-        {children}
+      <AnimatedPressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+        scaleTo={Motion.cardPressScale}
+        style={containerStyles}
+      >
+        {content}
       </AnimatedPressable>
     );
   }
 
-  return <View style={containerStyles}>{children}</View>;
+  return <View style={containerStyles}>{content}</View>;
 };
 
 const styles = StyleSheet.create({

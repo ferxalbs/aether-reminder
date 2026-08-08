@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
 import { BlurView, BlurViewProps } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Colors, Radius } from '@/theme/tokens';
@@ -13,6 +13,11 @@ export interface GlassSurfaceProps {
   tint?: BlurViewProps['tint'];
   borderRadius?: number;
   borderWidth?: number;
+  accessible?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: ViewProps['accessibilityRole'];
+  pointerEvents?: ViewProps['pointerEvents'];
 }
 
 export const GlassSurface: React.FC<GlassSurfaceProps> = ({
@@ -23,16 +28,29 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   tint,
   borderRadius = Radius.lg,
   borderWidth = 1,
+  accessible,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole,
+  pointerEvents,
 }) => {
   const isDark = useIsDark();
+  const isIOS = Platform.OS === 'ios';
+  const isAndroid = Platform.OS === 'android';
 
   const activeTint = tint || (isDark ? 'dark' : 'light');
   const borderColor = isDark ? Colors.glassBorderDark : Colors.glassBorderLight;
-  const backgroundColor = isDark ? (process.env.EXPO_OS === 'android' ? Colors.zinc900 : Colors.glassDark) : (process.env.EXPO_OS === 'android' ? Colors.white : Colors.glassLight);
+  const backgroundColor = isAndroid
+    ? isDark
+      ? Colors.zinc900
+      : Colors.white
+    : isDark
+      ? Colors.glassDark
+      : Colors.glassLight;
 
   const useLiquidGlass =
-    process.env.EXPO_OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  const useBlurView = process.env.EXPO_OS === 'ios';
+    isIOS && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  const useBlurView = isIOS;
 
   return (
     <View
@@ -46,6 +64,11 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
         },
         style,
       ]}
+      accessible={accessible}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityRole={accessibilityRole}
+      pointerEvents={pointerEvents}
     >
       {useLiquidGlass ? (
         <GlassView
