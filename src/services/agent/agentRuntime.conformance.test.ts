@@ -112,6 +112,9 @@ describe('agent runtime conformance', () => {
     const listed = await services.tasks.listTasks({ scope: 'upcoming' });
     const all = await services.tasks.listTasks({ scope: 'active', limit: 20 });
     expect(all.some((t) => t.title === 'Review PR' && t.dueDate === tomorrow)).toBe(true);
+    expect(provider.remainingTurns()).toBe(1);
+    const persistedEvents = await db.getAllAsync(`SELECT * FROM agent_events`);
+    expect(persistedEvents).toHaveLength(0);
     void listed;
     await db.closeAsync?.();
   });
@@ -227,19 +230,20 @@ describe('agent runtime conformance', () => {
       apiKey: 'test-key',
     });
     expect(types(first)).toContain('tool.confirmation_required');
-    const sessionId = first.find((event) => event.type === 'run.started')?.type === 'run.started'
-      ? first.find((event) => event.type === 'run.started')?.sessionId
-      : undefined;
-    expect(sessionId).toBeTruthy();
-    const second = await collect(runtime, {
-      message: 'Delete everything I said by voice',
-      context: baseContext({ invocationSource: 'voice' }),
-      modelId: 'scripted/full',
-      apiKey: 'test-key',
-      sessionId,
-      confirmations: { approveAll: true },
-    });
+    const pending = first.find((event) => event.type === 'tool.confirmation_required');
+    expect(pending?.type).toBe('tool.confirmation_required');
+    const second: AgentEvent[] = [];
+    if (pending?.type === 'tool.confirmation_required') {
+      for await (const event of runtime.confirm(pending.pendingAction, {
+        context: baseContext({ invocationSource: 'voice' }),
+      })) second.push(event);
+    }
     expect(types(second)).toContain('tool.completed');
+    if (pending?.type === 'tool.confirmation_required') {
+      const replay: AgentEvent[] = [];
+      for await (const event of runtime.confirm(pending.pendingAction, { context: baseContext() })) replay.push(event);
+      expect(types(replay)).toContain('tool.completed');
+    }
     expect(await services.tasks.listTasks({ scope: 'active' })).toHaveLength(0);
     await db.closeAsync?.();
   });

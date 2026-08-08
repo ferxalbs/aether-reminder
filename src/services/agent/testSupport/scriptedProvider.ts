@@ -36,6 +36,10 @@ export class ScriptedInferenceProvider implements InferenceProvider {
     this.turnIndex = 0;
   }
 
+  remainingTurns(): number {
+    return this.turns.length - this.turnIndex;
+  }
+
   setTurns(
     turns: ((req: InferenceRequest, signal: AbortSignal) => AsyncIterable<ModelEvent>)[]
   ): void {

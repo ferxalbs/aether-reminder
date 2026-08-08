@@ -9,6 +9,7 @@ export type {
   SuggestedAction,
   EntityReference,
   ToolRisk,
+  PendingAction,
 } from "./types";
 export { DEFAULT_AGENT_BUDGET } from "./types";
 export { AetherAgentRuntime, createAgentRuntime } from "./runtime";

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Check, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,7 +48,7 @@ interface AssistantSheetProps {
   voiceLocked: boolean;
   voiceError: string | null;
   voiceTranscript: string;
-  voiceAudioLevel: number;
+  voiceAudioLevel: SharedValue<number>;
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
   keyboardOffset: number;
@@ -61,12 +62,12 @@ interface AssistantSheetProps {
 }
 
 function confirmationTitle(pending: PendingAssistantConfirmation): string {
-  if (pending.toolId === 'tasks.delete' && typeof pending.args === 'object' && pending.args !== null) {
-    const args = pending.args as { ids?: unknown[]; id?: unknown };
+  if (pending.action.toolId === 'tasks.delete') {
+    const args = pending.action.args as { ids?: unknown[]; id?: unknown };
     const count = Array.isArray(args.ids) ? args.ids.length : args.id ? 1 : 0;
     return count > 1 ? `Delete ${count} tasks?` : 'Delete this task?';
   }
-  if (pending.toolId === 'app.navigate') return 'Open another AETHER surface?';
+  if (pending.action.toolId === 'app.navigate') return 'Open another AETHER surface?';
   return 'Confirm this action?';
 }
 
@@ -107,6 +108,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const { height: windowHeight } = useWindowDimensions();
   const height = useSharedValue(0);
   const keyboardShift = useSharedValue(0);
+  const voiceLevelStyle = useAnimatedStyle(() => ({
+    width: `${Math.round(Math.min(1, voiceAudioLevel.value) * 100)}%`,
+  }));
   const isVisible = surface !== 'closed';
   const showHeader = surface === 'medium' || surface === 'full';
   const showConversation = surface === 'medium' || surface === 'full';
@@ -229,7 +233,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
                 <Typography variant="bodyBold">{voiceState === 'connecting' ? 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
                 {voiceTranscript ? <Typography variant="caption" color={Colors.zinc500} numberOfLines={3}>{voiceTranscript}</Typography> : null}
-                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}><View style={[styles.voiceLevelFill, { width: `${Math.round(Math.min(1, voiceAudioLevel) * 100)}%`, backgroundColor: '#65D6C0' }]} /></View> : null}
+                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: '#65D6C0' }, voiceLevelStyle]} /></View> : null}
                 {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
               </View>
             ) : null}

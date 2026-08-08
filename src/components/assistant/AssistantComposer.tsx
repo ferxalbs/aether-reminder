@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { ArrowUp } from 'lucide-react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -24,7 +25,7 @@ interface AssistantComposerProps {
   onOrbPressIn?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
-  audioLevel?: number;
+  audioLevel?: SharedValue<number>;
 }
 
 export const AssistantComposer: React.FC<AssistantComposerProps> = ({
@@ -39,7 +40,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   onOrbPressIn,
   onOrbPressOut,
   onOrbPressMove,
-  audioLevel = 0,
+  audioLevel,
 }) => {
   const isDark = useIsDark();
   const inputRef = useRef<TextInput>(null);

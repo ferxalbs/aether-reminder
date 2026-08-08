@@ -2,6 +2,35 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (2) [P0 Production Safety and Latency Corrections]
+
+### Exact confirmation and terminal mutations
+
+- Confirmation now executes the exact app-owned pending action directly, without resubmitting user text or starting another model run; cancellation durably discards it and completed executions replay without repeating mutations.
+- Removed response-delta and semantic-state persistence from the agent event hot path while retaining durable terminal run outcomes, tool execution idempotency records, receipts, and errors.
+- Successful simple task and reminder mutations now finish from the actual native action receipt without a second model round trip.
+
+### Bounded realtime voice transport
+
+- Normalized native PCM16 input to 24 kHz mono, including channel downmixing and resampling when device hardware ignores the requested capture rate.
+- Added 100 ms packetization, a bounded transport queue with backpressure failure, connection/session/final-transcript timeouts, and deterministic socket/timer/queue cleanup.
+- Kept partial transcripts non-mutating and final delivery exactly once; moved audio-level metering to a Reanimated shared value outside normal React render propagation.
+
+### Recoverable local notification delivery
+
+- Added `expo-notifications`, migration `0004_notification_projection`, stored native notification identifiers/errors, and a small SQLite-authoritative local notification projection.
+- Reminder schedule, reschedule, and cancel operations now update OS-local notifications and report projection failure honestly while preserving successful domain mutations.
+- Reconciliation repairs missing or stale schedules after app startup and foreground resume and removes notifications for disabled reminders.
+
+### Regression coverage and validation
+
+- Added or updated coverage for exact confirmation replay, terminal mutation turns, absent hot-path event persistence, PCM resampling, bounded queue/backpressure, connection timeout cleanup, and notification projection/reconciliation.
+- `bun test`: 77 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 242 expectations across 78 tests and 20 files.
+- `bun run typecheck`: passed.
+- `bun run lint`: passed.
+- `bun x expo config --type public`: passed with Expo SDK 57 and the `expo-notifications` plugin resolved.
+- No build was deployed or published. Physical-device notification delivery, native audio-rate variation, slow-network voice behavior, and background/foreground lifecycle behavior remain device-only validation.
+
 ## Unreleased - 2026.08.08 (1) [Provider-Isolated Realtime Voice and Deterministic Agent Selection]
 
 ### OpenRouter is the only reasoning and agent provider
@@ -37,7 +66,7 @@ All notable changes to AETHER are documented here.
 - Preserved platform-aware iOS Liquid Glass fallbacks, Android-native surfaces, accessibility, Reduce Motion, haptics, keyboard behavior, and local high-frequency audio/transcript state.
 - Removed the unused Expo Audio shim, stale background audio configuration, and unnecessary file-system dependency/permissions. Background recording and playback remain disabled.
 
-### Regression coverage and validation
+### Regression coverage and validation 3
 
 - Added tests for independent SecureStore credentials, provider/key isolation, deterministic DeepSeek defaulting, explicit model preservation, exact OpenRouter capability validation, realtime reducer transitions, partial-versus-final transcript handling, exactly-once final submission, cancellation cleanup, malformed events, and the absence of OpenRouter STT fallback.
 - `bun test`: 72 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 223 expectations across 73 tests and 18 files.

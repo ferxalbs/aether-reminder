@@ -5,8 +5,7 @@ function asString(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;
 }
 
-const OS_NOTE =
-  'OS notification projection is not implemented until Slice 6. Domain/database state only.';
+const OS_NOTE = 'SQLite is authoritative; local notification delivery is reconciled with the OS.';
 
 export const remindersList: AgentTool<{ taskId?: string; enabledOnly?: boolean }> = {
   id: 'reminders.list',
@@ -32,7 +31,7 @@ export const remindersList: AgentTool<{ taskId?: string; enabledOnly?: boolean }
       data: {
         count: list.length,
         reminders: list,
-        osNotificationProjection: 'not_implemented',
+        osNotificationProjection: list.every((item) => !item.enabled || item.nativeNotificationId) ? 'reconciled' : 'pending_repair',
         note: OS_NOTE,
       },
     };
@@ -86,6 +85,7 @@ export const remindersSchedule: AgentTool<{
           reminder: result.value,
           osNotificationProjection: result.osNotificationProjection,
           note: OS_NOTE,
+          projectionError: result.projectionError,
         },
         receipt: { ...result.receipt, toolId: 'reminders.schedule' },
       };
@@ -131,6 +131,7 @@ export const remindersReschedule: AgentTool<{
           reminder: result.value,
           osNotificationProjection: result.osNotificationProjection,
           note: OS_NOTE,
+          projectionError: result.projectionError,
         },
         receipt: { ...result.receipt, toolId: 'reminders.reschedule' },
       };
@@ -163,6 +164,7 @@ export const remindersCancel: AgentTool<{ id: string }> = {
           reminder: result.value,
           osNotificationProjection: result.osNotificationProjection,
           note: OS_NOTE,
+          projectionError: result.projectionError,
         },
         receipt: { ...result.receipt, toolId: 'reminders.cancel' },
       };

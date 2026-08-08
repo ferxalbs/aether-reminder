@@ -36,6 +36,8 @@ export interface ReminderRow {
   timezone: string | null;
   semantics: string;
   enabled: number;
+  native_notification_id: string | null;
+  projection_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,6 +90,8 @@ export function mapReminderRow(row: ReminderRow): Reminder {
     timezone: row.timezone,
     semantics: row.semantics as TemporalSemantics,
     enabled: row.enabled === 1,
+    nativeNotificationId: row.native_notification_id,
+    projectionError: row.projection_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

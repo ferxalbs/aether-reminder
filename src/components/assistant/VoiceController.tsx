@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { requestRecordingPermissionsAsync, useAudioStream } from 'expo-audio';
+import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import {
   createOpenAIRealtimeTranscriptionSession,
   initialRealtimeTranscriptionSnapshot,
@@ -13,6 +14,7 @@ import {
   getTranscriptionErrorMessage,
   deliverFinalTranscript,
   pcm16AudioLevel,
+  normalizePcm16,
   type OpenAIRealtimeSession,
   type RealtimeTranscriptionSnapshot,
   type RealtimeTranscriptionState,
@@ -37,7 +39,7 @@ interface VoiceControllerResult {
   locked: boolean;
   error: string | null;
   transcript: string;
-  audioLevel: number;
+  audioLevel: SharedValue<number>;
   begin: () => void;
   release: () => void;
   lock: () => void;
@@ -79,7 +81,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
-  const [audioLevel, setAudioLevel] = useState(0);
+  const audioLevel = useSharedValue(0);
 
   const setVoiceState = useCallback((next: VoiceState) => {
     stateRef.current = next;
@@ -107,8 +109,8 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     audioBytesRef.current = 0;
     finalSubmittedRef.current = false;
     lastAudioLevelAtRef.current = 0;
-    if (mountedRef.current) setAudioLevel(0);
-  }, []);
+    audioLevel.set(0);
+  }, [audioLevel]);
 
   const fail = useCallback((caught: unknown) => {
     const transcriptionError = caught instanceof TranscriptionError
@@ -168,28 +170,27 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     const session = sessionRef.current;
     if (!activeRef.current || !session) return;
     if (
-      buffer.sampleRate !== OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE ||
-      buffer.channels !== OPENAI_REALTIME_TRANSCRIPTION_CHANNELS ||
       buffer.data.byteLength % 2 !== 0
     ) {
-      fail(new TranscriptionError('INVALID_AUDIO', 'The native stream did not deliver 24 kHz mono PCM16.'));
+      fail(new TranscriptionError('INVALID_AUDIO', 'The native stream delivered incomplete PCM16 audio.'));
       return;
     }
     try {
-      session.appendPcm16(buffer.data);
-      audioBytesRef.current += buffer.data.byteLength;
+      const normalized = normalizePcm16(buffer.data, buffer.sampleRate, buffer.channels, OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE);
+      session.appendPcm16(normalized);
+      audioBytesRef.current += normalized.byteLength;
       const now = Date.now();
       if (now - lastAudioLevelAtRef.current >= 50) {
         // Kept local to the voice controller; this never enters Zustand or persistence.
         lastAudioLevelAtRef.current = now;
         if (mountedRef.current) {
-          setAudioLevel(pcm16AudioLevel(buffer.data));
+          audioLevel.set(pcm16AudioLevel(normalized));
         }
       }
     } catch (caught) {
       fail(caught);
     }
-  }, [fail]);
+  }, [audioLevel, fail]);
 
   const audioStream = useAudioStream({
     sampleRate: OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,

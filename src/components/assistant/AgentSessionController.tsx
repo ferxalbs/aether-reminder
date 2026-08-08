@@ -19,7 +19,6 @@ interface AgentSessionControllerOptions {
 }
 
 interface SubmitOptions {
-  approveAll?: boolean;
   appendUserMessage?: boolean;
   invocationSource?: ContextSnapshot['invocationSource'];
 }
@@ -52,7 +51,6 @@ export function useAgentSessionController({
   const [entities, setEntities] = useState<{ type: 'task' | 'reminder' | 'project'; id: string; label?: string }[]>([]);
   const sessionIdRef = useRef<string | undefined>(undefined);
   const currentRunRef = useRef<string | undefined>(undefined);
-  const lastRequestRef = useRef<string | undefined>(undefined);
   const runningRef = useRef(false);
   const entitiesRef = useRef(entities);
   const handleEventRef = useRef<(event: AgentEvent, assistantMessageId: string) => void>(() => undefined);
@@ -104,7 +102,6 @@ export function useAgentSessionController({
       setPendingConfirmation(null);
       setIsRunning(true);
       setSemanticState('contextualizing');
-      lastRequestRef.current = message;
 
       try {
         const runContext: ContextSnapshot = {
@@ -119,7 +116,6 @@ export function useAgentSessionController({
           modelId,
           apiKey,
           onNavigate,
-          confirmations: options.approveAll ? { approveAll: true } : undefined,
         })) {
           handleEventRef.current(event, assistantMessageId);
         }
@@ -164,9 +160,7 @@ export function useAgentSessionController({
           break;
         case 'tool.confirmation_required':
           setPendingConfirmation({
-            toolCallId: event.toolCallId,
-            toolId: event.toolId,
-            args: event.args,
+            action: event.pendingAction,
             reason: event.reason,
           });
           break;
@@ -203,16 +197,31 @@ export function useAgentSessionController({
   }, [handleEvent]);
 
   const confirm = useCallback(() => {
-    const request = lastRequestRef.current;
-    if (!request || runningRef.current) return;
-    void submit(request, { approveAll: true, appendUserMessage: false });
-  }, [submit]);
+    const pending = pendingConfirmation;
+    if (!pending || runningRef.current) return;
+    runningRef.current = true;
+    setPendingConfirmation(null);
+    setIsRunning(true);
+    const assistantMessageId = messageId('assistant');
+    setMessages((previous) => [...previous, { id: assistantMessageId, role: 'assistant', text: '' }]);
+    void (async () => {
+      try {
+        for await (const event of runtime.confirm(pending.action, { context, onNavigate })) {
+          handleEventRef.current(event, assistantMessageId);
+        }
+      } finally {
+        runningRef.current = false;
+        setIsRunning(false);
+      }
+    })();
+  }, [context, onNavigate, pendingConfirmation, runtime]);
 
   const cancelConfirmation = useCallback(() => {
+    if (pendingConfirmation) void runtime.discard(pendingConfirmation.action);
     setPendingConfirmation(null);
     setSemanticState('idle');
     setError(null);
-  }, []);
+  }, [pendingConfirmation, runtime]);
 
   const cancel = useCallback(() => {
     const runId = currentRunRef.current;

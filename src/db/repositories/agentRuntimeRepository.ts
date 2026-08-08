@@ -331,6 +331,13 @@ export class AgentRuntimeRepository {
       [key]
     );
   }
+
+  async getToolExecution(id: string): Promise<ToolExecutionRow | null> {
+    return this.db.getFirstAsync<ToolExecutionRow>(
+      `SELECT * FROM tool_executions WHERE id = ?`,
+      [id]
+    );
+  }
 }
 
 const SECRET_KEY_RE = /api[_-]?key|authorization|password|secret|token|bearer/i;

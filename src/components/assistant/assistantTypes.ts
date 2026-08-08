@@ -1,5 +1,5 @@
 import type { ActionReceipt } from '@/domain/receipts';
-import type { AgentSemanticState, ContextSnapshot, EntityReference } from '@/services/agent';
+import type { AgentSemanticState, ContextSnapshot, EntityReference, PendingAction } from '@/services/agent';
 
 export type AssistantSurfaceState = 'closed' | 'opening' | 'compact' | 'medium' | 'full' | 'closing';
 
@@ -17,9 +17,7 @@ export interface AssistantReceipt {
 }
 
 export interface PendingAssistantConfirmation {
-  toolCallId: string;
-  toolId: string;
-  args: unknown;
+  action: PendingAction;
   reason: string;
 }
 

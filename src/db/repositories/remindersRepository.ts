@@ -119,4 +119,11 @@ export class RemindersRepository {
     if (!reminder) throw new DatabaseError('QUERY_FAILED', 'Reminder update verification failed.');
     return reminder;
   }
+
+  async setProjection(id: string, nativeId: string | null, error: string | null): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE reminders SET native_notification_id = ?, projection_error = ?, updated_at = ? WHERE id = ?`,
+      [nativeId, error, new Date().toISOString(), id]
+    );
+  }
 }

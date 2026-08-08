@@ -26,6 +26,10 @@ export interface OpenAIRealtimeSessionOptions {
   onEvent: (event: unknown) => void;
   onError: (error: TranscriptionError) => void;
   socketFactory?: SocketFactory;
+  connectionTimeoutMs?: number;
+  sessionTimeoutMs?: number;
+  finalTranscriptTimeoutMs?: number;
+  maxQueuedPackets?: number;
 }
 
 export interface OpenAIRealtimeSession {
@@ -101,10 +105,34 @@ export function createOpenAIRealtimeTranscriptionSession(
   let connectPromise: Promise<void> | null = null;
   let resolveConnect: (() => void) | null = null;
   let rejectConnect: ((error: TranscriptionError) => void) | null = null;
+  let connectionTimer: ReturnType<typeof setTimeout> | null = null;
+  let sessionTimer: ReturnType<typeof setTimeout> | null = null;
+  let finalTimer: ReturnType<typeof setTimeout> | null = null;
+  const packetQueue: ArrayBuffer[] = [];
+  let flushScheduled = false;
+  const flushPackets = () => {
+    flushScheduled = false;
+    try {
+      while (packetQueue.length && !closed) {
+        const packet = packetQueue.shift();
+        if (packet) send({ type: 'input_audio_buffer.append', audio: pcm16ArrayBufferToBase64(packet) });
+      }
+    } catch (error) {
+      fail(error instanceof TranscriptionError ? error : new TranscriptionError('NETWORK_ERROR', 'Audio could not be sent to OpenAI.'));
+    }
+  };
+  const clearTimers = () => {
+    if (connectionTimer) clearTimeout(connectionTimer);
+    if (sessionTimer) clearTimeout(sessionTimer);
+    if (finalTimer) clearTimeout(finalTimer);
+    connectionTimer = sessionTimer = finalTimer = null;
+  };
 
   const fail = (error: TranscriptionError) => {
     if (closed || failed) return;
     failed = true;
+    clearTimers();
+    packetQueue.length = 0;
     closed = true;
     connected = false;
     rejectConnect?.(error);
@@ -170,6 +198,9 @@ export function createOpenAIRealtimeTranscriptionSession(
         if (typeof event === 'object' && event !== null && 'type' in event) {
           const eventType = (event as { type?: unknown }).type;
           if (eventType === 'session.updated') {
+            if (connectionTimer) clearTimeout(connectionTimer);
+            connectionTimer = null;
+            sessionTimer = setTimeout(() => fail(new TranscriptionError('SESSION_FAILED', 'Realtime transcription session timed out.')), options.sessionTimeoutMs ?? 120000);
             resolveConnect?.();
             resolveConnect = null;
             rejectConnect = null;
@@ -204,22 +235,42 @@ export function createOpenAIRealtimeTranscriptionSession(
         };
         rejectConnect = reject;
         attachSocket();
+        connectionTimer = setTimeout(() => fail(new TranscriptionError('NETWORK_ERROR', 'Realtime transcription connection timed out.')), options.connectionTimeoutMs ?? 10000);
       });
       return connectPromise;
     },
     appendPcm16: (data) => {
       if (data.byteLength === 0) return;
       if (data.byteLength % 2 !== 0) throw new TranscriptionError('INVALID_AUDIO', 'PCM16 audio buffer is incomplete.');
-      send({ type: 'input_audio_buffer.append', audio: pcm16ArrayBufferToBase64(data) });
+      const packetBytes = 4800; // 100 ms of 24 kHz mono PCM16
+      for (let offset = 0; offset < data.byteLength; offset += packetBytes) {
+        if (packetQueue.length >= (options.maxQueuedPackets ?? 32)) {
+          fail(new TranscriptionError('NETWORK_ERROR', 'Realtime audio transport could not keep up.'));
+          return;
+        }
+        packetQueue.push(data.slice(offset, Math.min(data.byteLength, offset + packetBytes)));
+      }
+      if (!flushScheduled) {
+        flushScheduled = true;
+        queueMicrotask(() => {
+          flushPackets();
+        });
+      }
     },
     commit: () => {
       if (committed) return;
       committed = true;
+      flushPackets();
+      if (sessionTimer) clearTimeout(sessionTimer);
+      sessionTimer = null;
+      finalTimer = setTimeout(() => fail(new TranscriptionError('SESSION_FAILED', 'Final transcript timed out.')), options.finalTranscriptTimeoutMs ?? 15000);
       send({ type: 'input_audio_buffer.commit' });
     },
     cancel: () => {
       if (closed) return;
       closed = true;
+      clearTimers();
+      packetQueue.length = 0;
       connected = false;
       rejectConnect?.(new TranscriptionError('CANCELLED', 'Voice capture was cancelled.'));
       resolveConnect = null;
@@ -236,6 +287,8 @@ export function createOpenAIRealtimeTranscriptionSession(
     close: () => {
       if (closed) return;
       closed = true;
+      clearTimers();
+      packetQueue.length = 0;
       connected = false;
       rejectConnect?.(new TranscriptionError('CANCELLED', 'Voice capture was closed.'));
       resolveConnect = null;

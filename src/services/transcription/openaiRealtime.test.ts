@@ -111,4 +111,54 @@ describe('OpenAI realtime transcription transport', () => {
     expect(requestUrl).not.toContain('openrouter');
     expect(authorization).toBe('Bearer openai-key');
   });
+
+  test('bounds queued audio and deterministically cleans up on backpressure', async () => {
+    const socket = new FakeSocket();
+    const errors: string[] = [];
+    const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+      onEvent: () => undefined,
+      onError: (error) => errors.push(error.message),
+      socketFactory: () => socket,
+      maxQueuedPackets: 2,
+    });
+    const connected = session.connect();
+    socket.open(); socket.message(JSON.stringify({ type: 'session.updated' })); await connected;
+    session.appendPcm16(new Uint8Array([0, 1]).buffer);
+    session.appendPcm16(new Uint8Array([0, 1]).buffer);
+    session.appendPcm16(new Uint8Array([0, 1]).buffer);
+    expect(errors[0]).toContain('could not keep up');
+    expect(socket.closeCalls.at(-1)?.reason).toBe('realtime session failed');
+  });
+
+  test('times out connection and releases the socket', async () => {
+    const socket = new FakeSocket();
+    const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+      onEvent: () => undefined,
+      onError: () => undefined,
+      socketFactory: () => socket,
+      connectionTimeoutMs: 2,
+    });
+    await expect(session.connect()).rejects.toThrow('timed out');
+    expect(socket.closeCalls.at(-1)?.reason).toBe('realtime session failed');
+  });
+
+  test('times out an inactive connected session and final transcript wait', async () => {
+    for (const phase of ['session', 'final'] as const) {
+      const socket = new FakeSocket();
+      const errors: string[] = [];
+      const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+        onEvent: () => undefined,
+        onError: (error) => errors.push(error.message),
+        socketFactory: () => socket,
+        sessionTimeoutMs: phase === 'session' ? 2 : 100,
+        finalTranscriptTimeoutMs: 2,
+      });
+      const connected = session.connect();
+      socket.open(); socket.message(JSON.stringify({ type: 'session.updated' })); await connected;
+      if (phase === 'final') session.commit();
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(errors[0]).toContain('timed out');
+      expect(socket.closeCalls.at(-1)?.reason).toBe('realtime session failed');
+    }
+  });
 });

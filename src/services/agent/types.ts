@@ -84,14 +84,16 @@ export interface AgentInput {
   /** App-owned navigation callback. Runtime never accepts arbitrary route strings. */
   onNavigate?: (destination: string, entityId?: string) => void;
   budget?: Partial<AgentBudget>;
-  /**
-   * Confirmation grants for tools that required policy confirmation.
-   * Production Orb will pass approved tool_call_ids; tests may set approveAll.
-   */
-  confirmations?: {
-    approveAll?: boolean;
-    approvedToolCallIds?: string[];
-  };
+}
+
+/** Exact app-validated mutation held while user confirmation is pending. */
+export interface PendingAction {
+  id: string;
+  runId: string;
+  toolCallId: string;
+  toolId: string;
+  args: Record<string, unknown>;
+  risk: ToolRisk;
 }
 
 export type AgentEvent =
@@ -144,6 +146,7 @@ export type AgentEvent =
       args: unknown;
       risk: ToolRisk;
       reason: string;
+      pendingAction: PendingAction;
       state: AgentSemanticState;
     }
   | {
@@ -191,5 +194,7 @@ export type AgentEvent =
 
 export interface AgentRuntime {
   run(input: AgentInput): AsyncIterable<AgentEvent>;
+  confirm(action: PendingAction, input: Pick<AgentInput, 'context' | 'onNavigate'>): AsyncIterable<AgentEvent>;
+  discard(action: PendingAction): Promise<void>;
   cancel(runId: string): Promise<void>;
 }

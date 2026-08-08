@@ -5,6 +5,7 @@ import {
   type CreateReminderInput,
 } from '@/db/repositories/remindersRepository';
 import { assertResolvedDateTime } from '@/temporal/resolve';
+import { LocalNotificationProjection } from '@/services/notifications/localNotificationProjection';
 
 export interface ScheduleReminderInput {
   taskId: string;
@@ -29,14 +30,26 @@ export interface ReminderMutationResult {
    * Slice 6 will project reminders to OS notifications.
    * Domain scheduling only until then — never claim OS delivery.
    */
-  osNotificationProjection: 'not_implemented';
+  osNotificationProjection: 'scheduled' | 'cancelled' | 'failed';
+  projectionError?: string;
 }
 
 /**
  * Domain service for reminders. Operates on DB state only until Slice 6.
  */
 export class ReminderService {
-  constructor(private readonly reminders: RemindersRepository) {}
+  constructor(
+    private readonly reminders: RemindersRepository,
+    private readonly projection: LocalNotificationProjection,
+  ) {}
+
+  private async project(value: Reminder): Promise<Pick<ReminderMutationResult, 'osNotificationProjection' | 'projectionError'>> {
+    try {
+      return { osNotificationProjection: await this.projection.project(value) };
+    } catch (error) {
+      return { osNotificationProjection: 'failed', projectionError: error instanceof Error ? error.message : 'Notification projection failed.' };
+    }
+  }
 
   async listReminders(options?: { taskId?: string; enabledOnly?: boolean }): Promise<Reminder[]> {
     if (options?.taskId) {
@@ -69,15 +82,18 @@ export class ReminderService {
     };
 
     const reminder = await this.reminders.create(createInput);
+    const projection = await this.project(reminder);
     return {
       value: reminder,
-      osNotificationProjection: 'not_implemented',
+      ...projection,
       receipt: createReceipt({
         risk: 'REVERSIBLE_WRITE',
         action: 'reminders.schedule',
         entityType: 'reminder',
         entityId: reminder.id,
-        summary: `Scheduled reminder for task ${input.taskId} on ${resolved.date} (domain only; OS projection not implemented)`,
+        summary: projection.osNotificationProjection === 'scheduled'
+          ? `Scheduled reminder for task ${input.taskId} on ${resolved.date}`
+          : `Saved reminder for task ${input.taskId}, but local notification delivery failed`,
         undo: { kind: 'reminder.cancel', payload: { reminderId: reminder.id } },
       }),
     };
@@ -100,15 +116,18 @@ export class ReminderService {
       timezone: resolved.timezone,
       semantics: resolved.semantics,
     });
+    const projection = await this.project(reminder);
     return {
       value: reminder,
-      osNotificationProjection: 'not_implemented',
+      ...projection,
       receipt: createReceipt({
         risk: 'REVERSIBLE_WRITE',
         action: 'reminders.reschedule',
         entityType: 'reminder',
         entityId: reminder.id,
-        summary: `Rescheduled reminder to ${resolved.date} (domain only; OS projection not implemented)`,
+        summary: projection.osNotificationProjection === 'scheduled'
+          ? `Rescheduled reminder to ${resolved.date}`
+          : `Updated reminder schedule, but local notification delivery failed`,
         undo: before
           ? {
               kind: 'reminder.reschedule',
@@ -128,15 +147,18 @@ export class ReminderService {
   /** Disables reminder in domain DB. Does not touch OS notifications (Slice 6). */
   async cancelReminder(id: string): Promise<ReminderMutationResult> {
     const reminder = await this.reminders.setEnabled(id, false);
+    const projection = await this.project(reminder);
     return {
       value: reminder,
-      osNotificationProjection: 'not_implemented',
+      ...projection,
       receipt: createReceipt({
         risk: 'REVERSIBLE_WRITE',
         action: 'reminders.cancel',
         entityType: 'reminder',
         entityId: reminder.id,
-        summary: `Cancelled reminder ${id} (domain only; OS projection not implemented)`,
+        summary: projection.osNotificationProjection === 'cancelled'
+          ? `Cancelled reminder ${id}`
+          : `Disabled reminder ${id}, but cancelling its local notification failed`,
         undo: { kind: 'reminder.enable', payload: { reminderId: id } },
       }),
     };

@@ -28,3 +28,35 @@ export function pcm16AudioLevel(data: ArrayBuffer): number {
   }
   return Math.min(1, Math.sqrt(sumSquares / samples.length) * 2.2);
 }
+
+/** Downmix interleaved PCM16 and linearly resample to the Realtime input rate. */
+export function normalizePcm16(
+  data: ArrayBuffer,
+  sourceRate: number,
+  sourceChannels: number,
+  targetRate = 24000,
+): ArrayBuffer {
+  if (data.byteLength % 2 !== 0 || sourceRate <= 0 || sourceChannels < 1) {
+    throw new Error('Invalid PCM16 audio format.');
+  }
+  const input = new Int16Array(data);
+  const frames = Math.floor(input.length / sourceChannels);
+  if (frames === 0) return new ArrayBuffer(0);
+  const outputFrames = Math.max(1, Math.round(frames * targetRate / sourceRate));
+  const output = new Int16Array(outputFrames);
+  const sample = (frame: number) => {
+    let total = 0;
+    const bounded = Math.min(frames - 1, Math.max(0, frame));
+    for (let channel = 0; channel < sourceChannels; channel += 1) {
+      total += input[bounded * sourceChannels + channel];
+    }
+    return total / sourceChannels;
+  };
+  for (let index = 0; index < outputFrames; index += 1) {
+    const position = index * sourceRate / targetRate;
+    const left = Math.floor(position);
+    const fraction = position - left;
+    output[index] = Math.round(sample(left) * (1 - fraction) + sample(left + 1) * fraction);
+  }
+  return output.buffer;
+}

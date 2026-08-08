@@ -8,6 +8,7 @@ import { Brain, CheckSquare, ListTodo, Mic, Settings } from 'lucide-react-native
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantMaterial } from './AssistantMaterial';
 import { AssistantOrb } from './AssistantOrb';
@@ -16,7 +17,7 @@ import type { AssistantOrbState } from './assistantTypes';
 interface AppBottomNavigationProps {
   orbState: AssistantOrbState;
   assistantExpanded: boolean;
-  audioLevel?: number;
+  audioLevel?: SharedValue<number>;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
   onOrbPress: () => void;
@@ -44,7 +45,7 @@ const navigationItems: {
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   orbState,
   assistantExpanded,
-  audioLevel = 0,
+  audioLevel,
   keyboardOffset,
   blurTarget,
   onOrbPress,
@@ -119,7 +120,7 @@ function NavigationButton({
   onOrbPressIn?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
-  audioLevel?: number;
+  audioLevel?: SharedValue<number>;
 }) {
   const activeAnim = useSharedValue(active ? 1 : 0);
 

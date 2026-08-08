@@ -20,5 +20,5 @@ export {
   type RealtimeTranscriptionSnapshot,
   type RealtimeTranscriptionState,
 } from './realtimeReducer';
-export { pcm16ArrayBufferToBase64, pcm16AudioLevel } from './audio';
+export { pcm16ArrayBufferToBase64, pcm16AudioLevel, normalizePcm16 } from './audio';
 export { deliverFinalTranscript, type SubmissionGuard } from './finalTranscript';

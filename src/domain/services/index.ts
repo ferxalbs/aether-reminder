@@ -3,6 +3,7 @@ import type { SqlDatabase } from '@/db/types';
 import { AnalyticsService } from './analyticsService';
 import { ReminderService } from './reminderService';
 import { TaskService } from './taskService';
+import { LocalNotificationProjection } from '@/services/notifications/localNotificationProjection';
 
 export { TaskService } from './taskService';
 export type { ListTasksOptions, RescheduleTaskInput, MutationResult, TaskListScope } from './taskService';
@@ -30,7 +31,10 @@ export function createDomainServices(db: SqlDatabase): DomainServices {
 export function createDomainServicesFromRepos(repos: Repositories): DomainServices {
   return {
     tasks: new TaskService(repos.tasks),
-    reminders: new ReminderService(repos.reminders),
+    reminders: new ReminderService(
+      repos.reminders,
+      new LocalNotificationProjection(repos.reminders, repos.tasks),
+    ),
     analytics: new AnalyticsService(repos.tasks),
     repos,
   };

@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
+import { getDatabase } from '@/db';
+import { createRepositories } from '@/db/repositories';
+import { configureLocalNotifications, LocalNotificationProjection } from '@/services/notifications/localNotificationProjection';
 import { getDatabaseErrorMessage } from '@/db/errors';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
@@ -34,6 +37,9 @@ export default function RootLayout() {
     (async () => {
       try {
         await bootstrapAppData();
+        const repos = createRepositories(getDatabase());
+        await configureLocalNotifications().catch(() => undefined);
+        await new LocalNotificationProjection(repos.reminders, repos.tasks).reconcile().catch(() => undefined);
         if (cancelled) return;
         await refreshToday();
         if (cancelled) return;
@@ -47,6 +53,15 @@ export default function RootLayout() {
       cancelled = true;
     };
   }, [refreshToday]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' || boot.phase !== 'ready') return;
+      const repos = createRepositories(getDatabase());
+      void new LocalNotificationProjection(repos.reminders, repos.tasks).reconcile();
+    });
+    return () => subscription.remove();
+  }, [boot.phase]);
 
   if (boot.phase === 'loading') {
     return (

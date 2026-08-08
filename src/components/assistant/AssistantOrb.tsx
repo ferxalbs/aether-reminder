@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Colors, Radius } from '@/theme/tokens';
@@ -20,7 +21,7 @@ interface AssistantOrbProps {
   onPressIn?: () => void;
   onPressOut?: () => void;
   onPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
-  audioLevel?: number;
+  audioLevel?: SharedValue<number>;
 }
 
 const stateLabels: Record<AssistantOrbState, string> = {
@@ -55,7 +56,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   onPressIn,
   onPressOut,
   onPressMove,
-  audioLevel = 0,
+  audioLevel,
 }) => {
   const isDark = useIsDark();
   const useLiquidGlass =
@@ -101,9 +102,13 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   }));
 
   const animatedGlowStyle = useAnimatedStyle(() => ({
-    opacity: 0.12 + motion.value * 0.14,
-    transform: [{ scale: 1 + motion.value * 0.34 }],
+    opacity: 0.12 + motion.value * 0.14 + (audioLevel?.value ?? 0) * 0.22,
+    transform: [{ scale: 1 + motion.value * 0.34 + (audioLevel?.value ?? 0) * 0.08 }],
   }));
+  const animatedCoreStyle = useAnimatedStyle(() => {
+    const coreSize = 7 + Math.min(1, audioLevel?.value ?? 0) * 8;
+    return { width: coreSize, height: coreSize };
+  });
 
   const foreground = isDark ? Colors.white : Colors.zinc950;
 
@@ -120,7 +125,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       accessibilityState={{ expanded, busy: isBusy }}
       style={[styles.touchTarget, size === 'composer' && styles.composerTouchTarget]}
     >
-      <Animated.View style={[styles.glow, { width: orbSize, height: orbSize, backgroundColor: color }, animatedGlowStyle, { opacity: 0.12 + Math.min(1, audioLevel) * 0.22 }]} />
+      <Animated.View style={[styles.glow, { width: orbSize, height: orbSize, backgroundColor: color }, animatedGlowStyle]} />
       <Animated.View
         style={[
           styles.orb,
@@ -139,7 +144,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
           <View style={[StyleSheet.absoluteFill, styles.fallbackOrb, { borderRadius: orbSize / 2, backgroundColor: `${color}D9` }]} />
         )}
         <View style={[styles.highlight, { backgroundColor: isDark ? 'rgba(255,255,255,0.74)' : 'rgba(255,255,255,0.9)' }]} />
-        <View style={[styles.core, { backgroundColor: foreground, width: 7 + Math.min(1, audioLevel) * 8, height: 7 + Math.min(1, audioLevel) * 8 }]} />
+        <Animated.View style={[styles.core, { backgroundColor: foreground }, animatedCoreStyle]} />
         <View
           accessible
           accessibilityLabel={`Assistant state: ${stateLabels[state]}`}

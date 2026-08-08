@@ -68,6 +68,8 @@ export interface Reminder {
   timezone: string | null;
   semantics: TemporalSemantics;
   enabled: boolean;
+  nativeNotificationId: string | null;
+  projectionError: string | null;
   createdAt: string;
   updatedAt: string;
 }
