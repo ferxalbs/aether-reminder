@@ -1,40 +1,43 @@
 import { createReceipt } from '@/domain/receipts';
 import type { AgentTool, ToolResult } from './types';
 
-export const appNavigate: AgentTool<{ route: string; params?: Record<string, unknown> }> = {
+export const appNavigate: AgentTool<{
+  destination: 'home' | 'tasks' | 'settings';
+  entityId?: string;
+}> = {
   id: 'app.navigate',
   version: '1',
-  description:
-    'Propose in-app navigation. Slice 4 will host the real navigator; this tool records intent only.',
+  description: 'Navigate to an allowlisted AETHER destination: home, tasks, or settings.',
   risk: 'EXTERNAL',
   inputSchema: {
     type: 'object',
     properties: {
-      route: { type: 'string' },
-      params: { type: 'object' },
+      destination: { type: 'string', enum: ['home', 'tasks', 'settings'] },
+      entityId: { type: 'string' },
     },
-    required: ['route'],
+    required: ['destination'],
     additionalProperties: false,
   },
   outputSchema: { type: 'object' },
   async execute(input, ctx): Promise<ToolResult> {
-    const route = typeof input?.route === 'string' ? input.route.trim() : '';
-    if (!route) return { ok: false, error: 'route is required' };
-    ctx.onNavigate?.(route, input?.params);
+    const destination = input?.destination;
+    if (destination !== 'home' && destination !== 'tasks' && destination !== 'settings') {
+      return { ok: false, error: 'destination must be home, tasks, or settings' };
+    }
+    const entityId = typeof input?.entityId === 'string' ? input.entityId : undefined;
+    ctx.onNavigate?.(destination, entityId);
     return {
       ok: true,
       data: {
-        route,
-        params: input?.params ?? {},
-        projected: false,
-        note: 'Navigation host not wired until Slice 4; intent recorded only.',
+        destination,
+        entityId,
       },
       receipt: createReceipt({
         risk: 'EXTERNAL',
         action: 'app.navigate',
         entityType: 'navigation',
-        entityId: route,
-        summary: `Navigate to ${route}`,
+        entityId: destination,
+        summary: `Navigate to ${destination}`,
         toolId: 'app.navigate',
       }),
     };

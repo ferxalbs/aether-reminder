@@ -591,6 +591,7 @@ export class AetherAgentRuntime implements AgentRuntime {
       context: input.context,
       runId,
       eventSource: "agent",
+      onNavigate: input.onNavigate,
     };
 
     let affectedCount = 1;

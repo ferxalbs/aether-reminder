@@ -8,7 +8,7 @@ import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
+import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { useSettingsStore } from '@/stores/settings.store';
 import { AIModel, maskApiKey } from '@/services/ai/models';
 import { fetchAvailableModels, testOpenRouterConnection } from '@/services/ai/openrouter';
@@ -48,6 +48,17 @@ export default function SettingsScreen() {
 
   const isDark = useIsDark();
   const maskedKey = apiKeyLoaded ? maskApiKey(openRouterApiKey) : '';
+
+  const assistantContext = useMemo(
+    () => ({
+      surface: 'settings',
+      locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      invocationSource: 'app' as const,
+    }),
+    []
+  );
+  useAssistantSurface(assistantContext);
 
   useEffect(() => {
     void loadApiKey();
@@ -162,7 +173,7 @@ export default function SettingsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Typography variant="caption" color={Colors.zinc500}>PREFERENCES & AI</Typography>
+          <Typography variant="caption" color={Colors.zinc500}>PREFERENCES</Typography>
           <Typography variant="display">Settings</Typography>
         </View>
 
@@ -264,14 +275,13 @@ export default function SettingsScreen() {
 
         <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>ABOUT & LEGAL</Typography>
         <Card variant="elevated" style={styles.cardSection}>
-          <AnimatedPressable onPress={() => setShowAbout((visible) => !visible)} style={styles.linkRow}><Info size={16} color={isDark ? Colors.white : Colors.black} /><Typography variant="bodyBold" style={{ flex: 1 }}>About TaskFlow AI</Typography></AnimatedPressable>
-          {showAbout ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>TaskFlow AI is a local-first productivity co-pilot. AI inference uses the OpenRouter key you provide and the model you select.</Typography> : null}
+          <AnimatedPressable onPress={() => setShowAbout((visible) => !visible)} style={styles.linkRow}><Info size={16} color={isDark ? Colors.white : Colors.black} /><Typography variant="bodyBold" style={{ flex: 1 }}>About AETHER</Typography></AnimatedPressable>
+          {showAbout ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>AETHER is a local-first task assistant. Remote inference uses the OpenRouter key you provide and the model you select.</Typography> : null}
           <View style={[styles.divider, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]} />
           <AnimatedPressable onPress={() => setShowPrivacy((visible) => !visible)} style={styles.linkRow}><Shield size={16} color={isDark ? Colors.white : Colors.black} /><Typography variant="bodyBold" style={{ flex: 1 }}>Privacy Information</Typography></AnimatedPressable>
-          {showPrivacy ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>The API key is stored only in Expo SecureStore. It is not placed in AsyncStorage, analytics, crash reports, or an app environment variable. Task text is sent to OpenRouter only when you request AI analysis.</Typography> : null}
+          {showPrivacy ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>The API key is stored only in Expo SecureStore. It is not placed in AsyncStorage, analytics, crash reports, or an app environment variable. Task text is sent to OpenRouter only when you ask AETHER.</Typography> : null}
         </Card>
       </ScrollView>
-      <FloatingToolbar />
     </SafeAreaView>
   );
 }

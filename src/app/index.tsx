@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Plus, Sparkles, CheckCircle2 } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { Plus, CheckCircle2 } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -11,12 +11,11 @@ import { TaskCard } from '@/components/ui/TaskCard';
 import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { AddTaskModal } from '@/components/ui/AddTaskModal';
-import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
-import * as Haptics from 'expo-haptics';
+import { getLocalDateString } from '@/temporal/localCalendar';
+import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 
 export default function HomeScreen() {
-  const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const isDark = useIsDark();
 
@@ -36,6 +35,19 @@ export default function HomeScreen() {
   const completedCount = todayTasks.filter((t) => t.completed).length;
   const totalCount = todayTasks.length;
   const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
+
+  const assistantContext = useMemo(
+    () => ({
+      surface: 'home',
+      selectedDate: getLocalDateString(),
+      visibleTaskIds: todayTasks.map((task) => task.id),
+      locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      invocationSource: 'app' as const,
+    }),
+    [todayTasks]
+  );
+  useAssistantSurface(assistantContext);
 
   const animatedProgress = useSharedValue(progressRatio);
   useEffect(() => {
@@ -99,15 +111,6 @@ export default function HomeScreen() {
             </Typography>
           </View>
           <View style={styles.headerActions}>
-            <IconButton
-              icon={<Sparkles size={18} color={isDark ? Colors.white : Colors.black} />}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                router.push('/ai');
-              }}
-              variant="glass"
-              size={44}
-            />
             <IconButton
               icon={<Plus size={20} color={isDark ? Colors.black : Colors.white} />}
               onPress={() => setModalVisible(true)}
@@ -185,7 +188,7 @@ export default function HomeScreen() {
               color={Colors.zinc500}
               style={styles.emptySubtitle}
             >
-              No pending tasks for today. Tap the button below or use voice to capture your next goal.
+              Nothing pending. Add a task or ask AETHER.
             </Typography>
           </View>
         ) : null}
@@ -197,8 +200,6 @@ export default function HomeScreen() {
         onClose={() => setModalVisible(false)}
       />
 
-      {/* Floating Bottom Glass Toolbar */}
-      <FloatingToolbar />
     </SafeAreaView>
   );
 }

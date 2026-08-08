@@ -7,6 +7,8 @@ export interface ContextSnapshot {
   selectedTaskId?: string;
   selectedDate?: string;
   visibleTaskIds?: string[];
+  /** Small references carried across assistant turns, never full entity payloads. */
+  conversationEntities?: EntityReference[];
   locale: string;
   timezone: string;
   invocationSource:
@@ -79,6 +81,8 @@ export interface AgentInput {
   sessionId?: string;
   modelId: string;
   apiKey: string;
+  /** App-owned navigation callback. Runtime never accepts arbitrary route strings. */
+  onNavigate?: (destination: string, entityId?: string) => void;
   budget?: Partial<AgentBudget>;
   /**
    * Confirmation grants for tools that required policy confirmation.

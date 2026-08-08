@@ -10,6 +10,7 @@ import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
+import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
 
 type BootState =
   | { phase: 'loading' }
@@ -78,20 +79,22 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-          contentStyle: {
-            backgroundColor: isDark ? '#000000' : '#FAFAFA',
-          },
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="ai" />
-        <Stack.Screen name="transcribe" />
-        <Stack.Screen name="settings" />
-      </Stack>
+      <AssistantSurfaceProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'fade',
+            contentStyle: {
+              backgroundColor: isDark ? '#000000' : '#FAFAFA',
+            },
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="tasks" />
+          <Stack.Screen name="settings" />
+        </Stack>
+        <AssistantHost />
+      </AssistantSurfaceProvider>
     </SafeAreaProvider>
   );
 }

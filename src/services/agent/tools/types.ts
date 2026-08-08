@@ -7,11 +7,8 @@ export interface ToolExecutionContext {
   context: ContextSnapshot;
   runId: string;
   eventSource: string;
-  /**
-   * Navigate is app-owned; runtime collects proposed routes without a router.
-   * Slice 4 will wire this to the real navigator.
-   */
-  onNavigate?: (route: string, params?: Record<string, unknown>) => void;
+  /** Navigation is app-owned and must receive an allowlisted destination. */
+  onNavigate?: (destination: string, entityId?: string) => void;
 }
 
 export interface ToolResult {

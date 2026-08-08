@@ -1,7 +1,7 @@
 /**
  * Shared UI / API types.
  * Domain entities live in `@/domain/entities`. This module keeps lightweight
- * shapes used by screens and legacy AI services.
+ * shapes used by screens and provider integrations.
  */
 
 export type { TaskPriority } from '@/domain/entities';
@@ -25,13 +25,6 @@ export interface Reminder {
   taskId: string;
   time: string;
   enabled: boolean;
-}
-
-export interface AIResponse {
-  summary: string;
-  priorities: string[];
-  overdueAlerts: string[];
-  insights: string[];
 }
 
 export interface TranscriptionResult {

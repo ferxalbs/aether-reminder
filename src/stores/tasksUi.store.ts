@@ -17,10 +17,13 @@ interface TasksUiState {
   error: string | null;
   /** Current Home query: today + undated active tasks (list items for TaskCard). */
   todayTasks: TaskListItem[];
+  /** Upcoming query for the Tasks surface. */
+  upcomingTasks: TaskListItem[];
   /** Bumps on every successful mutation so listeners can refetch other surfaces. */
   revision: number;
 
   refreshToday: () => Promise<void>;
+  refreshUpcoming: () => Promise<void>;
   createTask: (input: {
     title: string;
     notes?: string;
@@ -39,8 +42,6 @@ interface TasksUiState {
   ) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
-  /** Limited active list for AI overview — not full DB dump. */
-  loadActiveForAnalysis: (limit?: number) => Promise<Task[]>;
 }
 
 function services(): DomainServices {
@@ -54,6 +55,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   status: 'idle',
   error: null,
   todayTasks: [],
+  upcomingTasks: [],
   revision: 0,
 
   refreshToday: async () => {
@@ -76,6 +78,27 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  refreshUpcoming: async () => {
+    set({ status: 'loading', error: null });
+    try {
+      const tasks = await services().tasks.listTasks({
+        scope: 'upcoming',
+        localDate: getLocalDateString(),
+        limit: 100,
+      });
+      set({
+        upcomingTasks: tasks.map(toTaskListItem),
+        status: 'ready',
+        error: null,
+      });
+    } catch (error) {
+      set({
+        status: 'error',
+        error: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
   createTask: async (input) => {
     const { value } = await services().tasks.createTask({
       title: input.title,
@@ -87,6 +110,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
+    await get().refreshUpcoming();
     return value;
   },
 
@@ -104,16 +128,21 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
+    await get().refreshUpcoming();
   },
 
   toggleTask: async (id) => {
-    const previousTasks = get().todayTasks;
-    const target = previousTasks.find((t) => t.id === id);
+    const previousTodayTasks = get().todayTasks;
+    const previousUpcomingTasks = get().upcomingTasks;
+    const target = [...previousTodayTasks, ...previousUpcomingTasks].find((t) => t.id === id);
     if (!target) return;
 
     const nextCompleted = !target.completed;
     set((s) => ({
       todayTasks: s.todayTasks.map((t) =>
+        t.id === id ? { ...t, completed: nextCompleted } : t
+      ),
+      upcomingTasks: s.upcomingTasks.map((t) =>
         t.id === id ? { ...t, completed: nextCompleted } : t
       ),
       revision: s.revision + 1,
@@ -128,16 +157,22 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       }
     } catch (error) {
       set({
-        todayTasks: previousTasks,
+        todayTasks: previousTodayTasks,
+        upcomingTasks: previousUpcomingTasks,
         error: getDatabaseErrorMessage(error),
       });
+      return;
     }
+    await get().refreshToday();
+    await get().refreshUpcoming();
   },
 
   softDeleteTask: async (id) => {
-    const previousTasks = get().todayTasks;
+    const previousTodayTasks = get().todayTasks;
+    const previousUpcomingTasks = get().upcomingTasks;
     set((s) => ({
       todayTasks: s.todayTasks.filter((t) => t.id !== id),
+      upcomingTasks: s.upcomingTasks.filter((t) => t.id !== id),
       revision: s.revision + 1,
     }));
 
@@ -145,13 +180,14 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await services().tasks.deleteTask(id);
     } catch (error) {
       set({
-        todayTasks: previousTasks,
+        todayTasks: previousTodayTasks,
+        upcomingTasks: previousUpcomingTasks,
         error: getDatabaseErrorMessage(error),
       });
+      return;
     }
+    await get().refreshToday();
+    await get().refreshUpcoming();
   },
 
-  loadActiveForAnalysis: async (limit = 80) => {
-    return services().tasks.listTasks({ scope: 'active', limit });
-  },
 }));

@@ -30,6 +30,7 @@ export function buildContextMessage(context: {
   selectedTaskId?: string;
   selectedDate?: string;
   visibleTaskIds?: string[];
+  conversationEntities?: { type: string; id: string; label?: string }[];
   locale: string;
   timezone: string;
   invocationSource: string;
@@ -47,6 +48,12 @@ export function buildContextMessage(context: {
     context.selectedTaskId ? `- selectedTaskId: ${context.selectedTaskId}` : null,
     context.visibleTaskIds?.length
       ? `- visibleTaskIds: ${context.visibleTaskIds.slice(0, 40).join(', ')}`
+      : null,
+    context.conversationEntities?.length
+      ? `- recent conversation entities: ${context.conversationEntities
+          .slice(-8)
+          .map((entity) => `${entity.type}:${entity.id}${entity.label ? ` (${entity.label})` : ''}`)
+          .join(', ')}`
       : null,
     'Fetch task contents via tools. Do not assume titles from IDs alone.',
   ]

@@ -23,6 +23,14 @@ bun run typecheck        # Run strict TypeScript checking
 
 Read the versioned Expo 57 documentation before changing Expo or native-platform code.
 
+Whenever a change adds or updates a dependency, plugin, permission, configuration, or
+other functionality that requires native code (for example, Expo SQLite), run the
+Android development EAS build before considering the change validated:
+
+```bash
+eas build --platform android --profile development
+```
+
 ## Coding Style & Naming Conventions
 
 Use 2-space indentation, strict TypeScript, and the existing ESLint configuration. Use `PascalCase` for React components and classes, `camelCase` for functions, variables, and hooks (`useResolvedTheme`), and descriptive `*.test.ts` names. Prefer the `@/*` path alias for `src` imports. Keep styling in React Native `StyleSheet`s and reuse tokens from `src/theme/tokens.ts` rather than introducing ad hoc values.
