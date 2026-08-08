@@ -4,6 +4,11 @@ import {
 } from './inference/capabilities';
 import type { ModelCapabilities, ModelCompatibilityClass } from './inference/types';
 
+/** Stable OpenRouter model id used when the user has not selected another model. */
+export const DEFAULT_OPENROUTER_MODEL_ID = 'deepseek/deepseek-v4-flash';
+/** Backwards-readable alias for callers that refer to the default as a model constant. */
+export const DEFAULT_OPENROUTER_MODEL = DEFAULT_OPENROUTER_MODEL_ID;
+
 export type AIModelAvailability = 'available' | 'unavailable';
 
 export interface AIModel {
@@ -77,9 +82,4 @@ export function normalizeOpenRouterModels(payload: OpenRouterModelsResponse): AI
           ? -1
           : 1
     );
-}
-
-export function maskApiKey(apiKey?: string): string {
-  const normalizedKey = apiKey?.trim();
-  return normalizedKey ? `••••••••••••${normalizedKey.slice(-4)}` : '';
 }

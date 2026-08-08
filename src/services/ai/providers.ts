@@ -12,20 +12,30 @@ export type AIProviderErrorCode =
   | 'INVALID_REQUEST'
   | 'NETWORK_ERROR'
   | 'INVALID_RESPONSE'
+  | 'MODEL_NOT_FOUND'
+  | 'INCOMPATIBLE_MODEL'
   | 'SECURE_STORAGE_UNAVAILABLE'
   | 'UNKNOWN';
+
+export type AIProviderName = 'OpenRouter' | 'OpenAI';
 
 export class AIProviderError extends Error {
   readonly code: AIProviderErrorCode;
   readonly status?: number;
   readonly retryAfterSeconds?: number;
+  readonly provider: AIProviderName;
 
-  constructor(code: AIProviderErrorCode, message: string, options?: { status?: number; retryAfterSeconds?: number }) {
+  constructor(
+    code: AIProviderErrorCode,
+    message: string,
+    options?: { status?: number; retryAfterSeconds?: number; provider?: AIProviderName }
+  ) {
     super(message);
     this.name = 'AIProviderError';
     this.code = code;
     this.status = options?.status;
     this.retryAfterSeconds = options?.retryAfterSeconds;
+    this.provider = options?.provider ?? 'OpenRouter';
   }
 }
 
@@ -58,21 +68,23 @@ export function requireUserApiKey(apiKey?: string): string {
 
 export function getAIErrorMessage(error: unknown): string {
   if (error instanceof AIProviderError) {
+    const provider = error.provider;
     switch (error.code) {
-      case 'MISSING_API_KEY': return 'Add your OpenRouter API key in Settings to enable AI features.';
-      case 'INVALID_API_KEY': return 'The OpenRouter API key was rejected. Check it in Settings.';
-      case 'INSUFFICIENT_CREDITS': return 'OpenRouter needs available credits for this request.';
+      case 'MISSING_API_KEY': return `Add your ${provider} API key in Settings to enable this feature.`;
+      case 'INVALID_API_KEY': return `The ${provider} API key was rejected. Check it in Settings.`;
+      case 'INSUFFICIENT_CREDITS': return `${provider} needs available credits for this request.`;
       case 'RATE_LIMITED': return error.retryAfterSeconds
-        ? `OpenRouter rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
-        : 'OpenRouter rate limit reached. Try again shortly.';
-      case 'PROVIDER_UNAVAILABLE': return 'The selected model provider is temporarily unavailable. Try another model or retry shortly.';
-      case 'INVALID_REQUEST': return 'OpenRouter rejected the request. Try a different supported model.';
-      case 'NETWORK_ERROR': return 'Could not reach OpenRouter. Check your connection and try again.';
-      case 'INVALID_RESPONSE': return 'OpenRouter returned an unexpected response. Try again or choose another model.';
-      case 'SECURE_STORAGE_UNAVAILABLE': return 'Secure storage is unavailable on this device, so the key was not saved.';
-      default: return 'The AI provider could not complete the request. Try again shortly.';
+        ? `${provider} rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
+        : `${provider} rate limit reached. Try again shortly.`;
+      case 'PROVIDER_UNAVAILABLE': return `The selected ${provider} service is temporarily unavailable. Try another model or retry shortly.`;
+      case 'INVALID_REQUEST': return `${provider} rejected the request. Try again with supported settings.`;
+      case 'NETWORK_ERROR': return `Could not reach ${provider}. Check your connection and try again.`;
+      case 'INVALID_RESPONSE': return `${provider} returned an unexpected response. Try again.`;
+      case 'MODEL_NOT_FOUND': return `OpenRouter could not find the selected model in its current catalog.`;
+      case 'INCOMPATIBLE_MODEL': return `The selected OpenRouter model cannot run AETHER's tool-enabled agent.`;
+      case 'SECURE_STORAGE_UNAVAILABLE': return `Secure storage is unavailable on this device, so the ${provider} key was not saved.`;
+      default: return `${provider} could not complete the request. Try again shortly.`;
     }
   }
   return 'The AI provider could not complete the request. Try again shortly.';
 }
-

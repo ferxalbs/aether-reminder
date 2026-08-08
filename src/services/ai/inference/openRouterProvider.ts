@@ -5,7 +5,8 @@ import {
 } from '../providers';
 import {
   capabilitiesFromOpenRouterMetadata,
-  unknownModelCapabilities,
+  canRunAsAgent,
+  hasOpenRouterParameter,
   type OpenRouterModelMetadata,
 } from './capabilities';
 import { parseSseStream } from './sse';
@@ -93,6 +94,7 @@ function toProviderError(response: Response, payload?: OpenRouterErrorPayload): 
   return new AIProviderError(code, getAIErrorMessage(new AIProviderError(code, '')), {
     status: response.status,
     retryAfterSeconds: getRetryAfterSeconds(response),
+    provider: 'OpenRouter',
   });
 }
 
@@ -145,14 +147,22 @@ export class OpenRouterProvider implements InferenceProvider {
   readonly id = 'openrouter';
 
   async getCapabilities(modelId: string, apiKey?: string): Promise<ModelCapabilities> {
-    try {
-      const map = await loadModelsMetadata(apiKey);
-      const meta = map.get(modelId);
-      if (!meta) return unknownModelCapabilities();
-      return capabilitiesFromOpenRouterMetadata(meta);
-    } catch {
-      return unknownModelCapabilities();
+    const normalizedModelId = modelId.trim();
+    if (!normalizedModelId) {
+      throw new AIProviderError('INVALID_REQUEST', 'An OpenRouter model id is required.', {
+        provider: 'OpenRouter',
+      });
     }
+    const map = await loadModelsMetadata(apiKey);
+    const meta = map.get(normalizedModelId);
+    if (!meta) {
+      throw new AIProviderError(
+        'MODEL_NOT_FOUND',
+        `OpenRouter model ${normalizedModelId} is not in the current catalog.`,
+        { provider: 'OpenRouter' }
+      );
+    }
+    return capabilitiesFromOpenRouterMetadata(meta);
   }
 
   async *stream(request: InferenceRequest, signal: AbortSignal): AsyncIterable<ModelEvent> {
@@ -171,13 +181,61 @@ export class OpenRouterProvider implements InferenceProvider {
       return;
     }
 
+    let metadata: OpenRouterModelMetadata | undefined;
+    try {
+      metadata = (await loadModelsMetadata(apiKey)).get(modelId);
+    } catch (error) {
+      const providerError = error instanceof AIProviderError
+        ? error
+        : new AIProviderError('NETWORK_ERROR', 'Could not reach OpenRouter.', { provider: 'OpenRouter' });
+      yield {
+        type: 'stream.error',
+        error: { code: providerError.code, message: getAIErrorMessage(providerError) },
+      };
+      return;
+    }
+
+    if (!metadata) {
+      const providerError = new AIProviderError(
+        'MODEL_NOT_FOUND',
+        `OpenRouter model ${modelId} is not in the current catalog.`,
+        { provider: 'OpenRouter' }
+      );
+      yield {
+        type: 'stream.error',
+        error: { code: providerError.code, message: getAIErrorMessage(providerError) },
+      };
+      return;
+    }
+
+    const capabilities = capabilitiesFromOpenRouterMetadata(metadata);
+    if (!canRunAsAgent(capabilities)) {
+      const providerError = new AIProviderError(
+        'INCOMPATIBLE_MODEL',
+        `OpenRouter model ${modelId} cannot run AETHER's tool-enabled agent.`,
+        { provider: 'OpenRouter' }
+      );
+      yield {
+        type: 'stream.error',
+        error: { code: providerError.code, message: getAIErrorMessage(providerError) },
+      };
+      return;
+    }
+
     const body: Record<string, unknown> = {
       model: modelId,
       messages: request.messages,
       stream: true,
-      temperature: request.temperature ?? 0.3,
-      max_tokens: request.maxTokens ?? 1200,
     };
+
+    if (hasOpenRouterParameter(metadata.supported_parameters, 'temperature')) {
+      body.temperature = request.temperature ?? 0.3;
+    }
+    if (hasOpenRouterParameter(metadata.supported_parameters, 'max_tokens')) {
+      body.max_tokens = request.maxTokens ?? 1200;
+    } else if (hasOpenRouterParameter(metadata.supported_parameters, 'max_completion_tokens')) {
+      body.max_completion_tokens = request.maxTokens ?? 1200;
+    }
 
     if (request.tools?.length) {
       body.tools = request.tools;

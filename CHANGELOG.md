@@ -2,6 +2,58 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (1) [Provider-Isolated Realtime Voice and Deterministic Agent Selection]
+
+### OpenRouter is the only reasoning and agent provider
+
+- Replaced first-compatible model fallback with deterministic selection of `deepseek/deepseek-v4-flash` when no model is selected.
+- Preserved explicit OpenRouter model selections and validate the exact current OpenRouter model metadata before starting an agent run.
+- Added conservative capability checks for streaming, tools, tool choice, and structured output; incompatible or unavailable models now fail with a provider-specific error instead of silently changing models.
+- Kept task tools, confirmation policy, SQLite mutations, SSE output, receipts, and agent execution on the existing OpenRouter `AgentRuntime`.
+- Removed fabricated model-version assumptions and unknown-capability execution paths.
+
+### OpenAI realtime transcription replaces file-based speech input
+
+- Removed the OpenRouter STT provider, `openai/whisper-1`, recorded-file uploads, temporary audio-file cleanup, and the obsolete speech configuration/parser paths.
+- Added OpenAI Realtime transcription with the exact `gpt-realtime-whisper` model, documented `session.update`, `input_audio_buffer.append`, and `input_audio_buffer.commit` events, and documented incremental/final transcript handling.
+- Rebuilt voice capture around Expo SDK 57 `expo-audio` `useAudioStream()` using mono PCM16 at 24 kHz.
+- Only a non-empty final committed transcript is submitted, exactly once, to the OpenRouter `AgentRuntime`; partial text never creates or mutates a task.
+- Added explicit voice lifecycle states for connecting, listening, transcribing, finalizing, thinking, executing, responding, idle, and error, with cancellation, interruption, malformed-event, duplicate-submit, empty-transcript, network, permission, and unmount handling.
+- The current native transport uses an authenticated WebSocket because this repository has no ephemeral-token service or native WebRTC transport. OpenAI’s mobile guidance recommends WebRTC/ephemeral credentials, so device and production security validation remain outstanding.
+
+### Independent provider credentials
+
+- Added separate SecureStore entries and independent load/save/delete/validation behavior for OpenRouter and OpenAI API keys.
+- OpenRouter credentials are used only for AI reasoning and the selected model; OpenAI credentials are used only for realtime voice transcription.
+- Removed persisted OpenRouter secrets from Zustand/AsyncStorage state and ensured neither provider secret is serialized, logged, emitted in errors, or displayed after saving.
+- Persisted settings now contain only non-secret preferences such as the selected model, theme, haptics, and auto-summary preference.
+- Settings now label the two keys by their actual responsibility and no longer imply that an OpenRouter key enables voice.
+
+### One assistant owner with all five app surfaces
+
+- Kept `AssistantHost` and the AETHER Orb as the single owner of assistant and voice interaction.
+- Restored and retained all five routed surfaces: Home, Tasks, AI, Transcribe/Voice, and Settings.
+- Updated the AI and Transcribe pages to provide provider-specific readiness/status guidance without introducing a second assistant or duplicate voice flow.
+- Preserved platform-aware iOS Liquid Glass fallbacks, Android-native surfaces, accessibility, Reduce Motion, haptics, keyboard behavior, and local high-frequency audio/transcript state.
+- Removed the unused Expo Audio shim, stale background audio configuration, and unnecessary file-system dependency/permissions. Background recording and playback remain disabled.
+
+### Regression coverage and validation
+
+- Added tests for independent SecureStore credentials, provider/key isolation, deterministic DeepSeek defaulting, explicit model preservation, exact OpenRouter capability validation, realtime reducer transitions, partial-versus-final transcript handling, exactly-once final submission, cancellation cleanup, malformed events, and the absence of OpenRouter STT fallback.
+- `bun test`: 72 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed, 223 expectations across 73 tests and 18 files.
+- `bun run typecheck`: passed.
+- `bun run lint`: passed.
+- `bun x expo config --type public`: passed; Expo SDK 57 resolved for iOS and Android with `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, without background audio/service permissions.
+- Android EAS development build was attempted twice and canceled before producing an artifact; it was not rerun after cancellation. No physical-device voice validation was claimed.
+
+### Implementation references
+
+- [Provider-isolated architecture](docs/ARCHITECTURE.md)
+- [OpenAI Realtime transcription guide](https://developers.openai.com/api/docs/guides/realtime-transcription)
+- [OpenAI `gpt-realtime-whisper` model](https://developers.openai.com/api/docs/models/gpt-realtime-whisper)
+- [Expo SDK 57 Audio documentation](https://docs.expo.dev/versions/v57.0.0/sdk/audio/)
+- [OpenRouter model metadata](https://openrouter.ai/api/v1/models)
+
 ## Unreleased - 2026.08.07 (3) [Liquid Glass Toolbar & Five-Surface Navigation]
 
 ### Toolbar rebuilt around the keyboard
@@ -42,7 +94,7 @@ All notable changes to AETHER are documented here.
 - Android EAS development build: submitted and still `IN_PROGRESS` when this entry was written — [build status](https://expo.dev/accounts/enosislabs/projects/aether-reminder/builds/ad35f7c8-3732-48b0-95fb-b80288714ae3).
 - Web export remains blocked by the existing missing `expo-sqlite` `wa-sqlite.wasm` asset.
 
-### Implementation references
+### Implementation references 2
 
 - [Five-slot navigation](src/components/assistant/AppBottomNavigation.tsx)
 - [Animated orb](src/components/assistant/AssistantOrb.tsx)

@@ -3,12 +3,13 @@ export type TranscriptionErrorCode =
   | 'AUDIO_UNAVAILABLE'
   | 'MISSING_API_KEY'
   | 'INVALID_API_KEY'
-  | 'INSUFFICIENT_CREDITS'
   | 'RATE_LIMITED'
   | 'NETWORK_ERROR'
   | 'INVALID_AUDIO'
   | 'PROVIDER_UNAVAILABLE'
-  | 'INVALID_RESPONSE'
+  | 'INVALID_EVENT'
+  | 'SESSION_FAILED'
+  | 'EMPTY_TRANSCRIPT'
   | 'CANCELLED'
   | 'UNKNOWN';
 
@@ -20,9 +21,9 @@ export class TranscriptionError extends Error {
   constructor(
     code: TranscriptionErrorCode,
     message: string,
-    options?: { status?: number; retryAfterSeconds?: number; cause?: unknown }
+    options?: { status?: number; retryAfterSeconds?: number }
   ) {
-    super(message, options?.cause !== undefined ? { cause: options.cause } : undefined);
+    super(message);
     this.name = 'TranscriptionError';
     this.code = code;
     this.status = options?.status;
@@ -36,30 +37,32 @@ export function getTranscriptionErrorMessage(error: unknown): string {
       case 'PERMISSION_DENIED':
         return 'Microphone permission was denied. Enable it in system settings to use voice capture.';
       case 'AUDIO_UNAVAILABLE':
-        return 'Audio recording is unavailable in this environment. Use a development build with native audio.';
+        return 'Realtime audio is unavailable in this environment. Use an Expo development build with native audio.';
       case 'MISSING_API_KEY':
-        return 'Add your OpenRouter API key in Settings before using voice transcription.';
+        return 'Add an OpenAI API key in Settings before using voice transcription.';
       case 'INVALID_API_KEY':
-        return 'The OpenRouter API key was rejected. Check it in Settings.';
-      case 'INSUFFICIENT_CREDITS':
-        return 'OpenRouter needs available credits for transcription.';
+        return 'The OpenAI API key was rejected. Check it in Settings.';
       case 'RATE_LIMITED':
         return error.retryAfterSeconds
-          ? `Transcription rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
-          : 'Transcription rate limit reached. Try again shortly.';
+          ? `OpenAI rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
+          : 'OpenAI rate limit reached. Try again shortly.';
       case 'NETWORK_ERROR':
-        return 'Could not reach the transcription service. Check your connection.';
+        return 'Could not reach OpenAI realtime transcription. Check your connection.';
       case 'INVALID_AUDIO':
-        return 'The recording could not be processed. Try recording again.';
+        return 'The microphone did not provide the required 24 kHz mono PCM audio.';
       case 'PROVIDER_UNAVAILABLE':
-        return 'The speech provider is temporarily unavailable. Try again shortly.';
-      case 'INVALID_RESPONSE':
-        return 'The transcription service returned an unexpected response.';
+        return 'OpenAI realtime transcription is temporarily unavailable. Try again shortly.';
+      case 'INVALID_EVENT':
+        return 'OpenAI returned an invalid realtime event. The voice session was stopped safely.';
+      case 'SESSION_FAILED':
+        return 'The OpenAI realtime transcription session failed.';
+      case 'EMPTY_TRANSCRIPT':
+        return 'No speech was captured. Nothing was sent to AETHER.';
       case 'CANCELLED':
-        return 'Transcription was cancelled.';
+        return 'Voice capture was cancelled.';
       default:
-        return 'Transcription failed. Try again.';
+        return 'Voice transcription failed. Try again.';
     }
   }
-  return 'Transcription failed. Try again.';
+  return 'Voice transcription failed. Try again.';
 }

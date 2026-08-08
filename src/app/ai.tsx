@@ -9,14 +9,15 @@ import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useSettingsStore } from '@/stores/settings.store';
+import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 
 export default function AIScreen() {
   const router = useRouter();
   const isDark = useIsDark();
   const selectedModel = useSettingsStore((state) => state.selectedModel);
-  const apiKeyLoaded = useSettingsStore((state) => state.apiKeyLoaded);
-  const hasApiKey = useSettingsStore((state) => Boolean(state.openRouterApiKey));
+  const keyLoaded = useSettingsStore((state) => state.openRouterKeyLoaded);
+  const configured = useSettingsStore((state) => state.openRouterConfigured);
 
   const assistantContext = useMemo(
     () => ({
@@ -37,7 +38,7 @@ export default function AIScreen() {
           <Typography variant="caption" color={Colors.zinc500}>ASSISTANT</Typography>
           <Typography variant="display">AETHER</Typography>
           <Typography variant="body" color={Colors.zinc500} style={styles.subtitle}>
-            A quiet command surface for planning, changing, and understanding your day.
+            The OpenRouter reasoning surface for planning, changing, and understanding your day.
           </Typography>
         </View>
 
@@ -46,25 +47,27 @@ export default function AIScreen() {
             <Sparkles size={24} color={isDark ? '#7FE0C2' : '#228B72'} />
           </View>
           <Typography variant="headline" style={styles.heroTitle}>
-            {hasApiKey ? 'Ready for your next instruction.' : 'Connect an AI provider to begin.'}
+            {configured ? 'Ready for your next instruction.' : 'Connect OpenRouter to begin.'}
           </Typography>
           <Typography variant="body" color={Colors.zinc500}>
-            Tap the AETHER ball in the dock to open the composer. Hold it to speak instead of typing.
+            The global AETHER orb and composer are the only assistant interaction surface. Tap the orb in the dock to open them.
           </Typography>
         </Card>
 
-        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>CONNECTION</Typography>
+        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>OPENROUTER CONNECTION</Typography>
         <Card variant="elevated" style={styles.statusCard} padding={Spacing.md}>
           <View style={styles.row}>
-            {hasApiKey ? <Check size={18} color="#2F855A" /> : <KeyRound size={18} color={Colors.zinc500} />}
+            {configured ? <Check size={18} color="#2F855A" /> : <KeyRound size={18} color={Colors.zinc500} />}
             <View style={styles.rowCopy}>
-              <Typography variant="bodyBold">{hasApiKey ? 'Provider connected' : apiKeyLoaded ? 'Provider not connected' : 'Checking provider…'}</Typography>
+              <Typography variant="bodyBold">
+                {configured ? 'OpenRouter connected' : keyLoaded ? 'OpenRouter not connected' : 'Checking OpenRouter…'}
+              </Typography>
               <Typography variant="caption" color={Colors.zinc500}>
-                {hasApiKey ? selectedModel || 'Choose a model in Settings' : 'Your key stays in SecureStore on this device.'}
+                {configured ? `Selected model: ${selectedModel || DEFAULT_OPENROUTER_MODEL_ID}` : 'The OpenRouter key is used only for AI reasoning and task tools.'}
               </Typography>
             </View>
           </View>
-          {!hasApiKey ? (
+          {!configured ? (
             <AnimatedPressable
               onPress={() => router.replace('/settings')}
               style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}

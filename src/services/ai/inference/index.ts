@@ -14,6 +14,7 @@ export type {
 export {
   capabilitiesFromOpenRouterMetadata,
   classifyCompatibility,
+  hasOpenRouterParameter,
   unknownModelCapabilities,
   canRunAsAgent,
 } from './capabilities';

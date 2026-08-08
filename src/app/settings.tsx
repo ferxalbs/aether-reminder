@@ -1,7 +1,30 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Cpu, Eye, EyeOff, Info, Key, Moon, RefreshCw, Search, Shield, Trash2, Vibrate } from 'lucide-react-native';
+import {
+  Check,
+  Cpu,
+  Eye,
+  EyeOff,
+  Info,
+  Key,
+  Mic,
+  Moon,
+  RefreshCw,
+  Search,
+  Shield,
+  Trash2,
+  Vibrate,
+} from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -10,35 +33,48 @@ import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { useSettingsStore } from '@/stores/settings.store';
-import { AIModel, maskApiKey } from '@/services/ai/models';
+import { DEFAULT_OPENROUTER_MODEL_ID, type AIModel } from '@/services/ai/models';
+import { canRunAsAgent } from '@/services/ai/inference';
 import { fetchAvailableModels, testOpenRouterConnection } from '@/services/ai/openrouter';
+import { testOpenAIRealtimeConnection } from '@/services/transcription';
 import { getAIErrorMessage } from '@/services/ai/providers';
-import { UserSettings } from '@/types';
+import type { UserSettings } from '@/types';
 import * as Haptics from 'expo-haptics';
 
 function formatContextLength(contextLength?: number): string {
   return contextLength ? `${contextLength.toLocaleString()} token context` : 'Context size unavailable';
 }
 
+type ProviderName = 'OpenRouter' | 'OpenAI';
+
 export default function SettingsScreen() {
   const theme = useSettingsStore((s) => s.theme);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
-  const apiKeyLoaded = useSettingsStore((s) => s.apiKeyLoaded);
+  const openAiApiKey = useSettingsStore((s) => s.openAiApiKey);
+  const openRouterKeyLoaded = useSettingsStore((s) => s.openRouterKeyLoaded);
+  const openAiKeyLoaded = useSettingsStore((s) => s.openAiKeyLoaded);
+  const openRouterConfigured = useSettingsStore((s) => s.openRouterConfigured);
+  const openAiConfigured = useSettingsStore((s) => s.openAiConfigured);
   const secureStoreAvailable = useSettingsStore((s) => s.secureStoreAvailable);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
-  const loadApiKey = useSettingsStore((s) => s.loadApiKey);
-  const setApiKey = useSettingsStore((s) => s.setApiKey);
-  const deleteApiKey = useSettingsStore((s) => s.deleteApiKey);
+  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+  const setOpenRouterApiKey = useSettingsStore((s) => s.setOpenRouterApiKey);
+  const deleteOpenRouterApiKey = useSettingsStore((s) => s.deleteOpenRouterApiKey);
+  const setOpenAiApiKey = useSettingsStore((s) => s.setOpenAiApiKey);
+  const deleteOpenAiApiKey = useSettingsStore((s) => s.deleteOpenAiApiKey);
   const setModel = useSettingsStore((s) => s.setModel);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
 
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [savingKey, setSavingKey] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
+  const [openRouterInput, setOpenRouterInput] = useState('');
+  const [openAiInput, setOpenAiInput] = useState('');
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
+  const [showOpenAiKey, setShowOpenAiKey] = useState(false);
+  const [savingProvider, setSavingProvider] = useState<ProviderName | null>(null);
+  const [testingProvider, setTestingProvider] = useState<ProviderName | null>(null);
+  const [openRouterMessage, setOpenRouterMessage] = useState<string | null>(null);
+  const [openAiMessage, setOpenAiMessage] = useState<string | null>(null);
   const [models, setModels] = useState<AIModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
@@ -47,7 +83,7 @@ export default function SettingsScreen() {
   const [showPrivacy, setShowPrivacy] = useState(false);
 
   const isDark = useIsDark();
-  const maskedKey = apiKeyLoaded ? maskApiKey(openRouterApiKey) : '';
+  const keyStateLoaded = openRouterKeyLoaded && openAiKeyLoaded;
 
   const assistantContext = useMemo(
     () => ({
@@ -61,28 +97,34 @@ export default function SettingsScreen() {
   useAssistantSurface(assistantContext);
 
   useEffect(() => {
-    void loadApiKey();
-  }, [loadApiKey]);
+    void loadCredentials();
+  }, [loadCredentials]);
+
+  const loadModels = () => {
+    setModelsLoading(true);
+    setModelsError(null);
+    void fetchAvailableModels()
+      .then(setModels)
+      .catch((error: unknown) => setModelsError(getAIErrorMessage(error)))
+      .finally(() => setModelsLoading(false));
+  };
 
   useEffect(() => {
     let cancelled = false;
-    const loadModels = async () => {
-      setModelsLoading(true);
-      setModelsError(null);
-      try {
-        const availableModels = await fetchAvailableModels(openRouterApiKey || undefined);
-        if (cancelled) return;
-        setModels(availableModels);
-        if (!selectedModel && availableModels[0]) setModel(availableModels[0].id);
-      } catch (error) {
+    void fetchAvailableModels()
+      .then((availableModels) => {
+        if (!cancelled) setModels(availableModels);
+      })
+      .catch((error: unknown) => {
         if (!cancelled) setModelsError(getAIErrorMessage(error));
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setModelsLoading(false);
-      }
+      });
+    return () => {
+      cancelled = true;
     };
-    void loadModels();
-    return () => { cancelled = true; };
-  }, [openRouterApiKey, selectedModel, setModel]);
+  }, []);
 
   const filteredModels = useMemo(() => {
     const query = modelSearch.trim().toLowerCase();
@@ -91,82 +133,102 @@ export default function SettingsScreen() {
       : models;
   }, [modelSearch, models]);
 
-  const handleSaveApiKey = async () => {
-    if (!apiKeyInput.trim()) {
-      Alert.alert('API Key Required', 'Enter an OpenRouter API key before saving.');
+  const saveKey = async (provider: ProviderName) => {
+    const input = provider === 'OpenRouter' ? openRouterInput : openAiInput;
+    if (!input.trim()) {
+      Alert.alert('API Key Required', `Enter an ${provider} API key before saving.`);
       return;
     }
-    setSavingKey(true);
-    setConnectionMessage(null);
+    setSavingProvider(provider);
+    const setKey = provider === 'OpenRouter' ? setOpenRouterApiKey : setOpenAiApiKey;
     try {
-      await setApiKey(apiKeyInput);
-      setApiKeyInput('');
-      setShowApiKey(false);
-      setConnectionMessage('API key saved securely on this device.');
+      await setKey(input);
+      if (provider === 'OpenRouter') {
+        setOpenRouterInput('');
+        setShowOpenRouterKey(false);
+        setOpenRouterMessage('OpenRouter key saved securely.');
+      } else {
+        setOpenAiInput('');
+        setShowOpenAiKey(false);
+        setOpenAiMessage('OpenAI key saved securely.');
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (error) {
-      Alert.alert('Key Not Saved', getAIErrorMessage(error));
+      Alert.alert(`${provider} Key Not Saved`, getAIErrorMessage(error));
     } finally {
-      setSavingKey(false);
+      setSavingProvider(null);
     }
   };
 
-  const handleTestConnection = async () => {
-    const keyToTest = apiKeyInput.trim() || openRouterApiKey;
+  const testConnection = async (provider: ProviderName) => {
+    const input = provider === 'OpenRouter' ? openRouterInput : openAiInput;
+    const savedKey = provider === 'OpenRouter' ? openRouterApiKey : openAiApiKey;
+    const keyToTest = input.trim() || savedKey;
     if (!keyToTest) {
-      Alert.alert('API Key Required', 'Save an OpenRouter API key or enter one to test.');
+      Alert.alert('API Key Required', `Save an ${provider} key or enter one to test.`);
       return;
     }
-    setTestingConnection(true);
-    setConnectionMessage(null);
+    setTestingProvider(provider);
     try {
-      const result = await testOpenRouterConnection(keyToTest);
-      setConnectionMessage(`${result.provider} connection is working.`);
+      const result = provider === 'OpenRouter'
+        ? await testOpenRouterConnection(keyToTest)
+        : await testOpenAIRealtimeConnection(keyToTest);
+      const message = `${result.provider} connection is working.`;
+      if (provider === 'OpenRouter') setOpenRouterMessage(message);
+      else setOpenAiMessage(message);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (error) {
-      setConnectionMessage(getAIErrorMessage(error));
+      const message = getAIErrorMessage(error);
+      if (provider === 'OpenRouter') setOpenRouterMessage(message);
+      else setOpenAiMessage(message);
     } finally {
-      setTestingConnection(false);
+      setTestingProvider(null);
     }
   };
 
-  const handleDeleteApiKey = () => {
-    if (!openRouterApiKey) {
-      setApiKeyInput('');
+  const deleteKey = (provider: ProviderName) => {
+    const configured = provider === 'OpenRouter' ? openRouterConfigured : openAiConfigured;
+    if (!configured) {
+      if (provider === 'OpenRouter') setOpenRouterInput('');
+      else setOpenAiInput('');
       return;
     }
     Alert.alert(
-      'Delete OpenRouter API key?',
-      'This removes the saved key from SecureStore and disables remote AI requests until a new key is saved.',
+      `Delete ${provider} API key?`,
+      provider === 'OpenRouter'
+        ? 'This disables AI reasoning and task actions until another OpenRouter key is saved.'
+        : 'This disables realtime voice transcription until another OpenAI key is saved.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete Key',
           style: 'destructive',
           onPress: () => {
-            void deleteApiKey()
-              .then(() => { setApiKeyInput(''); setConnectionMessage('OpenRouter API key deleted.'); })
-              .catch((error: unknown) => Alert.alert('Key Not Deleted', getAIErrorMessage(error)));
+            const deleteSavedKey = provider === 'OpenRouter'
+              ? deleteOpenRouterApiKey
+              : deleteOpenAiApiKey;
+            void deleteSavedKey()
+              .then(() => {
+                if (provider === 'OpenRouter') {
+                  setOpenRouterInput('');
+                  setOpenRouterMessage('OpenRouter key deleted.');
+                } else {
+                  setOpenAiInput('');
+                  setOpenAiMessage('OpenAI key deleted.');
+                }
+              })
+              .catch((error: unknown) => Alert.alert(`${provider} Key Not Deleted`, getAIErrorMessage(error)));
           },
         },
       ]
     );
   };
 
-  const storageDescription = !apiKeyLoaded
+  const storageDescription = !keyStateLoaded
     ? 'Checking secure storage…'
     : secureStoreAvailable
-    ? 'Stored locally in Expo SecureStore. It is never persisted in app preferences.'
-    : 'Secure storage is unavailable in this environment. The key cannot be saved here.';
-
-  const refreshModels = () => {
-    setModelsLoading(true);
-    setModelsError(null);
-    void fetchAvailableModels(openRouterApiKey || undefined)
-      .then(setModels)
-      .catch((error: unknown) => setModelsError(getAIErrorMessage(error)))
-      .finally(() => setModelsLoading(false));
-  };
+      ? 'Keys are stored locally in Expo SecureStore. Only non-secret preferences use app storage.'
+      : 'Secure storage is unavailable in this environment. Keys cannot be saved here.';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
@@ -177,58 +239,95 @@ export default function SettingsScreen() {
           <Typography variant="display">Settings</Typography>
         </View>
 
-        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>OPENROUTER API CONFIGURATION</Typography>
+        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>OPENROUTER — AI REASONING</Typography>
         <Card variant="elevated" style={styles.cardSection}>
           <View style={styles.rowHeader}>
             <Key size={16} color={isDark ? Colors.white : Colors.black} />
-            <Typography variant="title" style={{ flex: 1 }}>Bring Your Own Key</Typography>
+            <Typography variant="title" style={{ flex: 1 }}>OpenRouter API key</Typography>
           </View>
           <Typography variant="caption" color={Colors.zinc500} style={styles.helperText}>
-            Your key is sent directly to OpenRouter. This app has no bundled or backend-owned API key.
+            Used only for AETHER’s tool-enabled reasoning agent and the OpenRouter model you select. It does not enable voice transcription.
           </Typography>
-
           <View style={styles.savedKeyRow}>
             <View style={{ flex: 1 }}>
-              <Typography variant="tiny" color={Colors.zinc500}>SAVED KEY</Typography>
-              <Typography variant="bodyBold">{maskedKey || (apiKeyLoaded ? 'No key saved' : 'Loading…')}</Typography>
+              <Typography variant="tiny" color={Colors.zinc500}>KEY STATUS</Typography>
+              <Typography variant="bodyBold">{openRouterKeyLoaded ? openRouterConfigured ? 'Saved securely' : 'No key saved' : 'Loading…'}</Typography>
             </View>
             <Shield size={18} color={secureStoreAvailable ? Colors.zinc300 : Colors.zinc600} />
           </View>
-
           <View style={styles.inputContainer}>
             <TextInput
-              value={apiKeyInput}
-              onChangeText={setApiKeyInput}
-              placeholder="Enter a new sk-or-v1-… key"
+              value={openRouterInput}
+              onChangeText={setOpenRouterInput}
+              placeholder="Enter an OpenRouter key"
               placeholderTextColor={Colors.zinc500}
-              secureTextEntry={!showApiKey}
+              secureTextEntry={!showOpenRouterKey}
               autoCapitalize="none"
               autoCorrect={false}
               style={[styles.apiKeyInput, { color: isDark ? Colors.white : Colors.zinc950, backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}
             />
-            <AnimatedPressable onPress={() => setShowApiKey((visible) => !visible)} style={styles.eyeButton} accessibilityLabel={showApiKey ? 'Hide API key' : 'Show API key'}>
-              {showApiKey ? <EyeOff size={16} color={Colors.zinc400} /> : <Eye size={16} color={Colors.zinc400} />}
+            <AnimatedPressable onPress={() => setShowOpenRouterKey((visible) => !visible)} style={styles.eyeButton} accessibilityLabel={showOpenRouterKey ? 'Hide OpenRouter API key' : 'Show OpenRouter API key'}>
+              {showOpenRouterKey ? <EyeOff size={16} color={Colors.zinc400} /> : <Eye size={16} color={Colors.zinc400} />}
             </AnimatedPressable>
           </View>
           <Typography variant="caption" color={Colors.zinc500} style={styles.storageDescription}>{storageDescription}</Typography>
-
           <View style={styles.buttonRow}>
-            <Button label="Save Securely" onPress={() => void handleSaveApiKey()} variant="primary" size="sm" loading={savingKey} disabled={!secureStoreAvailable || !apiKeyLoaded || testingConnection} style={styles.flexButton} />
-            <Button label="Test Connection" onPress={() => void handleTestConnection()} variant="secondary" size="sm" loading={testingConnection} disabled={!apiKeyLoaded || savingKey} style={styles.flexButton} />
+            <Button label="Save Securely" onPress={() => void saveKey('OpenRouter')} variant="primary" size="sm" loading={savingProvider === 'OpenRouter'} disabled={!secureStoreAvailable || !openRouterKeyLoaded || testingProvider !== null} style={styles.flexButton} />
+            <Button label="Test Connection" onPress={() => void testConnection('OpenRouter')} variant="secondary" size="sm" loading={testingProvider === 'OpenRouter'} disabled={!openRouterKeyLoaded || savingProvider !== null} style={styles.flexButton} />
           </View>
-          <Button label="Delete / Reset Key" onPress={handleDeleteApiKey} variant="ghost" size="sm" icon={<Trash2 size={15} color={isDark ? Colors.zinc300 : Colors.zinc700} />} disabled={!apiKeyLoaded || savingKey || testingConnection} style={styles.deleteButton} />
-          {connectionMessage ? <Typography variant="caption" color={Colors.zinc400} style={styles.statusMessage}>{connectionMessage}</Typography> : null}
+          <Button label="Delete Key" onPress={() => deleteKey('OpenRouter')} variant="ghost" size="sm" icon={<Trash2 size={15} color={isDark ? Colors.zinc300 : Colors.zinc700} />} disabled={!openRouterKeyLoaded || savingProvider !== null || testingProvider !== null} style={styles.deleteButton} />
+          {openRouterMessage ? <Typography variant="caption" color={Colors.zinc400} style={styles.statusMessage}>{openRouterMessage}</Typography> : null}
         </Card>
 
-        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>SELECT AI MODEL</Typography>
+        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>OPENAI — REALTIME VOICE TRANSCRIPTION</Typography>
+        <Card variant="elevated" style={styles.cardSection}>
+          <View style={styles.rowHeader}>
+            <Mic size={16} color={isDark ? Colors.white : Colors.black} />
+            <Typography variant="title" style={{ flex: 1 }}>OpenAI API key</Typography>
+          </View>
+          <Typography variant="caption" color={Colors.zinc500} style={styles.helperText}>
+            Used only for realtime microphone transcription with gpt-realtime-whisper. OpenAI never runs AETHER’s conversational agent.
+          </Typography>
+          <View style={styles.savedKeyRow}>
+            <View style={{ flex: 1 }}>
+              <Typography variant="tiny" color={Colors.zinc500}>KEY STATUS</Typography>
+              <Typography variant="bodyBold">{openAiKeyLoaded ? openAiConfigured ? 'Saved securely' : 'No key saved' : 'Loading…'}</Typography>
+            </View>
+            <Shield size={18} color={secureStoreAvailable ? Colors.zinc300 : Colors.zinc600} />
+          </View>
+          <View style={styles.inputContainer}>
+            <TextInput
+              value={openAiInput}
+              onChangeText={setOpenAiInput}
+              placeholder="Enter an OpenAI key"
+              placeholderTextColor={Colors.zinc500}
+              secureTextEntry={!showOpenAiKey}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.apiKeyInput, { color: isDark ? Colors.white : Colors.zinc950, backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}
+            />
+            <AnimatedPressable onPress={() => setShowOpenAiKey((visible) => !visible)} style={styles.eyeButton} accessibilityLabel={showOpenAiKey ? 'Hide OpenAI API key' : 'Show OpenAI API key'}>
+              {showOpenAiKey ? <EyeOff size={16} color={Colors.zinc400} /> : <Eye size={16} color={Colors.zinc400} />}
+            </AnimatedPressable>
+          </View>
+          <Typography variant="caption" color={Colors.zinc500} style={styles.storageDescription}>{storageDescription}</Typography>
+          <View style={styles.buttonRow}>
+            <Button label="Save Securely" onPress={() => void saveKey('OpenAI')} variant="primary" size="sm" loading={savingProvider === 'OpenAI'} disabled={!secureStoreAvailable || !openAiKeyLoaded || testingProvider !== null} style={styles.flexButton} />
+            <Button label="Test Connection" onPress={() => void testConnection('OpenAI')} variant="secondary" size="sm" loading={testingProvider === 'OpenAI'} disabled={!openAiKeyLoaded || savingProvider !== null} style={styles.flexButton} />
+          </View>
+          <Button label="Delete Key" onPress={() => deleteKey('OpenAI')} variant="ghost" size="sm" icon={<Trash2 size={15} color={isDark ? Colors.zinc300 : Colors.zinc700} />} disabled={!openAiKeyLoaded || savingProvider !== null || testingProvider !== null} style={styles.deleteButton} />
+          {openAiMessage ? <Typography variant="caption" color={Colors.zinc400} style={styles.statusMessage}>{openAiMessage}</Typography> : null}
+        </Card>
+
+        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>OPENROUTER MODEL SELECTOR</Typography>
         <Card variant="elevated" style={styles.cardSection}>
           <View style={styles.rowHeader}>
             <Cpu size={16} color={isDark ? Colors.white : Colors.black} />
             <View style={{ flex: 1 }}>
-              <Typography variant="title">OpenRouter model catalog</Typography>
-              <Typography variant="caption" color={Colors.zinc500}>Live OpenAI-compatible models from OpenRouter</Typography>
+              <Typography variant="title">Tool-enabled model</Typography>
+              <Typography variant="caption" color={Colors.zinc500}>Default: {DEFAULT_OPENROUTER_MODEL_ID}. Live metadata decides compatibility.</Typography>
             </View>
-            <AnimatedPressable onPress={refreshModels} accessibilityLabel="Refresh model catalog" style={styles.refreshButton}>
+            <AnimatedPressable onPress={loadModels} accessibilityLabel="Refresh OpenRouter model catalog" style={styles.refreshButton}>
               <RefreshCw size={16} color={Colors.zinc400} />
             </AnimatedPressable>
           </View>
@@ -236,19 +335,20 @@ export default function SettingsScreen() {
             <Search size={15} color={Colors.zinc500} />
             <TextInput value={modelSearch} onChangeText={setModelSearch} placeholder="Search models or providers" placeholderTextColor={Colors.zinc500} style={[styles.searchInput, { color: isDark ? Colors.white : Colors.zinc950 }]} />
           </View>
-          {modelsLoading ? <ActivityIndicator style={styles.modelsLoading} color={isDark ? Colors.white : Colors.black} /> : modelsError ? <Typography variant="caption" color={Colors.zinc500} style={styles.modelsMessage}>{modelsError}</Typography> : filteredModels.length === 0 ? <Typography variant="caption" color={Colors.zinc500} style={styles.modelsMessage}>No supported models match this search.</Typography> : (
+          {modelsLoading ? <ActivityIndicator style={styles.modelsLoading} color={isDark ? Colors.white : Colors.black} /> : modelsError ? <Typography variant="caption" color={Colors.zinc500} style={styles.modelsMessage}>{modelsError}</Typography> : filteredModels.length === 0 ? <Typography variant="caption" color={Colors.zinc500} style={styles.modelsMessage}>No catalog models match this search.</Typography> : (
             <ScrollView style={styles.modelList} nestedScrollEnabled>
               {filteredModels.map((model) => {
                 const isSelected = selectedModel === model.id;
-                const isAvailable = model.availability === 'available';
+                const isSelectable = model.availability === 'available' && canRunAsAgent(model.capabilities);
+                const status = model.availability !== 'available' ? 'Unavailable' : isSelectable ? 'Agent-ready' : 'Tool support unavailable';
                 return (
-                  <AnimatedPressable key={model.id} onPress={() => { if (isAvailable) { setModel(model.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); } }} disabled={!isAvailable} scaleTo={0.98} style={[styles.modelItem, { backgroundColor: isSelected ? (isDark ? Colors.zinc800 : Colors.zinc100) : 'transparent', borderColor: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.zinc800 : Colors.zinc200), opacity: isAvailable ? 1 : 0.5 }]}>
+                  <AnimatedPressable key={model.id} onPress={() => { if (isSelectable) { setModel(model.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); } }} disabled={!isSelectable} scaleTo={0.98} style={[styles.modelItem, { backgroundColor: isSelected ? (isDark ? Colors.zinc800 : Colors.zinc100) : 'transparent', borderColor: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.zinc800 : Colors.zinc200), opacity: isSelectable || isSelected ? 1 : 0.5 }]}>
                     <View style={{ flex: 1 }}>
                       <Typography variant="bodyBold">{model.name}</Typography>
                       <View style={styles.modelMetaRow}>
                         <Typography variant="tiny" color={Colors.zinc400}>{model.provider}</Typography>
                         <Typography variant="tiny" color={Colors.zinc500}>{formatContextLength(model.contextLength)}</Typography>
-                        <Typography variant="tiny" color={Colors.zinc500}>{isAvailable ? 'Available' : 'Unavailable'}</Typography>
+                        <Typography variant="tiny" color={Colors.zinc500}>{status}</Typography>
                       </View>
                     </View>
                     {isSelected ? <Check size={18} color={isDark ? Colors.white : Colors.black} /> : null}
@@ -276,10 +376,10 @@ export default function SettingsScreen() {
         <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>ABOUT & LEGAL</Typography>
         <Card variant="elevated" style={styles.cardSection}>
           <AnimatedPressable onPress={() => setShowAbout((visible) => !visible)} style={styles.linkRow}><Info size={16} color={isDark ? Colors.white : Colors.black} /><Typography variant="bodyBold" style={{ flex: 1 }}>About AETHER</Typography></AnimatedPressable>
-          {showAbout ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>AETHER is a local-first task assistant. Remote inference uses the OpenRouter key you provide and the model you select.</Typography> : null}
+          {showAbout ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>AETHER is a local-first task assistant. OpenRouter handles reasoning and task tools; OpenAI handles only realtime voice transcription.</Typography> : null}
           <View style={[styles.divider, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]} />
           <AnimatedPressable onPress={() => setShowPrivacy((visible) => !visible)} style={styles.linkRow}><Shield size={16} color={isDark ? Colors.white : Colors.black} /><Typography variant="bodyBold" style={{ flex: 1 }}>Privacy Information</Typography></AnimatedPressable>
-          {showPrivacy ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>The API key is stored only in Expo SecureStore. It is not placed in AsyncStorage, analytics, crash reports, or an app environment variable. Task text is sent to OpenRouter only when you ask AETHER.</Typography> : null}
+          {showPrivacy ? <Typography variant="body" color={Colors.zinc400} style={styles.expandText}>API keys are stored only in Expo SecureStore and are never placed in AsyncStorage, analytics, crash reports, source, or app configuration. Task text goes to OpenRouter only when you ask AETHER; voice audio goes to OpenAI only during an active transcription session.</Typography> : null}
         </Card>
       </ScrollView>
     </SafeAreaView>

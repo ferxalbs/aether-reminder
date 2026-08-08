@@ -16,6 +16,7 @@ import type { AssistantOrbState } from './assistantTypes';
 interface AppBottomNavigationProps {
   orbState: AssistantOrbState;
   assistantExpanded: boolean;
+  audioLevel?: number;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
   onOrbPress: () => void;
@@ -27,21 +28,23 @@ interface AppBottomNavigationProps {
 type Destination = '/' | '/tasks' | '/ai' | '/transcribe' | '/settings';
 
 const navigationItems: {
+  key: string;
   destination: Destination;
   label: string;
   icon: typeof CheckSquare;
   assistant?: boolean;
 }[] = [
-  { destination: '/', label: 'Home', icon: CheckSquare },
-  { destination: '/tasks', label: 'Tasks', icon: ListTodo },
-  { destination: '/ai', label: 'AETHER', icon: Brain, assistant: true },
-  { destination: '/transcribe', label: 'Voice', icon: Mic },
-  { destination: '/settings', label: 'Settings', icon: Settings },
+  { key: 'home', destination: '/', label: 'Home', icon: CheckSquare },
+  { key: 'tasks', destination: '/tasks', label: 'Tasks', icon: ListTodo },
+  { key: 'assistant', destination: '/ai', label: 'AETHER', icon: Brain, assistant: true },
+  { key: 'voice', destination: '/transcribe', label: 'Voice', icon: Mic },
+  { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   orbState,
   assistantExpanded,
+  audioLevel = 0,
   keyboardOffset,
   blurTarget,
   onOrbPress,
@@ -76,7 +79,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
         <View style={styles.navRow}>
           {navigationItems.map((item) => (
             <NavigationButton
-              key={item.destination}
+              key={item.key}
               item={item}
               active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
               isDark={isDark}
@@ -86,6 +89,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
               onOrbPressIn={onOrbPressIn}
               onOrbPressOut={onOrbPressOut}
               onOrbPressMove={onOrbPressMove}
+              audioLevel={audioLevel}
             />
           ))}
         </View>
@@ -104,6 +108,7 @@ function NavigationButton({
   onOrbPressIn,
   onOrbPressOut,
   onOrbPressMove,
+  audioLevel,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
@@ -114,6 +119,7 @@ function NavigationButton({
   onOrbPressIn?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
+  audioLevel?: number;
 }) {
   const activeAnim = useSharedValue(active ? 1 : 0);
 
@@ -148,6 +154,7 @@ function NavigationButton({
             onPressIn={onOrbPressIn}
             onPressOut={onOrbPressOut}
             onPressMove={onOrbPressMove}
+            audioLevel={audioLevel}
           />
           <Typography variant="tiny" color={activeColor} style={styles.navLabel}>
             AETHER

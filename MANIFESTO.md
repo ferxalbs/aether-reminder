@@ -22,9 +22,12 @@ Y quitaría también el lenguaje tipo:
 
 No aporta comportamiento. Define el contrato del agente mediante reglas concretas, capabilities y tools.
 
-Hay además una corrección **P0** en Voice: la key almacenada es de OpenRouter, pero el `OpenAITranscriptionProvider` actual termina enviándola a `api.openai.com`, además de generar transcripciones ficticias cuando falla.  OpenRouter ya tiene su propio endpoint `/api/v1/audio/transcriptions`, usando la misma API key de OpenRouter. ([OpenRouter][4])
-
-Ese mock no puede existir en producción. `failed` debe significar failed.
+La corrección de Voice mantiene dos trust boundaries independientes: OpenRouter
+recibe únicamente el key de OpenRouter para el agente de razonamiento, y
+OpenAI recibe únicamente el key de OpenAI para la sesión Realtime de
+transcription con `gpt-realtime-whisper`. No existe un proveedor STT de
+OpenRouter, no se suben archivos temporales y no hay transcripciones sintéticas.
+Un fallo significa fallo visible; nunca éxito inventado.
 
 ---
 
@@ -980,35 +983,16 @@ interface SpeechProvider {
 }
 ```
 
-Providers:
+Provider:
 
 ```text
-AppleSpeechProvider
-AndroidSpeechProvider
-OpenRouterSTTProvider
+OpenAIRealtimeTranscriptionProvider
 ```
 
-En iOS 26+, `SpeechAnalyzer` + `SpeechTranscriber` ya ofrece live speech-to-text mediante streams asíncronos. ([Apple Developer][17])
-
-Android dispone de `createOnDeviceSpeechRecognizer()` cuando el dispositivo soporta reconocimiento local. ([Android Developers][18])
-
-Y OpenRouter tiene STT dedicado como fallback remoto. ([OpenRouter][4])
-
-Yo pondría:
-
-```text
-Speech Recognition
-
-Auto
-  Device when available
-  OpenRouter fallback
-
-Device only
-
-OpenRouter
-```
-
-Aunque el LLM default sea OpenRouter, no veo ninguna razón para mandar audio por internet si el SO puede darnos una transcripción local inmediata.
+`expo-audio` `useAudioStream()` captura PCM16 mono a 24 kHz. El provider
+mantiene la sesión Realtime, procesa únicamente los eventos documentados de
+delta/completion y entrega solo el transcript final al `AgentRuntime` de
+OpenRouter.
 
 ---
 
@@ -1018,15 +1002,12 @@ Estados:
 
 ```text
 idle
-requesting_permission
-preparing
+connecting
 listening
-speech_detected
-finalizing
 transcribing
-ready
-failed
-cancelled
+finalizing
+thinking / executing / responding
+idle / error
 ```
 
 Nunca:
@@ -2069,7 +2050,10 @@ Eso sí crea una familia técnica real, no solamente apps con el mismo nombre.
 
 # 48. Orden de construcción que usaría
 
-**Phase 0 — Correctness.** Eliminar fake recordings/transcriptions, corregir OpenRouter STT, corregir fechas locales, theme system real y separar audio de agent inference. Extender Model Registry con capabilities.
+**Phase 0 — Correctness.** Eliminar fake recordings/transcriptions, separar
+OpenRouter reasoning de OpenAI realtime transcription, corregir fechas locales,
+theme system real y separar audio de agent inference. Extender Model Registry
+con capabilities.
 
 **Phase 1 — Domain Core.** SQLite, migrations, TasksRepository, ReminderRepository, TemporalEngine, task history y outbox.
 
@@ -2077,7 +2061,9 @@ Eso sí crea una familia técnica real, no solamente apps con el mismo nombre.
 
 **Phase 3 — Universal Assistant.** Sacar `AI Overview` y `Transcribe` como tabs principales. Meter `AssistantHost` global, orb central, composer y conversación.
 
-**Phase 4 — Voice.** SpeechAnalyzer en iOS, SpeechRecognizer Android, OpenRouter STT fallback, partial transcription, barge-in y lifecycle real.
+**Phase 4 — Voice.** OpenAI Realtime transcription con PCM streaming,
+transcript parcial/final, barge-in y lifecycle real. El audio no se envía al
+AgentRuntime y OpenRouter nunca actúa como STT.
 
 **Phase 5 — Reminder surfaces.** Local notifications, actions Done/Snooze/Open, exact-alarm handling Android y reconciliation.
 

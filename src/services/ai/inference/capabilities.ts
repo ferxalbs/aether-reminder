@@ -15,7 +15,7 @@ export interface OpenRouterModelMetadata {
   top_provider?: { is_moderated?: boolean };
 }
 
-function hasParam(params: string[] | undefined, name: string): boolean {
+export function hasOpenRouterParameter(params: string[] | undefined, name: string): boolean {
   if (!params) return false;
   return params.some((p) => p.toLowerCase() === name.toLowerCase());
 }
@@ -25,7 +25,7 @@ export function classifyCompatibility(caps: Omit<ModelCapabilities, 'compatibili
   if (caps.tools && caps.toolChoice && caps.streaming && caps.structuredOutputs) {
     return 'FULL_AGENT';
   }
-  if (caps.tools && caps.streaming) {
+  if (caps.tools && caps.toolChoice && caps.streaming) {
     return 'AGENT';
   }
   if (caps.streaming || caps.structuredOutputs) {
@@ -45,19 +45,21 @@ export function capabilitiesFromOpenRouterMetadata(
 ): ModelCapabilities {
   const input = model.architecture?.input_modalities;
   const output = model.architecture?.output_modalities;
-  const textInput = !input || input.includes('text');
-  const textOutput = !output || output.includes('text');
+  // The catalog is the source of truth. Missing modality metadata is not a
+  // reason to assume compatibility for an agent that can mutate local data.
+  const textInput = input?.includes('text') === true;
+  const textOutput = output?.includes('text') === true;
   const params = model.supported_parameters;
 
   // Streaming is standard for chat completions on OpenRouter when text output is available.
   const streaming = textOutput;
 
-  const tools = hasParam(params, 'tools') || hasParam(params, 'tool_choice');
-  const toolChoice = hasParam(params, 'tool_choice') || tools;
+  const tools = hasOpenRouterParameter(params, 'tools');
+  const toolChoice = hasOpenRouterParameter(params, 'tool_choice');
   const structuredOutputs =
-    hasParam(params, 'structured_outputs') ||
-    hasParam(params, 'response_format') ||
-    hasParam(params, 'json_schema');
+    hasOpenRouterParameter(params, 'structured_outputs') ||
+    hasOpenRouterParameter(params, 'response_format') ||
+    hasOpenRouterParameter(params, 'json_schema');
 
   const base = {
     textInput,

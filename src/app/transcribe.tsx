@@ -14,8 +14,8 @@ import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 export default function TranscribeScreen() {
   const router = useRouter();
   const isDark = useIsDark();
-  const apiKeyLoaded = useSettingsStore((state) => state.apiKeyLoaded);
-  const hasApiKey = useSettingsStore((state) => Boolean(state.openRouterApiKey));
+  const keyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
+  const configured = useSettingsStore((state) => state.openAiConfigured);
 
   const assistantContext = useMemo(
     () => ({
@@ -36,7 +36,7 @@ export default function TranscribeScreen() {
           <Typography variant="caption" color={Colors.zinc500}>VOICE INPUT</Typography>
           <Typography variant="display">Transcribe</Typography>
           <Typography variant="body" color={Colors.zinc500} style={styles.subtitle}>
-            Speak naturally. AETHER turns the recording into an instruction without keeping the audio file.
+            OpenAI realtime transcription turns your voice into an instruction for the existing AETHER agent.
           </Typography>
         </View>
 
@@ -46,44 +46,44 @@ export default function TranscribeScreen() {
           </View>
           <Typography variant="headline" style={styles.heroTitle}>Hold to talk</Typography>
           <Typography variant="body" color={Colors.zinc500}>
-            Press and hold the AETHER ball in the bottom dock. Release to send, or swipe up while holding to keep recording until you stop it.
+            Press and hold the AETHER orb in the bottom dock. Release to commit the audio, or swipe up while holding to stop manually.
           </Typography>
           <AnimatedPressable
-            onPress={() => router.replace('/ai' as never)}
+            onPress={() => router.replace('/')}
             style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}
           >
-            <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Go to AETHER</Typography>
+            <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Use the AETHER orb</Typography>
           </AnimatedPressable>
         </Card>
 
-        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>FLOW</Typography>
+        <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>REALTIME FLOW</Typography>
         <Card variant="outline" style={styles.stepCard} padding={Spacing.md}>
           <View style={styles.stepRow}>
             <View style={styles.stepNumber}><Typography variant="tiny" color={isDark ? Colors.black : Colors.white}>1</Typography></View>
-            <View style={styles.stepCopy}><Typography variant="bodyBold">Hold</Typography><Typography variant="caption" color={Colors.zinc500}>The ball responds immediately when recording begins.</Typography></View>
+            <View style={styles.stepCopy}><Typography variant="bodyBold">Capture</Typography><Typography variant="caption" color={Colors.zinc500}>The native Expo audio stream sends mono PCM16 at 24 kHz.</Typography></View>
           </View>
           <View style={styles.connector} />
           <View style={styles.stepRow}>
             <View style={styles.stepNumber}><Typography variant="tiny" color={isDark ? Colors.black : Colors.white}>2</Typography></View>
-            <View style={styles.stepCopy}><Typography variant="bodyBold">Release or lock</Typography><Typography variant="caption" color={Colors.zinc500}>Release for a quick send, or swipe up to lock the recording.</Typography></View>
+            <View style={styles.stepCopy}><Typography variant="bodyBold">Transcribe</Typography><Typography variant="caption" color={Colors.zinc500}>OpenAI realtime events update the partial transcript and commit the final text.</Typography></View>
           </View>
           <View style={styles.connector} />
           <View style={styles.stepRow}>
             <View style={styles.stepNumber}><Typography variant="tiny" color={isDark ? Colors.black : Colors.white}>3</Typography></View>
-            <View style={styles.stepCopy}><Typography variant="bodyBold">Review the result</Typography><Typography variant="caption" color={Colors.zinc500}>The transcript goes straight into the assistant conversation.</Typography></View>
+            <View style={styles.stepCopy}><Typography variant="bodyBold">Reason</Typography><Typography variant="caption" color={Colors.zinc500}>Only the final transcript is submitted once to the OpenRouter AgentRuntime.</Typography></View>
           </View>
         </Card>
 
         <Card variant="elevated" style={styles.noteCard} padding={Spacing.md}>
           <ShieldCheck size={18} color="#2F855A" />
           <Typography variant="caption" color={Colors.zinc500} style={styles.noteCopy}>
-            {apiKeyLoaded && hasApiKey ? 'Voice transcription is ready. Audio is discarded after transcription.' : 'Add an OpenRouter key in Settings to enable transcription.'}
+            {configured ? 'OpenAI realtime transcription is configured. The OpenRouter key remains separate and is required for reasoning.' : keyLoaded ? 'Add an OpenAI key in Settings to enable realtime voice transcription.' : 'Checking OpenAI realtime transcription…'}
           </Typography>
         </Card>
 
         <View style={styles.tipRow}>
           <ArrowUp size={16} color={Colors.zinc500} />
-          <Typography variant="caption" color={Colors.zinc500}>Swipe up while holding to lock recording</Typography>
+          <Typography variant="caption" color={Colors.zinc500}>Swipe up while holding to lock the session</Typography>
         </View>
       </ScrollView>
     </SafeAreaView>

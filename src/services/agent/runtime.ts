@@ -11,6 +11,7 @@ import {
   type ModelCapabilities,
 } from "@/services/ai/inference";
 import { openRouterInferenceProvider } from "@/services/ai/inference/openRouterProvider";
+import { AIProviderError, getAIErrorMessage } from "@/services/ai/providers";
 import { evaluateToolPolicy, isWriteRisk } from "./policy";
 import { AGENT_SYSTEM_PROMPT, buildContextMessage } from "./prompt";
 import { defaultToolRegistry, type ToolRegistry } from "./tools";
@@ -170,10 +171,35 @@ export class AetherAgentRuntime implements AgentRuntime {
         return;
       }
 
-      const capabilities = await this.provider.getCapabilities(
-        input.modelId,
-        input.apiKey,
-      );
+      let capabilities: ModelCapabilities;
+      try {
+        capabilities = await this.provider.getCapabilities(
+          input.modelId,
+          input.apiKey,
+        );
+      } catch (error) {
+        const providerError = error instanceof AIProviderError
+          ? error
+          : new AIProviderError('NETWORK_ERROR', 'The OpenRouter model could not be validated.');
+        const message = error instanceof AIProviderError
+          ? getAIErrorMessage(error)
+          : 'The OpenRouter model could not be validated.';
+        yield* setState("error");
+        yield* emit({
+          type: "run.failed",
+          runId,
+          code: providerError.code,
+          message,
+          state: "error",
+        });
+        await this.persistence.updateRun(runId, {
+          status: "failed",
+          errorCode: providerError.code,
+          errorMessage: message,
+          finished: true,
+        });
+        return;
+      }
       if (!canRunAsAgent(capabilities)) {
         yield* setState("error");
         yield* emit({
@@ -485,7 +511,9 @@ export class AetherAgentRuntime implements AgentRuntime {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Agent run failed";
+        error instanceof AIProviderError
+          ? getAIErrorMessage(error)
+          : "Agent run failed.";
       yield* setState("error");
       yield* emit({
         type: "run.failed",

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -50,7 +50,6 @@ export function useAssistantSurface(snapshot: ContextSnapshot): void {
 
 export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const router = useRouter();
-  const pathname = usePathname();
   const isDark = useIsDark();
   const { snapshot } = useContext(AssistantSurfaceContext) ?? {
     snapshot: defaultSnapshot,
@@ -147,11 +146,10 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       Keyboard.dismiss();
       if (surface === 'closed' || surface === 'closing') {
         setSurface('compact');
-        if (pathname !== '/ai') router.replace('/ai' as never);
       }
       voice.begin();
     }, 180);
-  }, [pathname, router, surface, voice]);
+  }, [surface, voice]);
 
   const onOrbPressOut = useCallback(() => {
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
@@ -174,14 +172,13 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     if (surface === 'closed' || surface === 'closing') {
       setSurface('opening');
-      if (pathname !== '/ai') router.replace('/ai' as never);
       transitionTimerRef.current = setTimeout(() => setSurface('compact'), reduceMotion ? 80 : 220);
     } else {
       if (voice.state !== 'idle') void voice.cancel();
       setSurface('closed');
     }
     if (surface !== 'closed' && surface !== 'closing') Keyboard.dismiss();
-  }, [pathname, reduceMotion, router, surface, voice]);
+  }, [reduceMotion, surface, voice]);
 
   const closeAssistant = useCallback(() => {
     if (voice.state !== 'idle') void voice.cancel();
@@ -203,7 +200,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     ? 'opening'
     : surface === 'closing'
       ? 'closing'
-      : voice.state === 'requesting_permission' || voice.state === 'preparing' || voice.state === 'listening' || voice.state === 'finalizing' || voice.state === 'transcribing'
+      : voice.state === 'connecting' || voice.state === 'listening' || voice.state === 'finalizing' || voice.state === 'transcribing'
         ? voice.state
         : voice.state === 'error'
           ? 'error'
@@ -238,6 +235,8 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         voiceState={voice.state}
         voiceLocked={voice.locked}
         voiceError={voice.error}
+        voiceTranscript={voice.transcript}
+        voiceAudioLevel={voice.audioLevel}
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
         keyboardOffset={keyboardOffset}
@@ -252,6 +251,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       <AppBottomNavigation
         orbState={orbState}
         assistantExpanded={surface !== 'closed' && surface !== 'closing'}
+        audioLevel={voice.audioLevel}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
         onOrbPress={openAssistant}

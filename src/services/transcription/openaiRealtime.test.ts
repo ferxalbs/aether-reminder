@@ -1,0 +1,114 @@
+import { describe, expect, test } from 'bun:test';
+import {
+  createOpenAIRealtimeTranscriptionSession,
+  OPENAI_REALTIME_TRANSCRIPTION_MODEL,
+  OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,
+  testOpenAIRealtimeConnection,
+} from './openaiRealtime';
+
+class FakeSocket {
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  onclose: (() => void) | null = null;
+  sent: string[] = [];
+  closeCalls: { code?: number; reason?: string }[] = [];
+
+  send(data: string): void {
+    this.sent.push(data);
+  }
+
+  close(code?: number, reason?: string): void {
+    this.closeCalls.push({ code, reason });
+  }
+
+  open(): void {
+    this.readyState = 1;
+    this.onopen?.();
+  }
+
+  message(data: unknown): void {
+    this.onmessage?.({ data });
+  }
+}
+
+describe('OpenAI realtime transcription transport', () => {
+  test('uses the documented session, PCM append, and commit events', async () => {
+    const socket = new FakeSocket();
+    const received: unknown[] = [];
+    let url = '';
+    let key = '';
+    const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+      onEvent: (event) => received.push(event),
+      onError: () => undefined,
+      socketFactory: (socketUrl, socketKey) => {
+        url = socketUrl;
+        key = socketKey;
+        return socket;
+      },
+    });
+
+    const connected = session.connect();
+    socket.open();
+    expect(JSON.parse(socket.sent[0])).toEqual({
+      type: 'session.update',
+      session: {
+        type: 'transcription',
+        audio: {
+          input: {
+            format: { type: 'audio/pcm', rate: OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE },
+            transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
+            turn_detection: null,
+          },
+        },
+      },
+    });
+    socket.message(JSON.stringify({ type: 'session.updated' }));
+    await connected;
+
+    session.appendPcm16(new Uint8Array([0, 1]).buffer);
+    session.commit();
+    expect(JSON.parse(socket.sent[1])).toEqual({ type: 'input_audio_buffer.append', audio: 'AAE=' });
+    expect(JSON.parse(socket.sent[2])).toEqual({ type: 'input_audio_buffer.commit' });
+    expect(url).toContain(`model=${encodeURIComponent(OPENAI_REALTIME_TRANSCRIPTION_MODEL)}`);
+    expect(key).toBe('openai-key');
+    expect(received).toHaveLength(1);
+  });
+
+  test('cancellation closes the native session and prevents duplicate commit sends', async () => {
+    const socket = new FakeSocket();
+    const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+      onEvent: () => undefined,
+      onError: () => undefined,
+      socketFactory: () => socket,
+    });
+    const connected = session.connect();
+    socket.open();
+    socket.message(JSON.stringify({ type: 'session.updated' }));
+    await connected;
+    session.cancel();
+    session.cancel();
+    expect(socket.closeCalls).toEqual([{ code: 1000, reason: 'cancelled' }]);
+    expect(() => session.commit()).toThrow();
+  });
+
+  test('connection validation and transport are OpenAI-only', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestUrl = '';
+    let authorization = '';
+    globalThis.fetch = (async (input, init) => {
+      requestUrl = String(input);
+      authorization = new Headers(init?.headers).get('Authorization') ?? '';
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+    try {
+      await expect(testOpenAIRealtimeConnection('openai-key')).resolves.toEqual({ provider: 'OpenAI', connected: true });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    expect(requestUrl).toContain('/v1/models/gpt-realtime-whisper');
+    expect(requestUrl).not.toContain('openrouter');
+    expect(authorization).toBe('Bearer openai-key');
+  });
+});

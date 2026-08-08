@@ -5,6 +5,13 @@
 **Scope:** Audit only → migration plan. No deploy. No local LLM inference.  
 **Branding note:** Product name **AETHER** and **AETHER Agent Runtime** are product/architecture labels. They do **not** imply membership in any AETHER Model Family. Inference is remote OpenRouter only in this phase.
 
+> Historical document: this assessment records the pre-correction architecture
+> that was audited before the current implementation pass. For the implemented
+> five-surface/provider-isolated architecture, see
+> [ARCHITECTURE.md](ARCHITECTURE.md). References below to shims, mock audio,
+> OpenRouter STT, or the old route structure describe findings that were
+> removed or superseded; they are not current runtime behavior.
+
 ---
 
 ## 1. Current architecture assessment

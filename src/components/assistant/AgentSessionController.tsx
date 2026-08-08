@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchAvailableModels } from '@/services/ai/openrouter';
 import { createAgentRuntime, type AgentEvent, type ContextSnapshot } from '@/services/agent';
 import { getDatabase } from '@/db';
 import type { ActionReceipt } from '@/domain/receipts';
 import { useSettingsStore } from '@/stores/settings.store';
+import { resolveAgentModel } from '@/services/ai/modelSelection';
+import { AIProviderError, getAIErrorMessage } from '@/services/ai/providers';
 import type {
   AssistantMessage,
   AssistantReceipt,
@@ -27,19 +28,7 @@ function messageId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function resolveAgentModel(selectedModel: string, apiKey: string): Promise<string> {
-  if (selectedModel.trim()) return selectedModel.trim();
-  const models = await fetchAvailableModels(apiKey);
-  const agentModel = models.find(
-    (model) =>
-      model.availability === 'available' &&
-      (model.compatibility === 'FULL_AGENT' || model.compatibility === 'AGENT')
-  );
-  if (!agentModel) {
-    throw new Error('Choose a streaming tool-capable model in Settings before asking AETHER.');
-  }
-  return agentModel.id;
-}
+export { resolveAgentModel } from '@/services/ai/modelSelection';
 
 export function useAgentSessionController({
   context,
@@ -48,7 +37,7 @@ export function useAgentSessionController({
   onReceipt,
 }: AgentSessionControllerOptions) {
   const apiKey = useSettingsStore((state) => state.openRouterApiKey);
-  const apiKeyLoaded = useSettingsStore((state) => state.apiKeyLoaded);
+  const apiKeyLoaded = useSettingsStore((state) => state.openRouterKeyLoaded);
   const selectedModel = useSettingsStore((state) => state.selectedModel);
   const runtime = useMemo(() => createAgentRuntime({ db: getDatabase() }), []);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -64,19 +53,36 @@ export function useAgentSessionController({
   const sessionIdRef = useRef<string | undefined>(undefined);
   const currentRunRef = useRef<string | undefined>(undefined);
   const lastRequestRef = useRef<string | undefined>(undefined);
+  const runningRef = useRef(false);
   const entitiesRef = useRef(entities);
   const handleEventRef = useRef<(event: AgentEvent, assistantMessageId: string) => void>(() => undefined);
 
   const submit = useCallback(
     async (rawMessage: string, options: SubmitOptions = {}) => {
       const message = rawMessage.trim();
-      if (!message || isRunning) return;
+      if (!message || runningRef.current) return;
       if (!apiKeyLoaded) {
         setError('Secure storage is still loading. Try again in a moment.');
         return;
       }
       if (!apiKey) {
         setError('Add an OpenRouter API key in Settings to ask AETHER.');
+        return;
+      }
+
+      // Claim the single active submission before asynchronous model validation.
+      runningRef.current = true;
+      let modelId: string;
+      try {
+        modelId = await resolveAgentModel(selectedModel, apiKey);
+      } catch (caught) {
+        runningRef.current = false;
+        setSemanticState('error');
+        setError(
+          caught instanceof AIProviderError
+            ? getAIErrorMessage(caught)
+            : 'The selected OpenRouter model could not be validated.'
+        );
         return;
       }
 
@@ -101,7 +107,6 @@ export function useAgentSessionController({
       lastRequestRef.current = message;
 
       try {
-        const modelId = await resolveAgentModel(selectedModel, apiKey);
         const runContext: ContextSnapshot = {
           ...context,
           invocationSource: options.invocationSource ?? 'assistant',
@@ -119,16 +124,19 @@ export function useAgentSessionController({
           handleEventRef.current(event, assistantMessageId);
         }
       } catch (caught) {
-        const messageText = caught instanceof Error ? caught.message : 'AETHER could not start this run.';
+        const messageText = caught instanceof AIProviderError
+          ? getAIErrorMessage(caught)
+          : 'AETHER could not start this run.';
         setSemanticState('error');
         setError(messageText);
       } finally {
+        runningRef.current = false;
         setIsRunning(false);
         currentRunRef.current = undefined;
       }
     },
     // The runtime is intentionally stable; the context is captured at send time.
-    [apiKey, apiKeyLoaded, context, isRunning, onNavigate, runtime, selectedModel]
+    [apiKey, apiKeyLoaded, context, onNavigate, runtime, selectedModel]
   );
 
   const handleEvent = useCallback(
@@ -196,9 +204,9 @@ export function useAgentSessionController({
 
   const confirm = useCallback(() => {
     const request = lastRequestRef.current;
-    if (!request || isRunning) return;
+    if (!request || runningRef.current) return;
     void submit(request, { approveAll: true, appendUserMessage: false });
-  }, [isRunning, submit]);
+  }, [submit]);
 
   const cancelConfirmation = useCallback(() => {
     setPendingConfirmation(null);

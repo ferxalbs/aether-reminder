@@ -46,6 +46,8 @@ interface AssistantSheetProps {
   voiceState: VoiceState;
   voiceLocked: boolean;
   voiceError: string | null;
+  voiceTranscript: string;
+  voiceAudioLevel: number;
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
   keyboardOffset: number;
@@ -87,6 +89,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   voiceState,
   voiceLocked,
   voiceError,
+  voiceTranscript,
+  voiceAudioLevel,
   onVoiceStop,
   onVoiceCancel,
   keyboardOffset,
@@ -223,7 +227,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           <View style={styles.composerContainer}>
             {voiceState !== 'idle' && voiceState !== 'error' ? (
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
-                <Typography variant="bodyBold">{voiceLocked ? 'Recording locked' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Preparing microphone…'}</Typography>
+                <Typography variant="bodyBold">{voiceState === 'connecting' ? 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
+                {voiceTranscript ? <Typography variant="caption" color={Colors.zinc500} numberOfLines={3}>{voiceTranscript}</Typography> : null}
+                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}><View style={[styles.voiceLevelFill, { width: `${Math.round(Math.min(1, voiceAudioLevel) * 100)}%`, backgroundColor: '#65D6C0' }]} /></View> : null}
                 {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
               </View>
             ) : null}
@@ -232,7 +238,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               value={composerValue}
               onChangeText={onComposerChange}
               onSubmit={onSubmit}
-              disabled={isRunning}
+              disabled={isRunning || voiceActive}
               autoFocus={surface === 'compact' && voiceState === 'idle'}
               orbState={orbState}
               assistantExpanded={assistantExpanded}
@@ -240,6 +246,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               onOrbPressIn={onOrbPressIn}
               onOrbPressOut={onOrbPressOut}
               onOrbPressMove={onOrbPressMove}
+              audioLevel={voiceAudioLevel}
             />
           </View>
         </View>
@@ -373,5 +380,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.xs,
+  },
+  voiceLevelTrack: {
+    height: 4,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+  },
+  voiceLevelFill: {
+    height: 4,
+    borderRadius: Radius.pill,
   },
 });

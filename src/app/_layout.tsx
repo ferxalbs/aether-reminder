@@ -19,15 +19,15 @@ type BootState =
   | { phase: 'error'; message: string };
 
 export default function RootLayout() {
-  const loadApiKey = useSettingsStore((s) => s.loadApiKey);
+  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const refreshToday = useTasksUiStore((s) => s.refreshToday);
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
 
   useEffect(() => {
-    void loadApiKey();
-  }, [loadApiKey]);
+    void loadCredentials();
+  }, [loadCredentials]);
 
   useEffect(() => {
     let cancelled = false;

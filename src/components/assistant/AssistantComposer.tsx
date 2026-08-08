@@ -24,6 +24,7 @@ interface AssistantComposerProps {
   onOrbPressIn?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
+  audioLevel?: number;
 }
 
 export const AssistantComposer: React.FC<AssistantComposerProps> = ({
@@ -38,6 +39,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   onOrbPressIn,
   onOrbPressOut,
   onOrbPressMove,
+  audioLevel = 0,
 }) => {
   const isDark = useIsDark();
   const inputRef = useRef<TextInput>(null);
@@ -71,6 +73,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         onPressIn={onOrbPressIn}
         onPressOut={onOrbPressOut}
         onPressMove={onOrbPressMove}
+        audioLevel={audioLevel}
       />
       <TextInput
         ref={inputRef}

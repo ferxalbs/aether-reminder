@@ -27,19 +27,9 @@ export interface Reminder {
   enabled: boolean;
 }
 
-export interface TranscriptionResult {
-  text: string;
-  taskCandidates: {
-    title: string;
-    priority: import('@/domain/entities').TaskPriority;
-    notes?: string;
-  }[];
-}
-
 export type ThemePreference = 'system' | 'dark' | 'light';
 
 export interface UserSettings {
-  openRouterApiKey: string;
   selectedModel: string;
   theme: ThemePreference;
   hapticsEnabled: boolean;
