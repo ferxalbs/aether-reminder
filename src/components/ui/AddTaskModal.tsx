@@ -1,23 +1,16 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Keyboard,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { X, Flag, Sparkles } from 'lucide-react-native';
 import { TaskPriority } from '@/types';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { Typography } from './Typography';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
-import { AnimatedPressable } from './AnimatedPressable';
+import { Picker } from './Picker';
+import { Sheet } from './Sheet';
+import { TextField } from './TextField';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { runTaskMutation } from '@/lib/taskMutation';
 
@@ -68,230 +61,83 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   };
 
   return (
-    <Modal
+    <Sheet
       visible={visible}
-      transparent
-      animationType="slide"
       onRequestClose={onClose}
+      title="New Task"
+      subtitle="Capture the next step while it is fresh."
+      accessibilityLabel="New task"
+      headerAction={(
+        <IconButton
+          icon={<X size={18} color={Colors.zinc500} />}
+          onPress={onClose}
+          accessibilityLabel="Close new task dialog"
+          variant="ghost"
+        />
+      )}
+      footer={(
+        <Button
+          label="Create Task"
+          onPress={handleSave}
+          variant="primary"
+          fullWidth
+          loading={saving}
+          disabled={!title.trim() || saving}
+        />
+      )}
     >
-      <Pressable style={styles.overlay} onPress={() => Keyboard.dismiss()}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-            <View
-              style={[
-                styles.modalContent,
-                {
-                  backgroundColor: isDark ? Colors.zinc900 : Colors.white,
-                  borderColor: isDark ? Colors.zinc800 : Colors.zinc200,
-                },
-              ]}
-            >
-              {/* Header */}
-              <View style={styles.header}>
-                <View style={styles.titleRow}>
-                  <Sparkles size={18} color={isDark ? Colors.white : Colors.black} />
-                  <Typography variant="title" style={styles.headerTitle}>
-                    New Task
-                  </Typography>
-                </View>
-                <IconButton
-                  icon={<X size={18} color={Colors.zinc500} />}
-                  onPress={onClose}
-                  accessibilityLabel="Close new task dialog"
-                  variant="ghost"
-                />
-              </View>
+      <View style={styles.content}>
+        <View style={styles.intro}>
+          <Sparkles size={18} color={isDark ? Colors.white : Colors.black} />
+          <Typography variant="caption" color={Colors.zinc500} style={styles.introCopy}>
+            Tasks are saved locally and scheduled for today.
+          </Typography>
+        </View>
+        <TextField
+          label="Task title"
+          value={title}
+          onChangeText={(value) => {
+            setTitle(value);
+            if (saveError) setSaveError(null);
+          }}
+          placeholder="What needs to be done?"
+          autoFocus
+          error={saveError ?? undefined}
+        />
+        <TextField
+          label="Notes"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Add details, links, or notes…"
+          multiline
+          numberOfLines={3}
+          leading={<Flag size={16} color={Colors.zinc500} />}
+        />
+        <Picker<TaskPriority>
+          label="Priority level"
+          value={priority}
+          onValueChange={setPriority}
+          options={[
+            { value: 'low', label: 'Low' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High' },
+          ]}
+        />
 
-              {/* Title Input */}
-              <TextInput
-                value={title}
-                onChangeText={(value) => {
-                  setTitle(value);
-                  if (saveError) setSaveError(null);
-                }}
-                placeholder="What needs to be done?"
-                placeholderTextColor={Colors.zinc500}
-                autoFocus
-                style={[
-                  styles.titleInput,
-                  {
-                    color: isDark ? Colors.white : Colors.zinc950,
-                  },
-                ]}
-              />
-
-              {/* Notes Input */}
-              <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Add details, links, or notes..."
-                placeholderTextColor={Colors.zinc500}
-                multiline
-                numberOfLines={3}
-                style={[
-                  styles.notesInput,
-                  {
-                    color: isDark ? Colors.zinc300 : Colors.zinc700,
-                  },
-                ]}
-              />
-
-              {/* Priority Selector */}
-              <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>
-                PRIORITY LEVEL
-              </Typography>
-              <View style={styles.priorityRow}>
-                {(['low', 'medium', 'high'] as TaskPriority[]).map((p) => {
-                  const isSelected = priority === p;
-                  return (
-                    <AnimatedPressable
-                      key={p}
-                      onPress={() => setPriority(p)}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`${p} priority`}
-                      accessibilityState={{ selected: isSelected }}
-                      scaleTo={0.94}
-                      style={[
-                        styles.priorityChip,
-                        {
-                          backgroundColor: isSelected
-                            ? isDark
-                              ? Colors.white
-                              : Colors.black
-                            : isDark
-                            ? Colors.zinc800
-                            : Colors.zinc100,
-                        },
-                      ]}
-                    >
-                      <Flag
-                        size={12}
-                        color={
-                          isSelected
-                            ? isDark
-                              ? Colors.black
-                              : Colors.white
-                            : Colors.zinc500
-                        }
-                      />
-                      <Typography
-                        variant="caption"
-                        color={
-                          isSelected
-                            ? isDark
-                              ? Colors.black
-                              : Colors.white
-                            : Colors.zinc500
-                        }
-                        style={{ textTransform: 'capitalize', fontWeight: '600' }}
-                      >
-                        {p}
-                      </Typography>
-                    </AnimatedPressable>
-                  );
-                })}
-              </View>
-
-              {saveError ? (
-                <Typography
-                  variant="caption"
-                  color={isDark ? '#FCA5A5' : '#B91C1C'}
-                  style={styles.errorMessage}
-                  accessibilityRole="alert"
-                  accessibilityLiveRegion="polite"
-                >
-                  {saveError} Try again when local storage is available.
-                </Typography>
-              ) : null}
-
-              {/* Submit Action */}
-              <View style={styles.actions}>
-                <Button
-                  label="Create Task"
-                  onPress={handleSave}
-                  variant="primary"
-                  fullWidth
-                  loading={saving}
-                  disabled={!title.trim() || saving}
-                />
-              </View>
-            </View>
-        </KeyboardAvoidingView>
-      </Pressable>
-    </Modal>
+      </View>
+    </Sheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'flex-end',
+  content: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.md,
   },
-  keyboardView: {
-    width: '100%',
-  },
-  modalContent: {
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Platform.OS === 'ios' ? 40 : Spacing.lg,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-  },
-  header: {
+  intro: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    gap: Spacing.xs,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: {
-    marginLeft: 4,
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: '600',
-    paddingVertical: 10,
-    marginBottom: Spacing.sm,
-  },
-  notesInput: {
-    fontSize: 14,
-    minHeight: 60,
-    textAlignVertical: 'top',
-    marginBottom: Spacing.md,
-  },
-  sectionLabel: {
-    marginBottom: Spacing.xs,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  priorityRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  priorityChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    gap: 6,
-  },
-  actions: {
-    marginTop: Spacing.xs,
-  },
-  errorMessage: {
-    marginTop: Spacing.md,
-  },
+  introCopy: { flex: 1 },
 });

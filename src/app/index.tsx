@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, StyleSheet, View, StatusBar } from 'react-native';
-import type { ListRenderItemInfo } from 'react-native';
+import { StyleSheet, View, StatusBar } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -8,17 +7,16 @@ import { Plus, Zap, Target, Sparkles } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
-import { TaskCard } from '@/components/ui/TaskCard';
+import { TaskList } from '@/components/ui/TaskList';
 import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { AddTaskModal } from '@/components/ui/AddTaskModal';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Button } from '@/components/ui/Button';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import type { TaskListItem } from '@/domain/entities';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 
 export default function HomeScreen() {
@@ -90,17 +88,6 @@ export default function HomeScreen() {
     [softDeleteTask]
   );
 
-  const renderTask = useCallback(
-    ({ item }: ListRenderItemInfo<TaskListItem>) => (
-      <TaskCard
-        task={item}
-        onToggle={handleToggle}
-        onDelete={handleDelete}
-      />
-    ),
-    [handleDelete, handleToggle]
-  );
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -131,17 +118,12 @@ export default function HomeScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <FlatList
-        data={todayTasks}
-        keyExtractor={(task) => task.id}
-        renderItem={renderTask}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
+      <TaskList
+        tasks={todayTasks}
+        onToggle={handleToggle}
+        onDelete={handleDelete}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
+        header={
           <>
         {/* Header Bar */}
         <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
@@ -227,7 +209,7 @@ export default function HomeScreen() {
           </>
         }
 
-        ListEmptyComponent={status !== 'loading' ? (
+        empty={status !== 'loading' ? (
           <Animated.View entering={FadeIn.duration(800).delay(400)} style={styles.emptyStateContainer}>
             <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? Colors.zinc900 : Colors.white, borderColor: isDark ? Colors.zinc800 : Colors.zinc200, borderWidth: 1 }]}>
               <Sparkles size={36} color={isDark ? Colors.zinc500 : Colors.zinc400} strokeWidth={1.5} />
@@ -243,10 +225,11 @@ export default function HomeScreen() {
             >
               Enjoy your time off, add a new task manually, or let AETHER schedule something for you.
             </Typography>
-            <AnimatedPressable onPress={() => setModalVisible(true)} scaleTo={0.95} style={[styles.emptyActionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}>
-              <Plus size={18} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />
-              <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Add Task</Typography>
-            </AnimatedPressable>
+            <Button
+              label="Add Task"
+              icon={<Plus size={18} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />}
+              onPress={() => setModalVisible(true)}
+            />
           </Animated.View>
         ) : null}
       />
@@ -362,13 +345,5 @@ const styles = StyleSheet.create({
     maxWidth: 290,
     lineHeight: 24,
     marginBottom: Spacing.xl,
-  },
-  emptyActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: Radius.pill,
   },
 });

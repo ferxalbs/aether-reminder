@@ -7,7 +7,7 @@ import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Button } from '@/components/ui/Button';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 
@@ -48,12 +48,11 @@ export default function TranscribeScreen() {
           <Typography variant="body" color={Colors.zinc500}>
             Tap the AETHER orb to start hands-free voice input. Tap it again or use Stop &amp; Send to finish. Press and hold the orb to type instead.
           </Typography>
-          <AnimatedPressable
+          <Button
+            label="Use the AETHER orb"
             onPress={() => router.replace('/')}
-            style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}
-          >
-            <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Use the AETHER orb</Typography>
-          </AnimatedPressable>
+            style={styles.actionButton}
+          />
         </Card>
 
         <Typography variant="caption" color={Colors.zinc500} style={styles.sectionLabel}>REALTIME FLOW</Typography>
@@ -98,7 +97,7 @@ const styles = StyleSheet.create({
   hero: { gap: Spacing.sm },
   micOrb: { width: 52, height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(127, 224, 194, 0.14)' },
   heroTitle: { marginTop: Spacing.xs },
-  actionButton: { alignSelf: 'flex-start', borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, marginTop: Spacing.xs },
+  actionButton: { alignSelf: 'flex-start', marginTop: Spacing.xs },
   sectionLabel: { marginTop: Spacing.md },
   stepCard: { gap: Spacing.sm },
   stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },

@@ -1,18 +1,16 @@
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, Platform, StatusBar, StyleSheet, View } from 'react-native';
-import type { ListRenderItemInfo } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
-import { TaskCard } from '@/components/ui/TaskCard';
+import { TaskList } from '@/components/ui/TaskList';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import type { TaskListItem } from '@/domain/entities';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 
 export default function TasksScreen() {
@@ -40,13 +38,6 @@ export default function TasksScreen() {
       reportNonFatalError('tasks-task-delete', error);
     });
   }, [softDeleteTask]);
-
-  const renderTask = useCallback(
-    ({ item }: ListRenderItemInfo<TaskListItem>) => (
-      <TaskCard task={item} onToggle={handleToggle} onDelete={handleDelete} />
-    ),
-    [handleDelete, handleToggle]
-  );
 
   const assistantContext = useMemo(
     () => ({
@@ -79,17 +70,12 @@ export default function TasksScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <FlatList
-        data={upcomingTasks}
-        keyExtractor={(task) => task.id}
-        renderItem={renderTask}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
+      <TaskList
+        tasks={upcomingTasks}
+        onToggle={handleToggle}
+        onDelete={handleDelete}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
+        header={
           <>
             <View style={styles.header}>
               <Typography variant="caption" color={Colors.zinc500}>UPCOMING</Typography>
@@ -101,7 +87,7 @@ export default function TasksScreen() {
             {error ? <Typography variant="caption" color={Colors.zinc500} style={styles.error}>{error}</Typography> : null}
           </>
         }
-        ListEmptyComponent={status !== 'loading' ? (
+        empty={status !== 'loading' ? (
           <View style={styles.emptyState}>
             <Typography variant="headline" align="center">Nothing scheduled.</Typography>
             <Typography variant="body" color={Colors.zinc500} align="center" style={styles.emptyCopy}>

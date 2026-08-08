@@ -7,7 +7,7 @@ import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Button } from '@/components/ui/Button';
 import { useSettingsStore } from '@/stores/settings.store';
 import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
@@ -68,12 +68,11 @@ export default function AIScreen() {
             </View>
           </View>
           {!configured ? (
-            <AnimatedPressable
+            <Button
+              label="Open Settings"
               onPress={() => router.replace('/settings')}
-              style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}
-            >
-              <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Open Settings</Typography>
-            </AnimatedPressable>
+              style={styles.actionButton}
+            />
           ) : null}
         </Card>
 
@@ -108,7 +107,7 @@ const styles = StyleSheet.create({
   statusCard: { gap: Spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   rowCopy: { flex: 1, gap: 2 },
-  actionButton: { alignSelf: 'flex-start', borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  actionButton: { alignSelf: 'flex-start' },
   capabilityGrid: { gap: Spacing.sm },
   capability: { gap: Spacing.xs },
   capabilityTitle: { marginTop: Spacing.xs },

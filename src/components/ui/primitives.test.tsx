@@ -12,6 +12,12 @@ const springCalls: { target: number; config: Record<string, unknown> }[] = [];
 
 mock.module('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator',
+  FlatList: ({ data, renderItem, ...props }: { data: unknown[]; renderItem: (info: { item: unknown; index: number }) => React.ReactNode }) =>
+    React.createElement(
+      'FlatList',
+      props,
+      data.map((item, index) => React.createElement(React.Fragment, { key: index }, renderItem({ item, index }))),
+    ),
   Modal: 'Modal',
   Platform: {
     get OS() {
@@ -532,6 +538,48 @@ describe('unified UI primitives', () => {
       width: 44,
       height: 44,
     });
+    unmount(renderer);
+  });
+
+  test('TaskList renders every Home and Tasks item through the shared TaskCard contract', async () => {
+    const { TaskList } = await import('./TaskList');
+    motionState.reduceMotion = true;
+    const onToggle = mock(() => undefined);
+    const onDelete = mock(() => undefined);
+    const tasks = [
+      {
+        id: 'today-1',
+        title: 'Today task',
+        completed: false,
+        createdAt: '2026-08-08T00:00:00.000Z',
+        priority: 'high' as const,
+      },
+      {
+        id: 'upcoming-1',
+        title: 'Upcoming task',
+        completed: true,
+        createdAt: '2026-08-08T00:00:00.000Z',
+        priority: 'low' as const,
+      },
+    ];
+
+    const renderer = render(
+      React.createElement(TaskList, { tasks, onToggle, onDelete }),
+    );
+    const taskTitles = renderer.root.findAllByType('Text').map((node) => node.props.children);
+    const pressables = renderer.root.findAllByType('Pressable');
+    const checkboxes = pressables.filter(
+      (node) => node.props.accessibilityRole === 'checkbox',
+    );
+    const deleteButtons = pressables.filter(
+      (node) => typeof node.props.accessibilityLabel === 'string'
+        && node.props.accessibilityLabel.startsWith('Delete '),
+    );
+
+    expect(taskTitles).toContain('Today task');
+    expect(taskTitles).toContain('Upcoming task');
+    expect(checkboxes).toHaveLength(2);
+    expect(deleteButtons).toHaveLength(2);
     unmount(renderer);
   });
 
