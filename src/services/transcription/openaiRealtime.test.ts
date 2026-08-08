@@ -8,6 +8,7 @@ import {
 
 class FakeSocket {
   readyState = 0;
+  bufferedAmount = 0;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: unknown }) => void) | null = null;
   onerror: (() => void) | null = null;
@@ -112,20 +113,46 @@ describe('OpenAI realtime transcription transport', () => {
     expect(authorization).toBe('Bearer openai-key');
   });
 
-  test('bounds queued audio and deterministically cleans up on backpressure', async () => {
+  test('aggregates capture chunks into truthful 100 ms transport packets', async () => {
     const socket = new FakeSocket();
+    const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
+      onEvent: () => undefined,
+      onError: () => undefined,
+      socketFactory: () => socket,
+      transportPaceMs: 1,
+    });
+    const connected = session.connect();
+    socket.open(); socket.message(JSON.stringify({ type: 'session.updated' })); await connected;
+    session.appendPcm16(new Uint8Array(2400).buffer);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    expect(socket.sent.filter((item) => JSON.parse(item).type === 'input_audio_buffer.append')).toHaveLength(0);
+    session.appendPcm16(new Uint8Array(2400).buffer);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    const appends = socket.sent.map((item) => JSON.parse(item)).filter((item) => item.type === 'input_audio_buffer.append');
+    expect(appends).toHaveLength(1);
+    expect(appends[0].audio).toHaveLength(6400);
+    session.close();
+  });
+
+  test('bounds queued audio during sustained socket congestion and cleans up', async () => {
+    const socket = new FakeSocket();
+    socket.bufferedAmount = 20_000;
     const errors: string[] = [];
     const session = createOpenAIRealtimeTranscriptionSession('openai-key', {
       onEvent: () => undefined,
       onError: (error) => errors.push(error.message),
       socketFactory: () => socket,
       maxQueuedPackets: 2,
+      maxSocketBufferedBytes: 4_800,
+      transportPaceMs: 1,
     });
     const connected = session.connect();
     socket.open(); socket.message(JSON.stringify({ type: 'session.updated' })); await connected;
-    session.appendPcm16(new Uint8Array([0, 1]).buffer);
-    session.appendPcm16(new Uint8Array([0, 1]).buffer);
-    session.appendPcm16(new Uint8Array([0, 1]).buffer);
+    session.appendPcm16(new Uint8Array(4_800).buffer);
+    await new Promise((resolve) => setTimeout(resolve, 3));
+    session.appendPcm16(new Uint8Array(4_800).buffer);
+    await new Promise((resolve) => setTimeout(resolve, 3));
+    session.appendPcm16(new Uint8Array(4_800).buffer);
     expect(errors[0]).toContain('could not keep up');
     expect(socket.closeCalls.at(-1)?.reason).toBe('realtime session failed');
   });

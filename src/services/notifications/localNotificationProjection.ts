@@ -1,6 +1,8 @@
 import type { Reminder } from '@/domain/entities';
 import type { RemindersRepository } from '@/db/repositories/remindersRepository';
 import type { TasksRepository } from '@/db/repositories/tasksRepository';
+import { getDeviceTimeZone } from '@/temporal/localCalendar';
+import { localDateTimeInZoneToDate } from '@/temporal/resolve';
 
 export interface LocalNotificationAdapter {
   list(): Promise<{ identifier: string; reminderId?: string }[]>;
@@ -43,11 +45,26 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
   },
 };
 
-function reminderDate(reminder: Reminder): Date {
+export function resolveReminderNotificationDate(
+  reminder: Reminder,
+  deviceTimezone: string | undefined = getDeviceTimeZone(),
+): Date {
   if (!reminder.scheduledDate) throw new Error('Reminder has no scheduled date.');
-  const value = new Date(`${reminder.scheduledDate}T${reminder.scheduledTime ?? '09:00'}:00`);
-  if (!Number.isFinite(value.getTime())) throw new Error('Reminder date is invalid.');
-  return value;
+  const timezone = reminder.semantics === 'fixed'
+    ? (reminder.timezone ?? deviceTimezone)
+    : deviceTimezone;
+  if (!timezone) {
+    const [year, month, day] = reminder.scheduledDate.split('-').map(Number);
+    const [hour, minute] = (reminder.scheduledTime ?? '09:00').split(':').map(Number);
+    const local = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (!Number.isFinite(local.getTime())) throw new Error('Reminder date is invalid.');
+    return local;
+  }
+  return localDateTimeInZoneToDate(
+    reminder.scheduledDate,
+    reminder.scheduledTime ?? '09:00',
+    timezone,
+  );
 }
 
 export class LocalNotificationProjection {
@@ -66,7 +83,11 @@ export class LocalNotificationProjection {
       }
       const task = await this.tasks.getById(reminder.taskId);
       if (!task) throw new Error('Reminder task no longer exists.');
-      const nativeId = await this.adapter.schedule({ reminderId: reminder.id, title: task.title, date: reminderDate(reminder) });
+      const nativeId = await this.adapter.schedule({
+        reminderId: reminder.id,
+        title: task.title,
+        date: resolveReminderNotificationDate(reminder),
+      });
       await this.reminders.setProjection(reminder.id, nativeId, null);
       return 'scheduled';
     } catch (error) {

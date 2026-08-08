@@ -155,6 +155,56 @@ export function assertResolvedDateTime(value: {
   });
 }
 
+function zonedParts(date: Date, timezone: string): number[] {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  return [value('year'), value('month'), value('day'), value('hour'), value('minute'), value('second')];
+}
+
+/** Convert a validated local calendar value in an IANA zone to an absolute Date. */
+export function localDateTimeInZoneToDate(
+  date: string,
+  time: string,
+  timezone: string,
+): Date {
+  const localDate = asLocalDate(date);
+  const localTime = asLocalTime(time);
+  const [year, month, day] = localDate.split('-').map(Number);
+  const [hour, minute] = localTime.split(':').map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, minute, 0);
+  let instant = target;
+
+  try {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const parts = zonedParts(new Date(instant), timezone);
+      const represented = Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+      instant += target - represented;
+    }
+  } catch {
+    throw new TemporalValidationError(`Invalid timezone: ${timezone}`);
+  }
+
+  const resolved = new Date(instant);
+  const actual = zonedParts(resolved, timezone);
+  if (
+    actual[0] !== year || actual[1] !== month || actual[2] !== day ||
+    actual[3] !== hour || actual[4] !== minute
+  ) {
+    throw new TemporalValidationError(`Local time does not exist in ${timezone}: ${date} ${time}`);
+  }
+  return resolved;
+}
+
 /** Convenience: current local wall clock as optional time on today. */
 export function resolveNowLocal(now: Date = new Date()): ResolvedDateTime {
   return resolveToday(now, { time: getLocalTimeString(now) });

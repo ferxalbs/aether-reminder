@@ -7,6 +7,8 @@ import { createAgentRuntime } from './runtime';
 import type { AgentEvent, ContextSnapshot } from './types';
 import { ScriptedInferenceProvider } from './testSupport/scriptedProvider';
 import { canRunAsAgent, unknownModelCapabilities } from '@/services/ai/inference';
+import { ToolRegistry } from './tools/registry';
+import type { AgentTool } from './tools/types';
 
 async function readyDb() {
   const db = createBunSqliteDatabase();
@@ -74,6 +76,42 @@ describe('agent runtime conformance', () => {
       (e) => e.type === 'tool.completed' && e.toolId.startsWith('tasks.create')
     );
     expect(writes).toHaveLength(0);
+    expect(await db.getAllAsync(`SELECT * FROM tool_executions`)).toHaveLength(0);
+    await db.closeAsync?.();
+  });
+
+  test('read lifecycle is observable while the tool is executing without durable read state', async () => {
+    const db = await readyDb();
+    const provider = new ScriptedInferenceProvider();
+    provider.pushToolTurn([{ id: 'slow-read', name: 'test.slow-read', arguments: {} }]);
+    provider.pushTextTurn('Read complete.');
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const slowRead: AgentTool = {
+      id: 'test.slow-read', version: '1', description: 'Gated read', risk: 'READ',
+      inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
+      async execute() { await gate; return { ok: true, data: { done: true } }; },
+    };
+    const runtime = createAgentRuntime({ db, provider, tools: new ToolRegistry([slowRead]) });
+    const iterator = runtime.run({
+      message: 'Run the gated read', context: baseContext(), modelId: 'scripted/full', apiKey: 'test-key',
+    })[Symbol.asyncIterator]();
+    const observed: AgentEvent[] = [];
+    while (!observed.some((event) => event.type === 'tool.started')) {
+      const next = await iterator.next();
+      expect(next.done).toBe(false);
+      if (!next.done) observed.push(next.value);
+    }
+    expect(types(observed)).toContain('tool.started');
+    expect(types(observed)).not.toContain('tool.completed');
+    expect(await db.getAllAsync(`SELECT * FROM tool_executions`)).toHaveLength(0);
+    release();
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) break;
+      observed.push(next.value);
+    }
+    expect(types(observed)).toContain('tool.completed');
     await db.closeAsync?.();
   });
 

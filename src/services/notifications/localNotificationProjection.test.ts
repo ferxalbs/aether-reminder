@@ -2,9 +2,28 @@ import { describe, expect, test } from 'bun:test';
 import { createBunSqliteDatabase } from '@/db/bunSqliteAdapter';
 import { applyPragmas, runMigrations } from '@/db/migrator';
 import { createRepositories } from '@/db/repositories';
-import { LocalNotificationProjection, type LocalNotificationAdapter } from './localNotificationProjection';
+import type { Reminder } from '@/domain/entities';
+import {
+  LocalNotificationProjection,
+  resolveReminderNotificationDate,
+  type LocalNotificationAdapter,
+} from './localNotificationProjection';
 
 describe('local notification projection', () => {
+  test('resolves fixed reminder timezone and floating device timezone distinctly', () => {
+    const base: Reminder = {
+      id: 'reminder', taskId: 'task', scheduledDate: '2030-01-02', scheduledTime: '09:00',
+      timezone: 'America/New_York', semantics: 'fixed', enabled: true,
+      nativeNotificationId: null, projectionError: null, createdAt: '', updatedAt: '',
+    };
+    expect(resolveReminderNotificationDate(base, 'America/Los_Angeles').toISOString())
+      .toBe('2030-01-02T14:00:00.000Z');
+    expect(resolveReminderNotificationDate(
+      { ...base, semantics: 'floating' },
+      'America/Los_Angeles',
+    ).toISOString()).toBe('2030-01-02T17:00:00.000Z');
+  });
+
   test('schedules, repairs missing OS state, and cancels from SQLite truth', async () => {
     const db = createBunSqliteDatabase();
     await applyPragmas(db); await runMigrations(db);
@@ -59,6 +78,37 @@ describe('local notification projection', () => {
 
     expect(result).toEqual({ repaired: 1, failed: 0 });
     expect(scheduled).toHaveLength(0);
+    await db.closeAsync?.();
+  });
+
+  test('reconciliation does not orphan valid notifications beyond 200 reminders', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db); await runMigrations(db);
+    const repos = createRepositories(db);
+    const task = await repos.tasks.create({ title: 'Large reminder set' });
+    const scheduled: { identifier: string; reminderId: string }[] = [];
+    for (let index = 0; index < 201; index += 1) {
+      const reminder = await repos.reminders.create({
+        id: `reminder-${String(index).padStart(3, '0')}`,
+        taskId: task.id,
+        scheduledDate: '2030-01-02',
+        scheduledTime: '09:00',
+      });
+      const identifier = `native-${index}`;
+      await repos.reminders.setProjection(reminder.id, identifier, null);
+      scheduled.push({ identifier, reminderId: reminder.id });
+    }
+    const cancelled: string[] = [];
+    const adapter: LocalNotificationAdapter = {
+      list: async () => scheduled,
+      schedule: async () => { throw new Error('Valid projection must not be rescheduled.'); },
+      cancel: async (identifier) => { cancelled.push(identifier); },
+    };
+
+    expect(await new LocalNotificationProjection(repos.reminders, repos.tasks, adapter).reconcile())
+      .toEqual({ repaired: 0, failed: 0 });
+    expect(cancelled).toHaveLength(0);
+    expect(await repos.reminders.listAll()).toHaveLength(201);
     await db.closeAsync?.();
   });
 });

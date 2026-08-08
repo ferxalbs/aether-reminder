@@ -2,6 +2,28 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.08 (4) [Final P0 Correctness and Transport Hardening]
+
+### Bounded voice transport and truthful audio packets
+
+- Replaced immediate queue draining with 100 ms PCM aggregation, paced sends, native WebSocket `bufferedAmount` pressure checks, bounded queued packets, and deterministic congestion failure/cleanup while retaining exactly-once final transcript handling and timeouts.
+- Added sustained-congestion and cross-append aggregation regressions instead of relying on same-tick append bursts.
+
+### Zoned notifications and complete reconciliation
+
+- Resolved fixed reminders in their stored IANA timezone and floating reminders in the current device timezone without host-local ISO string parsing.
+- Removed the implicit 200-row repository ceiling from authoritative notification reconciliation and added coverage for device/reminder timezone differences plus 201 valid scheduled reminders.
+
+### Memory-first read execution
+
+- Kept pure READ tool lifecycle and result handling memory-first without durable idempotency rows, while preserving durable writes, confirmations, receipts, write failures, and terminal run outcomes.
+- Tool proposed/started/completed/failed events now become observable as execution happens rather than being released only after completion.
+
+### Validation scope
+
+- Added focused transport, temporal projection, reconciliation, and agent hot-path regression coverage. No server, provider-routing, web, deployment, or product-feature changes were introduced.
+- Physical-device validation remains required for native WebSocket pressure behavior, notification delivery across timezone changes, and lifecycle interruption.
+
 ## Unreleased - 2026.08.08 (3) [P0 AETHER Core Execution Boundary]
 
 ### In-process execution ownership
@@ -33,7 +55,7 @@ All notable changes to AETHER are documented here.
 ### Bounded realtime voice transport
 
 - Normalized native PCM16 input to 24 kHz mono, including channel downmixing and resampling when device hardware ignores the requested capture rate.
-- Added 100 ms packetization, a bounded transport queue with backpressure failure, connection/session/final-transcript timeouts, and deterministic socket/timer/queue cleanup.
+- Added bounded audio chunking, a transport queue with backpressure failure, connection/session/final-transcript timeouts, and deterministic socket/timer/queue cleanup.
 - Kept partial transcripts non-mutating and final delivery exactly once; moved audio-level metering to a Reanimated shared value outside normal React render propagation.
 
 ### Recoverable local notification delivery

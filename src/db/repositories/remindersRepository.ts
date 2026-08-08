@@ -14,9 +14,6 @@ export interface CreateReminderInput {
   enabled?: boolean;
 }
 
-/**
- * Persistence only — no OS notification scheduling in Slice 2.
- */
 export class RemindersRepository {
   constructor(private readonly db: SqlDatabase) {}
 
@@ -43,11 +40,15 @@ export class RemindersRepository {
     return rows.map(mapReminderRow);
   }
 
-  async listAll(limit = 200): Promise<Reminder[]> {
-    const rows = await this.db.getAllAsync<ReminderRow>(
-      `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC LIMIT ?`,
-      [limit]
-    );
+  async listAll(limit?: number): Promise<Reminder[]> {
+    const rows = limit === undefined
+      ? await this.db.getAllAsync<ReminderRow>(
+        `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC`
+      )
+      : await this.db.getAllAsync<ReminderRow>(
+        `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC LIMIT ?`,
+        [limit]
+      );
     return rows.map(mapReminderRow);
   }
 
