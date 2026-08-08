@@ -1,7 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, type RefObject } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +21,7 @@ import type {
   AssistantReceipt,
   AssistantSurfaceState,
   PendingAssistantConfirmation,
+  AssistantOrbState,
 } from './assistantTypes';
 import { assistantStateLabel } from './AssistantOrb';
 import type { AgentSemanticState } from '@/services/agent';
@@ -49,7 +48,14 @@ interface AssistantSheetProps {
   voiceError: string | null;
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
-  onVoiceMic: () => void;
+  keyboardOffset: number;
+  blurTarget?: RefObject<View | null>;
+  orbState: AssistantOrbState;
+  assistantExpanded: boolean;
+  onOrbPress: () => void;
+  onOrbPressIn?: () => void;
+  onOrbPressOut?: () => void;
+  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
 
 function confirmationTitle(pending: PendingAssistantConfirmation): string {
@@ -83,18 +89,27 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   voiceError,
   onVoiceStop,
   onVoiceCancel,
-  onVoiceMic,
+  keyboardOffset,
+  blurTarget,
+  orbState,
+  assistantExpanded,
+  onOrbPress,
+  onOrbPressIn,
+  onOrbPressOut,
+  onOrbPressMove,
 }) => {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const height = useSharedValue(0);
+  const keyboardShift = useSharedValue(0);
   const isVisible = surface !== 'closed';
   const showHeader = surface === 'medium' || surface === 'full';
   const showConversation = surface === 'medium' || surface === 'full';
+  const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-      ? 84
+      ? voiceActive ? 124 : 84
       : surface === 'medium'
         ? Math.min(470, windowHeight * 0.58)
         : surface === 'full'
@@ -107,19 +122,23 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
       : withSpring(targetHeight, { damping: 24, stiffness: 240, mass: 0.8 });
   }, [height, reduceMotion, targetHeight]);
 
+  useEffect(() => {
+    keyboardShift.value = withTiming(keyboardOffset, { duration: reduceMotion ? 120 : 220 });
+  }, [keyboardOffset, keyboardShift, reduceMotion]);
+
   const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
+  const animatedBottomStyle = useAnimatedStyle(() => ({
+    bottom: Math.max(insets.bottom, 10) + 12 + keyboardShift.value,
+  }));
   if (!isVisible) return null;
 
   return (
     <Animated.View
-      style={[styles.wrapper, { bottom: Math.max(insets.bottom, 12) + 88 }, animatedStyle]}
+      style={[styles.wrapper, animatedBottomStyle, animatedStyle]}
       pointerEvents="box-none"
     >
-      <AssistantMaterial style={styles.sheet} borderRadius={Radius.xl}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardView}
-        >
+      <AssistantMaterial style={styles.sheet} borderRadius={Radius.xl} blurTarget={blurTarget}>
+        <View style={styles.keyboardView}>
           {showHeader ? (
             <View style={styles.header}>
               <View style={styles.headerTitle}>
@@ -214,11 +233,16 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               onChangeText={onComposerChange}
               onSubmit={onSubmit}
               disabled={isRunning}
-              autoFocus={surface === 'compact'}
-              onMicPress={onVoiceMic}
+              autoFocus={surface === 'compact' && voiceState === 'idle'}
+              orbState={orbState}
+              assistantExpanded={assistantExpanded}
+              onOrbPress={onOrbPress}
+              onOrbPressIn={onOrbPressIn}
+              onOrbPressOut={onOrbPressOut}
+              onOrbPressMove={onOrbPressMove}
             />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </AssistantMaterial>
     </Animated.View>
   );
@@ -229,7 +253,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.sm,
     right: Spacing.sm,
-    bottom: 0,
     zIndex: 20,
   },
   sheet: {

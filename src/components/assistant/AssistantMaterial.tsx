@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type RefObject } from 'react';
 import { BlurView } from 'expo-blur';
 import {
   GlassView,
@@ -13,6 +13,7 @@ interface AssistantMaterialProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   borderRadius?: number;
+  blurTarget?: RefObject<View | null>;
 }
 
 /** iOS 26 gets native Liquid Glass; Android and older iOS get platform-safe materials. */
@@ -20,10 +21,12 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   children,
   style,
   borderRadius = Radius.xl,
+  blurTarget,
 }) => {
   const isDark = useIsDark();
   const useLiquidGlass =
-    Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+    process.env.EXPO_OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  const useAndroidBlur = process.env.EXPO_OS === 'android' && Boolean(blurTarget);
 
   if (useLiquidGlass) {
     return (
@@ -52,13 +55,29 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         style,
       ]}
     >
-      {Platform.OS === 'ios' ? (
+      {Platform.OS === 'ios' || useAndroidBlur ? (
         <BlurView
           tint={isDark ? 'dark' : 'light'}
           intensity={72}
           style={[StyleSheet.absoluteFill, { borderRadius }]}
+          {...(useAndroidBlur
+            ? {
+                blurTarget,
+                blurMethod: 'dimezisBlurViewSdk31Plus' as const,
+              }
+            : {})}
         />
       ) : null}
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius,
+            backgroundColor: isDark ? 'rgba(24, 24, 27, 0.46)' : 'rgba(255, 255, 255, 0.46)',
+          },
+        ]}
+      />
       <View style={styles.content}>{children}</View>
     </View>
   );

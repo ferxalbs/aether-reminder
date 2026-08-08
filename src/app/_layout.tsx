@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
@@ -21,6 +22,7 @@ export default function RootLayout() {
   const loadApiKey = useSettingsStore((s) => s.loadApiKey);
   const refreshToday = useTasksUiStore((s) => s.refreshToday);
   const isDark = useIsDark();
+  const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
 
   useEffect(() => {
@@ -80,20 +82,24 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AssistantSurfaceProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'fade',
-            contentStyle: {
-              backgroundColor: isDark ? '#000000' : '#FAFAFA',
-            },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="tasks" />
-          <Stack.Screen name="settings" />
-        </Stack>
-        <AssistantHost />
+        <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+              contentStyle: {
+                backgroundColor: isDark ? '#000000' : '#FAFAFA',
+              },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="tasks" />
+            <Stack.Screen name="ai" />
+            <Stack.Screen name="transcribe" />
+            <Stack.Screen name="settings" />
+          </Stack>
+        </BlurTargetView>
+        <AssistantHost blurTarget={blurTarget} />
       </AssistantSurfaceProvider>
     </SafeAreaProvider>
   );
@@ -109,5 +115,8 @@ const styles = StyleSheet.create({
   },
   bootText: {
     marginTop: 4,
+  },
+  routeTarget: {
+    flex: 1,
   },
 });

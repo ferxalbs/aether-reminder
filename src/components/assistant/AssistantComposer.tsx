@@ -1,15 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
-import { ArrowUp, Mic } from 'lucide-react-native';
+import { ArrowUp } from 'lucide-react-native';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
+import { AssistantOrb } from './AssistantOrb';
+import type { AssistantOrbState } from './assistantTypes';
 
 interface AssistantComposerProps {
   value: string;
@@ -17,7 +18,12 @@ interface AssistantComposerProps {
   onSubmit: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
-  onMicPress?: () => void;
+  orbState: AssistantOrbState;
+  assistantExpanded: boolean;
+  onOrbPress: () => void;
+  onOrbPressIn?: () => void;
+  onOrbPressOut?: () => void;
+  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
 
 export const AssistantComposer: React.FC<AssistantComposerProps> = ({
@@ -26,7 +32,12 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   onSubmit,
   disabled = false,
   autoFocus = false,
-  onMicPress,
+  orbState,
+  assistantExpanded,
+  onOrbPress,
+  onOrbPressIn,
+  onOrbPressOut,
+  onOrbPressMove,
 }) => {
   const isDark = useIsDark();
   const inputRef = useRef<TextInput>(null);
@@ -52,11 +63,20 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         },
       ]}
     >
+      <AssistantOrb
+        state={orbState}
+        expanded={assistantExpanded}
+        size="composer"
+        onPress={onOrbPress}
+        onPressIn={onOrbPressIn}
+        onPressOut={onOrbPressOut}
+        onPressMove={onOrbPressMove}
+      />
       <TextInput
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}
-        placeholder="Ask AETHER…"
+        placeholder="Ask anything…"
         placeholderTextColor={Colors.zinc500}
         multiline
         maxLength={2000}
@@ -71,17 +91,6 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         accessibilityLabel="Ask AETHER"
         style={[styles.input, { color: foreground }]}
       />
-      <Pressable
-        onPress={onMicPress}
-        accessibilityRole="button"
-        accessibilityLabel="Voice capture"
-        accessibilityHint="Starts microphone capture"
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        style={styles.iconButton}
-      >
-        <Mic size={19} color={Colors.zinc500} />
-      </Pressable>
       {hasText ? (
         <Pressable
           onPress={onSubmit}
@@ -101,7 +110,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
       ) : null}
       {!hasText ? (
         <Typography variant="tiny" color={Colors.zinc500} style={styles.hint}>
-          {Platform.OS === 'ios' ? 'Return to send' : 'Ready'}
+          Hold orb to talk
         </Typography>
       ) : null}
     </View>
@@ -129,12 +138,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingTop: 9,
     paddingBottom: 9,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   sendButton: {
     width: 42,

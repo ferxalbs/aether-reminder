@@ -1,42 +1,49 @@
-import React, { useEffect } from 'react';
-import { CheckSquare, ListTodo, Settings } from 'lucide-react-native';
-import { usePathname, useRouter } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring, 
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Typography } from '@/components/ui/Typography';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from '@/components/ui/Typography';
+import * as Haptics from 'expo-haptics';
+import { usePathname, useRouter } from 'expo-router';
+import { Brain, CheckSquare, ListTodo, Mic, Settings } from 'lucide-react-native';
+import React, { useEffect, type RefObject } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantMaterial } from './AssistantMaterial';
 import { AssistantOrb } from './AssistantOrb';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import type { AssistantOrbState } from './assistantTypes';
 
 interface AppBottomNavigationProps {
   orbState: AssistantOrbState;
   assistantExpanded: boolean;
+  keyboardOffset: number;
+  blurTarget?: RefObject<View | null>;
   onOrbPress: () => void;
   onOrbPressIn?: () => void;
   onOrbPressOut?: () => void;
   onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
 
-type Destination = '/' | '/tasks' | '/settings';
+type Destination = '/' | '/tasks' | '/ai' | '/transcribe' | '/settings';
 
-const navigationItems: { destination: Destination; label: string; icon: typeof CheckSquare }[] = [
+const navigationItems: {
+  destination: Destination;
+  label: string;
+  icon: typeof CheckSquare;
+  assistant?: boolean;
+}[] = [
   { destination: '/', label: 'Home', icon: CheckSquare },
   { destination: '/tasks', label: 'Tasks', icon: ListTodo },
+  { destination: '/ai', label: 'AETHER', icon: Brain, assistant: true },
+  { destination: '/transcribe', label: 'Voice', icon: Mic },
   { destination: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   orbState,
   assistantExpanded,
+  keyboardOffset,
+  blurTarget,
   onOrbPress,
   onOrbPressIn,
   onOrbPressOut,
@@ -46,6 +53,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const isDark = useIsDark();
+  const keyboardVisible = keyboardOffset > 0;
 
   const navigate = (destination: Destination) => {
     const isHome = destination === '/' && (pathname === '/' || pathname === '/index');
@@ -54,43 +62,35 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
     router.replace(destination as never);
   };
 
+  const dockStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(keyboardVisible ? 0 : 1, { duration: 160 }),
+    transform: [{ translateY: withTiming(keyboardVisible ? 18 : 0, { duration: 180 }) }],
+  }));
+
   return (
-    <View pointerEvents="box-none" style={[styles.host, { bottom: Math.max(insets.bottom, 12) + 24 }]}>
-      <AssistantMaterial style={styles.bar} borderRadius={Radius.pill}>
+    <Animated.View
+      pointerEvents={keyboardVisible ? 'none' : 'box-none'}
+      style={[styles.host, { bottom: Math.max(insets.bottom, 10) + 12 }, dockStyle]}
+    >
+      <AssistantMaterial style={styles.bar} borderRadius={Radius.pill} blurTarget={blurTarget}>
         <View style={styles.navRow}>
-          <View style={styles.leftGroup}>
-            {navigationItems.slice(0, 2).map((item) => (
-              <NavigationButton
-                key={item.destination}
-                item={item}
-                active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
-                isDark={isDark}
-                onPress={() => navigate(item.destination)}
-              />
-            ))}
-          </View>
-          <View style={styles.centerGap} />
-          <View style={styles.rightGroup}>
+          {navigationItems.map((item) => (
             <NavigationButton
-              item={navigationItems[2]}
-              active={pathname === '/settings'}
+              key={item.destination}
+              item={item}
+              active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
               isDark={isDark}
-              onPress={() => navigate('/settings')}
+              onPress={item.assistant ? onOrbPress : () => navigate(item.destination)}
+              orbState={orbState}
+              assistantExpanded={assistantExpanded}
+              onOrbPressIn={onOrbPressIn}
+              onOrbPressOut={onOrbPressOut}
+              onOrbPressMove={onOrbPressMove}
             />
-          </View>
+          ))}
         </View>
       </AssistantMaterial>
-      <View pointerEvents="box-none" style={styles.orbContainer}>
-        <AssistantOrb 
-          state={orbState} 
-          expanded={assistantExpanded} 
-          onPress={onOrbPress} 
-          onPressIn={onOrbPressIn} 
-          onPressOut={onOrbPressOut} 
-          onPressMove={onOrbPressMove} 
-        />
-      </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -99,43 +99,63 @@ function NavigationButton({
   active,
   isDark,
   onPress,
+  orbState,
+  assistantExpanded,
+  onOrbPressIn,
+  onOrbPressOut,
+  onOrbPressMove,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
   isDark: boolean;
   onPress: () => void;
+  orbState: AssistantOrbState;
+  assistantExpanded: boolean;
+  onOrbPressIn?: () => void;
+  onOrbPressOut?: () => void;
+  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }) {
   const activeAnim = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
     activeAnim.value = withSpring(active ? 1 : 0, {
       damping: 18,
-      stiffness: 200,
+      stiffness: 220,
       mass: 0.8,
     });
   }, [active, activeAnim]);
 
-  const animatedIconStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: 1 + activeAnim.value * 0.15 },
-        { translateY: -activeAnim.value * 2 }
-      ],
-    };
-  });
-
-  const animatedLabelStyle = useAnimatedStyle(() => {
-    return {
-      opacity: activeAnim.value,
-      transform: [
-        { translateY: (1 - activeAnim.value) * 6 }
-      ],
-    };
-  });
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + activeAnim.value * 0.08 }, { translateY: -activeAnim.value * 1 }],
+  }));
+  const animatedLabelStyle = useAnimatedStyle(() => ({
+    opacity: 0.66 + activeAnim.value * 0.34,
+  }));
 
   const activeColor = isDark ? Colors.white : Colors.black;
   const inactiveColor = Colors.zinc500;
   const Icon = item.icon;
+
+  if (item.assistant) {
+    return (
+      <View style={styles.navButton} accessible accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: active }}>
+        <View style={styles.assistantButtonContent}>
+          <AssistantOrb
+            state={orbState}
+            expanded={assistantExpanded}
+            size="dock"
+            onPress={onPress}
+            onPressIn={onOrbPressIn}
+            onPressOut={onOrbPressOut}
+            onPressMove={onOrbPressMove}
+          />
+          <Typography variant="tiny" color={activeColor} style={styles.navLabel}>
+            AETHER
+          </Typography>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <AnimatedPressable
@@ -143,31 +163,17 @@ function NavigationButton({
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
-      scaleTo={0.88}
+      scaleTo={0.9}
       style={styles.navButton}
     >
-      <View style={styles.iconContainer}>
-        <Animated.View style={animatedIconStyle}>
-          <Icon 
-            size={22} 
-            color={active ? activeColor : inactiveColor} 
-            strokeWidth={active ? 2.5 : 2} 
-          />
-        </Animated.View>
-        
-        {/* Animated Active Dot or Label */}
-        <Animated.View style={[styles.labelContainer, animatedLabelStyle]}>
-          <Typography 
-            variant="tiny" 
-            style={[
-              styles.navLabel, 
-              { color: activeColor, fontWeight: '700' }
-            ]}
-          >
-            {item.label}
-          </Typography>
-        </Animated.View>
-      </View>
+      <Animated.View style={animatedIconStyle}>
+        <Icon size={20} color={active ? activeColor : inactiveColor} strokeWidth={active ? 2.4 : 1.9} />
+      </Animated.View>
+      <Animated.View style={animatedLabelStyle}>
+        <Typography variant="tiny" color={active ? activeColor : inactiveColor} style={styles.navLabel}>
+          {item.label}
+        </Typography>
+      </Animated.View>
     </AnimatedPressable>
   );
 }
@@ -175,71 +181,38 @@ function NavigationButton({
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    left: Spacing.md,
-    right: Spacing.md,
-    height: 144,
+    left: Spacing.sm,
+    right: Spacing.sm,
+    height: 78,
     zIndex: 30,
     alignItems: 'center',
-    overflow: 'visible',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: Platform.OS === 'android' ? 12 : 0,
   },
   bar: {
-    position: 'absolute',
-    bottom: 0,
     width: '100%',
-    height: 68,
+    height: 78,
     paddingHorizontal: Spacing.xs,
-    overflow: 'visible',
+    borderCurve: 'continuous',
   },
   navRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  leftGroup: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    paddingRight: 28,
-  },
-  rightGroup: {
-    flex: 1,
-    alignItems: 'center',
-    paddingLeft: 28,
-  },
-  centerGap: {
-    width: 72,
-  },
   navButton: {
-    minWidth: 64,
-    height: 60,
-    paddingHorizontal: Spacing.sm,
+    flex: 1,
+    height: 72,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
-  iconContainer: {
+  assistantButtonContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-  },
-  labelContainer: {
-    position: 'absolute',
-    bottom: -8,
+    marginTop: -3,
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 9,
     lineHeight: 12,
-    letterSpacing: 0.3,
-  },
-  orbContainer: {
-    position: 'absolute',
-    bottom: 76,
-    left: '50%',
-    marginLeft: -38,
-    zIndex: 2,
+    letterSpacing: 0.25,
   },
 });
