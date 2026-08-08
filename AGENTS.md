@@ -59,6 +59,18 @@ Tests use Bun’s test runner and are colocated with the implementation, for exa
 
 Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
 
+## Changelog Guidelines
+
+Before editing `CHANGELOG.md`, read `RULES.md` and follow its required entry format.
+Keep entries in reverse chronological order, with the newest entry at the top. Use
+the exact `## Unreleased - YYYY.MM.DD (N) [Entry Name]` heading format, and keep
+the sequence number correct when multiple entries share a date. Use expressive,
+feature-specific `###` headings rather than repeating generic labels such as
+"Added", "Changed", or "Removed". Keep heading levels consecutive and
+MD001-compliant. Include useful implementation, documentation, or test
+references, and report native-device, live-provider, and other validation limits
+honestly.
+
 ## Commit & Pull Request Guidelines
 
 Use concise Conventional Commit-style subjects matching history, such as `feat: ...`, `fix: ...`, or `chore: ...`. PRs should explain the behavior change, list validation commands, link relevant issues, and include screenshots or recordings for UI changes. Call out schema migrations, native permission changes, and configuration changes explicitly.

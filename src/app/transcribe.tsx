@@ -48,7 +48,10 @@ export default function TranscribeScreen() {
           <Typography variant="body" color={Colors.zinc500}>
             Press and hold the AETHER ball in the bottom dock. Release to send, or swipe up while holding to keep recording until you stop it.
           </Typography>
-          <AnimatedPressable onPress={() => router.replace('/ai' as never)} style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}> 
+          <AnimatedPressable
+            onPress={() => router.replace('/ai' as never)}
+            style={[styles.actionButton, { backgroundColor: isDark ? Colors.white : Colors.black }]}
+          >
             <Typography variant="bodyBold" color={isDark ? Colors.black : Colors.white}>Go to AETHER</Typography>
           </AnimatedPressable>
         </Card>

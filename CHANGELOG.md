@@ -2,11 +2,75 @@
 
 All notable changes to AETHER are documented here.
 
-## [Unreleased](1) - 08-07-2026
+## Unreleased - 2026.08.07 (2) [Voice inside the Universal Assistant Orb — Slice 5]
 
-### Universal Assistant Experience — Slice 4
+### One assistant, two input transports
 
-#### Added
+- Added a single `VoiceController` used by both Orb hold-to-talk and the composer microphone action.
+- Added the explicit voice state machine: `idle`, `requesting_permission`, `preparing`, `listening`, `finalizing`, `transcribing`, `ready`, `cancelled`, and `error`.
+- Added hold Orb → speak → release → native recording finalization → OpenRouter transcription → existing `AgentSessionController` submission.
+- Added upward drag locking with explicit `Stop & Send` and `Cancel` controls.
+- Added deliberate haptics for recording start, recording stop, cancellation, and errors, respecting the existing haptics setting.
+- Added OpenRouter speech configuration separated from the conversational agent model, using `openai/whisper-1` through OpenRouter only.
+- Added transcription cancellation through `AbortController`.
+- Added voice-originated `ContextSnapshot.invocationSource` support while preserving the same active session and conversation entities.
+- Added timing instrumentation for press-to-recording, finalization, transcription, and transcript-to-agent handoff.
+- Added an idempotency regression covering voice confirmation replay and exactly one mutation.
+- Added `expo-file-system` temporary recording cleanup.
+
+### Orb and composer behavior
+
+- Enabled the composer microphone action and routed it through the shared VoiceController.
+- Extended Orb semantic state mapping for permission, preparation, listening, finalization, and transcription.
+- Added the `expo-audio` microphone permission message to native configuration.
+- Extended the OpenRouter transcription provider with cancellation signal support.
+
+### Legacy voice paths retired
+
+- Removed the obsolete Expo Go audio recorder shim.
+- Removed the unused legacy waveform product component.
+- Removed obsolete production mock recording/transcription paths.
+- No standalone Transcribe route or second assistant was added or restored.
+
+### Native audio lifecycle and safety
+
+- Native recorder state is authoritative; listening is not entered unless the native recorder reports that it started.
+- Permission denial, unavailable recorder, start failure, empty audio, interruption/background transitions, stop failure, network failure, and cancellation return typed/user-visible errors.
+- Temporary recordings are deleted after successful transcription, failed transcription, cancellation, and cleanup.
+- Cancel never submits partial speech to the AgentRuntime.
+- No always-on listening, wake word, background passive recording, local STT, or local inference was added.
+
+### Validation and acceptance
+
+- `bun test`: 61 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed.
+- `bun run typecheck`: passed.
+- `bun run lint`: passed.
+- Expo SDK 57 public configuration verified with `expo-audio` microphone permission configuration.
+- Android EAS development build completed successfully: [build artifact](https://expo.dev/artifacts/eas/kb89U1Tncp8SOImg5BgylNdKHluM4eQfTef9KhcHvhg.apk).
+
+### What still needs a device
+
+- Android native build packaging: passed.
+- Real Android device voice flow: not yet validated.
+- Real iOS native voice flow: not yet validated in this workspace.
+- Live OpenRouter transcription: not yet validated because no live user API key/device was available during implementation.
+- Slice 5 remains blocked until the real native hold-to-talk acceptance paths are executed.
+
+### Next slice remains unopened
+
+- No Slice 6 work has started. Scope remains undefined until Slice 5 native acceptance is complete.
+
+### Implementation references
+
+- [VoiceController](src/components/assistant/VoiceController.tsx) owns permission, recording, cancellation, transcription, and cleanup.
+- [AssistantHost](src/components/assistant/AssistantHost.tsx) connects voice transcripts to the existing assistant session.
+- [OpenRouter STT provider](src/services/transcription/openrouterStt.ts) sends audio only to OpenRouter.
+- [Confirmation regression](src/services/agent/agentRuntime.conformance.test.ts) covers exactly-once voice replay behavior.
+- Native configuration follows the [Expo SDK 57 audio documentation](https://docs.expo.dev/versions/v57.0.0/sdk/audio/).
+
+## Unreleased - 2026.08.07 (1) [Universal Assistant Experience — Slice 4]
+
+### The universal assistant surface
 
 - Added a single global `AssistantHost` mounted above routed screens, preserving the active assistant session across navigation.
 - Added the central AETHER Orb as the permanent assistant entry point in the bottom navigation.
@@ -21,7 +85,7 @@ All notable changes to AETHER are documented here.
 - Added a deliberate zero-task Home empty state without demo or sample records.
 - Added an opt-in real OpenRouter smoke test and manual instructions covering SSE streaming, tool execution, tool results, model continuation, and completion.
 
-#### Changed
+### Session, navigation, and platform behavior
 
 - Replaced the old equal-weight navigation with Home, Tasks, centered Orb, and Settings.
 - Added task/upcoming refreshes after assistant mutations so SQLite changes appear without an app restart or manual refresh.
@@ -30,14 +94,14 @@ All notable changes to AETHER are documented here.
 - Removed legacy complete-only AI summary generation, local fallback summaries, and obsolete AI response types.
 - Kept high-frequency streamed assistant state localized to the assistant controller rather than broad global store updates.
 
-#### Removed
+### Previous assistant paths retired
 
 - Removed the `AI Overview` route and its primary navigation destination.
 - Removed the standalone `Transcribe` route and its primary navigation destination.
 - Removed the legacy `FloatingToolbar` navigation component.
 - Removed duplicate AI question flows and legacy AI summary paths.
 
-#### Verification
+### Slice 4 validation
 
 - `bun test`: 60 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed.
 - `bun run typecheck`: passed.
@@ -45,9 +109,14 @@ All notable changes to AETHER are documented here.
 - iOS native export: passed.
 - Android native export: passed.
 
-#### Known limitations
+### Boundaries carried forward
 
 - The live OpenRouter smoke test requires a user-supplied API key and agent-capable model, so it was not run automatically.
 - The web target remains limited by the existing missing Expo SQLite WASM asset; native iOS and Android bundles export successfully.
 - Undo is not shown for actions because a functional restore UI is not yet available.
 - Voice capture, notifications, widgets, and local inference remain out of scope for this release.
+
+### Slice 4 reference points
+
+- [Assistant surface](src/components/assistant/AssistantSheet.tsx) contains the accepted conversation UI.
+- [Agent session controller](src/components/assistant/AgentSessionController.tsx) remains the shared runtime boundary for text and voice.
