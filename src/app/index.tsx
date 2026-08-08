@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Plus, Sparkles, CheckCircle2 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -11,7 +11,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { AddTaskModal } from '@/components/ui/AddTaskModal';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
-import { useTasksStore } from '@/stores/tasks.store';
+import { useTasksUiStore } from '@/stores/tasksUi.store';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
@@ -19,11 +19,19 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const isDark = useIsDark();
 
-  const toggleTask = useTasksStore((s) => s.toggleTask);
-  const deleteTask = useTasksStore((s) => s.deleteTask);
-  const getTodayTasks = useTasksStore((s) => s.getTodayTasks);
+  const todayTasks = useTasksUiStore((s) => s.todayTasks);
+  const status = useTasksUiStore((s) => s.status);
+  const error = useTasksUiStore((s) => s.error);
+  const refreshToday = useTasksUiStore((s) => s.refreshToday);
+  const toggleTask = useTasksUiStore((s) => s.toggleTask);
+  const softDeleteTask = useTasksUiStore((s) => s.softDeleteTask);
 
-  const todayTasks = getTodayTasks();
+  useFocusEffect(
+    useCallback(() => {
+      void refreshToday();
+    }, [refreshToday])
+  );
+
   const completedCount = todayTasks.filter((t) => t.completed).length;
   const totalCount = todayTasks.length;
   const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
@@ -117,9 +125,17 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Typography variant="title">Daily Focus</Typography>
           <Typography variant="caption" color={Colors.zinc500}>
-            {todayTasks.length} {todayTasks.length === 1 ? 'task' : 'tasks'}
+            {status === 'loading'
+              ? 'Loading…'
+              : `${todayTasks.length} ${todayTasks.length === 1 ? 'task' : 'tasks'}`}
           </Typography>
         </View>
+
+        {error ? (
+          <Typography variant="caption" color={Colors.zinc500} style={{ marginBottom: Spacing.sm }}>
+            {error}
+          </Typography>
+        ) : null}
 
         {/* Task List */}
         {todayTasks.length > 0 ? (
@@ -127,12 +143,15 @@ export default function HomeScreen() {
             <TaskCard
               key={task.id}
               task={task}
-              onToggle={toggleTask}
-              onDelete={deleteTask}
+              onToggle={(id) => {
+                void toggleTask(id);
+              }}
+              onDelete={(id) => {
+                void softDeleteTask(id);
+              }}
             />
           ))
-        ) : (
-          /* Illustration-Free Typography Empty State */
+        ) : status !== 'loading' ? (
           <View style={styles.emptyStateContainer}>
             <Typography variant="headline" align="center" style={styles.emptyTitle}>
               All Clear
@@ -146,7 +165,7 @@ export default function HomeScreen() {
               No pending tasks for today. Tap the button below or use voice to capture your next goal.
             </Typography>
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
       {/* Add Task Modal */}

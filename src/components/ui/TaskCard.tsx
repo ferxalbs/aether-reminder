@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Check, Trash2, Clock, Sparkles } from 'lucide-react-native';
-import { Task } from '@/types';
+import type { TaskListItem } from '@/domain/entities';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from './Typography';
@@ -16,10 +16,10 @@ import { useSettingsStore } from '@/stores/settings.store';
 import * as Haptics from 'expo-haptics';
 
 export interface TaskCardProps {
-  task: Task;
+  task: TaskListItem;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onPress?: (task: Task) => void;
+  onPress?: (task: TaskListItem) => void;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({

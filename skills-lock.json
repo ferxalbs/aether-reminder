@@ -25,6 +25,12 @@
       "skillPath": "skills/emil-design-eng/SKILL.md",
       "computedHash": "41b0a4dc1a27164fe297845a6c6850a39e9242c42c9be999967fcee9df2c5974"
     },
+    "expo-api-docs": {
+      "source": "expo/expo",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/expo-api-docs/SKILL.md",
+      "computedHash": "58ff0ab0de83d75a7d1bd72dce6af4cc2cd97590c09e345042f7447d37cc7b90"
+    },
     "find-animation-opportunities": {
       "source": "emilkowalski/skills",
       "sourceType": "github",

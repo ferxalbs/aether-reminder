@@ -42,7 +42,8 @@
       ],
       "expo-secure-store",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

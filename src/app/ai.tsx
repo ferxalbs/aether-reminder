@@ -8,14 +8,27 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
-import { useTasksStore } from '@/stores/tasks.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { buildLocalWorkloadStats, generateTaskSummary } from '@/services/ai/openrouter';
 import { getAIErrorMessage } from '@/services/ai/providers';
-import { AIResponse } from '@/types';
+import type { Task as DomainTask } from '@/domain/entities';
+import type { AIResponse, Task } from '@/types';
 import * as Haptics from 'expo-haptics';
 
 type AnalysisSource = 'ai' | 'local' | null;
+
+function toAnalysisTask(task: DomainTask): Task {
+  return {
+    id: task.id,
+    title: task.title,
+    notes: task.notes ?? undefined,
+    completed: task.completed,
+    createdAt: task.createdAt,
+    dueDate: task.dueDate ?? undefined,
+    priority: task.priority,
+  };
+}
 
 export default function AIScreen() {
   const [loading, setLoading] = useState(false);
@@ -28,7 +41,8 @@ export default function AIScreen() {
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const apiKeyLoaded = useSettingsStore((s) => s.apiKeyLoaded);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
-  const tasks = useTasksStore((s) => s.tasks);
+  const loadActiveForAnalysis = useTasksUiStore((s) => s.loadActiveForAnalysis);
+  const revision = useTasksUiStore((s) => s.revision);
 
   const fetchAnalysis = async () => {
     if (!apiKeyLoaded) return;
@@ -37,12 +51,18 @@ export default function AIScreen() {
     setErrorMessage(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
+      const domainTasks = await loadActiveForAnalysis(80);
+      const tasks = domainTasks.map(toAnalysisTask);
       const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
       setAiData(result);
       setAnalysisSource('ai');
     } catch (error) {
-      // Honest failure: do not pretend AI succeeded. Local stats are labeled separately.
-      setAiData(buildLocalWorkloadStats(tasks));
+      try {
+        const domainTasks = await loadActiveForAnalysis(80);
+        setAiData(buildLocalWorkloadStats(domainTasks.map(toAnalysisTask)));
+      } catch {
+        setAiData(buildLocalWorkloadStats([]));
+      }
       setAnalysisSource('local');
       setErrorMessage(getAIErrorMessage(error));
     } finally {
@@ -58,6 +78,8 @@ export default function AIScreen() {
       setLoading(true);
       setErrorMessage(null);
       try {
+        const domainTasks = await loadActiveForAnalysis(80);
+        const tasks = domainTasks.map(toAnalysisTask);
         const result = await generateTaskSummary(tasks, selectedModel, openRouterApiKey);
         if (isMounted) {
           setAiData(result);
@@ -65,7 +87,12 @@ export default function AIScreen() {
         }
       } catch (error) {
         if (isMounted) {
-          setAiData(buildLocalWorkloadStats(tasks));
+          try {
+            const domainTasks = await loadActiveForAnalysis(80);
+            setAiData(buildLocalWorkloadStats(domainTasks.map(toAnalysisTask)));
+          } catch {
+            setAiData(buildLocalWorkloadStats([]));
+          }
           setAnalysisSource('local');
           setErrorMessage(getAIErrorMessage(error));
         }
@@ -77,7 +104,7 @@ export default function AIScreen() {
     return () => {
       isMounted = false;
     };
-  }, [apiKeyLoaded, tasks, selectedModel, openRouterApiKey]);
+  }, [apiKeyLoaded, selectedModel, openRouterApiKey, loadActiveForAnalysis, revision]);
 
   return (
     <SafeAreaView

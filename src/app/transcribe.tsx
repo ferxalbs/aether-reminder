@@ -16,7 +16,7 @@ import { WaveformView } from '@/components/ui/WaveformView';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { FloatingToolbar } from '@/components/ui/FloatingToolbar';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTasksStore } from '@/stores/tasks.store';
+import { useTasksUiStore } from '@/stores/tasksUi.store';
 import {
   defaultTranscriptionProvider,
   getTranscriptionErrorMessage,
@@ -46,7 +46,7 @@ export default function TranscribeScreen() {
 
   const isDark = useIsDark();
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
-  const addTasksBatch = useTasksStore((s) => s.addTasksBatch);
+  const createTasksBatch = useTasksUiStore((s) => s.createTasksBatch);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const isListening = captureState === 'listening';
@@ -180,21 +180,22 @@ export default function TranscribeScreen() {
     if (!transcription || transcription.taskCandidates.length === 0) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-    addTasksBatch(
+    void createTasksBatch(
       transcription.taskCandidates.map((cand) => ({
         title: cand.title,
         priority: cand.priority,
         notes: cand.notes,
         dueDate: getLocalDateString(),
+        source: 'voice' as const,
       }))
-    );
-
-    Alert.alert(
-      'Tasks Added',
-      `Added ${transcription.taskCandidates.length} task${transcription.taskCandidates.length === 1 ? '' : 's'} from your voice note.`
-    );
-    setTranscription(null);
-    setCaptureState('idle');
+    ).then(() => {
+      Alert.alert(
+        'Tasks Added',
+        `Added ${transcription.taskCandidates.length} task${transcription.taskCandidates.length === 1 ? '' : 's'} from your voice note.`
+      );
+      setTranscription(null);
+      setCaptureState('idle');
+    });
   };
 
   const formatTimer = (seconds: number) => {

@@ -18,7 +18,7 @@ import { Typography } from './Typography';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
 import { AnimatedPressable } from './AnimatedPressable';
-import { useTasksStore } from '@/stores/tasks.store';
+import { useTasksUiStore } from '@/stores/tasksUi.store';
 
 export interface AddTaskModalProps {
   visible: boolean;
@@ -35,21 +35,28 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const isDark = useIsDark();
-  const addTask = useTasksStore((s) => s.addTask);
+  const createTask = useTasksUiStore((s) => s.createTask);
+  const [saving, setSaving] = useState(false);
 
   const handleSave = () => {
-    if (!title.trim()) return;
-    addTask({
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    void createTask({
       title: title.trim(),
       notes: notes.trim() || undefined,
       priority,
       dueDate: getLocalDateString(),
-    });
-
-    setTitle('');
-    setNotes('');
-    setPriority('medium');
-    onClose();
+      source: 'manual',
+    })
+      .then(() => {
+        setTitle('');
+        setNotes('');
+        setPriority('medium');
+        onClose();
+      })
+      .finally(() => {
+        setSaving(false);
+      });
   };
 
   return (
