@@ -1,6 +1,6 @@
 import type { TaskPriority } from '@/domain/entities';
 import { resolveTomorrow, resolveToday, assertResolvedDateTime } from '@/temporal/resolve';
-import type { AgentTool, ToolExecutionContext, ToolResult } from './types';
+import type { AgentTool, ToolResult } from './types';
 
 function asString(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;

@@ -2,7 +2,7 @@ import type { Migration } from './types';
 
 /**
  * Core domain tables. Immutable once shipped — add later migrations to change.
- * Agent/runtime tables deferred until schema stabilizes (Slice 5+).
+ * Agent/runtime tables are added in 0003_agent_runtime (Slice 3).
  */
 export const migration0001Core: Migration = {
   version: 1,

@@ -1,17 +1,13 @@
 /**
  * Ephemeral UI/session state for task surfaces.
  * NOT a mirror of SQLite — holds only the current query result for Home
- * (and small helpers). Mutations always go through repositories.
+ * (and small helpers). Mutations go through domain services, not raw SQL.
  */
 import { create } from 'zustand';
-import {
-  createRepositories,
-  getDatabaseErrorMessage,
-  isDatabaseReady,
-  type Repositories,
-} from '@/db';
+import { getDatabase, getDatabaseErrorMessage, isDatabaseReady } from '@/db';
 import type { CreateTaskInput, Task, TaskListItem, TaskPriority } from '@/domain/entities';
 import { toTaskListItem } from '@/domain/entities';
+import { createDomainServices, type DomainServices } from '@/domain/services';
 import { getLocalDateString } from '@/temporal/localCalendar';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -47,11 +43,11 @@ interface TasksUiState {
   loadActiveForAnalysis: (limit?: number) => Promise<Task[]>;
 }
 
-function repos(): Repositories {
+function services(): DomainServices {
   if (!isDatabaseReady()) {
     throw new Error('Database not ready');
   }
-  return createRepositories();
+  return createDomainServices(getDatabase());
 }
 
 export const useTasksUiStore = create<TasksUiState>((set, get) => ({
@@ -63,7 +59,10 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshToday: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await repos().tasks.listToday(getLocalDateString());
+      const tasks = await services().tasks.listTasks({
+        scope: 'today',
+        localDate: getLocalDateString(),
+      });
       set({
         todayTasks: tasks.map(toTaskListItem),
         status: 'ready',
@@ -78,7 +77,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   createTask: async (input) => {
-    const task = await repos().tasks.create({
+    const { value } = await services().tasks.createTask({
       title: input.title,
       notes: input.notes ?? null,
       priority: input.priority ?? 'medium',
@@ -88,13 +87,13 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
-    return task;
+    return value;
   },
 
   createTasksBatch: async (inputs) => {
-    const { tasks } = repos();
+    const svc = services().tasks;
     for (const input of inputs) {
-      await tasks.create({
+      await svc.createTask({
         title: input.title,
         notes: input.notes ?? null,
         priority: input.priority ?? 'medium',
@@ -113,7 +112,6 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     if (!target) return;
 
     const nextCompleted = !target.completed;
-    // Optimistic UI update - zero delay
     set((s) => ({
       todayTasks: s.todayTasks.map((t) =>
         t.id === id ? { ...t, completed: nextCompleted } : t
@@ -122,14 +120,13 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      const { tasks } = repos();
+      const svc = services().tasks;
       if (nextCompleted) {
-        await tasks.complete(id);
+        await svc.completeTask(id);
       } else {
-        await tasks.reopen(id);
+        await svc.reopenTask(id);
       }
     } catch (error) {
-      // Rollback on failure
       set({
         todayTasks: previousTasks,
         error: getDatabaseErrorMessage(error),
@@ -139,16 +136,14 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
   softDeleteTask: async (id) => {
     const previousTasks = get().todayTasks;
-    // Optimistic UI removal - zero delay
     set((s) => ({
       todayTasks: s.todayTasks.filter((t) => t.id !== id),
       revision: s.revision + 1,
     }));
 
     try {
-      await repos().tasks.softDelete(id);
+      await services().tasks.deleteTask(id);
     } catch (error) {
-      // Rollback on failure
       set({
         todayTasks: previousTasks,
         error: getDatabaseErrorMessage(error),
@@ -157,6 +152,6 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   loadActiveForAnalysis: async (limit = 80) => {
-    return repos().tasks.listActive({ limit });
+    return services().tasks.listTasks({ scope: 'active', limit });
   },
 }));

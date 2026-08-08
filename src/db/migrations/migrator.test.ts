@@ -13,7 +13,7 @@ describe('schema migrations', () => {
     const result = await runMigrations(db);
     expect(result.fromVersion).toBe(0);
     expect(result.toVersion).toBe(LATEST_SCHEMA_VERSION);
-    expect(result.applied).toEqual(['0001_core', '0002_indexes']);
+    expect(result.applied).toEqual(['0001_core', '0002_indexes', '0003_agent_runtime']);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
     const tables = await db.getAllAsync<{ name: string }>(
@@ -27,6 +27,10 @@ describe('schema migrations', () => {
     expect(names).toContain('task_tags');
     expect(names).toContain('task_events');
     expect(names).toContain('app_meta');
+    expect(names).toContain('agent_sessions');
+    expect(names).toContain('agent_runs');
+    expect(names).toContain('agent_events');
+    expect(names).toContain('tool_executions');
     await db.closeAsync?.();
   });
 
@@ -39,7 +43,7 @@ describe('schema migrations', () => {
     const result = await runMigrations(db, MIGRATIONS);
     expect(result.fromVersion).toBe(1);
     expect(result.toVersion).toBe(LATEST_SCHEMA_VERSION);
-    expect(result.applied).toEqual(['0002_indexes']);
+    expect(result.applied).toEqual(['0002_indexes', '0003_agent_runtime']);
     await db.closeAsync?.();
   });
 

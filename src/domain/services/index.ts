@@ -22,12 +22,12 @@ export interface DomainServices {
   repos: Repositories;
 }
 
-export function createDomainServices(dbOrRepos?: SqlDatabase | Repositories): DomainServices {
-  const repos =
-    dbOrRepos && 'tasks' in dbOrRepos && typeof (dbOrRepos as Repositories).tasks.getById === 'function'
-      ? (dbOrRepos as Repositories)
-      : createRepositories(dbOrRepos as SqlDatabase | undefined);
+export function createDomainServices(db: SqlDatabase): DomainServices {
+  const repos = createRepositories(db);
+  return createDomainServicesFromRepos(repos);
+}
 
+export function createDomainServicesFromRepos(repos: Repositories): DomainServices {
   return {
     tasks: new TaskService(repos.tasks),
     reminders: new ReminderService(repos.reminders),

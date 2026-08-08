@@ -10,7 +10,14 @@ export {
 export { bootstrapAppData } from './bootstrap';
 export type { BootstrapResult } from './bootstrap';
 export { DatabaseError, getDatabaseErrorMessage } from './errors';
-export { createRepositories, TasksRepository, RemindersRepository, ProjectsRepository, TaskEventsRepository } from './repositories';
+export {
+  createRepositories,
+  TasksRepository,
+  RemindersRepository,
+  ProjectsRepository,
+  TaskEventsRepository,
+  AgentRuntimeRepository,
+} from './repositories';
 export type { Repositories } from './repositories';
 export {
   migrateLegacyTasks,

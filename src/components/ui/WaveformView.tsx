@@ -59,6 +59,7 @@ const WaveformBar: React.FC<{ isRecording: boolean; index: number; isDark: boole
     />
   );
 });
+WaveformBar.displayName = 'WaveformBar';
 
 export const WaveformView: React.FC<WaveformViewProps> = ({
   isRecording,

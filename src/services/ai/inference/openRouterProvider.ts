@@ -31,23 +31,23 @@ type OpenRouterModelsResponse = {
 
 type StreamDelta = {
   content?: string | null;
-  tool_calls?: Array<{
+  tool_calls?: {
     index?: number;
     id?: string;
     type?: string;
     function?: { name?: string; arguments?: string };
-  }>;
+  }[];
 };
 
 type StreamChunk = OpenRouterErrorPayload & {
   id?: string;
   model?: string;
-  choices?: Array<{
+  choices?: {
     index?: number;
     delta?: StreamDelta;
     finish_reason?: string | null;
     error?: OpenRouterErrorPayload['error'];
-  }>;
+  }[];
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;

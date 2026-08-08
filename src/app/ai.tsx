@@ -42,7 +42,6 @@ export default function AIScreen() {
   const apiKeyLoaded = useSettingsStore((s) => s.apiKeyLoaded);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
   const loadActiveForAnalysis = useTasksUiStore((s) => s.loadActiveForAnalysis);
-  const revision = useTasksUiStore((s) => s.revision);
 
   const fetchAnalysis = async () => {
     if (!apiKeyLoaded) return;
