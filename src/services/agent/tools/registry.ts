@@ -1,12 +1,14 @@
 import type { InferenceToolDefinition } from '@/services/ai/inference/types';
 import { ANALYTICS_TOOLS } from './analyticsTools';
 import { APP_TOOLS } from './appTools';
+import { RECURRENCE_TOOLS } from './recurrenceTools';
 import { REMINDER_TOOLS } from './reminderTools';
 import { TASK_TOOLS } from './taskTools';
 import type { AgentTool } from './types';
 
 const ALL_TOOLS: AgentTool[] = [
   ...TASK_TOOLS,
+  ...RECURRENCE_TOOLS,
   ...REMINDER_TOOLS,
   ...ANALYTICS_TOOLS,
   ...APP_TOOLS,
