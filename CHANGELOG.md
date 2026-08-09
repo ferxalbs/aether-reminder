@@ -2,6 +2,51 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.09 (1) [AETHER Contextual UI Redesign and Reminder Workflows]
+
+### Four-surface navigation architecture
+
+- Rebuilt the primary information architecture around four focused destinations: Compose for capture, Upcoming for active future reminders, All for the complete reminder library, and Settings for configuration.
+- Removed AI and Transcribe from the primary navigation. Their routes remain as compatibility redirects, while assistant and voice capabilities are exposed contextually from the workflows where they are useful.
+- Updated assistant navigation and `app.navigate` validation to recognize only the four primary destinations.
+
+### Contextual reminder creation and editing
+
+- Added the reusable `TaskEditorSheet` for both new and existing reminders, with title, notes, priority, date, time, and no-date scheduling controls.
+- Connected Compose, Upcoming, and All to the same editor flow, including empty states, toolbar actions, task-detail editing, keyboard avoidance, safe-area handling, and platform-appropriate sheet presentation.
+- Preserved explicit task actions: tapping task details opens editing, while completion and deletion remain independent controls and cannot trigger accidental navigation.
+- Added due-time and timezone-aware task list metadata so scheduled reminders expose their full timing context.
+
+### Reminder library semantics and recovery
+
+- Corrected Upcoming repository queries to return only non-completed reminders with a future schedule.
+- Kept All as the complete non-deleted inventory with search plus active/completed filtering.
+- Added store and domain update support for editing existing reminders and field-level restore receipts for reliable undo after edits.
+- Added regression coverage for upcoming filtering, editable reminder snapshots, and restore-receipt validation.
+
+### Clearer native-inspired interaction design
+
+- Removed the interactive AETHER orb from the redesigned workflow. AETHER branding is now static, and voice capture is an explicit contextual action rather than a persistent navigation control.
+- Refined the iOS-inspired light visual system across the redesigned surfaces, retaining Android-native material/blur fallbacks, rounded surfaces, responsive layouts, and touch-safe controls.
+- Reviewed entrance and press motion for short, interruptible transitions, transform-only interaction feedback, and Reduce Motion support across Compose, Settings, and task cards.
+- Replaced the legacy add-task modal implementation with a compatibility wrapper around the shared editor to keep the creation and editing behavior consistent.
+
+### Validation
+
+- `bun test`: 125 passed, 1 intentional opt-in OpenRouter smoke test skipped, 0 failed.
+- `bun run typecheck` and `bun run lint`: passed cleanly.
+- `npx expo export --platform android` and `npx expo export --platform ios`: passed.
+- `git diff --check`: passed.
+
+### Implementation references
+
+- [Compose surface](src/app/index.tsx)
+- [Upcoming surface](src/app/tasks.tsx)
+- [All reminders surface](src/app/all.tsx)
+- [Contextual reminder editor](src/components/ui/TaskEditorSheet.tsx)
+- [Task interaction model](src/components/ui/TaskCard.tsx)
+- [Task UI state](src/stores/tasksUi.store.ts)
+
 ## Unreleased - 2026.08.08 (9) [Native-only Target and Recoverable Task Actions]
 
 ### Explicit Android and iOS target

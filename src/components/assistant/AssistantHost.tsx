@@ -133,12 +133,10 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
 
   const onNavigate = useCallback(
     (destination: string) => {
-      const routeByDestination: Record<string, '/' | '/tasks' | '/all' | '/ai' | '/transcribe' | '/settings'> = {
+      const routeByDestination: Record<string, '/' | '/tasks' | '/all' | '/settings'> = {
         home: '/',
         tasks: '/tasks',
         all: '/all',
-        ai: '/ai',
-        transcribe: '/transcribe',
         settings: '/settings',
       };
       const destinationPath = routeByDestination[destination];

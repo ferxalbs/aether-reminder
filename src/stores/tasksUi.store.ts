@@ -5,13 +5,19 @@
  */
 import { create } from 'zustand';
 import { getDatabase, getDatabaseErrorMessage, isDatabaseReady } from '@/db';
-import type { CreateTaskInput, Task, TaskListItem, TaskPriority } from '@/domain/entities';
+import type {
+  CreateTaskInput,
+  Task,
+  TaskListItem,
+  TaskPriority,
+  UpdateTaskInput,
+} from '@/domain/entities';
 import { toTaskListItem } from '@/domain/entities';
 import { getAetherCore, type AetherCore } from '@/core';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import type { ActionReceipt } from '@/domain/receipts';
-import { getTaskUndoAction, getTaskUndoTaskId } from './taskUndo';
+import { getTaskUndoAction, getTaskUndoRestoreFields, getTaskUndoTaskId } from './taskUndo';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -38,7 +44,10 @@ export interface TasksUiState {
     title: string;
     notes?: string;
     priority?: TaskPriority;
-    dueDate?: string;
+    dueDate?: string | null;
+    dueTime?: string | null;
+    dueTimezone?: string | null;
+    dueSemantics?: CreateTaskInput['dueSemantics'];
     source?: CreateTaskInput['source'];
   }) => Promise<Task>;
   createTasksBatch: (
@@ -50,6 +59,7 @@ export interface TasksUiState {
       source?: CreateTaskInput['source'];
     }[]
   ) => Promise<void>;
+  updateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
   setUndoReceipt: (receipt: ActionReceipt) => void;
@@ -144,12 +154,33 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         title: input.title,
         notes: input.notes ?? null,
         priority: input.priority ?? 'medium',
-        dueDate: input.dueDate ?? getLocalDateString(),
+        dueDate: input.dueDate === undefined ? getLocalDateString() : input.dueDate,
+        dueTime: input.dueTime ?? null,
+        dueTimezone: input.dueTimezone ?? null,
+        dueSemantics: input.dueSemantics ?? 'floating',
         source: input.source ?? 'manual',
         creationOrigin: input.source ?? 'manual',
       }));
     } catch (error) {
       reportNonFatalError('task-create', error);
+      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+    set({ undoReceipt: receipt, undoError: null });
+    set((s) => ({ revision: s.revision + 1 }));
+    await get().refreshToday();
+    await get().refreshUpcoming();
+    await get().refreshAll();
+    return value;
+  },
+
+  updateTask: async (id, input) => {
+    let value: Task;
+    let receipt: ActionReceipt;
+    try {
+      ({ value, receipt } = await core().commands.updateTask(id, input));
+    } catch (error) {
+      reportNonFatalError('task-update', error);
       set({ status: 'error', error: getDatabaseErrorMessage(error) });
       throw error;
     }
@@ -299,6 +330,12 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         case 'task.restore_soft_deleted':
           await commands.restoreTask(taskId, 'undo');
           break;
+        case 'task.restore_fields': {
+          const fields = getTaskUndoRestoreFields(receipt);
+          if (!fields) throw new Error('Task update undo payload is invalid.');
+          await commands.updateTask(taskId, fields, 'undo');
+          break;
+        }
       }
 
       set((s) => ({

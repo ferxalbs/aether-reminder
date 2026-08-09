@@ -122,6 +122,9 @@ export interface TaskListItem {
   completed: boolean;
   createdAt: string;
   dueDate?: string;
+  dueTime?: string;
+  dueTimezone?: string;
+  dueSemantics?: TemporalSemantics;
   priority: TaskPriority;
   aiSuggested?: boolean;
 }
@@ -134,6 +137,9 @@ export function toTaskListItem(task: Task): TaskListItem {
     completed: task.completed,
     createdAt: task.createdAt,
     dueDate: task.dueDate ?? undefined,
+    dueTime: task.dueTime ?? undefined,
+    dueTimezone: task.dueTimezone ?? undefined,
+    dueSemantics: task.dueSemantics,
     priority: task.priority,
     aiSuggested: task.source === 'agent' || task.creationOrigin === 'agent',
   };

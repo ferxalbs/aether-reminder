@@ -44,12 +44,15 @@ describe('task undo receipt validation', () => {
       entityType: 'task',
       entityId: 'task-1',
       summary: 'Updated task',
-      undo: { kind: 'task.restore_fields', payload: { taskId: 'task-1' } },
+      undo: {
+        kind: 'task.restore_fields',
+        payload: { taskId: 'task-1', title: 'Before update', priority: 'medium' },
+      },
     });
 
     expect(canUndoTaskReceipt(navigationReceipt)).toBe(false);
     expect(canUndoTaskReceipt(malformedReceipt)).toBe(false);
-    expect(canUndoTaskReceipt(updateReceipt)).toBe(false);
+    expect(canUndoTaskReceipt(updateReceipt)).toBe(true);
     expect(getTaskUndoAction(null)).toBeNull();
     expect(getTaskUndoTaskId(null)).toBeNull();
   });

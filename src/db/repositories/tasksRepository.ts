@@ -56,6 +56,7 @@ export class TasksRepository {
     const rows = await this.db.getAllAsync<TaskRow>(
       `SELECT * FROM tasks
        WHERE ${ACTIVE}
+         AND completed = 0
          AND due_date IS NOT NULL
          AND due_date > ?
        ORDER BY due_date ASC,

@@ -3,10 +3,11 @@ import { FlatList, Platform, type ListRenderItemInfo, type StyleProp, type ViewS
 import type { TaskListItem } from '@/domain/entities';
 import { TaskCard } from './TaskCard';
 
-interface TaskListProps {
+export interface TaskListProps {
   tasks: TaskListItem[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onPress?: (task: TaskListItem) => void;
   contentContainerStyle?: StyleProp<ViewStyle>;
   header?: React.ReactElement | null;
   empty?: React.ReactElement | null;
@@ -16,15 +17,16 @@ export function TaskList({
   tasks,
   onToggle,
   onDelete,
+  onPress,
   contentContainerStyle,
   header,
   empty,
 }: TaskListProps) {
   const renderTask = useCallback(
     ({ item }: ListRenderItemInfo<TaskListItem>) => (
-      <TaskCard task={item} onToggle={onToggle} onDelete={onDelete} />
+      <TaskCard task={item} onToggle={onToggle} onDelete={onDelete} onPress={onPress} />
     ),
-    [onDelete, onToggle],
+    [onDelete, onPress, onToggle],
   );
 
   return (

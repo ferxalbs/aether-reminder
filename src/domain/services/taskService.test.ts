@@ -55,6 +55,29 @@ describe('TaskService', () => {
     await db.closeAsync?.();
   });
 
+  test('update returns a reversible field snapshot', async () => {
+    const { db, services } = await ready();
+    const { value } = await services.tasks.createTask({
+      title: 'Original reminder',
+      notes: 'Keep this note',
+      priority: 'low',
+    });
+    const updated = await services.tasks.updateTask(value.id, {
+      title: 'Edited reminder',
+      notes: 'Updated note',
+      priority: 'high',
+      dueDate: resolveTomorrow().date,
+      dueTime: '09:30',
+    });
+
+    expect(updated.value.title).toBe('Edited reminder');
+    expect(updated.value.dueTime).toBe('09:30');
+    expect(updated.receipt.undo?.kind).toBe('task.restore_fields');
+    expect(updated.receipt.undo?.payload.title).toBe('Original reminder');
+    expect(updated.receipt.undo?.payload.priority).toBe('low');
+    await db.closeAsync?.();
+  });
+
   test('upcoming list propagates its limit to SQLite', async () => {
     const { db, services } = await ready();
     const today = getLocalDateString();

@@ -113,6 +113,73 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     },
   ];
 
+  const taskDetails = (
+    <Animated.View style={[styles.content, textOpacityStyle]}>
+      <View style={styles.headerLine}>
+        <Typography
+          variant="bodyBold"
+          style={[
+            styles.titleText,
+            task.completed && styles.strikethrough,
+          ]}
+          numberOfLines={2}
+        >
+          {task.title}
+        </Typography>
+      </View>
+
+      {task.notes ? (
+        <Typography
+          variant="caption"
+          color={Colors.zinc500}
+          numberOfLines={1}
+          style={styles.notesText}
+        >
+          {task.notes}
+        </Typography>
+      ) : null}
+
+      <View style={styles.metaRow}>
+        {task.aiSuggested && (
+          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.16)' : 'rgba(47, 124, 255, 0.10)' }]}>
+            <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
+            <Typography variant="tiny" style={styles.badgeText}>
+              AI Suggested
+            </Typography>
+          </View>
+        )}
+
+        {task.dueDate && (
+          <View style={styles.dateMeta}>
+            <Clock size={11} color={Colors.zinc500} />
+            <Typography variant="tiny" color={Colors.zinc500} style={styles.dateText}>
+              {task.dueDate}{task.dueTime ? ` · ${task.dueTime}` : ''}
+            </Typography>
+          </View>
+        )}
+
+        <View
+          style={[
+            styles.priorityBadge,
+            {
+              backgroundColor: isDark
+                ? Colors.priorityBadgeBackgroundDark
+                : Colors.priorityBadgeBackgroundLight,
+            },
+          ]}
+        >
+          <Typography
+            variant="tiny"
+            color={priorityTag.color}
+            style={{ fontWeight: '700' }}
+          >
+            {priorityTag.label}
+          </Typography>
+        </View>
+      </View>
+    </Animated.View>
+  );
+
   const cardContent = (
     <View style={styles.row}>
       {/* Animated Checkbox */}
@@ -152,72 +219,18 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         </View>
       </AnimatedPressable>
 
-      {/* Task Content */}
-      <Animated.View style={[styles.content, textOpacityStyle]}>
-        <View style={styles.headerLine}>
-          <Typography
-            variant="bodyBold"
-            style={[
-              styles.titleText,
-              task.completed && styles.strikethrough,
-            ]}
-            numberOfLines={2}
-          >
-            {task.title}
-          </Typography>
-        </View>
-
-        {task.notes ? (
-          <Typography
-            variant="caption"
-            color={Colors.zinc500}
-            numberOfLines={1}
-            style={styles.notesText}
-          >
-            {task.notes}
-          </Typography>
-        ) : null}
-
-        {/* Metadata Footer */}
-        <View style={styles.metaRow}>
-          {task.aiSuggested && (
-            <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.16)' : 'rgba(47, 124, 255, 0.10)' }]}>
-              <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
-              <Typography variant="tiny" style={styles.badgeText}>
-                AI Suggested
-              </Typography>
-            </View>
-          )}
-
-          {task.dueDate && (
-            <View style={styles.dateMeta}>
-              <Clock size={11} color={Colors.zinc500} />
-              <Typography variant="tiny" color={Colors.zinc500} style={styles.dateText}>
-                {task.dueDate}
-              </Typography>
-            </View>
-          )}
-
-          <View
-            style={[
-              styles.priorityBadge,
-              {
-                backgroundColor: isDark
-                  ? Colors.priorityBadgeBackgroundDark
-                  : Colors.priorityBadgeBackgroundLight,
-              },
-            ]}
-          >
-            <Typography
-              variant="tiny"
-              color={priorityTag.color}
-              style={{ fontWeight: '700' }}
-            >
-              {priorityTag.label}
-            </Typography>
-          </View>
-        </View>
-      </Animated.View>
+      {onPress ? (
+        <AnimatedPressable
+          onPress={() => onPress(task)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open task ${task.title}`}
+          accessibilityHint="Opens task details"
+          scaleTo={Motion.cardPressScale}
+          style={styles.contentPressable}
+        >
+          {taskDetails}
+        </AnimatedPressable>
+      ) : taskDetails}
 
       {/* Delete action button */}
       <IconButton
@@ -229,21 +242,6 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       />
     </View>
   );
-
-  if (onPress) {
-    return (
-      <AnimatedPressable
-        onPress={() => onPress(task)}
-        accessibilityRole="button"
-        accessibilityLabel={`Open task ${task.title}`}
-        accessibilityHint="Opens task details"
-        scaleTo={Motion.cardPressScale}
-        style={cardStyle}
-      >
-        {cardContent}
-      </AnimatedPressable>
-    );
-  }
 
   return <View style={cardStyle}>{cardContent}</View>;
 });
@@ -279,6 +277,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     marginRight: Spacing.sm,
+  },
+  contentPressable: {
+    flex: 1,
+    marginRight: Spacing.sm,
+    borderRadius: Radius.md,
   },
   headerLine: {
     flexDirection: 'row',

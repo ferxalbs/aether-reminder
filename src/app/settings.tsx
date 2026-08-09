@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
+import Animated, { FadeInDown, Layout, useReducedMotion } from 'react-native-reanimated';
 import {
   Check,
   ChevronDown,
@@ -53,7 +53,7 @@ import { notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { AetherMark } from '@/components/ui/AetherMark';
 
-const settingsEntering = Platform.OS === 'ios' ? FadeInDown.duration(300).damping(20).stiffness(200) : undefined;
+const settingsEntering = Platform.OS === 'ios' ? FadeInDown.duration(240).damping(20).stiffness(200) : undefined;
 const settingsLayout = Platform.OS === 'ios' ? Layout.springify().damping(20).stiffness(200) : undefined;
 
 function formatContextLength(contextLength?: number): string {
@@ -66,6 +66,8 @@ function formatContextLength(contextLength?: number): string {
 type ProviderName = 'OpenRouter' | 'OpenAI';
 
 export default function SettingsScreen() {
+  const reduceMotion = useReducedMotion();
+  const entering = reduceMotion ? undefined : settingsEntering;
   const theme = useSettingsStore((s) => s.theme);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const openAiApiKey = useSettingsStore((s) => s.openAiApiKey);
@@ -306,7 +308,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Header */}
-        <Animated.View entering={settingsEntering} style={styles.header}>
+        <Animated.View entering={entering} style={styles.header}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.headerCaption}>
             PREFERENCES
           </Typography>
@@ -316,7 +318,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 1: OpenRouter AI Reasoning */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             OPENROUTER — AI REASONING
           </Typography>
@@ -420,7 +422,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 2: OpenAI Realtime Transcription */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             OPENAI — REALTIME TRANSCRIPTION
           </Typography>
@@ -524,7 +526,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 3: OpenRouter Model Selection */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             MODEL SELECTION
           </Typography>
@@ -600,7 +602,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 4: App Preferences (Apple HIG Segmented Picker Control) */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             APP PREFERENCES
           </Typography>
@@ -710,7 +712,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 5: Hardware Security & Storage */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             SECURITY INTEGRITY
           </Typography>
@@ -730,7 +732,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Section 6: About & Privacy Accordions */}
-        <Animated.View entering={settingsEntering}>
+        <Animated.View entering={entering}>
           <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
             ABOUT & LEGAL
           </Typography>

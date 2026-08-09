@@ -74,6 +74,12 @@ describe('TasksRepository', () => {
     await tasks.create({ title: 'No date', priority: 'medium', dueDate: null });
     await tasks.create({ title: 'Overdue', priority: 'high', dueDate: yesterday });
     await tasks.create({ title: 'Later', priority: 'low', dueDate: tomorrow });
+    const completedLater = await tasks.create({
+      title: 'Completed later',
+      priority: 'medium',
+      dueDate: tomorrow,
+    });
+    await tasks.complete(completedLater.id);
 
     const todayList = await tasks.listToday(today);
     expect(todayList.map((t) => t.title).sort()).toEqual(['No date', 'Today'].sort());

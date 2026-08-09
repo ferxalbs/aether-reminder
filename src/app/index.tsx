@@ -6,7 +6,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -24,7 +24,7 @@ import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
-import { AddTaskModal } from '@/components/ui/AddTaskModal';
+import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
 import { Button } from '@/components/ui/Button';
 import { AetherMark } from '@/components/ui/AetherMark';
@@ -34,6 +34,7 @@ import { useAssistantActions, useAssistantSurface } from '@/components/assistant
 import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
+import type { TaskListItem } from '@/domain/entities';
 
 function MetaChip({
   icon,
@@ -65,6 +66,7 @@ function MetaChip({
 
 export default function HomeScreen() {
   const isDark = useIsDark();
+  const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
@@ -73,7 +75,8 @@ export default function HomeScreen() {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
 
   const todayTasks = useTasksUiStore((s) => s.todayTasks);
   const status = useTasksUiStore((s) => s.status);
@@ -150,6 +153,16 @@ export default function HomeScreen() {
     [softDeleteTask],
   );
 
+  const openEditor = useCallback((task?: TaskListItem) => {
+    setEditingTask(task ?? null);
+    setEditorVisible(true);
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setEditorVisible(false);
+    setEditingTask(null);
+  }, []);
+
   return (
     <SafeAreaView
       style={[
@@ -172,6 +185,7 @@ export default function HomeScreen() {
         tasks={todayTasks}
         onToggle={handleToggle}
         onDelete={handleDelete}
+        onPress={openEditor}
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -182,7 +196,7 @@ export default function HomeScreen() {
         header={
           <View style={styles.headerContent}>
             <Animated.View
-              entering={FadeInDown.duration(500).springify()}
+              entering={reduceMotion ? undefined : FadeInDown.duration(240).springify()}
               style={styles.utilityBar}
             >
               <View style={styles.utilitySpacer} />
@@ -210,7 +224,7 @@ export default function HomeScreen() {
                       strokeWidth={2.5}
                     />
                   }
-                  onPress={() => setModalVisible(true)}
+                  onPress={() => openEditor()}
                   accessibilityLabel="Open full reminder composer"
                   variant="solid"
                   size={44}
@@ -219,7 +233,7 @@ export default function HomeScreen() {
             </Animated.View>
 
             <Animated.View
-              entering={FadeInDown.duration(600).delay(80).springify()}
+              entering={reduceMotion ? undefined : FadeInDown.duration(240).delay(40).springify()}
               style={styles.brandHero}
             >
               <AetherMark size={64} muted={isDark} />
@@ -244,7 +258,7 @@ export default function HomeScreen() {
             </Animated.View>
 
             <Animated.View
-              entering={FadeInDown.duration(650).delay(140).springify()}
+              entering={reduceMotion ? undefined : FadeInDown.duration(260).delay(80).springify()}
               style={styles.captureWrap}
             >
                 <Card variant="elevated" padding={Spacing.lg} style={styles.captureCard}>
@@ -338,7 +352,7 @@ export default function HomeScreen() {
             </Animated.View>
 
             <Animated.View
-              entering={FadeInDown.duration(600).delay(300).springify()}
+              entering={reduceMotion ? undefined : FadeInDown.duration(240).delay(120).springify()}
               style={styles.sectionHeader}
             >
               <View style={styles.sectionTitleRow}>
@@ -381,7 +395,10 @@ export default function HomeScreen() {
         }
         empty={
           status !== 'loading' ? (
-            <Animated.View entering={FadeIn.duration(700).delay(360)} style={styles.emptyState}>
+            <Animated.View
+              entering={reduceMotion ? undefined : FadeIn.duration(180).delay(160)}
+              style={styles.emptyState}
+            >
               <View
                 style={[
                   styles.emptyMark,
@@ -411,7 +428,7 @@ export default function HomeScreen() {
               <Button
                 label="Open full composer"
                 variant="secondary"
-                onPress={() => setModalVisible(true)}
+                onPress={() => openEditor()}
                 icon={
                   <Plus
                     size={17}
@@ -425,7 +442,12 @@ export default function HomeScreen() {
         }
       />
 
-      <AddTaskModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <TaskEditorSheet
+        visible={editorVisible}
+        onClose={closeEditor}
+        mode={editingTask ? 'edit' : 'create'}
+        task={editingTask}
+      />
     </SafeAreaView>
   );
 }

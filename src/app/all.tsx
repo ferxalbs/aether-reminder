@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, ListFilter, ListTodo, Plus, Search } from 'lucide-react-native';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
@@ -12,6 +12,8 @@ import { AetherMark } from '@/components/ui/AetherMark';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
+import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
@@ -76,12 +78,13 @@ function FilterPill({
 
 export default function AllScreen() {
   const isDark = useIsDark();
-  const router = useRouter();
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [query, setQuery] = useState('');
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
 
   const allTasks = useTasksUiStore((state) => state.allTasks);
   const status = useTasksUiStore((state) => state.status);
@@ -146,6 +149,16 @@ export default function AllScreen() {
     [softDeleteTask],
   );
 
+  const openEditor = useCallback((task?: TaskListItem) => {
+    setEditingTask(task ?? null);
+    setEditorVisible(true);
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setEditorVisible(false);
+    setEditingTask(null);
+  }, []);
+
   return (
     <SafeAreaView
       style={[
@@ -167,6 +180,7 @@ export default function AllScreen() {
         tasks={visibleTasks}
         onToggle={handleToggle}
         onDelete={handleDelete}
+        onPress={openEditor}
         contentContainerStyle={[
           styles.content,
           {
@@ -190,7 +204,7 @@ export default function AllScreen() {
                 </View>
               </View>
               <AnimatedPressable
-                onPress={() => router.replace('/')}
+                onPress={() => openEditor()}
                 scaleTo={0.94}
                 accessibilityRole="button"
                 accessibilityLabel="Create a reminder"
@@ -347,7 +361,7 @@ export default function AllScreen() {
               {!query.trim() && filter !== 'completed' ? (
                 <Button
                   label="Create a reminder"
-                  onPress={() => router.replace('/')}
+                  onPress={() => openEditor()}
                   icon={
                     <Plus
                       size={17}
@@ -360,6 +374,12 @@ export default function AllScreen() {
             </View>
           ) : null
         }
+      />
+      <TaskEditorSheet
+        visible={editorVisible}
+        onClose={closeEditor}
+        mode={editingTask ? 'edit' : 'create'}
+        task={editingTask}
       />
     </SafeAreaView>
   );
