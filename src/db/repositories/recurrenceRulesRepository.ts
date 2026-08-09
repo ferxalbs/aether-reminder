@@ -12,6 +12,7 @@ import type { SqlDatabase } from '../types';
 interface RecurrenceRuleRow {
   id: string;
   task_id: string;
+  last_completed_task_id: string | null;
   frequency: string;
   interval: number;
   weekdays_json: string | null;
@@ -80,6 +81,14 @@ export class RecurrenceRulesRepository {
     return row ? mapRule(row) : null;
   }
 
+  async getAdvancedFromTask(taskId: string): Promise<RecurrenceRule | null> {
+    const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+      `SELECT * FROM recurrence_rules WHERE last_completed_task_id = ? AND active = 1 LIMIT 1`,
+      [taskId],
+    );
+    return row ? mapRule(row) : null;
+  }
+
   async create(input: CreateRecurrenceRuleInput): Promise<RecurrenceRule> {
     if (!input.taskId || !input.startDate) {
       throw new DatabaseError('VALIDATION_FAILED', 'Recurrence requires taskId and startDate.');
@@ -89,10 +98,10 @@ export class RecurrenceRulesRepository {
     const now = new Date().toISOString();
     await this.db.runAsync(
       `INSERT INTO recurrence_rules (
-        id, task_id, frequency, interval, weekdays_json, month_days_json,
+        id, task_id, last_completed_task_id, frequency, interval, weekdays_json, month_days_json,
         start_date, end_date, max_occurrences, occurrence_count, mode,
         timezone, active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       [
         id,
         input.taskId,
@@ -169,9 +178,9 @@ export class RecurrenceRulesRepository {
   ): Promise<boolean> {
     const result = await this.db.runAsync(
       `UPDATE recurrence_rules
-       SET task_id = ?, occurrence_count = occurrence_count + 1, updated_at = ?
+       SET task_id = ?, last_completed_task_id = ?, occurrence_count = occurrence_count + 1, updated_at = ?
        WHERE id = ? AND active = 1 AND task_id = ? AND occurrence_count = ?`,
-      [nextTaskId, new Date().toISOString(), id, previousTaskId, expectedOccurrenceCount],
+      [nextTaskId, previousTaskId, new Date().toISOString(), id, previousTaskId, expectedOccurrenceCount],
     );
     return result.changes === 1;
   }
@@ -184,9 +193,11 @@ export class RecurrenceRulesRepository {
   ): Promise<boolean> {
     const result = await this.db.runAsync(
       `UPDATE recurrence_rules
-       SET task_id = ?, occurrence_count = occurrence_count - 1, updated_at = ?
-       WHERE id = ? AND active = 1 AND task_id = ? AND occurrence_count = ?`,
-      [previousTaskId, new Date().toISOString(), id, currentTaskId, expectedOccurrenceCount],
+       SET task_id = ?, last_completed_task_id = NULL,
+           occurrence_count = occurrence_count - 1, updated_at = ?
+       WHERE id = ? AND active = 1 AND task_id = ?
+         AND last_completed_task_id = ? AND occurrence_count = ?`,
+      [previousTaskId, new Date().toISOString(), id, currentTaskId, previousTaskId, expectedOccurrenceCount],
     );
     return result.changes === 1;
   }
