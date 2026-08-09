@@ -9,6 +9,7 @@ import { createReceipt, type ActionReceipt } from '@/domain/receipts';
 import { RecurrenceRulesRepository } from '@/db/repositories/recurrenceRulesRepository';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { getNextRecurrenceDate } from '@/temporal/recurrence';
+import { ReminderService } from './reminderService';
 import { TaskService, type MutationResult } from './taskService';
 
 export interface RecurrenceMutationResult {
@@ -34,6 +35,7 @@ export class RecurrenceService {
   constructor(
     private readonly rules: RecurrenceRulesRepository,
     private readonly tasks: TaskService,
+    private readonly reminders: ReminderService,
   ) {}
 
   async getRuleForTask(taskId: string): Promise<RecurrenceRule | null> {
@@ -175,6 +177,28 @@ export class RecurrenceService {
       throw new Error('Recurrence changed while advancing; retry the completion.');
     }
 
+    // Only the winning advancement copies reminder semantics forward. The old
+    // reminder record remains attached to completed history; projection suppresses it.
+    if (advanced) {
+      const existingReminders = await this.reminders.listReminders({
+        taskId: completedTask.id,
+        enabledOnly: true,
+      });
+      for (const reminder of existingReminders) {
+        await this.reminders.scheduleReminder(
+          {
+            taskId: nextTask.id,
+            scheduledDate: nextDate,
+            scheduledTime: reminder.scheduledTime,
+            timezone: reminder.timezone ?? rule.timezone,
+            semantics: reminder.semantics,
+            enabled: true,
+          },
+          source,
+        );
+      }
+    }
+
     return { rule: currentRule, nextTask };
   }
 
@@ -192,12 +216,14 @@ export class RecurrenceService {
     if (!rolledBack) throw new Error('Recurring completion can no longer be undone safely.');
 
     try {
+      const nextReminders = await this.reminders.listReminders({ taskId: nextTaskId, enabledOnly: true });
+      for (const reminder of nextReminders) {
+        await this.reminders.cancelReminder(reminder.id);
+      }
       const next = await this.tasks.getTask(nextTaskId);
       if (next) await this.tasks.deleteTask(nextTaskId, 'undo');
       return await this.tasks.reopenTask(previousTaskId, 'undo');
     } catch (error) {
-      // Restore the recurrence pointer if cleanup fails so the rule never points
-      // at the wrong occurrence. Deterministic IDs make this retry-safe.
       await this.rules.advance(
         rule.id,
         previousTaskId,
