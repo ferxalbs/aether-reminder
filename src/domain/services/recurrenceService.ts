@@ -8,7 +8,11 @@ import type {
 import { createReceipt, type ActionReceipt } from '@/domain/receipts';
 import { RecurrenceRulesRepository } from '@/db/repositories/recurrenceRulesRepository';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { getNextRecurrenceDate } from '@/temporal/recurrence';
+import {
+  addLocalCalendarDays,
+  differenceInLocalCalendarDays,
+  getNextRecurrenceDate,
+} from '@/temporal/recurrence';
 import { ReminderService } from './reminderService';
 import { TaskService, type MutationResult } from './taskService';
 
@@ -177,18 +181,22 @@ export class RecurrenceService {
       throw new Error('Recurrence changed while advancing; retry the completion.');
     }
 
-    // Only the winning advancement copies reminder semantics forward. The old
-    // reminder record remains attached to completed history; projection suppresses it.
+    // Only the winning advancement copies reminder semantics forward. Preserve
+    // a reminder's day offset from the old task date (for example, “1 day before”)
+    // instead of collapsing every alert onto the new task date.
     if (advanced) {
       const existingReminders = await this.reminders.listReminders({
         taskId: completedTask.id,
         enabledOnly: true,
       });
       for (const reminder of existingReminders) {
+        const dayOffset = completedTask.dueDate && reminder.scheduledDate
+          ? differenceInLocalCalendarDays(completedTask.dueDate, reminder.scheduledDate)
+          : 0;
         await this.reminders.scheduleReminder(
           {
             taskId: nextTask.id,
-            scheduledDate: nextDate,
+            scheduledDate: addLocalCalendarDays(nextDate, dayOffset),
             scheduledTime: reminder.scheduledTime,
             timezone: reminder.timezone ?? rule.timezone,
             semantics: reminder.semantics,
