@@ -1,6 +1,8 @@
 import type {
   CreateRecurrenceRuleInput,
   CreateTaskInput,
+  Reminder,
+  Task,
   UpdateRecurrenceRuleInput,
   UpdateTaskInput,
 } from '@/domain/entities';
@@ -18,15 +20,26 @@ export type TaskEditorRecurrenceDraft = Omit<
   'id' | 'taskId' | 'occurrenceCount'
 >;
 
+export interface CreateTaskEditorStateInput {
+  task: CreateTaskInput;
+  recurrence: TaskEditorRecurrenceDraft | null;
+}
+
 export interface SaveTaskEditorStateInput {
   task: UpdateTaskInput;
   recurrence: TaskEditorRecurrenceDraft | null;
 }
 
+type DueReminderChange =
+  | { kind: 'none' }
+  | { kind: 'created'; reminderId: string }
+  | { kind: 'rescheduled'; reminderId: string; before: Reminder }
+  | { kind: 'cancelled'; before: Reminder };
+
 /**
  * The shared mutation path for UI, agent tools, and native actions.
  * Business rules remain in domain services; this class only owns dispatch and
- * the small amount of cross-domain orchestration that must be atomic in intent.
+ * the small amount of cross-domain orchestration that spans those services.
  */
 export class AetherCommandExecutor {
   constructor(private readonly services: DomainServices) {}
@@ -39,10 +52,151 @@ export class AetherCommandExecutor {
     return this.services.tasks.updateTask(id, input, source);
   }
 
+  private async findDueReminder(task: Task): Promise<Reminder | null> {
+    if (!task.dueDate || !task.dueTime) return null;
+    const reminders = await this.services.reminders.listReminders({
+      taskId: task.id,
+      enabledOnly: true,
+    });
+    return reminders.find((reminder) =>
+      reminder.scheduledDate === task.dueDate &&
+      reminder.scheduledTime === task.dueTime &&
+      reminder.semantics === task.dueSemantics
+    ) ?? null;
+  }
+
   /**
-   * Save the editor's task fields and recurrence intent through one command
-   * boundary. If recurrence persistence fails, restore the task fields so the
-   * sheet never reports a partially-applied schedule as success.
+   * The editor treats the task's due date+time as its primary alert. Extra
+   * reminders (for example "1 day before") are intentionally left untouched.
+   */
+  private async syncEditorDueReminder(
+    beforeTask: Task | null,
+    afterTask: Task,
+    source: string,
+  ): Promise<DueReminderChange> {
+    const beforeReminder = beforeTask ? await this.findDueReminder(beforeTask) : null;
+    const targetHasTime = Boolean(afterTask.dueDate && afterTask.dueTime);
+
+    if (!targetHasTime) {
+      if (!beforeReminder) return { kind: 'none' };
+      await this.services.reminders.cancelReminder(beforeReminder.id);
+      return { kind: 'cancelled', before: beforeReminder };
+    }
+
+    const scheduledDate = afterTask.dueDate!;
+    const scheduledTime = afterTask.dueTime!;
+    if (beforeReminder) {
+      await this.services.reminders.rescheduleReminder(beforeReminder.id, {
+        scheduledDate,
+        scheduledTime,
+        timezone: afterTask.dueTimezone,
+        semantics: afterTask.dueSemantics,
+      });
+      return { kind: 'rescheduled', reminderId: beforeReminder.id, before: beforeReminder };
+    }
+
+    // Avoid duplicating an existing alert that already matches the newly edited
+    // due time, even if older builds did not explicitly mark a primary reminder.
+    const existing = await this.services.reminders.listReminders({
+      taskId: afterTask.id,
+      enabledOnly: true,
+    });
+    const matching = existing.find((reminder) =>
+      reminder.scheduledDate === scheduledDate &&
+      reminder.scheduledTime === scheduledTime &&
+      reminder.semantics === afterTask.dueSemantics
+    );
+    if (matching) return { kind: 'none' };
+
+    const created = await this.services.reminders.scheduleReminder({
+      taskId: afterTask.id,
+      scheduledDate,
+      scheduledTime,
+      timezone: afterTask.dueTimezone,
+      semantics: afterTask.dueSemantics,
+      enabled: true,
+    }, source);
+    return { kind: 'created', reminderId: created.value.id };
+  }
+
+  private async rollbackEditorDueReminder(change: DueReminderChange): Promise<void> {
+    switch (change.kind) {
+      case 'none':
+        return;
+      case 'created':
+        await this.services.reminders.cancelReminder(change.reminderId);
+        return;
+      case 'rescheduled':
+        if (!change.before.scheduledDate) return;
+        await this.services.reminders.rescheduleReminder(change.reminderId, {
+          scheduledDate: change.before.scheduledDate,
+          scheduledTime: change.before.scheduledTime,
+          timezone: change.before.timezone,
+          semantics: change.before.semantics,
+        });
+        return;
+      case 'cancelled':
+        if (!change.before.scheduledDate) return;
+        await this.services.reminders.scheduleReminder({
+          taskId: change.before.taskId,
+          scheduledDate: change.before.scheduledDate,
+          scheduledTime: change.before.scheduledTime,
+          timezone: change.before.timezone,
+          semantics: change.before.semantics,
+          enabled: true,
+        }, 'editor_rollback');
+    }
+  }
+
+  /**
+   * Create from the manual editor. Unlike generic task creation, a chosen due
+   * time is also persisted as a reminder and projected to the OS.
+   */
+  async createTaskEditorState(input: CreateTaskEditorStateInput, source = 'manual') {
+    if (input.recurrence && !input.task.dueDate) {
+      throw new Error('Recurring reminders require a scheduled date.');
+    }
+
+    let createdTask: Task | null = null;
+    try {
+      if (input.recurrence) {
+        const result = await this.services.recurrence.createRecurringTask({
+          task: input.task,
+          recurrence: input.recurrence,
+        }, source);
+        createdTask = result.task;
+        await this.syncEditorDueReminder(null, result.task, source);
+        return {
+          value: result.task,
+          recurrence: result.rule,
+          receipt: result.receipt,
+        };
+      }
+
+      const result = await this.services.tasks.createTask(input.task, source);
+      createdTask = result.value;
+      await this.syncEditorDueReminder(null, result.value, source);
+      return {
+        value: result.value,
+        recurrence: null,
+        receipt: result.receipt,
+      };
+    } catch (error) {
+      if (createdTask) {
+        const dueReminder = await this.findDueReminder(createdTask).catch(() => null);
+        if (dueReminder) {
+          await this.services.reminders.cancelReminder(dueReminder.id).catch(() => undefined);
+        }
+        await this.services.tasks.deleteTask(createdTask.id, 'editor_rollback').catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Save the editor's task fields, primary due reminder, and recurrence intent
+   * through one command boundary. Recurrence is applied last; if it fails, the
+   * primary reminder and task fields are compensated before the error escapes.
    */
   async saveTaskEditorState(id: string, input: SaveTaskEditorStateInput, source = 'manual') {
     const beforeTask = await this.services.tasks.getTask(id);
@@ -54,7 +208,10 @@ export class AetherCommandExecutor {
     }
 
     const taskResult = await this.services.tasks.updateTask(id, input.task, source);
+    let reminderChange: DueReminderChange = { kind: 'none' };
     try {
+      reminderChange = await this.syncEditorDueReminder(beforeTask, taskResult.value, source);
+
       let recurrenceResult = null;
       if (input.recurrence && targetDate) {
         const normalized = { ...input.recurrence, startDate: targetDate };
@@ -74,6 +231,7 @@ export class AetherCommandExecutor {
         receipt: recurrenceResult?.receipt ?? taskResult.receipt,
       };
     } catch (error) {
+      await this.rollbackEditorDueReminder(reminderChange).catch(() => undefined);
       await this.services.tasks.updateTask(
         id,
         {
