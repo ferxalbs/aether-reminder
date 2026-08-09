@@ -8,6 +8,7 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 import type { ContextSnapshot } from '@/services/agent';
 import { TranscriptionError } from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
+import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAgentSessionController } from './AgentSessionController';
 import { AppBottomNavigation } from './AppBottomNavigation';
 import { AssistantSheet } from './AssistantSheet';
@@ -27,7 +28,7 @@ interface AssistantActionHandlers {
 
 const defaultSnapshot: ContextSnapshot = {
   surface: 'home',
-  selectedDate: new Date().toISOString().slice(0, 10),
+  selectedDate: getLocalDateString(),
   locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   invocationSource: 'app',
@@ -97,9 +98,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshToday = useTasksUiStore((state) => state.refreshToday);
-  const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
-  const refreshAll = useTasksUiStore((state) => state.refreshAll);
+  const refreshAllSurfaces = useTasksUiStore((state) => state.refreshAllSurfaces);
   const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
 
   useEffect(() => {
@@ -148,17 +147,11 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const onMutation = useCallback(
     (toolId: string) => {
       if (!['tasks.create', 'tasks.update', 'tasks.complete', 'tasks.reopen', 'tasks.delete'].includes(toolId)) return;
-      void refreshToday().catch((error: unknown) => {
-        reportNonFatalError('assistant-refresh-today', error);
-      });
-      void refreshUpcoming().catch((error: unknown) => {
-        reportNonFatalError('assistant-refresh-upcoming', error);
-      });
-      void refreshAll().catch((error: unknown) => {
-        reportNonFatalError('assistant-refresh-all', error);
+      void refreshAllSurfaces().catch((error: unknown) => {
+        reportNonFatalError('assistant-refresh-task-surfaces', error);
       });
     },
-    [refreshAll, refreshToday, refreshUpcoming]
+    [refreshAllSurfaces]
   );
 
   const onReceipt = useCallback((receipt: ActionReceipt) => {
