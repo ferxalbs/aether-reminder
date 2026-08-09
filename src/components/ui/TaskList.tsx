@@ -37,6 +37,8 @@ export function TaskList({
       windowSize={7}
       removeClippedSubviews={Platform.OS === 'android'}
       contentContainerStyle={contentContainerStyle}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}

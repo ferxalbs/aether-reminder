@@ -47,13 +47,13 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
         return {
-          backgroundColor: isDark ? Colors.white : Colors.zinc950,
+          backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk,
           borderColor: 'transparent',
         };
       case 'secondary':
         return {
-          backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200,
-          borderColor: 'transparent',
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : '#E9EEF7',
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         };
       case 'glass':
         return {
@@ -81,7 +81,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getTextColor = () => {
     if (isDisabled) return Colors.zinc500;
-    if (variant === 'primary') return isDark ? Colors.black : Colors.white;
+    if (variant === 'primary') return isDark ? Colors.brandInk : Colors.white;
     if (variant === 'destructive') {
       return isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight;
     }
@@ -96,14 +96,14 @@ export const Button: React.FC<ButtonProps> = ({
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 8,
           paddingHorizontal: 16,
-          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.md,
+          borderRadius: Radius.pill,
         };
       case 'lg':
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 16,
           paddingHorizontal: 26,
-          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.lg,
+          borderRadius: Radius.pill,
         };
       case 'md':
       default:
@@ -111,7 +111,7 @@ export const Button: React.FC<ButtonProps> = ({
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 12,
           paddingHorizontal: 20,
-          borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.md,
+          borderRadius: Radius.pill,
         };
     }
   };
@@ -169,6 +169,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'transparent',
+    borderCurve: 'continuous',
   },
   fullWidth: {
     width: '100%',

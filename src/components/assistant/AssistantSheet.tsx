@@ -1,7 +1,6 @@
 import React, { useEffect, type RefObject } from 'react';
 import {
   Pressable,
-  Platform,
   FlatList,
   StyleSheet,
   Text,
@@ -118,7 +117,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 }) => {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const height = useSharedValue(0);
   const keyboardShift = useSharedValue(0);
   const voiceLevelStyle = useAnimatedStyle(() => ({
@@ -130,15 +129,15 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-      ? voiceActive ? 124 : 84
+        ? voiceActive ? 132 : 88
       : surface === 'medium'
-        ? Math.min(470, windowHeight * 0.58)
+        ? Math.min(windowWidth >= 760 ? 520 : 480, windowHeight * 0.62)
         : surface === 'full'
-          ? Math.min(720, windowHeight * 0.82)
+          ? Math.min(windowWidth >= 760 ? 760 : 720, windowHeight * 0.86)
           : 0;
 
   useEffect(() => {
-    height.value = reduceMotion || Platform.OS === 'android'
+    height.value = reduceMotion
       ? withTiming(targetHeight, { duration: 140 })
       : withSpring(targetHeight, { damping: 24, stiffness: 240, mass: 0.8 });
   }, [height, reduceMotion, targetHeight]);
@@ -163,10 +162,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           {showHeader ? (
             <View style={styles.header}>
               <View style={styles.headerTitle}>
-                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? '#B42318' : isDark ? Colors.white : Colors.black }]} />
+                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? Colors.destructiveTextLight : isDark ? Colors.brandCyan : Colors.brandBlue }]} />
                 <View>
                   <Typography variant="bodyBold">AETHER</Typography>
-                  <Typography variant="tiny" color={Colors.zinc500} accessibilityLiveRegion="polite">
+                  <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessibilityLiveRegion="polite">
                     {assistantStateLabel(semanticState)}
                   </Typography>
                 </View>
@@ -178,10 +177,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   accessibilityLabel={surface === 'full' ? 'Collapse assistant conversation' : 'Expand assistant conversation'}
                   style={styles.headerButton}
                 >
-                  {surface === 'full' ? <ChevronDown size={19} color={Colors.zinc500} /> : <ChevronUp size={19} color={Colors.zinc500} />}
+                  {surface === 'full' ? <ChevronDown size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} /> : <ChevronUp size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />}
                 </Pressable>
                 <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close assistant" style={styles.headerButton}>
-                  <X size={19} color={Colors.zinc500} />
+                  <X size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />
                 </Pressable>
               </View>
             </View>
@@ -199,8 +198,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 if (!message.text && !(isRunning && message.role === 'assistant')) return null;
                 return (
                   <View style={[styles.messageRow, message.role === 'user' && styles.userMessageRow]}>
-                    <View style={[styles.messageBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble, { backgroundColor: message.role === 'user' ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.zinc800 : Colors.zinc100) }]}>
-                      <Typography variant="body" color={message.role === 'user' ? (isDark ? Colors.black : Colors.white) : undefined}>
+                    <View style={[styles.messageBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble, { backgroundColor: message.role === 'user' ? (isDark ? Colors.surfaceRaisedLight : Colors.brandInk) : (isDark ? Colors.surfaceRaisedDark : '#EEF2F8') }]}>
+                      <Typography variant="body" color={message.role === 'user' ? (isDark ? Colors.brandInk : Colors.white) : undefined}>
                         {message.text || ' '}
                       </Typography>
                     </View>
@@ -208,26 +207,26 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 );
               }}
               ListEmptyComponent={(
-                <Typography variant="body" color={Colors.zinc500} style={styles.welcome}>
+                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.welcome}>
                   Ask about your tasks, or tell me what to change.
                 </Typography>
               )}
               ListFooterComponent={(
                 <View style={styles.conversationFooter}>
                   {receipts.map(({ receipt, toolId }) => (
-                    <View key={receipt.id} style={[styles.receipt, { borderColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}>
-                      <View style={styles.receiptIcon}><Check size={14} color="#2F855A" strokeWidth={2.8} /></View>
+                    <View key={receipt.id} style={[styles.receipt, { borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
+                      <View style={styles.receiptIcon}><Check size={14} color={isDark ? Colors.successDark : Colors.successLight} strokeWidth={2.8} /></View>
                       <View style={styles.receiptCopy}>
                         <Typography variant="bodyBold">{receipt.summary}</Typography>
-                        <Typography variant="tiny" color={Colors.zinc500}>{toolId}</Typography>
+                        <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>{toolId}</Typography>
                       </View>
                     </View>
                   ))}
 
                   {pendingConfirmation ? (
-                    <View style={[styles.confirmation, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
+                    <View style={[styles.confirmation, { backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8' }]}>
                       <Typography variant="bodyBold">{confirmationTitle(pendingConfirmation)}</Typography>
-                      <Typography variant="caption" color={Colors.zinc500} style={styles.confirmationReason}>
+                      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.confirmationReason}>
                         {pendingConfirmation.reason}
                       </Typography>
                       <View style={styles.confirmationActions}>
@@ -250,10 +249,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 
           <View style={styles.composerContainer}>
             {voiceState !== 'idle' && voiceState !== 'error' ? (
-              <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100 }]}>
+              <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8' }]}>
                 <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
-                {voiceTranscript ? <Typography variant="caption" color={Colors.zinc500} numberOfLines={3}>{voiceTranscript}</Typography> : null}
-                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.zinc700 : Colors.zinc200 }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: '#65D6C0' }, voiceLevelStyle]} /></View> : null}
+                {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
+                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: isDark ? Colors.brandCyan : Colors.brandBlue }, voiceLevelStyle]} /></View> : null}
                 {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
               </View>
             ) : null}
@@ -290,6 +289,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.sm,
     right: Spacing.sm,
+    alignSelf: 'center',
+    width: 'auto',
+    maxWidth: 720,
     zIndex: 20,
   },
   sheet: {

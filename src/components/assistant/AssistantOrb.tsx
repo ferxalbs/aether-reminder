@@ -43,11 +43,11 @@ const stateLabels: Record<AssistantOrbState, string> = {
 };
 
 function getOrbColor(state: AssistantOrbState): string {
-  if (state === 'error') return '#FF6B6B';
-  if (state === 'waiting_confirmation') return '#F4B942';
-  if (state === 'connecting' || state === 'listening' || state === 'transcribing' || state === 'finalizing') return '#65D6C0';
-  if (state === 'thinking' || state === 'executing' || state === 'responding') return '#91A5FF';
-  return '#7FE0C2';
+  if (state === 'error') return '#FF6B7A';
+  if (state === 'waiting_confirmation') return Colors.brandGold;
+  if (state === 'connecting' || state === 'listening' || state === 'transcribing' || state === 'finalizing') return Colors.brandCyan;
+  if (state === 'thinking' || state === 'executing' || state === 'responding') return Colors.brandBlueDark;
+  return Colors.brandBlue;
 }
 
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({
@@ -151,9 +151,10 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
             colorScheme={isDark ? 'dark' : 'light'}
           />
         ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallbackOrb, { borderRadius: orbSize / 2, backgroundColor: `${color}D9` }]} />
+          <View style={[StyleSheet.absoluteFill, styles.fallbackOrb, { borderRadius: orbSize / 2 }]} />
         )}
         <View style={[styles.highlight, { backgroundColor: isDark ? 'rgba(255,255,255,0.74)' : 'rgba(255,255,255,0.9)' }]} />
+        <View style={[styles.innerRing, { width: orbSize * 0.48, height: orbSize * 0.48, borderRadius: orbSize, borderColor: color }]} />
         <Animated.View style={[styles.core, { backgroundColor: foreground }, animatedCoreStyle]} />
         <View
           accessible
@@ -190,7 +191,13 @@ const styles = StyleSheet.create({
     boxShadow: '0 4px 14px rgba(0, 0, 0, 0.24)',
   },
   fallbackOrb: {
+    backgroundColor: Colors.brandInk,
     borderWidth: 0,
+  },
+  innerRing: {
+    position: 'absolute',
+    borderWidth: 1.25,
+    opacity: 0.78,
   },
   highlight: {
     position: 'absolute',

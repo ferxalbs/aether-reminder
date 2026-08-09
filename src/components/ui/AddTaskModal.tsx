@@ -64,12 +64,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     <Sheet
       visible={visible}
       onRequestClose={onClose}
-      title="New Task"
+      title="New Reminder"
       subtitle="Capture the next step while it is fresh."
       accessibilityLabel="New task"
       headerAction={(
         <IconButton
-          icon={<X size={18} color={Colors.zinc500} />}
+          icon={<X size={18} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />}
           onPress={onClose}
           accessibilityLabel="Close new task dialog"
           variant="ghost"
@@ -77,7 +77,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       )}
       footer={(
         <Button
-          label="Create Task"
+          label="Add Reminder"
           onPress={handleSave}
           variant="primary"
           fullWidth
@@ -88,8 +88,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     >
       <View style={styles.content}>
         <View style={styles.intro}>
-          <Sparkles size={18} color={isDark ? Colors.white : Colors.black} />
-          <Typography variant="caption" color={Colors.zinc500} style={styles.introCopy}>
+          <Sparkles size={18} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.introCopy}>
             Tasks are saved locally and scheduled for today.
           </Typography>
         </View>
@@ -111,7 +111,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           placeholder="Add details, links, or notes…"
           multiline
           numberOfLines={3}
-          leading={<Flag size={16} color={Colors.zinc500} />}
+          leading={<Flag size={16} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />}
         />
         <Picker<TaskPriority>
           label="Priority level"

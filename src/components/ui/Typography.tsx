@@ -21,13 +21,14 @@ export const Typography: React.FC<TypographyProps> = ({
 }) => {
   const isDark = useIsDark();
 
-  const defaultColor = color || (isDark ? Colors.white : Colors.zinc950);
+  const defaultColor = color || (isDark ? Colors.textDark : Colors.textLight);
   const token = TypographyTokens[variant];
 
   return (
     <Text
       {...rest}
       allowFontScaling={allowFontScaling}
+      selectable={rest.selectable ?? false}
       style={[
         {
           fontSize: token.fontSize,

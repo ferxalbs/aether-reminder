@@ -17,6 +17,7 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
 import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
+import { GlassSurfaceProvider } from '@/components/ui/GlassSurface';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
@@ -106,7 +107,7 @@ export default function RootLayout() {
   if (boot.phase === 'loading') {
     return (
       <SafeAreaProvider>
-        <View style={[styles.boot, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
+        <View style={[styles.boot, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <ActivityIndicator color={isDark ? Colors.white : Colors.black} />
           <Typography variant="caption" color={Colors.zinc500} style={styles.bootText}>
@@ -120,7 +121,7 @@ export default function RootLayout() {
   if (boot.phase === 'error') {
     return (
       <SafeAreaProvider>
-        <View style={[styles.boot, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
+        <View style={[styles.boot, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <Typography variant="title" align="center">
             Database unavailable
@@ -136,7 +137,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <View style={[styles.root, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
+      <View style={[styles.root, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
         {notificationSync.message ? (
           <NotificationSyncBanner
             message={notificationSync.message}
@@ -145,24 +146,26 @@ export default function RootLayout() {
           />
         ) : null}
         <AssistantSurfaceProvider>
-          <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-                contentStyle: {
-                  backgroundColor: isDark ? '#000000' : '#FAFAFA',
-                },
-              }}
-            >
-              <Stack.Screen name="index" />
-              <Stack.Screen name="tasks" />
-              <Stack.Screen name="ai" />
-              <Stack.Screen name="transcribe" />
-              <Stack.Screen name="settings" />
-            </Stack>
-          </BlurTargetView>
-          <AssistantHost blurTarget={blurTarget} />
+          <GlassSurfaceProvider blurTarget={blurTarget}>
+            <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: 'fade_from_bottom',
+                  contentStyle: {
+                    backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight,
+                  },
+                }}
+              >
+                <Stack.Screen name="index" options={{ title: 'Compose' }} />
+                <Stack.Screen name="tasks" options={{ title: 'Upcoming' }} />
+                <Stack.Screen name="ai" options={{ title: 'AETHER' }} />
+                <Stack.Screen name="transcribe" options={{ title: 'Voice' }} />
+                <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+              </Stack>
+            </BlurTargetView>
+            <AssistantHost blurTarget={blurTarget} />
+          </GlassSurfaceProvider>
         </AssistantSurfaceProvider>
       </View>
     </SafeAreaProvider>

@@ -102,14 +102,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   const cardStyle = [
     styles.card,
     {
-      backgroundColor: isDark ? Colors.zinc900 : Colors.white,
+      backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
       borderColor: task.completed
         ? isDark
-          ? Colors.zinc800
-          : Colors.zinc200
+          ? 'rgba(168, 181, 196, 0.16)'
+          : 'rgba(99, 112, 132, 0.12)'
         : isDark
-          ? Colors.zinc700
-          : Colors.zinc300,
+          ? Colors.borderDark
+          : Colors.borderLight,
     },
   ];
 
@@ -131,13 +131,11 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             {
               borderColor: task.completed
                 ? isDark
-                  ? Colors.white
-                  : Colors.black
-                : Colors.zinc500,
+                  ? Colors.brandCyan
+                  : Colors.brandBlue
+                : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight,
               backgroundColor: task.completed
-                ? isDark
-                  ? Colors.white
-                  : Colors.black
+                ? isDark ? Colors.brandCyan : Colors.brandBlue
                 : 'transparent',
             },
           ]}
@@ -146,7 +144,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             {task.completed && (
               <Check
                 size={14}
-                color={isDark ? Colors.black : Colors.white}
+                color={Colors.white}
                 strokeWidth={3}
               />
             )}
@@ -183,7 +181,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         {/* Metadata Footer */}
         <View style={styles.metaRow}>
           {task.aiSuggested && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.16)' : 'rgba(47, 124, 255, 0.10)' }]}>
               <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
               <Typography variant="tiny" style={styles.badgeText}>
                 AI Suggested
@@ -253,16 +251,13 @@ TaskCard.displayName = 'TaskCard';
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     marginVertical: Spacing.xs,
     borderWidth: 1,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderCurve: 'continuous',
+    boxShadow: '0 5px 18px rgba(20, 45, 78, 0.06)',
   },
   row: {
     flexDirection: 'row',
@@ -308,14 +303,13 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.zinc800,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: Radius.sm,
     gap: 4,
   },
   badgeText: {
-    color: Colors.white,
+    fontWeight: '600',
   },
   dateMeta: {
     flexDirection: 'row',

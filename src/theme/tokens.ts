@@ -1,7 +1,33 @@
 export const Colors = {
-  // Pure monochrome palette
+  // Neutral and legacy values retained for provider/settings states.
   black: '#000000',
   white: '#FFFFFF',
+
+  // AETHER foundation palette. The light surface is intentionally quiet so
+  // the capture action and reminder state carry the visual weight.
+  backgroundLight: '#F5F7FB',
+  backgroundDark: '#071019',
+  surfaceLight: '#FFFFFF',
+  surfaceDark: '#101B27',
+  surfaceRaisedLight: '#FBFCFF',
+  surfaceRaisedDark: '#142231',
+  textLight: '#0E1722',
+  textDark: '#F7FAFC',
+  secondaryTextLight: '#637084',
+  secondaryTextDark: '#A8B5C4',
+  tertiaryTextLight: '#8D99A8',
+  tertiaryTextDark: '#77879A',
+  borderLight: 'rgba(14, 23, 34, 0.10)',
+  borderDark: 'rgba(247, 250, 252, 0.13)',
+  brandBlue: '#2F7CFF',
+  brandBlueDark: '#66A5FF',
+  brandCyan: '#65D6C0',
+  brandGold: '#F4B85C',
+  brandInk: '#0C1622',
+  successLight: '#18864B',
+  successDark: '#6BE7A2',
+  warningLight: '#9A5C00',
+  warningDark: '#F8C66D',
   
   // Grayscale levels (dark mode primary, adapt for high contrast)
   zinc950: '#09090B',
@@ -57,6 +83,15 @@ export const Spacing = {
   xl: 32,
   xxl: 40,
   huge: 48,
+} as const;
+
+export const LayoutTokens = {
+  screenHorizontal: 20,
+  screenHorizontalWide: 32,
+  contentMaxWidth: 980,
+  readingMaxWidth: 680,
+  navigationMaxWidth: 640,
+  navigationHeight: 78,
 } as const;
 
 export const Radius = {
@@ -117,19 +152,24 @@ export const Motion = {
   iconPressScale: 0.93,
   pressScale: 0.96,
   reducedMotionDuration: 120,
+  screenSpring: {
+    damping: 1,
+    stiffness: 180,
+    mass: 0.8,
+  },
 } as const;
 
 export const TypographyTokens = {
   display: {
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -0.8,
+    fontSize: 36,
+    lineHeight: 42,
+    letterSpacing: -1.1,
     fontWeight: '700' as const,
   },
   headline: {
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.4,
+    fontSize: 25,
+    lineHeight: 31,
+    letterSpacing: -0.55,
     fontWeight: '700' as const,
   },
   title: {
@@ -139,14 +179,14 @@ export const TypographyTokens = {
     fontWeight: '600' as const,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 23,
     letterSpacing: 0,
     fontWeight: '400' as const,
   },
   bodyBold: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 23,
     letterSpacing: 0,
     fontWeight: '600' as const,
   },

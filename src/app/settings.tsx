@@ -33,7 +33,7 @@ import {
   Vibrate,
   X,
 } from 'lucide-react-native';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { Card } from '@/components/ui/Card';
@@ -51,6 +51,7 @@ import type { UserSettings } from '@/types';
 import * as Haptics from 'expo-haptics';
 import { notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import { AetherMark } from '@/components/ui/AetherMark';
 
 const settingsEntering = Platform.OS === 'ios' ? FadeInDown.duration(300).damping(20).stiffness(200) : undefined;
 const settingsLayout = Platform.OS === 'ios' ? Layout.springify().damping(20).stiffness(200) : undefined;
@@ -281,9 +282,28 @@ export default function SettingsScreen() {
       : 'Secure storage is unavailable in this environment.';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? Colors.black : Colors.zinc50 }]}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
+      ]}
+    >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
+      >
+
+        <View style={styles.brandRow}>
+          <AetherMark size={34} muted={isDark} />
+          <View>
+            <Typography variant="bodyBold" style={styles.brandName}>AETHER</Typography>
+            <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+              Private by design
+            </Typography>
+          </View>
+        </View>
 
         {/* Header */}
         <Animated.View entering={settingsEntering} style={styles.header}>
@@ -913,12 +933,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
+    width: '100%',
+    maxWidth: LayoutTokens.contentMaxWidth,
+    alignSelf: 'center',
+    paddingHorizontal: LayoutTokens.screenHorizontal,
     paddingTop: Spacing.md,
-    paddingBottom: 130,
+    paddingBottom: 144,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
+  brandName: {
+    letterSpacing: 2.2,
   },
   header: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   headerCaption: {
     letterSpacing: 1.2,
@@ -930,13 +962,14 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 1.45,
     marginBottom: Spacing.xs,
     marginTop: Spacing.md,
   },
   cardSection: {
     marginBottom: Spacing.md,
     padding: Spacing.md,
+    borderCurve: 'continuous',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -958,6 +991,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     marginTop: Spacing.md,
   },
   inputWrapper: {
@@ -967,6 +1001,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
@@ -996,6 +1031,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
@@ -1019,6 +1055,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
@@ -1029,6 +1066,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 4,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
     borderWidth: 1,
     marginTop: Spacing.sm,
   },
@@ -1038,6 +1076,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: Radius.pill,
+    borderCurve: 'continuous',
   },
   iconPressable: {
     padding: 6,
@@ -1083,6 +1122,7 @@ const styles = StyleSheet.create({
     height: '75%',
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
+    borderCurve: 'continuous',
     padding: Spacing.lg,
   },
   sheetHeader: {
@@ -1095,6 +1135,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.sm,
     marginBottom: Spacing.md,
@@ -1119,6 +1160,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     marginBottom: Spacing.xs,
   },

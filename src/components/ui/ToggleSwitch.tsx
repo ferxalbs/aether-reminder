@@ -57,8 +57,8 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   };
 
   const animatedTrackStyle = useAnimatedStyle(() => {
-    const activeColor = isDark ? Colors.systemGreenDark : Colors.systemGreenLight;
-    const inactiveColor = isDark ? Colors.systemGray4Dark : Colors.systemGray4Light;
+    const activeColor = isDark ? Colors.brandCyan : Colors.brandBlue;
+    const inactiveColor = isDark ? Colors.surfaceRaisedDark : '#DCE4EF';
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
     return { backgroundColor };
   });
@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
     borderRadius: 15.5,
     padding: 2,
     justifyContent: 'center',
+    borderCurve: 'continuous',
   },
   androidTrack: {
     width: 52,
@@ -131,11 +132,8 @@ const styles = StyleSheet.create({
     borderRadius: 13.5,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
+    borderCurve: 'continuous',
+    boxShadow: '0 2px 4px rgba(8, 18, 31, 0.18)',
   },
   disabled: {
     opacity: 0.45,

@@ -43,7 +43,7 @@ export interface SettingsState extends UserSettings {
 
 export const initialSettings: UserSettings = {
   selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
-  theme: 'dark',
+  theme: 'system',
   hapticsEnabled: true,
   autoSummarize: true,
 };

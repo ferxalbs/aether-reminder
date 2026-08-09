@@ -1,9 +1,9 @@
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { usePathname, useRouter } from 'expo-router';
-import { Brain, CheckSquare, ListTodo, Mic, Settings } from 'lucide-react-native';
+import { Brain, ListTodo, Mic, PenLine, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -32,11 +32,11 @@ const navigationItems: {
   key: string;
   destination: Destination;
   label: string;
-  icon: typeof CheckSquare;
+  icon: typeof PenLine;
   assistant?: boolean;
 }[] = [
-  { key: 'home', destination: '/', label: 'Home', icon: CheckSquare },
-  { key: 'tasks', destination: '/tasks', label: 'Tasks', icon: ListTodo },
+  { key: 'home', destination: '/', label: 'Compose', icon: PenLine },
+  { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: ListTodo },
   { key: 'assistant', destination: '/ai', label: 'AETHER', icon: Brain, assistant: true },
   { key: 'voice', destination: '/transcribe', label: 'Voice', icon: Mic },
   { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
@@ -74,7 +74,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
   return (
     <Animated.View
       pointerEvents={keyboardVisible ? 'none' : 'box-none'}
-      style={[styles.host, { bottom: Math.max(insets.bottom, 10) + 12 }, dockStyle]}
+      style={[styles.host, { bottom: Math.max(insets.bottom, 8) + 10 }, dockStyle]}
     >
       <AssistantMaterial style={styles.bar} borderRadius={Radius.pill} blurTarget={blurTarget}>
         <View style={styles.navRow}>
@@ -161,7 +161,7 @@ function NavigationButton({
             onPressMove={onOrbPressMove}
             audioLevel={audioLevel}
           />
-          <Typography variant="tiny" color={activeColor} style={styles.navLabel}>
+          <Typography variant="tiny" color={activeColor} numberOfLines={1} style={styles.navLabel}>
             AETHER
           </Typography>
         </View>
@@ -193,16 +193,17 @@ function NavigationButton({
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    left: Spacing.sm,
-    right: Spacing.sm,
-    height: 78,
+    alignSelf: 'center',
+    width: '92%',
+    maxWidth: 640,
+    height: 80,
     zIndex: 30,
     alignItems: 'center',
   },
   bar: {
     width: '100%',
-    height: 78,
-    paddingHorizontal: Spacing.xs,
+    height: 80,
+    paddingHorizontal: 6,
     borderCurve: 'continuous',
   },
   navRow: {
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   },
   navButton: {
     flex: 1,
-    height: 72,
+    height: 74,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
@@ -220,11 +221,12 @@ const styles = StyleSheet.create({
   assistantButtonContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -3,
+    marginTop: -4,
   },
   navLabel: {
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 0.25,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.1,
+    textAlign: 'center',
   },
 });

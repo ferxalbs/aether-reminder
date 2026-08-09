@@ -72,12 +72,13 @@ export const TextField: React.FC<TextFieldProps> = ({
         : Colors.glassBorderLight;
   const backgroundColor = variant === 'filled'
     ? isDark
-      ? Colors.zinc900
-      : Colors.zinc100
+      ? Colors.surfaceRaisedDark
+      : '#EEF2F8'
     : 'transparent';
-  const textColor = isDark ? Colors.white : Colors.zinc950;
-  const placeholderColor = isDark ? Colors.zinc400 : Colors.zinc500;
-  const fieldRadius = Platform.OS === 'ios' ? Radius.pill : Radius.md;
+  const textColor = isDark ? Colors.textDark : Colors.textLight;
+  // Keep the shared primitive contract stable while the surrounding surface carries the new palette.
+  const placeholderColor = Colors.zinc500;
+  const fieldRadius = Radius.lg;
 
   const handleFocus: NonNullable<TextInputProps['onFocus']> = (event) => {
     setFocused(true);
@@ -168,9 +169,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
   androidFilled: {
-    elevation: 1,
+    borderWidth: ControlTokens.borderWidth,
   },
   multilineShell: {
     alignItems: 'flex-start',

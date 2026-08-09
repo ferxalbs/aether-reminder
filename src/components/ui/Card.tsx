@@ -36,25 +36,23 @@ export const Card: React.FC<CardProps> = ({
     switch (variant) {
       case 'elevated':
         return {
-          backgroundColor: isDark ? Colors.zinc900 : Colors.white,
-          borderColor: isDark ? Colors.zinc800 : Colors.zinc200,
+          backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
-          shadowColor: Colors.black,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: isDark ? 0.4 : 0.06,
-          shadowRadius: 12,
-          elevation: 3,
+          boxShadow: isDark
+            ? '0 10px 28px rgba(0, 0, 0, 0.26)'
+            : '0 8px 24px rgba(20, 45, 78, 0.08)',
         };
       case 'glass':
         return {
           backgroundColor: 'transparent',
-          borderColor: 'transparent',
-          borderWidth: 0,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderWidth: 1,
         };
       case 'outline':
         return {
           backgroundColor: 'transparent',
-          borderColor: isDark ? Colors.zinc800 : Colors.zinc300,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
         };
     }
@@ -101,5 +99,6 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   base: {
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
 });

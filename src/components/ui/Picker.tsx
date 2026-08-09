@@ -55,9 +55,9 @@ export function Picker<Value extends string | number>({
     : isDark
       ? Colors.glassBorderDark
       : Colors.glassBorderLight;
-  const controlBackgroundColor = isDark ? Colors.zinc900 : Colors.zinc100;
-  const selectedBackgroundColor = isDark ? Colors.white : Colors.zinc950;
-  const selectedTextColor = isDark ? Colors.black : Colors.white;
+  const controlBackgroundColor = isDark ? Colors.surfaceRaisedDark : '#EEF2F8';
+  const selectedBackgroundColor = isDark ? Colors.brandBlueDark : Colors.brandInk;
+  const selectedTextColor = isDark ? Colors.brandInk : Colors.white;
 
   const selectValue = (nextValue: Value) => {
     if (isDisabled) return;
@@ -152,7 +152,7 @@ export function Picker<Value extends string | number>({
               {
                 minHeight: getMinimumTouchTarget(Platform.OS),
                 borderColor: controlBorderColor,
-                borderRadius: Platform.OS === 'ios' ? Radius.pill : Radius.md,
+                borderRadius: Radius.lg,
                 backgroundColor: controlBackgroundColor,
               },
               Platform.OS === 'android' && styles.androidSurface,
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     padding: ControlTokens.fieldLabelGap,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
   segment: {
     flex: 1,
@@ -226,9 +227,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
   androidSurface: {
-    elevation: 2,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
   },
   triggerLabel: {
     flex: 1,
@@ -237,6 +239,7 @@ const styles = StyleSheet.create({
     borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.md,
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
   menuOption: {
     alignItems: 'flex-start',

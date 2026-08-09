@@ -56,15 +56,15 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   }, [autoFocus]);
 
   const hasText = value.trim().length > 0;
-  const foreground = isDark ? Colors.white : Colors.zinc950;
+  const foreground = isDark ? Colors.textDark : Colors.textLight;
 
   return (
     <View
       style={[
         styles.composer,
         {
-          backgroundColor: isDark ? Colors.zinc800 : Colors.zinc100,
-          borderColor: isDark ? Colors.zinc700 : Colors.zinc200,
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8',
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
     >
@@ -84,7 +84,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder="Ask anything…"
-        placeholderTextColor={Colors.zinc500}
+        placeholderTextColor={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
         multiline
         maxLength={2000}
         editable={!disabled}
@@ -107,16 +107,16 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
           accessibilityState={{ disabled }}
           style={({ pressed }) => [
             styles.sendButton,
-            { backgroundColor: isDark ? Colors.white : Colors.black },
+            { backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk },
             pressed && styles.pressed,
             disabled && styles.disabled,
           ]}
         >
-          <ArrowUp size={18} color={isDark ? Colors.black : Colors.white} strokeWidth={2.8} />
+          <ArrowUp size={18} color={isDark ? Colors.brandInk : Colors.white} strokeWidth={2.8} />
         </Pressable>
       ) : null}
       {!hasText ? (
-        <Typography variant="tiny" color={Colors.zinc500} style={styles.hint}>
+        <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.hint}>
           Tap orb to talk
         </Typography>
       ) : null}
@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.xs,
     paddingVertical: Spacing.xs,
     gap: Spacing.xs,
+    borderCurve: 'continuous',
   },
   input: {
     flex: 1,

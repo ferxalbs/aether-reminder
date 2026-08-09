@@ -36,7 +36,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
     switch (variant) {
       case 'solid':
         return {
-          backgroundColor: isDark ? Colors.white : Colors.zinc950,
+          backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk,
           borderColor: 'transparent',
         };
       case 'glass':
@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderCurve: 'continuous',
   },
   disabled: {
     opacity: 0.4,

@@ -21,6 +21,7 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   children,
   style,
   borderRadius = Radius.xl,
+  blurTarget,
 }) => {
   const isDark = useIsDark();
   const useLiquidGlass =
@@ -47,16 +48,25 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         styles.fallback,
         {
           borderRadius,
-          borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-          backgroundColor: isDark ? Colors.zinc900 : Colors.white,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
         },
         style,
       ]}
     >
       {Platform.OS === 'ios' ? (
         <BlurView
+          tint={isDark ? 'systemMaterialDark' : 'systemMaterialLight'}
+          intensity={82}
+          style={[StyleSheet.absoluteFill, { borderRadius }]}
+        />
+      ) : blurTarget ? (
+        <BlurView
           tint={isDark ? 'dark' : 'light'}
           intensity={72}
+          blurTarget={blurTarget}
+          blurMethod="dimezisBlurViewSdk31Plus"
+          blurReductionFactor={3}
           style={[StyleSheet.absoluteFill, { borderRadius }]}
         />
       ) : null}
@@ -66,7 +76,7 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
           StyleSheet.absoluteFill,
           {
             borderRadius,
-            backgroundColor: isDark ? 'rgba(24, 24, 27, 0.46)' : 'rgba(255, 255, 255, 0.46)',
+            backgroundColor: isDark ? 'rgba(16, 27, 39, 0.62)' : 'rgba(255, 255, 255, 0.58)',
           },
         ]}
       />
@@ -81,6 +91,8 @@ const styles = StyleSheet.create({
   },
   fallback: {
     borderWidth: 1,
+    borderCurve: 'continuous',
+    boxShadow: '0 8px 26px rgba(8, 18, 31, 0.16)',
   },
   content: {
     flex: 1,

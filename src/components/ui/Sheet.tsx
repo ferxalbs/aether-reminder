@@ -49,7 +49,7 @@ export const Sheet: React.FC<SheetProps> = ({
   const reduceMotion = useReducedMotion();
   const isIOS = Platform.OS === 'ios';
   const isAndroid = Platform.OS === 'android';
-  const surfaceBackgroundColor = isDark ? Colors.zinc950 : Colors.white;
+  const surfaceBackgroundColor = isDark ? Colors.surfaceDark : Colors.surfaceLight;
   const dialogLabel = accessibilityLabel ?? title ?? 'Sheet';
 
   const handleRequestClose = () => {
@@ -100,11 +100,11 @@ export const Sheet: React.FC<SheetProps> = ({
             styles.surface,
             isIOS && styles.iosSurface,
             isAndroid && styles.androidSurface,
-            { backgroundColor: isAndroid ? surfaceBackgroundColor : 'transparent' },
+            { backgroundColor: 'transparent' },
             surfaceStyle,
           ]}
         >
-          {isIOS ? (
+          {isIOS || isAndroid ? (
             <GlassSurface
               pointerEvents="none"
               borderRadius={Radius.xl}
@@ -117,7 +117,7 @@ export const Sheet: React.FC<SheetProps> = ({
             <View style={styles.header}>
               <View style={styles.headerCopy}>
                 {title ? <Typography variant="title">{title}</Typography> : null}
-                {subtitle ? <Typography variant="caption" color={Colors.zinc500}>{subtitle}</Typography> : null}
+                {subtitle ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>{subtitle}</Typography> : null}
               </View>
               {headerAction ? (
                 <View
@@ -163,7 +163,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderTopLeftRadius: ControlTokens.sheetTopRadius,
     borderTopRightRadius: ControlTokens.sheetTopRadius,
-    elevation: ControlTokens.sheetElevation,
+    borderCurve: 'continuous',
+    boxShadow: '0 -8px 28px rgba(8, 18, 31, 0.22)',
   },
   androidHandle: {
     alignSelf: 'center',
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     height: ControlTokens.sheetHandleHeight,
     marginBottom: ControlTokens.sheetContentGap,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.zinc500,
+    backgroundColor: Colors.secondaryTextLight,
   },
   header: {
     flexDirection: 'row',
