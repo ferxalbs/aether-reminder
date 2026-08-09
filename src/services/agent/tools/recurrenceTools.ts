@@ -82,6 +82,7 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
     const frequency = asFrequency(input?.frequency);
     if (!title || !frequency) return { ok: false, error: 'title and frequency are required' };
     const startDate = asString(input?.startDate) ?? ctx.context.selectedDate ?? resolveToday().date;
+    const startTime = asString(input?.startTime) ?? null;
     try {
       const result = await ctx.commands.createRecurringTask(
         {
@@ -90,7 +91,7 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
             notes: asString(input?.notes) ?? null,
             priority: asPriority(input?.priority) ?? 'medium',
             dueDate: startDate,
-            dueTime: asString(input?.startTime) ?? null,
+            dueTime: startTime,
             dueTimezone: ctx.context.timezone,
             dueSemantics: 'floating',
             source: 'agent',
@@ -110,9 +111,26 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
         },
         ctx.eventSource,
       );
+      const reminder = startTime
+        ? await ctx.commands.scheduleReminder(
+            {
+              taskId: result.task.id,
+              scheduledDate: startDate,
+              scheduledTime: startTime,
+              timezone: ctx.context.timezone,
+              semantics: 'floating',
+            },
+            ctx.eventSource,
+          )
+        : null;
       return {
         ok: true,
-        data: { task: result.task, recurrence: result.rule },
+        data: {
+          task: result.task,
+          recurrence: result.rule,
+          reminder: reminder?.value,
+          osNotificationProjection: reminder?.osNotificationProjection,
+        },
         receipt: { ...result.receipt, toolId: 'tasks.create_recurring' },
       };
     } catch (error) {
