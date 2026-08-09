@@ -117,6 +117,7 @@ export interface UpdateRecurrenceRuleInput {
   interval?: number;
   weekdays?: number[] | null;
   monthDays?: number[] | null;
+  startDate?: string;
   endDate?: string | null;
   maxOccurrences?: number | null;
   mode?: RecurrenceMode;
