@@ -7,11 +7,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
 import { getDatabase } from '@/db';
 import { configureLocalNotifications } from '@/services/notifications/localNotificationProjection';
+import { registerNotificationActionListener } from '@/services/notifications/notificationActions';
 import { getNotificationErrorMessage } from '@/services/notifications/errors';
 import { syncLocalNotifications } from '@/services/notifications/notificationBootstrap';
 import { getAetherCore } from '@/core';
 import { getDatabaseErrorMessage } from '@/db/errors';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
@@ -32,6 +34,7 @@ type NotificationSyncState = {
 
 export default function RootLayout() {
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+  const refreshAllSurfaces = useTasksUiStore((s) => s.refreshAllSurfaces);
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
@@ -101,6 +104,30 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, [boot.phase, syncNotifications]);
+
+  useEffect(() => {
+    if (boot.phase !== 'ready') return;
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    const core = getAetherCore(getDatabase());
+
+    void registerNotificationActionListener(core, async () => {
+      await refreshAllSurfaces();
+      await syncNotifications();
+    })
+      .then((cleanup) => {
+        if (disposed) cleanup();
+        else unsubscribe = cleanup;
+      })
+      .catch((error: unknown) => {
+        reportNonFatalError('notification-actions-register', error);
+      });
+
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, [boot.phase, refreshAllSurfaces, syncNotifications]);
 
   if (boot.phase === 'loading') {
     return (
