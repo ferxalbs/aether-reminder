@@ -132,6 +132,7 @@ export class RecurrenceRulesRepository {
       interval: input.interval === undefined ? existing.interval : Math.max(1, Math.floor(input.interval)),
       weekdays: input.weekdays === undefined ? existing.weekdays : input.weekdays,
       monthDays: input.monthDays === undefined ? existing.monthDays : input.monthDays,
+      startDate: input.startDate ?? existing.startDate,
       endDate: input.endDate === undefined ? existing.endDate : input.endDate,
       maxOccurrences: input.maxOccurrences === undefined ? existing.maxOccurrences : input.maxOccurrences,
       mode: input.mode ?? existing.mode,
@@ -139,7 +140,7 @@ export class RecurrenceRulesRepository {
     };
     await this.db.runAsync(
       `UPDATE recurrence_rules SET
-        frequency = ?, interval = ?, weekdays_json = ?, month_days_json = ?,
+        frequency = ?, interval = ?, weekdays_json = ?, month_days_json = ?, start_date = ?,
         end_date = ?, max_occurrences = ?, mode = ?, timezone = ?, updated_at = ?
        WHERE id = ?`,
       [
@@ -147,6 +148,7 @@ export class RecurrenceRulesRepository {
         next.interval,
         serializeArray(next.weekdays),
         serializeArray(next.monthDays),
+        next.startDate,
         next.endDate,
         next.maxOccurrences,
         next.mode,
