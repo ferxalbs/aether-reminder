@@ -4,11 +4,14 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 
 /** fixed = absolute instant semantics; floating = wall-clock in local/device zone */
 export type TemporalSemantics = 'fixed' | 'floating';
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type RecurrenceMode = 'fixed' | 'after_completion';
 
 export type TaskSource =
   | 'manual'
   | 'voice'
   | 'agent'
+  | 'recurrence'
   | 'notification_candidate'
   | 'widget'
   | 'shortcut'
@@ -72,6 +75,52 @@ export interface Reminder {
   projectionError: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RecurrenceRule {
+  id: string;
+  /** Current occurrence task. Historical completed tasks remain immutable. */
+  taskId: string;
+  frequency: RecurrenceFrequency;
+  interval: number;
+  /** JS weekday numbers: Sunday=0 ... Saturday=6. */
+  weekdays: number[] | null;
+  monthDays: number[] | null;
+  startDate: string;
+  endDate: string | null;
+  maxOccurrences: number | null;
+  occurrenceCount: number;
+  mode: RecurrenceMode;
+  timezone: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRecurrenceRuleInput {
+  id?: string;
+  taskId: string;
+  frequency: RecurrenceFrequency;
+  interval?: number;
+  weekdays?: number[] | null;
+  monthDays?: number[] | null;
+  startDate: string;
+  endDate?: string | null;
+  maxOccurrences?: number | null;
+  occurrenceCount?: number;
+  mode?: RecurrenceMode;
+  timezone?: string | null;
+}
+
+export interface UpdateRecurrenceRuleInput {
+  frequency?: RecurrenceFrequency;
+  interval?: number;
+  weekdays?: number[] | null;
+  monthDays?: number[] | null;
+  endDate?: string | null;
+  maxOccurrences?: number | null;
+  mode?: RecurrenceMode;
+  timezone?: string | null;
 }
 
 export interface TaskEvent {
