@@ -119,7 +119,9 @@ export function parseLocalReminderInput(
       working = working.replace(todayMatch[0], ' ');
     }
 
-    const meridiemTime = working.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+    const meridiemTime = working.match(
+      /\b(?:(?:at|a\s+las?)\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+    );
     const contextual24HourTime = working.match(/\b(?:at|a\s+las?)\s+(\d{1,2}):(\d{2})\b/i);
     const standalone24HourTime = working.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
     const timeMatch = meridiemTime ?? contextual24HourTime ?? standalone24HourTime;
