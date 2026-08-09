@@ -99,6 +99,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshToday = useTasksUiStore((state) => state.refreshToday);
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
+  const refreshAll = useTasksUiStore((state) => state.refreshAll);
   const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
 
   useEffect(() => {
@@ -132,9 +133,10 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
 
   const onNavigate = useCallback(
     (destination: string) => {
-      const routeByDestination: Record<string, '/' | '/tasks' | '/ai' | '/transcribe' | '/settings'> = {
+      const routeByDestination: Record<string, '/' | '/tasks' | '/all' | '/ai' | '/transcribe' | '/settings'> = {
         home: '/',
         tasks: '/tasks',
+        all: '/all',
         ai: '/ai',
         transcribe: '/transcribe',
         settings: '/settings',
@@ -154,8 +156,11 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       void refreshUpcoming().catch((error: unknown) => {
         reportNonFatalError('assistant-refresh-upcoming', error);
       });
+      void refreshAll().catch((error: unknown) => {
+        reportNonFatalError('assistant-refresh-all', error);
+      });
     },
-    [refreshToday, refreshUpcoming]
+    [refreshAll, refreshToday, refreshUpcoming]
   );
 
   const onReceipt = useCallback((receipt: ActionReceipt) => {

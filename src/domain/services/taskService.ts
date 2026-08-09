@@ -4,7 +4,7 @@ import { TasksRepository } from '@/db/repositories/tasksRepository';
 import { assertResolvedDateTime } from '@/temporal/resolve';
 import type { TemporalSemantics } from '@/temporal/types';
 
-export type TaskListScope = 'today' | 'overdue' | 'upcoming' | 'active' | 'all_active';
+export type TaskListScope = 'today' | 'overdue' | 'upcoming' | 'all' | 'active' | 'all_active';
 
 export interface ListTasksOptions {
   scope?: TaskListScope;
@@ -246,6 +246,8 @@ export class TaskService {
         return this.tasks.listOverdue(options.localDate);
       case 'upcoming':
         return this.tasks.listUpcoming(options.localDate, options.limit ?? 100);
+      case 'all':
+        return this.tasks.listAll();
       case 'all_active':
       case 'active':
         if (options.projectId) return this.tasks.listByProject(options.projectId);

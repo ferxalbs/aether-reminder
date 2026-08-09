@@ -159,6 +159,7 @@ export default function RootLayout() {
               >
                 <Stack.Screen name="index" options={{ title: 'Compose' }} />
                 <Stack.Screen name="tasks" options={{ title: 'Upcoming' }} />
+                <Stack.Screen name="all" options={{ title: 'All' }} />
                 <Stack.Screen name="ai" options={{ title: 'AETHER' }} />
                 <Stack.Screen name="transcribe" options={{ title: 'Voice' }} />
                 <Stack.Screen name="settings" options={{ title: 'Settings' }} />

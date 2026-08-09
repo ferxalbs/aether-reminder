@@ -78,4 +78,16 @@ describe('TaskService', () => {
     expect(fromToday).toHaveLength(2);
     await db.closeAsync?.();
   });
+
+  test('all list includes completed reminders', async () => {
+    const { db, services } = await ready();
+    const active = await services.tasks.createTask({ title: 'Active all item' });
+    const completed = await services.tasks.createTask({ title: 'Completed all item' });
+    await services.tasks.completeTask(completed.value.id);
+
+    const all = await services.tasks.listTasks({ scope: 'all' });
+    expect(all.map((task) => task.title)).toEqual(['Active all item', 'Completed all item']);
+    expect(all.some((task) => task.id === active.value.id)).toBe(true);
+    await db.closeAsync?.();
+  });
 });

@@ -22,6 +22,8 @@ export interface TasksUiState {
   todayTasks: TaskListItem[];
   /** Upcoming query for the Tasks surface. */
   upcomingTasks: TaskListItem[];
+  /** Complete active inventory for the All surface, including completed items. */
+  allTasks: TaskListItem[];
   /** Bumps on every successful mutation so listeners can refetch other surfaces. */
   revision: number;
   /** Most recent reversible task mutation, kept outside persisted state. */
@@ -31,6 +33,7 @@ export interface TasksUiState {
 
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
+  refreshAll: () => Promise<void>;
   createTask: (input: {
     title: string;
     notes?: string;
@@ -66,6 +69,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   error: null,
   todayTasks: [],
   upcomingTasks: [],
+  allTasks: [],
   revision: 0,
   undoReceipt: null,
   undoError: null,
@@ -114,6 +118,24 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  refreshAll: async () => {
+    set({ status: 'loading', error: null });
+    try {
+      const tasks = await core().services.tasks.listTasks({ scope: 'all' });
+      set({
+        allTasks: tasks.map(toTaskListItem),
+        status: 'ready',
+        error: null,
+      });
+    } catch (error) {
+      reportNonFatalError('tasks-refresh-all', error);
+      set({
+        status: 'error',
+        error: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
   createTask: async (input) => {
     let value: Task;
     let receipt: ActionReceipt;
@@ -135,6 +157,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
     await get().refreshUpcoming();
+    await get().refreshAll();
     return value;
   },
 
@@ -166,12 +189,16 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshToday();
     await get().refreshUpcoming();
+    await get().refreshAll();
   },
 
   toggleTask: async (id) => {
     const previousTodayTasks = get().todayTasks;
     const previousUpcomingTasks = get().upcomingTasks;
-    const target = [...previousTodayTasks, ...previousUpcomingTasks].find((t) => t.id === id);
+    const previousAllTasks = get().allTasks;
+    const target = [...previousTodayTasks, ...previousUpcomingTasks, ...previousAllTasks].find(
+      (t) => t.id === id,
+    );
     if (!target) return;
 
     const nextCompleted = !target.completed;
@@ -180,6 +207,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         t.id === id ? { ...t, completed: nextCompleted } : t
       ),
       upcomingTasks: s.upcomingTasks.map((t) =>
+        t.id === id ? { ...t, completed: nextCompleted } : t
+      ),
+      allTasks: s.allTasks.map((t) =>
         t.id === id ? { ...t, completed: nextCompleted } : t
       ),
       revision: s.revision + 1,
@@ -197,20 +227,24 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         status: 'error',
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
+        allTasks: previousAllTasks,
         error: getDatabaseErrorMessage(error),
       });
       return;
     }
     await get().refreshToday();
     await get().refreshUpcoming();
+    await get().refreshAll();
   },
 
   softDeleteTask: async (id) => {
     const previousTodayTasks = get().todayTasks;
     const previousUpcomingTasks = get().upcomingTasks;
+    const previousAllTasks = get().allTasks;
     set((s) => ({
       todayTasks: s.todayTasks.filter((t) => t.id !== id),
       upcomingTasks: s.upcomingTasks.filter((t) => t.id !== id),
+      allTasks: s.allTasks.filter((t) => t.id !== id),
       revision: s.revision + 1,
     }));
 
@@ -223,12 +257,14 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         status: 'error',
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
+        allTasks: previousAllTasks,
         error: getDatabaseErrorMessage(error),
       });
       return;
     }
     await get().refreshToday();
     await get().refreshUpcoming();
+    await get().refreshAll();
   },
 
   setUndoReceipt: (receipt) => {
@@ -273,6 +309,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       }));
       await get().refreshToday();
       await get().refreshUpcoming();
+      await get().refreshAll();
     } catch (error) {
       reportNonFatalError('task-undo', error);
       set({

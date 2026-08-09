@@ -1,20 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   StatusBar,
   StyleSheet,
   TextInput,
   View,
-  type DimensionValue,
-  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -22,9 +14,9 @@ import {
   CalendarDays,
   Clock3,
   Inbox,
+  Mic,
   Plus,
   Sparkles,
-  Target,
 } from 'lucide-react-native';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -74,10 +66,9 @@ function MetaChip({
 export default function HomeScreen() {
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
-  const isWide = width >= 720;
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
-  const { openTextAssistant } = useAssistantActions();
+  const { openTextAssistant, startVoiceAssistant } = useAssistantActions();
 
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -105,7 +96,6 @@ export default function HomeScreen() {
 
   const completedCount = todayTasks.filter((task) => task.completed).length;
   const totalCount = todayTasks.length;
-  const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
   const pendingCount = Math.max(0, totalCount - completedCount);
 
   const assistantContext = useMemo(
@@ -120,18 +110,6 @@ export default function HomeScreen() {
     [todayTasks],
   );
   useAssistantSurface(assistantContext);
-
-  const animatedProgress = useSharedValue(progressRatio);
-  useEffect(() => {
-    animatedProgress.value = withSpring(progressRatio, {
-      damping: 20,
-      stiffness: 180,
-    });
-  }, [animatedProgress, progressRatio]);
-
-  const animatedProgressStyle = useAnimatedStyle<ViewStyle>(() => ({
-    width: (String(Math.min(100, Math.max(0, animatedProgress.value * 100)) + '%') as unknown) as DimensionValue,
-  }));
 
   const handleQuickCapture = useCallback(async () => {
     const title = quickTitle.trim();
@@ -172,12 +150,6 @@ export default function HomeScreen() {
     [softDeleteTask],
   );
 
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-
   return (
     <SafeAreaView
       style={[
@@ -211,22 +183,9 @@ export default function HomeScreen() {
           <View style={styles.headerContent}>
             <Animated.View
               entering={FadeInDown.duration(500).springify()}
-              style={styles.topBar}
+              style={styles.utilityBar}
             >
-              <View style={styles.brandLockup}>
-                <AetherMark size={34} muted={isDark} />
-                <View>
-                  <Typography variant="bodyBold" style={styles.brandName}>
-                    AETHER
-                  </Typography>
-                  <Typography
-                    variant="tiny"
-                    color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                  >
-                    Reminder
-                  </Typography>
-                </View>
-              </View>
+              <View style={styles.utilitySpacer} />
               <View style={styles.topActions}>
                 <Button
                   label={width >= 390 ? 'Ask AETHER' : 'Ask'}
@@ -261,32 +220,33 @@ export default function HomeScreen() {
 
             <Animated.View
               entering={FadeInDown.duration(600).delay(80).springify()}
-              style={styles.intro}
+              style={styles.brandHero}
             >
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.brandCyan : Colors.brandBlue}
-                style={styles.eyebrow}
-              >
-                {formattedDate.toUpperCase()}
+              <AetherMark size={64} muted={isDark} />
+              <Typography variant="display" style={styles.wordmark}>
+                AETHER
               </Typography>
-              <Typography variant="display" style={styles.displayTitle}>
-                Capture one thought{'\n'}at a time.
+              <Typography
+                variant="display"
+                color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                style={styles.productName}
+              >
+                Reminder
               </Typography>
               <Typography
                 variant="body"
                 color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.introCopy}
+                align="center"
+                style={styles.tagline}
               >
-                Speak naturally or type it once. AETHER keeps the next step close.
+                Capture one thought at a time.
               </Typography>
             </Animated.View>
 
-            <View style={[styles.heroGrid, isWide && styles.heroGridWide]}>
-              <Animated.View
-                entering={FadeInDown.duration(650).delay(140).springify()}
-                style={isWide ? styles.captureColumn : undefined}
-              >
+            <Animated.View
+              entering={FadeInDown.duration(650).delay(140).springify()}
+              style={styles.captureWrap}
+            >
                 <Card variant="elevated" padding={Spacing.lg} style={styles.captureCard}>
                   <View style={styles.cardEyebrowRow}>
                     <Typography
@@ -299,7 +259,7 @@ export default function HomeScreen() {
                     <AetherMark size={26} muted={isDark} />
                   </View>
                   <Typography variant="headline" style={styles.captureTitle}>
-                    What should AETHER remember?
+                    What would you like to remember?
                   </Typography>
                   <TextInput
                     value={quickTitle}
@@ -330,7 +290,7 @@ export default function HomeScreen() {
                   />
                   <View style={styles.metaRow}>
                     <MetaChip icon={<CalendarDays size={15} />} label="Today" />
-                    <MetaChip icon={<Clock3 size={15} />} label="Now" />
+                    <MetaChip icon={<Clock3 size={15} />} label="Any time" />
                     <MetaChip icon={<Inbox size={15} />} label="Inbox" />
                   </View>
                   {quickError ? (
@@ -358,79 +318,24 @@ export default function HomeScreen() {
                     }
                     style={styles.captureButton}
                   />
-                </Card>
-              </Animated.View>
-
-              <Animated.View
-                entering={FadeInDown.duration(650).delay(220).springify()}
-                style={isWide ? styles.progressColumn : undefined}
-              >
-                <Card variant="glass" padding={Spacing.lg} style={styles.progressCard}>
-                  <View style={styles.progressCardTop}>
-                    <View style={styles.progressIcon}>
-                      <Target
-                        size={19}
+                  <Button
+                    label="Speak instead"
+                    variant="ghost"
+                    size="sm"
+                    onPress={startVoiceAssistant}
+                    accessibilityLabel="Speak a reminder instead"
+                    accessibilityHint="Start voice capture with AETHER"
+                    icon={
+                      <Mic
+                        size={17}
                         color={isDark ? Colors.brandCyan : Colors.brandBlue}
-                        strokeWidth={2.2}
+                        strokeWidth={2.1}
                       />
-                    </View>
-                    <Typography
-                      variant="caption"
-                      color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                    >
-                      TODAY’S MOMENTUM
-                    </Typography>
-                  </View>
-                  <View style={styles.progressValueRow}>
-                    <Typography variant="display" style={styles.progressValue}>
-                      {Math.round(progressRatio * 100)}%
-                    </Typography>
-                    <Typography
-                      variant="body"
-                      color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                      style={styles.progressValueCopy}
-                    >
-                      {totalCount === 0
-                        ? 'Ready when you are'
-                        : completedCount + ' of ' + totalCount + ' complete'}
-                    </Typography>
-                  </View>
-                  <View
-                    style={[
-                      styles.progressTrack,
-                      {
-                        backgroundColor: isDark
-                          ? 'rgba(255, 255, 255, 0.10)'
-                          : 'rgba(47, 124, 255, 0.10)',
-                      },
-                    ]}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.progressFill,
-                        { backgroundColor: isDark ? Colors.brandCyan : Colors.brandBlue },
-                        animatedProgressStyle,
-                      ]}
-                    />
-                  </View>
-                  <View style={styles.progressFooter}>
-                    <Sparkles
-                      size={16}
-                      color={isDark ? Colors.brandGold : Colors.warningLight}
-                      strokeWidth={2}
-                    />
-                    <Typography
-                      variant="caption"
-                      color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                    >
-                      {pendingCount === 0
-                        ? 'A clear runway for the rest of your day.'
-                        : pendingCount + ' next ' + (pendingCount === 1 ? 'step' : 'steps') + ' in view.'}
-                    </Typography>
-                  </View>
+                    }
+                    style={styles.voiceButton}
+                  />
                 </Card>
-              </Animated.View>
-            </View>
+            </Animated.View>
 
             <Animated.View
               entering={FadeInDown.duration(600).delay(300).springify()}
@@ -538,29 +443,40 @@ const styles = StyleSheet.create({
   headerContent: {
     width: '100%',
   },
-  topBar: {
+  utilityBar: {
     minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  utilitySpacer: {
+    width: 1,
   },
   topActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  brandLockup: {
-    flexDirection: 'row',
+  brandHero: {
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  brandName: {
-    letterSpacing: 2.4,
-  },
-  intro: {
     marginBottom: Spacing.xl,
-    maxWidth: LayoutTokens.readingMaxWidth,
+  },
+  wordmark: {
+    marginTop: Spacing.md,
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: 5.2,
+  },
+  productName: {
+    marginTop: -2,
+    fontSize: 30,
+    lineHeight: 35,
+    letterSpacing: 0.2,
+  },
+  tagline: {
+    marginTop: Spacing.sm,
+    maxWidth: 340,
   },
   eyebrow: {
     fontSize: 11,
@@ -568,30 +484,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.55,
   },
-  displayTitle: {
-    marginTop: Spacing.xs,
-  },
-  introCopy: {
-    marginTop: Spacing.sm,
-    maxWidth: 560,
-  },
-  heroGrid: {
-    gap: Spacing.md,
+  captureWrap: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     marginBottom: Spacing.xl,
   },
-  heroGridWide: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  captureColumn: {
-    flex: 1.55,
-  },
-  progressColumn: {
-    flex: 1,
-    minWidth: 250,
-  },
   captureCard: {
-    minHeight: 334,
+    borderRadius: Radius.xl,
+    boxShadow: '0 12px 30px rgba(20, 45, 78, 0.07)',
   },
   cardEyebrowRow: {
     flexDirection: 'row',
@@ -604,7 +505,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   quickInput: {
-    minHeight: 112,
+    minHeight: 204,
     borderWidth: 1,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
@@ -638,55 +539,11 @@ const styles = StyleSheet.create({
   },
   captureButton: {
     marginTop: Spacing.lg,
-    boxShadow: '0 7px 20px rgba(47, 124, 255, 0.22)',
+    boxShadow: '0 8px 22px rgba(47, 124, 255, 0.24)',
   },
-  progressCard: {
-    flex: 1,
-    minHeight: 216,
-    justifyContent: 'space-between',
-  },
-  progressCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  progressIcon: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    backgroundColor: 'rgba(47, 124, 255, 0.10)',
-  },
-  progressValueRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.sm,
-    marginTop: Spacing.xl,
-  },
-  progressValue: {
-    fontSize: 42,
-    lineHeight: 46,
-  },
-  progressValueCopy: {
-    flex: 1,
-    paddingBottom: 5,
-  },
-  progressTrack: {
-    height: 9,
-    overflow: 'hidden',
-    borderRadius: Radius.pill,
-    marginTop: Spacing.lg,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: Radius.pill,
-  },
-  progressFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginTop: Spacing.xl,
+  voiceButton: {
+    alignSelf: 'center',
+    marginTop: Spacing.xs,
   },
   sectionHeader: {
     flexDirection: 'row',

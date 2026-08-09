@@ -68,6 +68,22 @@ export class TasksRepository {
     return rows.map(mapTaskRow);
   }
 
+  /** Every non-deleted task for the All surface, including completed items. */
+  async listAll(): Promise<Task[]> {
+    const rows = await this.db.getAllAsync<TaskRow>(
+      `SELECT * FROM tasks
+       WHERE ${ACTIVE}
+       ORDER BY
+         completed ASC,
+         CASE WHEN due_date IS NULL THEN 1 ELSE 0 END,
+         due_date ASC,
+         CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+         updated_at DESC,
+         id ASC`,
+    );
+    return rows.map(mapTaskRow);
+  }
+
   async listByProject(projectId: string): Promise<Task[]> {
     const rows = await this.db.getAllAsync<TaskRow>(
       `SELECT * FROM tasks

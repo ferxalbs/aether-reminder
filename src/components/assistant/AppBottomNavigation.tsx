@@ -3,7 +3,7 @@ import { Typography } from '@/components/ui/Typography';
 import { Colors, LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { usePathname, useRouter } from 'expo-router';
-import { ListTodo, Mic, PenLine, Settings } from 'lucide-react-native';
+import { CalendarDays, ListTodo, PenLine, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -15,7 +15,7 @@ interface AppBottomNavigationProps {
   blurTarget?: RefObject<View | null>;
 }
 
-type Destination = '/' | '/tasks' | '/transcribe' | '/settings';
+type Destination = '/' | '/tasks' | '/all' | '/settings';
 
 const navigationItems: {
   key: string;
@@ -24,8 +24,8 @@ const navigationItems: {
   icon: typeof PenLine;
 }[] = [
   { key: 'home', destination: '/', label: 'Compose', icon: PenLine },
-  { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: ListTodo },
-  { key: 'voice', destination: '/transcribe', label: 'Voice', icon: Mic },
+  { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: CalendarDays },
+  { key: 'all', destination: '/all', label: 'All', icon: ListTodo },
   { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
 ];
 

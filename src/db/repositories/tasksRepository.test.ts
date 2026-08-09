@@ -104,6 +104,23 @@ describe('TasksRepository', () => {
     await db.closeAsync?.();
   });
 
+  test('listAll includes completed tasks but excludes soft-deleted tasks', async () => {
+    const db = await readyDb();
+    const tasks = new TasksRepository(db);
+    const active = await tasks.create({ title: 'Active reminder', priority: 'medium' });
+    const completed = await tasks.create({ title: 'Completed reminder', priority: 'low' });
+    const deleted = await tasks.create({ title: 'Deleted reminder', priority: 'high' });
+
+    await tasks.complete(completed.id);
+    await tasks.softDelete(deleted.id);
+
+    const all = await tasks.listAll();
+    expect(all.map((task) => task.title)).toEqual(['Active reminder', 'Completed reminder']);
+    expect(all.some((task) => task.id === active.id)).toBe(true);
+    expect(all.some((task) => task.id === deleted.id)).toBe(false);
+    await db.closeAsync?.();
+  });
+
   test('update and search', async () => {
     const db = await readyDb();
     const tasks = new TasksRepository(db);
