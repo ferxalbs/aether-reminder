@@ -43,20 +43,18 @@ export class AetherCommandExecutor {
         entityType: 'task',
         entityId: result.value.id,
         summary: `Completed “${result.value.title}” · next ${recurrence.nextTask.dueDate ?? ''}`.trim(),
-        undo: {
-          kind: 'task.reopen_recurring',
-          payload: {
-            taskId: result.value.id,
-            ruleId: recurrence.rule.id,
-            nextTaskId: recurrence.nextTask.id,
-            occurrenceCount: recurrence.rule.occurrenceCount,
-          },
-        },
+        // Keep the public Undo contract stable. reopenTask(..., 'undo') detects
+        // the latest recurrence advancement and rolls it back before reopening.
+        undo: { kind: 'task.reopen', payload: { taskId: result.value.id } },
       }),
     };
   }
 
-  reopenTask(id: string, source = 'manual') {
+  async reopenTask(id: string, source = 'manual') {
+    if (source === 'undo') {
+      const recurringUndo = await this.services.recurrence.undoLatestCompletionForTask(id);
+      if (recurringUndo) return recurringUndo;
+    }
     return this.services.tasks.reopenTask(id, source);
   }
 
@@ -86,15 +84,6 @@ export class AetherCommandExecutor {
 
   stopRecurrenceRule(id: string) {
     return this.services.recurrence.stopRule(id);
-  }
-
-  undoRecurringCompletion(input: {
-    ruleId: string;
-    previousTaskId: string;
-    nextTaskId: string;
-    occurrenceCount: number;
-  }) {
-    return this.services.recurrence.undoRecurringCompletion(input);
   }
 
   scheduleReminder(input: ScheduleReminderInput, source = 'manual') {
