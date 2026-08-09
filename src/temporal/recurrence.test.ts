@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import type { RecurrenceRule } from '@/domain/entities';
-import { getNextRecurrenceDate } from './recurrence';
+import {
+  addLocalCalendarDays,
+  differenceInLocalCalendarDays,
+  getNextRecurrenceDate,
+} from './recurrence';
 
 function rule(overrides: Partial<RecurrenceRule> = {}): RecurrenceRule {
   return {
@@ -55,5 +59,12 @@ describe('getNextRecurrenceDate', () => {
   test('stops at end date and max occurrence limits', () => {
     expect(getNextRecurrenceDate(rule({ endDate: '2026-08-09' }), '2026-08-09')).toBeNull();
     expect(getNextRecurrenceDate(rule({ maxOccurrences: 1 }), '2026-08-09')).toBeNull();
+  });
+
+  test('preserves reminder lead/lag offsets using local calendar math', () => {
+    expect(differenceInLocalCalendarDays('2026-08-09', '2026-08-08')).toBe(-1);
+    expect(addLocalCalendarDays('2026-08-10', -1)).toBe('2026-08-09');
+    expect(differenceInLocalCalendarDays('2026-12-31', '2027-01-02')).toBe(2);
+    expect(addLocalCalendarDays('2026-12-31', 2)).toBe('2027-01-02');
   });
 });
