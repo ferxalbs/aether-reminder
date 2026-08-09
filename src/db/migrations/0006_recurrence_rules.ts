@@ -9,6 +9,7 @@ export const migration0006RecurrenceRules: Migration = {
       CREATE TABLE recurrence_rules (
         id TEXT PRIMARY KEY NOT NULL,
         task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        last_completed_task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
         frequency TEXT NOT NULL
           CHECK (frequency IN ('daily', 'weekly', 'monthly', 'yearly')),
         interval INTEGER NOT NULL DEFAULT 1 CHECK (interval >= 1),
@@ -28,6 +29,10 @@ export const migration0006RecurrenceRules: Migration = {
 
       CREATE UNIQUE INDEX recurrence_rules_active_task_idx
         ON recurrence_rules(task_id)
+        WHERE active = 1;
+
+      CREATE INDEX recurrence_rules_last_completed_idx
+        ON recurrence_rules(last_completed_task_id)
         WHERE active = 1;
 
       CREATE INDEX recurrence_rules_active_idx
