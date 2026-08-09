@@ -90,4 +90,64 @@ describe('AETHER Core execution boundary', () => {
 
     await db.closeAsync?.();
   });
+
+  test('task editor save moves the recurrence anchor and can stop repeating', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db);
+    await runMigrations(db);
+    const core = new AetherCore({ db });
+
+    const created = await core.commands.createRecurringTask({
+      task: {
+        title: 'Weekly planning',
+        dueDate: '2026-08-10',
+        dueTime: '09:00',
+        dueTimezone: 'America/Lima',
+        dueSemantics: 'floating',
+      },
+      recurrence: {
+        id: 'weekly-planning-rule',
+        frequency: 'weekly',
+        interval: 1,
+        weekdays: [1],
+        startDate: '2026-08-10',
+        timezone: 'America/Lima',
+      },
+    });
+
+    await core.commands.saveTaskEditorState(created.task.id, {
+      task: {
+        dueDate: '2026-08-12',
+        dueTime: '14:00',
+        dueTimezone: 'America/Lima',
+        dueSemantics: 'floating',
+      },
+      recurrence: {
+        frequency: 'weekly',
+        interval: 1,
+        weekdays: [3],
+        monthDays: null,
+        startDate: '2026-08-12',
+        endDate: null,
+        maxOccurrences: null,
+        mode: 'fixed',
+        timezone: 'America/Lima',
+      },
+    });
+
+    const movedTask = await core.services.tasks.getTask(created.task.id);
+    const movedRule = await core.services.recurrence.getRuleForTask(created.task.id);
+    expect(movedTask?.dueDate).toBe('2026-08-12');
+    expect(movedTask?.dueTime).toBe('14:00');
+    expect(movedRule?.startDate).toBe('2026-08-12');
+    expect(movedRule?.weekdays).toEqual([3]);
+
+    await core.commands.saveTaskEditorState(created.task.id, {
+      task: { title: 'Weekly planning' },
+      recurrence: null,
+    });
+    expect(await core.services.recurrence.getRuleForTask(created.task.id)).toBeNull();
+
+    await db.closeAsync?.();
+  });
 });
