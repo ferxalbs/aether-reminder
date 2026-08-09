@@ -58,7 +58,7 @@ type ToolEventSink = (event: AgentEvent) => void;
 
 /**
  * Single-root AETHER Agent Runtime.
- * Event-driven; Orb (Slice 4) derives UI from AgentEvent + semantic state.
+ * Event-driven; the UI derives status from AgentEvent + semantic state.
  */
 export class AetherAgentRuntime implements AgentRuntime {
   private readonly services: DomainServices;

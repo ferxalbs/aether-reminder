@@ -3,8 +3,6 @@ import type { AgentSemanticState, ContextSnapshot, EntityReference, PendingActio
 
 export type AssistantSurfaceState = 'closed' | 'opening' | 'compact' | 'medium' | 'full' | 'closing';
 
-export type AssistantOrbState = AgentSemanticState | 'opening' | 'closing' | 'connecting' | 'listening' | 'transcribing' | 'finalizing';
-
 export interface AssistantMessage {
   id: string;
   role: 'user' | 'assistant';

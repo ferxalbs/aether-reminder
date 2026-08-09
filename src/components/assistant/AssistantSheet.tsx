@@ -22,9 +22,7 @@ import type {
   AssistantReceipt,
   AssistantSurfaceState,
   PendingAssistantConfirmation,
-  AssistantOrbState,
 } from './assistantTypes';
-import { assistantStateLabel } from './AssistantOrb';
 import type { AgentSemanticState } from '@/services/agent';
 import type { VoiceState } from './VoiceController';
 
@@ -58,13 +56,27 @@ interface AssistantSheetProps {
   onVoiceRetry: () => void;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
-  orbState: AssistantOrbState;
-  assistantExpanded: boolean;
-  onOrbPress: () => void;
-  onOrbPressIn?: () => void;
-  onOrbLongPress?: () => void;
-  onOrbPressOut?: () => void;
-  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
+  onVoicePress: () => void;
+}
+
+function assistantStateLabel(state: AgentSemanticState): string {
+  switch (state) {
+    case 'contextualizing':
+      return 'Preparing context';
+    case 'thinking':
+      return 'Thinking';
+    case 'executing':
+      return 'Executing action';
+    case 'waiting_confirmation':
+      return 'Waiting for confirmation';
+    case 'responding':
+      return 'Responding';
+    case 'error':
+      return 'Needs attention';
+    case 'idle':
+    default:
+      return 'Ready';
+  }
 }
 
 function confirmationTitle(pending: PendingAssistantConfirmation): string {
@@ -107,13 +119,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onVoiceRetry,
   keyboardOffset,
   blurTarget,
-  orbState,
-  assistantExpanded,
-  onOrbPress,
-  onOrbPressIn,
-  onOrbLongPress,
-  onOrbPressOut,
-  onOrbPressMove,
+  onVoicePress,
 }) => {
   const isDark = useIsDark();
   const insets = useSafeAreaInsets();
@@ -124,12 +130,12 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
     width: `${Math.round(Math.min(1, voiceAudioLevel.value) * 100)}%`,
   }));
   const isVisible = surface !== 'closed';
-  const showHeader = surface === 'medium' || surface === 'full';
+  const showHeader = surface !== 'closing';
   const showConversation = surface === 'medium' || surface === 'full';
   const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-        ? voiceActive ? 132 : 88
+        ? voiceActive ? 196 : 128
       : surface === 'medium'
         ? Math.min(windowWidth >= 760 ? 520 : 480, windowHeight * 0.62)
         : surface === 'full'
@@ -253,7 +259,14 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
                 {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
                 {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: isDark ? Colors.brandCyan : Colors.brandBlue }, voiceLevelStyle]} /></View> : null}
-                {voiceLocked ? <View style={styles.voiceActions}><Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} /><Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} /></View> : null}
+                {voiceLocked || voiceState === 'connecting' ? (
+                  <View style={styles.voiceActions}>
+                    <Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} />
+                    {voiceState !== 'connecting' ? (
+                      <Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} />
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             ) : null}
             {voiceError ? (
@@ -268,14 +281,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               onSubmit={onSubmit}
               disabled={isRunning || voiceActive}
               autoFocus={surface === 'compact' && voiceState === 'idle'}
-              orbState={orbState}
-              assistantExpanded={assistantExpanded}
-              onOrbPress={onOrbPress}
-              onOrbPressIn={onOrbPressIn}
-              onOrbLongPress={onOrbLongPress}
-              onOrbPressOut={onOrbPressOut}
-              onOrbPressMove={onOrbPressMove}
-              audioLevel={voiceAudioLevel}
+              voiceState={voiceState}
+              onVoicePress={onVoicePress}
             />
           </View>
         </View>

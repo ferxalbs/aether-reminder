@@ -11,13 +11,18 @@ import type { ActionReceipt } from '@/domain/receipts';
 import { useAgentSessionController } from './AgentSessionController';
 import { AppBottomNavigation } from './AppBottomNavigation';
 import { AssistantSheet } from './AssistantSheet';
-import type { AssistantOrbState, AssistantSurfaceState } from './assistantTypes';
+import type { AssistantSurfaceState } from './assistantTypes';
 import { useVoiceController } from './VoiceController';
 import { impactAsync, notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
 interface AssistantHostProps {
   blurTarget?: RefObject<View | null>;
+}
+
+interface AssistantActionHandlers {
+  openTextAssistant: () => void;
+  startVoiceAssistant: () => void;
 }
 
 const defaultSnapshot: ContextSnapshot = {
@@ -32,13 +37,25 @@ const defaultSnapshot: ContextSnapshot = {
 interface AssistantSurfaceContextValue {
   snapshot: ContextSnapshot;
   setSnapshot: (snapshot: ContextSnapshot) => void;
+  requestAssistant: (mode: keyof AssistantActionHandlers) => void;
+  registerAssistantActions: (actions: AssistantActionHandlers | null) => void;
 }
 
 const AssistantSurfaceContext = createContext<AssistantSurfaceContextValue | null>(null);
 
 export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [snapshot, setSnapshot] = useState<ContextSnapshot>(defaultSnapshot);
-  const value = useMemo(() => ({ snapshot, setSnapshot }), [snapshot]);
+  const actionsRef = useRef<AssistantActionHandlers | null>(null);
+  const requestAssistant = useCallback((mode: keyof AssistantActionHandlers) => {
+    actionsRef.current?.[mode]();
+  }, []);
+  const registerAssistantActions = useCallback((actions: AssistantActionHandlers | null) => {
+    actionsRef.current = actions;
+  }, []);
+  const value = useMemo(
+    () => ({ snapshot, setSnapshot, requestAssistant, registerAssistantActions }),
+    [registerAssistantActions, requestAssistant, snapshot],
+  );
   return <AssistantSurfaceContext.Provider value={value}>{children}</AssistantSurfaceContext.Provider>;
 };
 
@@ -51,20 +68,35 @@ export function useAssistantSurface(snapshot: ContextSnapshot): void {
   }, [setSnapshot, snapshot]);
 }
 
+export function useAssistantActions(): {
+  openTextAssistant: () => void;
+  startVoiceAssistant: () => void;
+} {
+  const context = useContext(AssistantSurfaceContext);
+  if (!context) throw new Error('useAssistantActions must be used inside AssistantSurfaceProvider');
+  return useMemo(
+    () => ({
+      openTextAssistant: () => context.requestAssistant('openTextAssistant'),
+      startVoiceAssistant: () => context.requestAssistant('startVoiceAssistant'),
+    }),
+    [context],
+  );
+}
+
 export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const router = useRouter();
   const isDark = useIsDark();
-  const { snapshot } = useContext(AssistantSurfaceContext) ?? {
+  const { snapshot, registerAssistantActions } = useContext(AssistantSurfaceContext) ?? {
     snapshot: defaultSnapshot,
     setSnapshot: () => undefined,
+    requestAssistant: () => undefined,
+    registerAssistantActions: () => undefined,
   };
   const [surface, setSurface] = useState<AssistantSurfaceState>('closed');
   const [composerValue, setComposerValue] = useState('');
   const [reduceMotion, setReduceMotion] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const suppressNextTapRef = useRef(false);
-  const orbStartYRef = useRef<number | null>(null);
   const refreshToday = useTasksUiStore((state) => state.refreshToday);
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
   const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
@@ -153,35 +185,14 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   }, [controller]);
   const voice = useVoiceController({ onTranscript: onVoiceTranscript });
 
-  const onOrbPressIn = useCallback(() => {
-    orbStartYRef.current = null;
-  }, []);
-
-  const onOrbLongPress = useCallback(() => {
-    suppressNextTapRef.current = true;
-    if (voice.state !== 'idle') void voice.cancel();
+  const openTextAssistant = useCallback(() => {
+    if (voice.state !== 'idle' && voice.state !== 'error') void voice.cancel();
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     setSurface('compact');
   }, [voice]);
 
-  const onOrbPressOut = useCallback(() => {
-    orbStartYRef.current = null;
-  }, []);
-
-  const onOrbPressMove = useCallback((event: { nativeEvent: { pageY: number } }) => {
-    orbStartYRef.current ??= event.nativeEvent.pageY;
-    if (orbStartYRef.current - event.nativeEvent.pageY > 64) voice.lock();
-  }, [voice]);
-
-  const openAssistant = useCallback(() => {
-    if (suppressNextTapRef.current) {
-      suppressNextTapRef.current = false;
-      return;
-    }
-    if (voice.state !== 'idle' && voice.state !== 'error') {
-      if (voice.state === 'connecting') void voice.cancel();
-      else voice.stopAndSend();
-      return;
-    }
+  const startVoiceAssistant = useCallback(() => {
+    if (voice.state !== 'idle' && voice.state !== 'error') return;
     if (useSettingsStore.getState().hapticsEnabled) {
       impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((error: unknown) => {
         reportNonFatalError('haptics', error);
@@ -192,6 +203,11 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     setSurface('compact');
     voice.beginLocked();
   }, [voice]);
+
+  useEffect(() => {
+    registerAssistantActions({ openTextAssistant, startVoiceAssistant });
+    return () => registerAssistantActions(null);
+  }, [openTextAssistant, registerAssistantActions, startVoiceAssistant]);
 
   const closeAssistant = useCallback(() => {
     if (voice.state !== 'idle') void voice.cancel();
@@ -211,15 +227,6 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     });
   }, [composerValue, controller]);
 
-  const orbState: AssistantOrbState = surface === 'opening'
-    ? 'opening'
-    : surface === 'closing'
-      ? 'closing'
-      : voice.state === 'connecting' || voice.state === 'listening' || voice.state === 'finalizing' || voice.state === 'transcribing'
-        ? voice.state
-        : voice.state === 'error'
-          ? 'error'
-      : controller.semanticState;
   const showScrim = surface === 'medium' || surface === 'full';
 
   return (
@@ -258,28 +265,14 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         voiceAudioLevel={voice.audioLevel}
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
-        onVoiceRetry={openAssistant}
+        onVoiceRetry={startVoiceAssistant}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
-        orbState={orbState}
-        assistantExpanded={surface !== 'closed' && surface !== 'closing'}
-        onOrbPress={openAssistant}
-        onOrbPressIn={onOrbPressIn}
-        onOrbLongPress={onOrbLongPress}
-        onOrbPressOut={onOrbPressOut}
-        onOrbPressMove={onOrbPressMove}
+        onVoicePress={startVoiceAssistant}
       />
       <AppBottomNavigation
-        orbState={orbState}
-        assistantExpanded={surface !== 'closed' && surface !== 'closing'}
-        audioLevel={voice.audioLevel}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
-        onOrbPress={openAssistant}
-        onOrbPressIn={onOrbPressIn}
-        onOrbLongPress={onOrbLongPress}
-        onOrbPressOut={onOrbPressOut}
-        onOrbPressMove={onOrbPressMove}
       />
     </View>
   );

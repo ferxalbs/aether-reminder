@@ -6,12 +6,11 @@ import {
   View,
 } from 'react-native';
 import { ArrowUp } from 'lucide-react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
-import { AssistantOrb } from './AssistantOrb';
-import type { AssistantOrbState } from './assistantTypes';
+import { AssistantVoiceButton } from './AssistantVoiceButton';
+import type { VoiceState } from './VoiceController';
 
 interface AssistantComposerProps {
   value: string;
@@ -19,14 +18,8 @@ interface AssistantComposerProps {
   onSubmit: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
-  orbState: AssistantOrbState;
-  assistantExpanded: boolean;
-  onOrbPress: () => void;
-  onOrbPressIn?: () => void;
-  onOrbLongPress?: () => void;
-  onOrbPressOut?: () => void;
-  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
-  audioLevel?: SharedValue<number>;
+  voiceState: VoiceState;
+  onVoicePress: () => void;
 }
 
 export const AssistantComposer: React.FC<AssistantComposerProps> = ({
@@ -35,14 +28,8 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   onSubmit,
   disabled = false,
   autoFocus = false,
-  orbState,
-  assistantExpanded,
-  onOrbPress,
-  onOrbPressIn,
-  onOrbLongPress,
-  onOrbPressOut,
-  onOrbPressMove,
-  audioLevel,
+  voiceState,
+  onVoicePress,
 }) => {
   const isDark = useIsDark();
   const inputRef = useRef<TextInput>(null);
@@ -68,16 +55,10 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         },
       ]}
     >
-      <AssistantOrb
-        state={orbState}
-        expanded={assistantExpanded}
-        size="composer"
-        onPress={onOrbPress}
-        onPressIn={onOrbPressIn}
-        onLongPress={onOrbLongPress}
-        onPressOut={onOrbPressOut}
-        onPressMove={onOrbPressMove}
-        audioLevel={audioLevel}
+      <AssistantVoiceButton
+        voiceState={voiceState}
+        disabled={disabled}
+        onPress={onVoicePress}
       />
       <TextInput
         ref={inputRef}
@@ -117,7 +98,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
       ) : null}
       {!hasText ? (
         <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.hint}>
-          Tap orb to talk
+          Tap microphone to speak
         </Typography>
       ) : null}
     </View>

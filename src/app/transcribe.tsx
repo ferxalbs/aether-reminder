@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowUp, Mic, ShieldCheck, Sparkles } from 'lucide-react-native';
+import { Mic, ShieldCheck, Sparkles } from 'lucide-react-native';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -10,10 +9,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { AetherMark } from '@/components/ui/AetherMark';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 
 export default function TranscribeScreen() {
-  const router = useRouter();
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
@@ -21,6 +19,7 @@ export default function TranscribeScreen() {
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
   const keyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
   const configured = useSettingsStore((state) => state.openAiConfigured);
+  const { startVoiceAssistant } = useAssistantActions();
 
   const assistantContext = useMemo(
     () => ({
@@ -111,11 +110,14 @@ export default function TranscribeScreen() {
             <View style={styles.heroTop}>
               <View
                 style={[
-                  styles.micOrb,
+                  styles.micControl,
                   {
                     backgroundColor: isDark
                       ? 'rgba(101, 214, 192, 0.14)'
                       : 'rgba(47, 124, 255, 0.10)',
+                    borderColor: isDark
+                      ? 'rgba(101, 214, 192, 0.24)'
+                      : 'rgba(47, 124, 255, 0.18)',
                   },
                 ]}
               >
@@ -133,8 +135,8 @@ export default function TranscribeScreen() {
                 variant="body"
                 color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
               >
-                Tap the AETHER orb to start hands-free voice input. Press and hold it whenever
-                typing is faster.
+                Start a voice capture with one clear action. You can always switch to typing when
+                that is faster.
               </Typography>
             </View>
             <View style={styles.waveRow} accessibilityLabel="Voice input waveform">
@@ -153,14 +155,14 @@ export default function TranscribeScreen() {
               ))}
             </View>
             <Button
-              label="Use the AETHER orb"
-              onPress={() => router.replace('/')}
+              label="Start voice capture"
+              onPress={startVoiceAssistant}
               fullWidth={!isWide}
               icon={
-                <ArrowUp
+                <Mic
                   size={17}
                   color={isDark ? Colors.brandInk : Colors.white}
-                  strokeWidth={2.5}
+                  strokeWidth={2.2}
                 />
               }
               style={styles.actionButton}
@@ -343,12 +345,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  micOrb: {
-    width: 64,
-    height: 64,
+  micControl: {
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderCurve: 'continuous',
   },
   heroCopy: {
     gap: Spacing.xs,

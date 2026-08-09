@@ -1,58 +1,37 @@
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
-import { Colors, Radius } from '@/theme/tokens';
+import { Colors, LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { usePathname, useRouter } from 'expo-router';
-import { Brain, ListTodo, Mic, PenLine, Settings } from 'lucide-react-native';
+import { ListTodo, Mic, PenLine, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantMaterial } from './AssistantMaterial';
-import { AssistantOrb } from './AssistantOrb';
-import type { AssistantOrbState } from './assistantTypes';
 
 interface AppBottomNavigationProps {
-  orbState: AssistantOrbState;
-  assistantExpanded: boolean;
-  audioLevel?: SharedValue<number>;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
-  onOrbPress: () => void;
-  onOrbPressIn?: () => void;
-  onOrbLongPress?: () => void;
-  onOrbPressOut?: () => void;
-  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
 }
 
-type Destination = '/' | '/tasks' | '/ai' | '/transcribe' | '/settings';
+type Destination = '/' | '/tasks' | '/transcribe' | '/settings';
 
 const navigationItems: {
   key: string;
   destination: Destination;
   label: string;
   icon: typeof PenLine;
-  assistant?: boolean;
 }[] = [
   { key: 'home', destination: '/', label: 'Compose', icon: PenLine },
   { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: ListTodo },
-  { key: 'assistant', destination: '/ai', label: 'AETHER', icon: Brain, assistant: true },
   { key: 'voice', destination: '/transcribe', label: 'Voice', icon: Mic },
   { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
-  orbState,
-  assistantExpanded,
-  audioLevel,
   keyboardOffset,
   blurTarget,
-  onOrbPress,
-  onOrbPressIn,
-  onOrbLongPress,
-  onOrbPressOut,
-  onOrbPressMove,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -84,14 +63,7 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
               item={item}
               active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
               isDark={isDark}
-              onPress={item.assistant ? onOrbPress : () => navigate(item.destination)}
-              orbState={orbState}
-              assistantExpanded={assistantExpanded}
-              onOrbPressIn={onOrbPressIn}
-              onOrbLongPress={onOrbLongPress}
-              onOrbPressOut={onOrbPressOut}
-              onOrbPressMove={onOrbPressMove}
-              audioLevel={audioLevel}
+              onPress={() => navigate(item.destination)}
             />
           ))}
         </View>
@@ -105,69 +77,34 @@ function NavigationButton({
   active,
   isDark,
   onPress,
-  orbState,
-  assistantExpanded,
-  onOrbPressIn,
-  onOrbLongPress,
-  onOrbPressOut,
-  onOrbPressMove,
-  audioLevel,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
   isDark: boolean;
   onPress: () => void;
-  orbState: AssistantOrbState;
-  assistantExpanded: boolean;
-  onOrbPressIn?: () => void;
-  onOrbLongPress?: () => void;
-  onOrbPressOut?: () => void;
-  onOrbPressMove?: (event: { nativeEvent: { pageY: number } }) => void;
-  audioLevel?: SharedValue<number>;
 }) {
   const activeAnim = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
     activeAnim.value = withSpring(active ? 1 : 0, {
-      damping: 18,
-      stiffness: 220,
-      mass: 0.8,
+      ...Motion.pressSpring,
     });
   }, [active, activeAnim]);
 
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: activeAnim.value * 0.92,
+    transform: [{ scaleX: 0.76 + activeAnim.value * 0.24 }],
+  }));
   const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + activeAnim.value * 0.08 }, { translateY: -activeAnim.value * 1 }],
+    transform: [{ scale: 1 + activeAnim.value * 0.05 }, { translateY: -activeAnim.value * 1 }],
   }));
   const animatedLabelStyle = useAnimatedStyle(() => ({
-    opacity: 0.66 + activeAnim.value * 0.34,
+    opacity: 0.58 + activeAnim.value * 0.42,
   }));
 
-  const activeColor = isDark ? Colors.white : Colors.black;
-  const inactiveColor = Colors.zinc500;
+  const activeColor = isDark ? Colors.brandCyan : Colors.brandBlue;
+  const inactiveColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
   const Icon = item.icon;
-
-  if (item.assistant) {
-    return (
-      <View style={styles.navButton} accessible accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: active }}>
-        <View style={styles.assistantButtonContent}>
-          <AssistantOrb
-            state={orbState}
-            expanded={assistantExpanded}
-            size="dock"
-            onPress={onPress}
-            onPressIn={onOrbPressIn}
-            onLongPress={onOrbLongPress}
-            onPressOut={onOrbPressOut}
-            onPressMove={onOrbPressMove}
-            audioLevel={audioLevel}
-          />
-          <Typography variant="tiny" color={activeColor} numberOfLines={1} style={styles.navLabel}>
-            AETHER
-          </Typography>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <AnimatedPressable
@@ -175,14 +112,27 @@ function NavigationButton({
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
-      scaleTo={0.9}
+      scaleTo={0.95}
       style={styles.navButton}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.activeIndicator,
+          { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.14)' : 'rgba(47, 124, 255, 0.10)' },
+          animatedIndicatorStyle,
+        ]}
+      />
       <Animated.View style={animatedIconStyle}>
-        <Icon size={20} color={active ? activeColor : inactiveColor} strokeWidth={active ? 2.4 : 1.9} />
+        <Icon size={20} color={active ? activeColor : inactiveColor} strokeWidth={active ? 2.35 : 1.9} />
       </Animated.View>
       <Animated.View style={animatedLabelStyle}>
-        <Typography variant="tiny" color={active ? activeColor : inactiveColor} style={styles.navLabel}>
+        <Typography
+          variant="tiny"
+          color={active ? activeColor : inactiveColor}
+          style={styles.navLabel}
+          numberOfLines={1}
+        >
           {item.label}
         </Typography>
       </Animated.View>
@@ -195,15 +145,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     width: '92%',
-    maxWidth: 640,
-    height: 80,
+    maxWidth: LayoutTokens.navigationMaxWidth,
+    height: LayoutTokens.navigationHeight,
     zIndex: 30,
     alignItems: 'center',
   },
   bar: {
     width: '100%',
-    height: 80,
-    paddingHorizontal: 6,
+    height: LayoutTokens.navigationHeight,
+    paddingHorizontal: Spacing.xs,
     borderCurve: 'continuous',
   },
   navRow: {
@@ -213,15 +163,23 @@ const styles = StyleSheet.create({
   },
   navButton: {
     flex: 1,
-    height: 74,
+    height: 66,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
   },
-  assistantButtonContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -4,
+  activeIndicator: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    marginVertical: 5,
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
   },
   navLabel: {
     fontSize: 10,

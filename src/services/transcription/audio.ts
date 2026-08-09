@@ -17,7 +17,7 @@ export function pcm16ArrayBufferToBase64(data: ArrayBuffer): string {
   return output;
 }
 
-/** Return a low-cost normalized RMS level for the Orb's local visual feedback. */
+/** Return a low-cost normalized RMS level for the voice input feedback bar. */
 export function pcm16AudioLevel(data: ArrayBuffer): number {
   if (data.byteLength < 2 || data.byteLength % 2 !== 0) return 0;
   const samples = new Int16Array(data);

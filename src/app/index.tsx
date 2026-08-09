@@ -38,7 +38,7 @@ import { Button } from '@/components/ui/Button';
 import { AetherMark } from '@/components/ui/AetherMark';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
@@ -77,6 +77,7 @@ export default function HomeScreen() {
   const isWide = width >= 720;
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
+  const { openTextAssistant } = useAssistantActions();
 
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -226,19 +227,36 @@ export default function HomeScreen() {
                   </Typography>
                 </View>
               </View>
-              <IconButton
-                icon={
-                  <Plus
-                    size={20}
-                    color={isDark ? Colors.brandInk : Colors.white}
-                    strokeWidth={2.5}
-                  />
-                }
-                onPress={() => setModalVisible(true)}
-                accessibilityLabel="Open full reminder composer"
-                variant="solid"
-                size={44}
-              />
+              <View style={styles.topActions}>
+                <Button
+                  label={width >= 390 ? 'Ask AETHER' : 'Ask'}
+                  variant="secondary"
+                  size="sm"
+                  onPress={openTextAssistant}
+                  accessibilityLabel="Open Ask AETHER"
+                  accessibilityHint="Open the text assistant"
+                  icon={
+                    <Sparkles
+                      size={16}
+                      color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                      strokeWidth={2.1}
+                    />
+                  }
+                />
+                <IconButton
+                  icon={
+                    <Plus
+                      size={20}
+                      color={isDark ? Colors.brandInk : Colors.white}
+                      strokeWidth={2.5}
+                    />
+                  }
+                  onPress={() => setModalVisible(true)}
+                  accessibilityLabel="Open full reminder composer"
+                  variant="solid"
+                  size={44}
+                />
+              </View>
             </Animated.View>
 
             <Animated.View
@@ -526,6 +544,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.xl,
+  },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
   brandLockup: {
     flexDirection: 'row',

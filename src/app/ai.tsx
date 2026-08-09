@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { AetherMark } from '@/components/ui/AetherMark';
 import { useSettingsStore } from '@/stores/settings.store';
 import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
-import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 
 export default function AIScreen() {
   const router = useRouter();
@@ -24,6 +24,7 @@ export default function AIScreen() {
   const keyLoaded = useSettingsStore((state) => state.openRouterKeyLoaded);
   const configured = useSettingsStore((state) => state.openRouterConfigured);
   const modelName = selectedModel || DEFAULT_OPENROUTER_MODEL_ID;
+  const { openTextAssistant } = useAssistantActions();
 
   const assistantContext = useMemo(
     () => ({
@@ -131,24 +132,30 @@ export default function AIScreen() {
               variant="body"
               color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
             >
-              The global AETHER orb is your calm, consistent assistant surface. Ask it to plan,
-              change, or explain what is already on your day.
+              Ask AETHER to plan, change, or explain what is already on your day. The assistant
+              stays available through explicit text and voice actions.
             </Typography>
-            {!configured ? (
-              <Button
-                label="Open Settings"
-                onPress={() => router.replace('/settings')}
-                fullWidth={!isWide}
-                icon={
+            <Button
+              label={configured ? 'Ask AETHER' : 'Open Settings'}
+              onPress={configured ? openTextAssistant : () => router.replace('/settings')}
+              fullWidth={!isWide}
+              icon={
+                configured ? (
+                  <Sparkles
+                    size={17}
+                    color={isDark ? Colors.brandInk : Colors.white}
+                    strokeWidth={2.2}
+                  />
+                ) : (
                   <KeyRound
                     size={17}
                     color={isDark ? Colors.brandInk : Colors.white}
                     strokeWidth={2.3}
                   />
-                }
-                style={styles.actionButton}
-              />
-            ) : null}
+                )
+              }
+              style={styles.actionButton}
+            />
           </Card>
 
           <Card variant="glass" padding={Spacing.lg} style={styles.connectionCard}>
