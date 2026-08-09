@@ -38,13 +38,14 @@ export function createDomainServices(db: SqlDatabase): DomainServices {
 
 export function createDomainServicesFromRepos(repos: Repositories): DomainServices {
   const tasks = new TaskService(repos.tasks);
+  const reminders = new ReminderService(
+    repos.reminders,
+    new LocalNotificationProjection(repos.reminders, repos.tasks),
+  );
   return {
     tasks,
-    recurrence: new RecurrenceService(repos.recurrenceRules, tasks),
-    reminders: new ReminderService(
-      repos.reminders,
-      new LocalNotificationProjection(repos.reminders, repos.tasks),
-    ),
+    recurrence: new RecurrenceService(repos.recurrenceRules, tasks, reminders),
+    reminders,
     analytics: new AnalyticsService(repos.tasks),
     repos,
   };
