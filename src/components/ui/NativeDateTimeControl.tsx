@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { CalendarDays, Clock3 } from 'lucide-react-native';
-import { Colors, ControlTokens, Radius, Spacing } from '@/theme/tokens';
+import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from './Typography';
 import { AnimatedPressable } from './AnimatedPressable';
@@ -100,7 +100,7 @@ export function NativeDateTimeControl({
         style={[
           styles.androidTrigger,
           {
-            minHeight: ControlTokens.touchTargetAndroid,
+            minHeight: getMinimumTouchTarget(Platform.OS),
             borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
             backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8',
           },
