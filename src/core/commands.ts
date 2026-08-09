@@ -44,14 +44,6 @@ type DueReminderChange =
 export class AetherCommandExecutor {
   constructor(private readonly services: DomainServices) {}
 
-  createTask(input: CreateTaskInput, source = 'manual') {
-    return this.services.tasks.createTask(input, source);
-  }
-
-  updateTask(id: string, input: UpdateTaskInput, source = 'manual') {
-    return this.services.tasks.updateTask(id, input, source);
-  }
-
   private async findDueReminder(task: Task): Promise<Reminder | null> {
     if (!task.dueDate || !task.dueTime) return null;
     const reminders = await this.services.reminders.listReminders({
@@ -66,10 +58,10 @@ export class AetherCommandExecutor {
   }
 
   /**
-   * The editor treats the task's due date+time as its primary alert. Extra
-   * reminders (for example "1 day before") are intentionally left untouched.
+   * A task's due date+time owns one primary alert. Extra reminders (for example
+   * "1 day before") are intentionally left untouched.
    */
-  private async syncEditorDueReminder(
+  private async syncDueReminder(
     beforeTask: Task | null,
     afterTask: Task,
     source: string,
@@ -95,8 +87,8 @@ export class AetherCommandExecutor {
       return { kind: 'rescheduled', reminderId: beforeReminder.id, before: beforeReminder };
     }
 
-    // Avoid duplicating an existing alert that already matches the newly edited
-    // due time, even if older builds did not explicitly mark a primary reminder.
+    // Avoid duplicating an existing alert that already matches the due time,
+    // including reminders created by an older app version or another command.
     const existing = await this.services.reminders.listReminders({
       taskId: afterTask.id,
       enabledOnly: true,
@@ -119,7 +111,7 @@ export class AetherCommandExecutor {
     return { kind: 'created', reminderId: created.value.id };
   }
 
-  private async rollbackEditorDueReminder(change: DueReminderChange): Promise<void> {
+  private async rollbackDueReminder(change: DueReminderChange): Promise<void> {
     switch (change.kind) {
       case 'none':
         return;
@@ -144,53 +136,69 @@ export class AetherCommandExecutor {
           timezone: change.before.timezone,
           semantics: change.before.semantics,
           enabled: true,
-        }, 'editor_rollback');
+        }, 'command_rollback');
     }
   }
 
-  /**
-   * Create from the manual editor. Unlike generic task creation, a chosen due
-   * time is also persisted as a reminder and projected to the OS.
-   */
+  async createTask(input: CreateTaskInput, source = 'manual') {
+    const result = await this.services.tasks.createTask(input, source);
+    try {
+      await this.syncDueReminder(null, result.value, source);
+      return result;
+    } catch (error) {
+      await this.services.tasks.deleteTask(result.value.id, 'command_rollback').catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async updateTask(id: string, input: UpdateTaskInput, source = 'manual') {
+    const before = await this.services.tasks.getTask(id);
+    if (!before) throw new Error('Task not found.');
+    const result = await this.services.tasks.updateTask(id, input, source);
+    let reminderChange: DueReminderChange = { kind: 'none' };
+    try {
+      reminderChange = await this.syncDueReminder(before, result.value, source);
+      return result;
+    } catch (error) {
+      await this.rollbackDueReminder(reminderChange).catch(() => undefined);
+      await this.services.tasks.updateTask(id, {
+        title: before.title,
+        notes: before.notes,
+        priority: before.priority,
+        projectId: before.projectId,
+        dueDate: before.dueDate,
+        dueTime: before.dueTime,
+        dueTimezone: before.dueTimezone,
+        dueSemantics: before.dueSemantics,
+      }, 'command_rollback').catch(() => undefined);
+      throw error;
+    }
+  }
+
+  /** Create from the manual editor with optional recurrence. */
   async createTaskEditorState(input: CreateTaskEditorStateInput, source = 'manual') {
     if (input.recurrence && !input.task.dueDate) {
       throw new Error('Recurring reminders require a scheduled date.');
     }
 
-    let createdTask: Task | null = null;
-    try {
-      if (input.recurrence) {
-        const result = await this.services.recurrence.createRecurringTask({
-          task: input.task,
-          recurrence: input.recurrence,
-        }, source);
-        createdTask = result.task;
-        await this.syncEditorDueReminder(null, result.task, source);
-        return {
-          value: result.task,
-          recurrence: result.rule,
-          receipt: result.receipt,
-        };
-      }
-
-      const result = await this.services.tasks.createTask(input.task, source);
-      createdTask = result.value;
-      await this.syncEditorDueReminder(null, result.value, source);
+    if (input.recurrence) {
+      const result = await this.createRecurringTask({
+        task: input.task,
+        recurrence: input.recurrence,
+      }, source);
       return {
-        value: result.value,
-        recurrence: null,
+        value: result.task,
+        recurrence: result.rule,
         receipt: result.receipt,
       };
-    } catch (error) {
-      if (createdTask) {
-        const dueReminder = await this.findDueReminder(createdTask).catch(() => null);
-        if (dueReminder) {
-          await this.services.reminders.cancelReminder(dueReminder.id).catch(() => undefined);
-        }
-        await this.services.tasks.deleteTask(createdTask.id, 'editor_rollback').catch(() => undefined);
-      }
-      throw error;
     }
+
+    const result = await this.createTask(input.task, source);
+    return {
+      value: result.value,
+      recurrence: null,
+      receipt: result.receipt,
+    };
   }
 
   /**
@@ -207,10 +215,12 @@ export class AetherCommandExecutor {
       throw new Error('Recurring reminders require a scheduled date.');
     }
 
+    // Use TaskService directly here because this method owns the combined
+    // task/reminder/recurrence compensation as one higher-level operation.
     const taskResult = await this.services.tasks.updateTask(id, input.task, source);
     let reminderChange: DueReminderChange = { kind: 'none' };
     try {
-      reminderChange = await this.syncEditorDueReminder(beforeTask, taskResult.value, source);
+      reminderChange = await this.syncDueReminder(beforeTask, taskResult.value, source);
 
       let recurrenceResult = null;
       if (input.recurrence && targetDate) {
@@ -231,7 +241,7 @@ export class AetherCommandExecutor {
         receipt: recurrenceResult?.receipt ?? taskResult.receipt,
       };
     } catch (error) {
-      await this.rollbackEditorDueReminder(reminderChange).catch(() => undefined);
+      await this.rollbackDueReminder(reminderChange).catch(() => undefined);
       await this.services.tasks.updateTask(
         id,
         {
@@ -280,7 +290,12 @@ export class AetherCommandExecutor {
   }
 
   rescheduleTask(id: string, input: RescheduleTaskInput, source = 'manual') {
-    return this.services.tasks.rescheduleTask(id, input, source);
+    return this.updateTask(id, {
+      dueDate: input.dueDate,
+      dueTime: input.dueTime,
+      dueTimezone: input.dueTimezone,
+      dueSemantics: input.dueSemantics,
+    }, source);
   }
 
   deleteTask(id: string, source = 'manual') {
@@ -295,8 +310,15 @@ export class AetherCommandExecutor {
     return this.services.recurrence.createRule(input);
   }
 
-  createRecurringTask(input: CreateRecurringTaskInput, source = 'manual') {
-    return this.services.recurrence.createRecurringTask(input, source);
+  async createRecurringTask(input: CreateRecurringTaskInput, source = 'manual') {
+    const result = await this.services.recurrence.createRecurringTask(input, source);
+    try {
+      await this.syncDueReminder(null, result.task, source);
+      return result;
+    } catch (error) {
+      await this.services.tasks.deleteTask(result.task.id, 'command_rollback').catch(() => undefined);
+      throw error;
+    }
   }
 
   updateRecurrenceRule(id: string, input: UpdateRecurrenceRuleInput) {
