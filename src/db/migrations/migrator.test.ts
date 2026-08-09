@@ -19,6 +19,7 @@ describe('schema migrations', () => {
       '0003_agent_runtime',
       '0004_notification_projection',
       '0005_notification_query_indexes',
+      '0006_recurrence_rules',
     ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
@@ -28,6 +29,7 @@ describe('schema migrations', () => {
     const names = tables.map((t) => t.name);
     expect(names).toContain('tasks');
     expect(names).toContain('reminders');
+    expect(names).toContain('recurrence_rules');
     expect(names).toContain('projects');
     expect(names).toContain('tags');
     expect(names).toContain('task_tags');
@@ -39,7 +41,7 @@ describe('schema migrations', () => {
     expect(names).toContain('tool_executions');
 
     const indexes = await db.getAllAsync<{ name: string }>(
-      `SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_reminders_%' ORDER BY name`
+      `SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name`
     );
     expect(indexes.map((index) => index.name)).toEqual(expect.arrayContaining([
       'idx_reminders_enabled_schedule',
@@ -47,6 +49,9 @@ describe('schema migrations', () => {
       'idx_reminders_schedule',
       'idx_reminders_task_schedule',
       'idx_reminders_timezone',
+      'recurrence_rules_active_idx',
+      'recurrence_rules_active_task_idx',
+      'recurrence_rules_last_completed_idx',
     ]));
     await db.closeAsync?.();
   });
@@ -65,6 +70,7 @@ describe('schema migrations', () => {
       '0003_agent_runtime',
       '0004_notification_projection',
       '0005_notification_query_indexes',
+      '0006_recurrence_rules',
     ]);
     await db.closeAsync?.();
   });
