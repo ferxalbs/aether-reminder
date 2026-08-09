@@ -13,6 +13,7 @@ export { DatabaseError, getDatabaseErrorMessage } from './errors';
 export {
   createRepositories,
   TasksRepository,
+  RecurrenceRulesRepository,
   RemindersRepository,
   ProjectsRepository,
   TaskEventsRepository,
