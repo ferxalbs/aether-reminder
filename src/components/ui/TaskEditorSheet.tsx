@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { CalendarDays, Flag, X } from 'lucide-react-native';
-import type { TaskListItem, TaskPriority } from '@/domain/entities';
+import { CalendarDays, Flag, Minus, Plus, Repeat2, X } from 'lucide-react-native';
+import type { RecurrenceFrequency, RecurrenceMode, TaskListItem, TaskPriority } from '@/domain/entities';
 import { Colors, ControlTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
-import { getLocalDateString } from '@/temporal/localCalendar';
-import { isValidLocalDate, isValidLocalTime, resolveTomorrow } from '@/temporal/resolve';
+import { getDeviceTimeZone, getLocalDateString, getLocalTimeString } from '@/temporal/localCalendar';
+import { isValidLocalDate } from '@/temporal/resolve';
+import { addLocalCalendarDays } from '@/temporal/recurrence';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { runTaskMutation } from '@/lib/taskMutation';
 import { Typography } from './Typography';
@@ -15,9 +16,33 @@ import { Picker } from './Picker';
 import { Sheet } from './Sheet';
 import { TextField } from './TextField';
 import { AnimatedPressable } from './AnimatedPressable';
+import { NativeDateTimeControl } from './NativeDateTimeControl';
+import {
+  applyRepeatPreset,
+  buildRecurrenceDraft,
+  createRecurrenceEditorState,
+  getSchedulePreset,
+  getTimePreset,
+  normalizeRecurrenceStateForDate,
+  timeForPreset,
+  toggleWeekday,
+  type RecurrenceEditorState,
+  type RepeatPreset,
+  type SchedulePreset,
+  type TimePreset,
+} from './taskEditorSchedule';
 
 type EditorMode = 'create' | 'edit';
-type ScheduleMode = 'today' | 'tomorrow' | 'custom' | 'none';
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'M' },
+  { value: 2, label: 'T' },
+  { value: 3, label: 'W' },
+  { value: 4, label: 'T' },
+  { value: 5, label: 'F' },
+  { value: 6, label: 'S' },
+  { value: 0, label: 'S' },
+] as const;
 
 export interface TaskEditorSheetProps {
   visible: boolean;
@@ -27,65 +52,89 @@ export interface TaskEditorSheetProps {
   initialTitle?: string;
 }
 
-function getScheduleMode(date: string | undefined, today: string, tomorrow: string): ScheduleMode {
-  if (!date) return 'none';
-  if (date === today) return 'today';
-  if (date === tomorrow) return 'tomorrow';
-  return 'custom';
+function localPickerDate(dateText: string, timeText: string | null = null): Date {
+  const [year, month, day] = dateText.split('-').map(Number);
+  const [hour, minute] = (timeText ?? '09:00').split(':').map(Number);
+  const value = new Date(year, month - 1, day, hour, minute, 0, 0);
+  return Number.isFinite(value.getTime()) ? value : new Date();
 }
 
-function ScheduleChoice({
+function ChoicePill({
   label,
   selected,
   onPress,
+  group,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  group: string;
 }) {
   const isDark = useIsDark();
-
   return (
     <AnimatedPressable
       onPress={onPress}
       scaleTo={0.97}
       accessibilityRole="radio"
-      accessibilityLabel={`Schedule: ${label}`}
+      accessibilityLabel={`${group}: ${label}`}
       accessibilityState={{ selected }}
       style={[
-        styles.scheduleChoice,
+        styles.choice,
         {
           backgroundColor: selected
-            ? isDark
-              ? Colors.surfaceRaisedLight
-              : Colors.brandInk
-            : isDark
-              ? 'rgba(255, 255, 255, 0.055)'
-              : '#F1F4F8',
-          borderColor: selected
-            ? 'transparent'
-            : isDark
-              ? Colors.borderDark
-              : Colors.borderLight,
+            ? isDark ? Colors.surfaceRaisedLight : Colors.brandInk
+            : isDark ? 'rgba(255, 255, 255, 0.055)' : '#F1F4F8',
+          borderColor: selected ? 'transparent' : isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
     >
       <Typography
         variant="caption"
-        color={
-          selected
-            ? isDark
-              ? Colors.brandInk
-              : Colors.white
-            : isDark
-              ? Colors.secondaryTextDark
-              : Colors.secondaryTextLight
-        }
-        style={styles.scheduleChoiceLabel}
+        color={selected ? (isDark ? Colors.brandInk : Colors.white) : (isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight)}
+        style={styles.choiceLabel}
       >
         {label}
       </Typography>
     </AnimatedPressable>
+  );
+}
+
+function NumberStepper({
+  label,
+  value,
+  min = 1,
+  max = 999,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+  onChange: (value: number) => void;
+}) {
+  const isDark = useIsDark();
+  const secondary = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+  return (
+    <View style={styles.stepperBlock}>
+      <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700}>{label}</Typography>
+      <View style={[styles.stepper, { borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight }]}>
+        <IconButton
+          icon={<Minus size={16} color={secondary} />}
+          onPress={() => onChange(Math.max(min, value - 1))}
+          accessibilityLabel={`Decrease ${label.toLowerCase()}`}
+          disabled={value <= min}
+          variant="ghost"
+        />
+        <Typography variant="bodyBold" align="center" style={styles.stepperValue}>{value}</Typography>
+        <IconButton
+          icon={<Plus size={16} color={secondary} />}
+          onPress={() => onChange(Math.min(max, value + 1))}
+          accessibilityLabel={`Increase ${label.toLowerCase()}`}
+          disabled={value >= max}
+          variant="ghost"
+        />
+      </View>
+    </View>
   );
 }
 
@@ -100,83 +149,171 @@ function TaskEditorForm({
   const { width } = useWindowDimensions();
   const compact = width < 390;
   const today = useMemo(() => getLocalDateString(), []);
-  const tomorrow = useMemo(() => resolveTomorrow().date, []);
+  const deviceTimezone = useMemo(() => getDeviceTimeZone() ?? null, []);
   const createTask = useTasksUiStore((state) => state.createTask);
-  const updateTask = useTasksUiStore((state) => state.updateTask);
+  const createTaskWithRecurrence = useTasksUiStore((state) => state.createTaskWithRecurrence);
+  const saveTaskEditor = useTasksUiStore((state) => state.saveTaskEditor);
+  const getRecurrenceRule = useTasksUiStore((state) => state.getRecurrenceRule);
 
+  const initialDate = task?.dueDate ?? today;
   const [title, setTitle] = useState(() => task?.title ?? initialTitle);
   const [notes, setNotes] = useState(() => task?.notes ?? '');
   const [priority, setPriority] = useState<TaskPriority>(() => task?.priority ?? 'medium');
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(() =>
-    getScheduleMode(task?.dueDate, today, tomorrow)
+  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>(() =>
+    getSchedulePreset(task?.dueDate, today)
   );
-  const [dateText, setDateText] = useState(() => task?.dueDate ?? today);
-  const [timeText, setTimeText] = useState(() => task?.dueTime ?? '');
+  const [dateText, setDateText] = useState(initialDate);
+  const [timePreset, setTimePreset] = useState<TimePreset>(() => getTimePreset(task?.dueTime));
+  const [timeText, setTimeText] = useState<string | null>(() => task?.dueTime ?? null);
+  const [recurrence, setRecurrence] = useState<RecurrenceEditorState>(() =>
+    createRecurrenceEditorState(null, initialDate)
+  );
+  const [recurrenceLoading, setRecurrenceLoading] = useState(mode === 'edit' && task != null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const selectSchedule = (nextMode: ScheduleMode) => {
-    setScheduleMode(nextMode);
+  useEffect(() => {
+    if (mode !== 'edit' || !task) {
+      setRecurrenceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRecurrenceLoading(true);
+    void getRecurrenceRule(task.id)
+      .then((rule) => {
+        if (cancelled) return;
+        setRecurrence(createRecurrenceEditorState(rule, task.dueDate ?? today));
+      })
+      .catch(() => {
+        if (!cancelled) setFormError('Repeat settings could not be loaded. Try reopening this reminder.');
+      })
+      .finally(() => {
+        if (!cancelled) setRecurrenceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getRecurrenceRule, mode, task, today]);
+
+  const setDueDate = (nextDate: string) => {
+    setDateText(nextDate);
+    setSchedulePreset(getSchedulePreset(nextDate, today));
+    setRecurrence((current) => normalizeRecurrenceStateForDate(current, nextDate));
     setFormError(null);
-    if (nextMode === 'today') setDateText(today);
-    if (nextMode === 'tomorrow') setDateText(tomorrow);
-    if (nextMode === 'none') {
+  };
+
+  const selectSchedule = (nextPreset: SchedulePreset) => {
+    setFormError(null);
+    setSchedulePreset(nextPreset);
+    if (nextPreset === 'today') setDueDate(today);
+    if (nextPreset === 'tomorrow') setDueDate(addLocalCalendarDays(today, 1));
+    if (nextPreset === 'next_week') setDueDate(addLocalCalendarDays(today, 7));
+    if (nextPreset === 'custom' && !dateText) setDueDate(today);
+    if (nextPreset === 'none') {
       setDateText('');
-      setTimeText('');
+      setTimePreset('any');
+      setTimeText(null);
+      setRecurrence((current) => ({ ...current, preset: 'none' }));
     }
   };
 
+  const selectTime = (nextPreset: TimePreset) => {
+    setTimePreset(nextPreset);
+    setTimeText(timeForPreset(nextPreset, timeText));
+    setFormError(null);
+  };
+
+  const selectRepeat = (preset: RepeatPreset) => {
+    let effectiveDate = dateText;
+    if (!effectiveDate) {
+      effectiveDate = today;
+      setDateText(today);
+      setSchedulePreset('today');
+    }
+    setRecurrence((current) => applyRepeatPreset(current, preset, effectiveDate));
+    setFormError(null);
+  };
+
+  const setCustomFrequency = (frequency: RecurrenceFrequency) => {
+    setRecurrence((current) => {
+      const base = { ...current, preset: 'custom' as const, frequency };
+      return applyRepeatPreset(base, 'custom', dateText || today);
+    });
+  };
+
   const handleSave = () => {
-    if (saving) return;
+    if (saving || recurrenceLoading) return;
     const normalizedTitle = title.trim();
     const normalizedNotes = notes.trim();
-    const normalizedDate = scheduleMode === 'today'
-      ? today
-      : scheduleMode === 'tomorrow'
-        ? tomorrow
-        : scheduleMode === 'none'
-          ? null
-          : dateText.trim();
-    const normalizedTime = timeText.trim() || null;
+    const normalizedDate = schedulePreset === 'none' ? null : dateText;
+    const normalizedTime = normalizedDate ? timeText : null;
 
     if (!normalizedTitle) {
       setFormError('Add a short title before saving.');
       return;
     }
     if (normalizedDate && !isValidLocalDate(normalizedDate)) {
-      setFormError('Use a valid date in YYYY-MM-DD format.');
+      setFormError('Choose a valid date.');
       return;
     }
-    if (normalizedTime && !isValidLocalTime(normalizedTime)) {
-      setFormError('Use a valid time in HH:MM format.');
+    if (recurrence.preset !== 'none' && !normalizedDate) {
+      setFormError('Recurring reminders require a scheduled date.');
       return;
     }
+    if (recurrence.endMode === 'date') {
+      if (!recurrence.endDate || !isValidLocalDate(recurrence.endDate)) {
+        setFormError('Choose a valid repeat end date.');
+        return;
+      }
+      if (normalizedDate && recurrence.endDate < normalizedDate) {
+        setFormError('Repeat end date must be on or after the first occurrence.');
+        return;
+      }
+    }
+
+    const recurrenceDraft = normalizedDate
+      ? buildRecurrenceDraft(recurrence, normalizedDate, task?.dueTimezone ?? deviceTimezone)
+      : null;
+    const taskFields = {
+      title: normalizedTitle,
+      notes: normalizedNotes || null,
+      priority,
+      dueDate: normalizedDate,
+      dueTime: normalizedTime,
+      dueTimezone: normalizedDate ? task?.dueTimezone ?? deviceTimezone : null,
+      dueSemantics: task?.dueSemantics ?? 'floating' as const,
+    };
 
     setSaving(true);
     setFormError(null);
     const operation = mode === 'edit' && task
-      ? updateTask(task.id, {
-          title: normalizedTitle,
-          notes: normalizedNotes || null,
-          priority,
-          dueDate: normalizedDate,
-          dueTime: normalizedTime,
-          dueTimezone: normalizedDate ? task.dueTimezone ?? null : null,
-          dueSemantics: task.dueSemantics ?? 'floating',
-        })
-      : createTask({
-          title: normalizedTitle,
-          notes: normalizedNotes || undefined,
-          priority,
-          dueDate: normalizedDate,
-          dueTime: normalizedTime,
-          dueSemantics: 'floating',
-          source: 'manual',
-        });
+      ? saveTaskEditor(task.id, { task: taskFields, recurrence: recurrenceDraft })
+      : recurrenceDraft && normalizedDate
+        ? createTaskWithRecurrence({
+            title: normalizedTitle,
+            notes: normalizedNotes || undefined,
+            priority,
+            dueDate: normalizedDate,
+            dueTime: normalizedTime,
+            dueTimezone: deviceTimezone,
+            dueSemantics: 'floating',
+            source: 'manual',
+            recurrence: recurrenceDraft,
+          })
+        : createTask({
+            title: normalizedTitle,
+            notes: normalizedNotes || undefined,
+            priority,
+            dueDate: normalizedDate,
+            dueTime: normalizedTime,
+            dueTimezone: normalizedDate ? deviceTimezone : null,
+            dueSemantics: 'floating',
+            source: 'manual',
+          });
 
     void runTaskMutation(
       () => operation,
-      mode === 'edit' ? 'task-update' : 'task-create',
+      mode === 'edit' ? 'task-editor-save' : recurrenceDraft ? 'task-create-recurring' : 'task-create',
       setFormError,
     )
       .then((result) => {
@@ -188,13 +325,15 @@ function TaskEditorForm({
   const textColor = isDark ? Colors.textDark : Colors.textLight;
   const secondaryTextColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
   const titleLabel = mode === 'edit' ? 'Edit reminder' : 'New reminder';
+  const pickerDate = localPickerDate(dateText || today, timeText);
+  const endPickerDate = localPickerDate(recurrence.endDate ?? dateText || today);
 
   return (
     <Sheet
       visible={visible}
       onRequestClose={onClose}
       title={titleLabel}
-      subtitle={mode === 'edit' ? 'Refine the details without losing your place.' : 'Capture the next step while it is fresh.'}
+      subtitle={mode === 'edit' ? 'Refine the schedule without losing your place.' : 'Capture it now. AETHER handles the calendar locally.'}
       accessibilityLabel={mode === 'edit' ? 'Edit reminder' : 'New reminder'}
       headerAction={(
         <IconButton
@@ -211,7 +350,7 @@ function TaskEditorForm({
           variant="primary"
           fullWidth
           loading={saving}
-          disabled={!title.trim() || saving}
+          disabled={!title.trim() || saving || recurrenceLoading}
         />
       )}
       testID="task-editor-sheet"
@@ -229,7 +368,7 @@ function TaskEditorForm({
           <View style={styles.intro}>
             <CalendarDays size={18} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
             <Typography variant="caption" color={secondaryTextColor} style={styles.introCopy}>
-              Stored locally. You can change the schedule or priority at any time.
+              Stored locally. Date, time, and repeat rules work without AI or network access.
             </Typography>
           </View>
 
@@ -258,60 +397,187 @@ function TaskEditorForm({
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Typography variant="caption" color={textColor} style={styles.sectionLabel}>
-                Schedule
-              </Typography>
-              <Typography variant="tiny" color={secondaryTextColor}>
-                Local time
-              </Typography>
+              <Typography variant="caption" color={textColor} style={styles.sectionLabel}>Date</Typography>
+              <Typography variant="tiny" color={secondaryTextColor}>Local calendar</Typography>
             </View>
-            <View style={styles.scheduleRow}>
-              <ScheduleChoice label="Today" selected={scheduleMode === 'today'} onPress={() => selectSchedule('today')} />
-              <ScheduleChoice label="Tomorrow" selected={scheduleMode === 'tomorrow'} onPress={() => selectSchedule('tomorrow')} />
-              <ScheduleChoice label="Custom" selected={scheduleMode === 'custom'} onPress={() => selectSchedule('custom')} />
-              <ScheduleChoice label="No date" selected={scheduleMode === 'none'} onPress={() => selectSchedule('none')} />
+            <View style={styles.choiceRow}>
+              <ChoicePill label="Today" group="Date" selected={schedulePreset === 'today'} onPress={() => selectSchedule('today')} />
+              <ChoicePill label="Tomorrow" group="Date" selected={schedulePreset === 'tomorrow'} onPress={() => selectSchedule('tomorrow')} />
+              <ChoicePill label="Next week" group="Date" selected={schedulePreset === 'next_week'} onPress={() => selectSchedule('next_week')} />
+              <ChoicePill label="Pick date" group="Date" selected={schedulePreset === 'custom'} onPress={() => selectSchedule('custom')} />
+              <ChoicePill label="No date" group="Date" selected={schedulePreset === 'none'} onPress={() => selectSchedule('none')} />
             </View>
-
-            {scheduleMode !== 'none' ? (
-              <View style={[styles.dateTimeRow, compact && styles.dateTimeRowCompact]}>
-                {scheduleMode === 'custom' ? (
-                  <TextField
-                    label="Date"
-                    value={dateText}
-                    onChangeText={(value) => {
-                      setDateText(value);
-                      setScheduleMode('custom');
-                      if (formError) setFormError(null);
-                    }}
-                    placeholder="YYYY-MM-DD"
-                    keyboardType="numbers-and-punctuation"
-                    containerStyle={styles.dateField}
-                    helperText="Example: 2026-08-10"
-                  />
-                ) : (
-                  <View style={styles.dateSummary}>
-                    <Typography variant="tiny" color={secondaryTextColor}>DATE</Typography>
-                    <Typography variant="bodyBold">{scheduleMode === 'today' ? today : tomorrow}</Typography>
-                  </View>
-                )}
-                <TextField
-                  label="Time (optional)"
-                  value={timeText}
-                  onChangeText={(value) => {
-                    setTimeText(value);
-                    if (formError) setFormError(null);
-                  }}
-                  placeholder="HH:MM"
-                  keyboardType="numbers-and-punctuation"
-                  containerStyle={styles.timeField}
-                  helperText="Leave empty for any time"
-                />
-              </View>
+            {schedulePreset === 'custom' ? (
+              <NativeDateTimeControl
+                label="Date"
+                mode="date"
+                value={pickerDate}
+                onChange={(value) => setDueDate(getLocalDateString(value))}
+                accessibilityLabel="Choose reminder date"
+                testID="task-editor-date-picker"
+              />
+            ) : schedulePreset !== 'none' ? (
+              <Typography variant="caption" color={secondaryTextColor} style={styles.summaryCopy}>
+                {dateText}
+              </Typography>
             ) : (
-              <Typography variant="caption" color={secondaryTextColor} style={styles.noDateCopy}>
-                This reminder will stay in your library without a scheduled date.
+              <Typography variant="caption" color={secondaryTextColor} style={styles.summaryCopy}>
+                This reminder stays in All without a scheduled date.
               </Typography>
             )}
+          </View>
+
+          {schedulePreset !== 'none' ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Typography variant="caption" color={textColor} style={styles.sectionLabel}>Time</Typography>
+                <Typography variant="tiny" color={secondaryTextColor}>Optional</Typography>
+              </View>
+              <View style={styles.choiceRow}>
+                <ChoicePill label="Any time" group="Time" selected={timePreset === 'any'} onPress={() => selectTime('any')} />
+                <ChoicePill label="Morning" group="Time" selected={timePreset === 'morning'} onPress={() => selectTime('morning')} />
+                <ChoicePill label="Afternoon" group="Time" selected={timePreset === 'afternoon'} onPress={() => selectTime('afternoon')} />
+                <ChoicePill label="Evening" group="Time" selected={timePreset === 'evening'} onPress={() => selectTime('evening')} />
+                <ChoicePill label="Pick time" group="Time" selected={timePreset === 'custom'} onPress={() => selectTime('custom')} />
+              </View>
+              {timePreset === 'custom' ? (
+                <NativeDateTimeControl
+                  label="Time"
+                  mode="time"
+                  value={pickerDate}
+                  onChange={(value) => {
+                    setTimeText(getLocalTimeString(value));
+                    setTimePreset('custom');
+                  }}
+                  accessibilityLabel="Choose reminder time"
+                  testID="task-editor-time-picker"
+                />
+              ) : timeText ? (
+                <Typography variant="caption" color={secondaryTextColor} style={styles.summaryCopy}>{timeText}</Typography>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.inlineTitle}>
+                <Repeat2 size={16} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+                <Typography variant="caption" color={textColor} style={styles.sectionLabel}>Repeat</Typography>
+              </View>
+              {recurrenceLoading ? <Typography variant="tiny" color={secondaryTextColor}>Loading…</Typography> : null}
+            </View>
+            <View style={styles.choiceRow}>
+              <ChoicePill label="Never" group="Repeat" selected={recurrence.preset === 'none'} onPress={() => selectRepeat('none')} />
+              <ChoicePill label="Daily" group="Repeat" selected={recurrence.preset === 'daily'} onPress={() => selectRepeat('daily')} />
+              <ChoicePill label="Weekdays" group="Repeat" selected={recurrence.preset === 'weekdays'} onPress={() => selectRepeat('weekdays')} />
+              <ChoicePill label="Weekly" group="Repeat" selected={recurrence.preset === 'weekly'} onPress={() => selectRepeat('weekly')} />
+              <ChoicePill label="Monthly" group="Repeat" selected={recurrence.preset === 'monthly'} onPress={() => selectRepeat('monthly')} />
+              <ChoicePill label="Custom" group="Repeat" selected={recurrence.preset === 'custom'} onPress={() => selectRepeat('custom')} />
+            </View>
+
+            {recurrence.preset !== 'none' ? (
+              <View style={styles.repeatDetails}>
+                {recurrence.preset === 'custom' ? (
+                  <View style={[styles.twoColumn, compact && styles.twoColumnCompact]}>
+                    <Picker<RecurrenceFrequency>
+                      label="Frequency"
+                      value={recurrence.frequency}
+                      onValueChange={setCustomFrequency}
+                      options={[
+                        { value: 'daily', label: 'Daily' },
+                        { value: 'weekly', label: 'Weekly' },
+                        { value: 'monthly', label: 'Monthly' },
+                        { value: 'yearly', label: 'Yearly' },
+                      ]}
+                      containerStyle={styles.flexField}
+                    />
+                    <NumberStepper
+                      label="Every"
+                      value={recurrence.interval}
+                      max={99}
+                      onChange={(interval) => setRecurrence((current) => ({ ...current, interval }))}
+                    />
+                  </View>
+                ) : null}
+
+                {recurrence.preset === 'custom' && recurrence.frequency === 'weekly' ? (
+                  <View style={styles.weekdayBlock}>
+                    <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700}>Days</Typography>
+                    <View style={styles.weekdayRow}>
+                      {WEEKDAY_OPTIONS.map((option) => (
+                        <ChoicePill
+                          key={option.value}
+                          label={option.label}
+                          group="Weekday"
+                          selected={recurrence.weekdays.includes(option.value)}
+                          onPress={() => setRecurrence((current) => ({
+                            ...current,
+                            weekdays: toggleWeekday(current.weekdays, option.value),
+                          }))}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {recurrence.preset === 'custom' && recurrence.frequency === 'monthly' ? (
+                  <NumberStepper
+                    label="Day of month"
+                    value={recurrence.monthDays[0] ?? Number((dateText || today).slice(-2))}
+                    min={1}
+                    max={31}
+                    onChange={(day) => setRecurrence((current) => ({ ...current, monthDays: [day] }))}
+                  />
+                ) : null}
+
+                <Picker<RecurrenceMode>
+                  label="Repeat timing"
+                  value={recurrence.mode}
+                  onValueChange={(value) => setRecurrence((current) => ({ ...current, mode: value }))}
+                  options={[
+                    { value: 'fixed', label: 'On schedule' },
+                    { value: 'after_completion', label: 'After completion' },
+                  ]}
+                  helperText={recurrence.mode === 'fixed' ? 'Keeps the calendar cadence.' : 'Counts the interval from when you complete it.'}
+                />
+
+                <Picker<'never' | 'date' | 'count'>
+                  label="Ends"
+                  value={recurrence.endMode}
+                  onValueChange={(value) => setRecurrence((current) => ({ ...current, endMode: value }))}
+                  options={[
+                    { value: 'never', label: 'Never' },
+                    { value: 'date', label: 'On date' },
+                    { value: 'count', label: 'After count' },
+                  ]}
+                />
+
+                {recurrence.endMode === 'date' ? (
+                  <NativeDateTimeControl
+                    label="End date"
+                    mode="date"
+                    value={endPickerDate}
+                    minimumDate={localPickerDate(dateText || today)}
+                    onChange={(value) => setRecurrence((current) => ({
+                      ...current,
+                      endDate: getLocalDateString(value),
+                    }))}
+                    accessibilityLabel="Choose repeat end date"
+                    testID="task-editor-repeat-end-picker"
+                  />
+                ) : null}
+
+                {recurrence.endMode === 'count' ? (
+                  <NumberStepper
+                    label="Occurrences"
+                    value={recurrence.maxOccurrences ?? 2}
+                    min={1}
+                    max={999}
+                    onChange={(maxOccurrences) => setRecurrence((current) => ({ ...current, maxOccurrences }))}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
           <Picker<TaskPriority>
@@ -353,39 +619,36 @@ export function TaskEditorSheet(props: TaskEditorSheetProps) {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   scrollContent: {
     paddingHorizontal: ControlTokens.sheetHorizontalPadding,
     paddingBottom: Spacing.lg,
-    gap: Spacing.md,
+    gap: Spacing.lg,
   },
   intro: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  introCopy: {
-    flex: 1,
-  },
-  section: {
-    gap: Spacing.sm,
-  },
+  introCopy: { flex: 1 },
+  section: { gap: Spacing.sm },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  sectionLabel: {
-    fontWeight: '700',
+  sectionLabel: { fontWeight: '700' },
+  inlineTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
-  scheduleRow: {
+  choiceRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.xs,
   },
-  scheduleChoice: {
+  choice: {
     minHeight: 40,
     paddingHorizontal: Spacing.sm,
     alignItems: 'center',
@@ -394,35 +657,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderCurve: 'continuous',
   },
-  scheduleChoiceLabel: {
-    fontWeight: '600',
+  choiceLabel: { fontWeight: '600' },
+  summaryCopy: { paddingHorizontal: Spacing.xs },
+  repeatDetails: {
+    gap: Spacing.md,
+    paddingTop: Spacing.xs,
   },
-  dateTimeRow: {
+  twoColumn: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.sm,
   },
-  dateTimeRowCompact: {
-    flexDirection: 'column',
-  },
-  dateField: {
+  twoColumnCompact: { flexDirection: 'column' },
+  flexField: { flex: 1, minWidth: 150 },
+  stepperBlock: {
     flex: 1,
     minWidth: 150,
+    gap: ControlTokens.fieldLabelGap,
   },
-  timeField: {
-    flex: 1,
-    minWidth: 150,
-  },
-  dateSummary: {
-    flex: 1,
-    minHeight: 70,
-    justifyContent: 'center',
-    gap: 3,
-    paddingHorizontal: Spacing.sm,
+  stepper: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.lg,
-    backgroundColor: 'rgba(127, 145, 170, 0.10)',
-  },
-  noDateCopy: {
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.xs,
+  },
+  stepperValue: { minWidth: 42 },
+  weekdayBlock: { gap: ControlTokens.fieldLabelGap },
+  weekdayRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
   },
 });
