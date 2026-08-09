@@ -24,13 +24,13 @@ function formatUtcDate(date: Date): string {
   return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 }
 
-function addDays(value: string, amount: number): string {
+export function addLocalCalendarDays(value: string, amount: number): string {
   const date = toUtcDate(value);
   date.setUTCDate(date.getUTCDate() + amount);
   return formatUtcDate(date);
 }
 
-function daysBetween(a: string, b: string): number {
+export function differenceInLocalCalendarDays(a: string, b: string): number {
   return Math.floor((toUtcDate(b).getTime() - toUtcDate(a).getTime()) / 86_400_000);
 }
 
@@ -75,21 +75,21 @@ export function getNextRecurrenceDate(rule: RecurrenceRule, fromDate: string): s
 
   switch (rule.frequency) {
     case 'daily':
-      candidate = addDays(fromDate, interval);
+      candidate = addLocalCalendarDays(fromDate, interval);
       break;
 
     case 'weekly': {
       const weekdays = normalizedWeekdays(rule);
       if (weekdays.length === 0) {
-        candidate = addDays(fromDate, interval * 7);
+        candidate = addLocalCalendarDays(fromDate, interval * 7);
         break;
       }
       const anchorWeek = startOfWeekSunday(rule.startDate);
       for (let offset = 1; offset <= 366 * 6; offset += 1) {
-        const next = addDays(fromDate, offset);
+        const next = addLocalCalendarDays(fromDate, offset);
         const weekday = toUtcDate(next).getUTCDay();
         if (!weekdays.includes(weekday)) continue;
-        const weekOffset = Math.floor(daysBetween(anchorWeek, startOfWeekSunday(next)) / 7);
+        const weekOffset = Math.floor(differenceInLocalCalendarDays(anchorWeek, startOfWeekSunday(next)) / 7);
         if (weekOffset >= 0 && weekOffset % interval === 0) {
           candidate = next;
           break;
