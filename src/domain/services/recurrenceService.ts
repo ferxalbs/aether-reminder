@@ -9,7 +9,7 @@ import { createReceipt, type ActionReceipt } from '@/domain/receipts';
 import { RecurrenceRulesRepository } from '@/db/repositories/recurrenceRulesRepository';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { getNextRecurrenceDate } from '@/temporal/recurrence';
-import { TaskService } from './taskService';
+import { TaskService, type MutationResult } from './taskService';
 
 export interface RecurrenceMutationResult {
   value: RecurrenceRule;
@@ -158,7 +158,6 @@ export class RecurrenceService {
         );
         nextTask = created.value;
       } catch (error) {
-        // Deterministic occurrence IDs make a concurrent/retried advancement safe.
         nextTask = await this.tasks.getTask(nextId, { includeDeleted: true });
         if (!nextTask || nextTask.deletedAt) throw error;
       }
@@ -179,31 +178,33 @@ export class RecurrenceService {
     return { rule: currentRule, nextTask };
   }
 
-  async undoRecurringCompletion(input: {
-    ruleId: string;
-    previousTaskId: string;
-    nextTaskId: string;
-    occurrenceCount: number;
-  }): Promise<void> {
-    const current = await this.rules.getById(input.ruleId);
-    if (!current) throw new Error('Recurrence rule not found.');
+  /** Undo only the latest recurrence advancement associated with this completion. */
+  async undoLatestCompletionForTask(previousTaskId: string): Promise<MutationResult<Task> | null> {
+    const rule = await this.rules.getAdvancedFromTask(previousTaskId);
+    if (!rule) return null;
+    const nextTaskId = rule.taskId;
+    const rolledBack = await this.rules.rollbackAdvance(
+      rule.id,
+      previousTaskId,
+      nextTaskId,
+      rule.occurrenceCount,
+    );
+    if (!rolledBack) throw new Error('Recurring completion can no longer be undone safely.');
 
-    const alreadyRolledBack =
-      current.taskId === input.previousTaskId &&
-      current.occurrenceCount === input.occurrenceCount - 1;
-
-    if (!alreadyRolledBack) {
-      const rolledBack = await this.rules.rollbackAdvance(
-        input.ruleId,
-        input.previousTaskId,
-        input.nextTaskId,
-        input.occurrenceCount,
-      );
-      if (!rolledBack) throw new Error('Recurring completion can no longer be undone safely.');
+    try {
+      const next = await this.tasks.getTask(nextTaskId);
+      if (next) await this.tasks.deleteTask(nextTaskId, 'undo');
+      return await this.tasks.reopenTask(previousTaskId, 'undo');
+    } catch (error) {
+      // Restore the recurrence pointer if cleanup fails so the rule never points
+      // at the wrong occurrence. Deterministic IDs make this retry-safe.
+      await this.rules.advance(
+        rule.id,
+        previousTaskId,
+        nextTaskId,
+        rule.occurrenceCount - 1,
+      ).catch(() => undefined);
+      throw error;
     }
-
-    const next = await this.tasks.getTask(input.nextTaskId);
-    if (next) await this.tasks.deleteTask(input.nextTaskId, 'undo');
-    await this.tasks.reopenTask(input.previousTaskId, 'undo');
   }
 }
