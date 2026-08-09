@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { CalendarDays, Flag, Minus, Plus, Repeat2, X } from 'lucide-react-native';
-import type { RecurrenceFrequency, RecurrenceMode, TaskListItem, TaskPriority } from '@/domain/entities';
+import type {
+  RecurrenceFrequency,
+  RecurrenceMode,
+  TaskListItem,
+  TaskPriority,
+  UpdateTaskInput,
+} from '@/domain/entities';
 import { Colors, ControlTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { getDeviceTimeZone, getLocalDateString, getLocalTimeString } from '@/temporal/localCalendar';
@@ -274,14 +280,14 @@ function TaskEditorForm({
     const recurrenceDraft = normalizedDate
       ? buildRecurrenceDraft(recurrence, normalizedDate, task?.dueTimezone ?? deviceTimezone)
       : null;
-    const taskFields = {
+    const taskFields: UpdateTaskInput = {
       title: normalizedTitle,
       notes: normalizedNotes || null,
       priority,
       dueDate: normalizedDate,
       dueTime: normalizedTime,
       dueTimezone: normalizedDate ? task?.dueTimezone ?? deviceTimezone : null,
-      dueSemantics: task?.dueSemantics ?? 'floating' as const,
+      dueSemantics: task?.dueSemantics ?? 'floating',
     };
 
     setSaving(true);
@@ -326,7 +332,7 @@ function TaskEditorForm({
   const secondaryTextColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
   const titleLabel = mode === 'edit' ? 'Edit reminder' : 'New reminder';
   const pickerDate = localPickerDate(dateText || today, timeText);
-  const endPickerDate = localPickerDate(recurrence.endDate ?? dateText || today);
+  const endPickerDate = localPickerDate(recurrence.endDate ?? (dateText || today));
 
   return (
     <Sheet
