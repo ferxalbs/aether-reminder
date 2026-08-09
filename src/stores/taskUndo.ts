@@ -4,14 +4,23 @@ import type { TaskPriority, TemporalSemantics, UpdateTaskInput } from '@/domain/
 export type TaskUndoAction =
   | 'task.soft_delete'
   | 'task.reopen'
+  | 'task.reopen_recurring'
   | 'task.complete'
   | 'task.restore_soft_deleted'
   | 'task.restore_fields';
+
+export interface RecurringCompletionUndo {
+  ruleId: string;
+  previousTaskId: string;
+  nextTaskId: string;
+  occurrenceCount: number;
+}
 
 function isTaskUndoAction(value: unknown): value is TaskUndoAction {
   return (
     value === 'task.soft_delete' ||
     value === 'task.reopen' ||
+    value === 'task.reopen_recurring' ||
     value === 'task.complete' ||
     value === 'task.restore_soft_deleted' ||
     value === 'task.restore_fields'
@@ -32,10 +41,29 @@ export function getTaskUndoTaskId(receipt: ActionReceipt | null): string | null 
   return typeof taskId === 'string' && taskId.length > 0 ? taskId : null;
 }
 
+export function getRecurringCompletionUndo(receipt: ActionReceipt | null): RecurringCompletionUndo | null {
+  if (
+    receipt?.entityType !== 'task' ||
+    receipt.undo?.kind !== 'task.reopen_recurring' ||
+    typeof receipt.undo.payload.taskId !== 'string' ||
+    typeof receipt.undo.payload.ruleId !== 'string' ||
+    typeof receipt.undo.payload.nextTaskId !== 'string' ||
+    typeof receipt.undo.payload.occurrenceCount !== 'number'
+  ) return null;
+  return {
+    ruleId: receipt.undo.payload.ruleId,
+    previousTaskId: receipt.undo.payload.taskId,
+    nextTaskId: receipt.undo.payload.nextTaskId,
+    occurrenceCount: receipt.undo.payload.occurrenceCount,
+  };
+}
+
 export function canUndoTaskReceipt(receipt: ActionReceipt | null): boolean {
   const action = getTaskUndoAction(receipt);
   if (action === null) return false;
-  return action === 'task.restore_fields' ? getTaskUndoRestoreFields(receipt) !== null : true;
+  if (action === 'task.restore_fields') return getTaskUndoRestoreFields(receipt) !== null;
+  if (action === 'task.reopen_recurring') return getRecurringCompletionUndo(receipt) !== null;
+  return true;
 }
 
 function isTaskPriority(value: unknown): value is TaskPriority {
