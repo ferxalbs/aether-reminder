@@ -67,6 +67,13 @@ describe('AETHER Core execution boundary', () => {
       },
     });
 
+    const initialReminders = await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    });
+    expect(initialReminders).toHaveLength(1);
+    expect(initialReminders[0]?.scheduledTime).toBe('09:00');
+
     const completed = await core.commands.completeTask(created.task.id);
     expect(completed.value.completed).toBe(true);
     expect(completed.receipt.undo?.kind).toBe('task.reopen');
@@ -91,7 +98,7 @@ describe('AETHER Core execution boundary', () => {
     await db.closeAsync?.();
   });
 
-  test('task editor save moves the recurrence anchor and can stop repeating', async () => {
+  test('task editor save moves recurrence and its primary due reminder, then can disable both', async () => {
     const db = createBunSqliteDatabase();
     await applyPragmas(db);
     await runMigrations(db);
@@ -137,16 +144,27 @@ describe('AETHER Core execution boundary', () => {
 
     const movedTask = await core.services.tasks.getTask(created.task.id);
     const movedRule = await core.services.recurrence.getRuleForTask(created.task.id);
+    const movedReminders = await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    });
     expect(movedTask?.dueDate).toBe('2026-08-12');
     expect(movedTask?.dueTime).toBe('14:00');
     expect(movedRule?.startDate).toBe('2026-08-12');
     expect(movedRule?.weekdays).toEqual([3]);
+    expect(movedReminders).toHaveLength(1);
+    expect(movedReminders[0]?.scheduledDate).toBe('2026-08-12');
+    expect(movedReminders[0]?.scheduledTime).toBe('14:00');
 
     await core.commands.saveTaskEditorState(created.task.id, {
-      task: { title: 'Weekly planning' },
+      task: { title: 'Weekly planning', dueTime: null },
       recurrence: null,
     });
     expect(await core.services.recurrence.getRuleForTask(created.task.id)).toBeNull();
+    expect(await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    })).toHaveLength(0);
 
     await db.closeAsync?.();
   });
