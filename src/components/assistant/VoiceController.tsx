@@ -16,6 +16,8 @@ import {
   deliverFinalTranscript,
   pcm16AudioLevel,
   normalizePcm16,
+  testOpenAIRealtimeConnection,
+  toTranscriptionError,
   type OpenAIRealtimeSession,
   type RealtimeTranscriptionSnapshot,
   type RealtimeTranscriptionState,
@@ -131,17 +133,15 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   }, [audioLevel]);
 
   const fail = useCallback((caught: unknown) => {
-    const transcriptionError = caught instanceof TranscriptionError
-      ? caught
-      : new TranscriptionError(
-          'SESSION_FAILED',
-          caught instanceof Error && caught.message
-            ? caught.message
-            : 'The OpenAI realtime transcription session failed.'
-        );
+    const transcriptionError = toTranscriptionError(caught);
     cleanupResources(true);
     setVoiceState('error');
-    reportNonFatalError('voice-controller', transcriptionError);
+    reportNonFatalError(
+      'voice-controller',
+      new Error(
+        `code=${transcriptionError.code} status=${transcriptionError.status ?? 'none'} message=${transcriptionError.message}`,
+      ),
+    );
     if (mountedRef.current) {
       setError(getTranscriptionErrorMessage(transcriptionError));
       setErrorCode(transcriptionError.code);
@@ -326,6 +326,12 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
         if (!openAiApiKey.trim()) throw new TranscriptionError('MISSING_API_KEY', 'An OpenAI API key is required.');
         const permission = await requestRecordingPermissionsAsync();
         if (!permission.granted) throw new TranscriptionError('PERMISSION_DENIED', 'Microphone permission was denied.');
+        if (abortController.signal.aborted || !activeRef.current) return;
+
+        // A native WebSocket handshake does not expose its HTTP status/body on
+        // Android. Validate the exact transcription session first so credential,
+        // billing, model-access, and provider failures retain actionable codes.
+        await testOpenAIRealtimeConnection(openAiApiKey, abortController.signal);
         if (abortController.signal.aborted || !activeRef.current) return;
 
         await retryWithBackoff(

@@ -2,6 +2,64 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.09 (5) [Voice Failure Forensics and Error Surface Ownership]
+
+### Actionable realtime transcription failures
+
+- Added an abortable OpenAI realtime access preflight to the production voice path
+  before the native WebSocket connection. Android handshake failures now retain
+  credential, billing, model-access, rate-limit, timeout, provider, and HTTP status
+  classifications instead of collapsing every rejection into a generic network
+  error.
+- Preserved the existing OpenAI realtime architecture and
+  `gpt-realtime-whisper` session contract: 24 kHz mono PCM16 capture, normalized
+  native audio, bounded packet transport, explicit commit, and exactly-once final
+  transcript delivery. OpenRouter remains isolated to the downstream reminder
+  interpretation and tool-execution stage.
+- Connected provider `Retry-After` metadata to bounded retry behavior, added
+  sanitized status/code/request-ID diagnostics, and kept raw provider payloads out
+  of user-visible messages.
+
+### Explicit voice and assistant lifecycle states
+
+- Made every capture, transport, and handoff failure transition to an explicit
+  voice error state with cleanup of the abort controller, recorder, socket, timers,
+  queued audio, and final-delivery guards. Cancellation now also aborts an in-flight
+  provider preflight so it cannot retry or start a late recording session.
+- Removed contradictory `Ready` presentation during voice failure. The active
+  surface now reports `Transcription unavailable`, `Microphone unavailable`, or
+  `Reminder processing unavailable` with a concise safe reason.
+- Corrected early OpenRouter credential-loading and missing-key failures to move
+  the assistant semantic state to `error` rather than retaining an idle/ready state.
+
+### Unoccluded recovery controls
+
+- Made the persistent bottom navigation intentionally absent while the assistant is
+  active, eliminating the proven overlap between its `zIndex: 100` host and the
+  assistant sheet's `zIndex: 20` surface without introducing z-index escalation.
+- Kept voice errors inside the active assistant surface with reachable `Retry`,
+  conditional `Settings`, and `Dismiss` actions. Settings is exposed only for
+  microphone permission or genuine provider configuration/access failures, and the
+  assistant is closed and cleaned up before navigation.
+- Hid competing composer controls while voice capture or a voice error owns the
+  assistant surface. No reminder-row, typography, navigation appearance, spacing,
+  toast, blur-target, GlassSurface, or native-view hierarchy redesign was made.
+
+### Regression coverage and runtime limits
+
+- Added coverage for invalid credentials with preserved HTTP 401 status, provider
+  503 retry and final-status handling, cancellation during access validation,
+  transient network recovery, realtime session cancellation, PCM packet transport,
+  timeouts, safe error copy, and provider-to-transcription error mapping.
+- `bun run typecheck`, `bun run lint`, and `git diff --check`: passed. `bun test`:
+  144 passed, 1 intentional live OpenRouter smoke test skipped, 0 failed.
+- `bun x expo install --check` reported aligned dependencies, Expo Doctor passed
+  20/20 checks, and the final Android Hermes export passed with 3,673 modules.
+- No Android device, emulator, `adb`, or connected Metro inspector was available.
+  The saved-device provider response, real microphone lifecycle, live successful
+  transcription, repeated navigation, and Android-back recovery therefore remain
+  unconfirmed on hardware; no live voice-success claim is made.
+
 ## Unreleased - 2026.08.09 (4) [Safe Database Startup and Recovery]
 
 ### Startup readiness boundary

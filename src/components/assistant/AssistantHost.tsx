@@ -7,7 +7,11 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import type { ContextSnapshot } from '@/services/agent';
-import { TranscriptionError } from '@/services/transcription';
+import {
+  getTranscriptionErrorTitle,
+  needsTranscriptionProviderSettings,
+  TranscriptionError,
+} from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAgentSessionController } from './AgentSessionController';
@@ -243,10 +247,16 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   }, [closeAssistant, surface]);
 
   const openMicrophoneSettings = useCallback(() => {
+    closeAssistant();
     void Linking.openSettings().catch((error: unknown) => {
       reportNonFatalError('open-microphone-settings', error);
     });
-  }, []);
+  }, [closeAssistant]);
+
+  const openVoiceConfiguration = useCallback(() => {
+    closeAssistant();
+    router.replace('/settings' as never);
+  }, [closeAssistant, router]);
 
   const submit = useCallback(() => {
     const value = composerValue.trim();
@@ -297,7 +307,9 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         voiceState={voice.state}
         voiceLocked={voice.locked}
         voiceError={voice.error}
+        voiceErrorTitle={getTranscriptionErrorTitle(voice.errorCode)}
         voiceNeedsSystemSettings={voice.errorCode === 'PERMISSION_DENIED'}
+        voiceNeedsAppSettings={needsTranscriptionProviderSettings(voice.errorCode)}
         voiceCanRetry={voice.canRetry}
         voiceRetryAttempt={voice.retryAttempt}
         voiceTranscript={voice.transcript}
@@ -305,6 +317,8 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
         onVoiceRetry={startVoiceAssistant}
+        onVoiceDismiss={voice.cancel}
+        onVoiceOpenAppSettings={openVoiceConfiguration}
         onVoiceOpenSettings={openMicrophoneSettings}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}

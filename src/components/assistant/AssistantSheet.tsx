@@ -47,7 +47,9 @@ interface AssistantSheetProps {
   voiceState: VoiceState;
   voiceLocked: boolean;
   voiceError: string | null;
+  voiceErrorTitle: string;
   voiceNeedsSystemSettings: boolean;
+  voiceNeedsAppSettings: boolean;
   voiceCanRetry: boolean;
   voiceRetryAttempt: number;
   voiceTranscript: string;
@@ -55,6 +57,8 @@ interface AssistantSheetProps {
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
   onVoiceRetry: () => void;
+  onVoiceDismiss: () => void;
+  onVoiceOpenAppSettings: () => void;
   onVoiceOpenSettings: () => void;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
@@ -138,7 +142,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   voiceState,
   voiceLocked,
   voiceError,
+  voiceErrorTitle,
   voiceNeedsSystemSettings,
+  voiceNeedsAppSettings,
   voiceCanRetry,
   voiceRetryAttempt,
   voiceTranscript,
@@ -146,6 +152,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onVoiceStop,
   onVoiceCancel,
   onVoiceRetry,
+  onVoiceDismiss,
+  onVoiceOpenAppSettings,
   onVoiceOpenSettings,
   keyboardOffset,
   blurTarget,
@@ -160,6 +168,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const showHeader = surface !== 'closing';
   const showConversation = surface === 'medium' || surface === 'full';
   const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
+  const voiceFailed = voiceState === 'error' && Boolean(voiceError);
   const targetHeight =
     surface === 'opening' || surface === 'compact'
         ? voiceActive ? 260 : voiceError ? 220 : 128
@@ -197,9 +206,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               <View style={styles.headerTitle}>
                 <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? (isDark ? Colors.white : Colors.black) : isDark ? Colors.white : Colors.black }]} />
                 <View>
-                  <Typography variant="bodyBold">{voiceActive ? 'Voice reminder' : 'AETHER'}</Typography>
+                  <Typography variant="bodyBold">{voiceActive || voiceFailed ? 'Voice reminder' : 'AETHER'}</Typography>
                   <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessibilityLiveRegion="polite">
-                    {voiceActive ? 'Alternative to manual entry' : assistantStateLabel(semanticState)}
+                    {voiceFailed ? voiceErrorTitle : voiceActive ? 'Alternative to manual entry' : assistantStateLabel(semanticState)}
                   </Typography>
                 </View>
               </View>
@@ -307,20 +316,27 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
             ) : null}
             {voiceError ? (
               <View accessibilityLiveRegion="assertive" style={styles.voiceError}>
+                <Typography variant="bodyBold">{voiceErrorTitle}</Typography>
                 <Text style={[styles.errorText, { color: isDark ? Colors.white : Colors.black }]}>{voiceError}</Text>
-                {voiceNeedsSystemSettings ? <Button label="Open system settings" variant="secondary" size="sm" onPress={onVoiceOpenSettings} style={styles.retryButton} /> : null}
-                {voiceCanRetry ? <Button label="Try again" variant="secondary" size="sm" onPress={onVoiceRetry} style={styles.retryButton} /> : null}
+                <View style={styles.voiceErrorActions}>
+                  {voiceCanRetry ? <Button label="Retry" variant="secondary" size="sm" onPress={onVoiceRetry} /> : null}
+                  {voiceNeedsSystemSettings ? <Button label="Settings" variant="secondary" size="sm" onPress={onVoiceOpenSettings} /> : null}
+                  {voiceNeedsAppSettings ? <Button label="Settings" variant="secondary" size="sm" onPress={onVoiceOpenAppSettings} /> : null}
+                  <Button label="Dismiss" variant="secondary" size="sm" onPress={onVoiceDismiss} />
+                </View>
               </View>
             ) : null}
-            <AssistantComposer
-              value={composerValue}
-              onChangeText={onComposerChange}
-              onSubmit={onSubmit}
-              disabled={isRunning || voiceActive}
-              autoFocus={surface === 'compact' && voiceState === 'idle'}
-              voiceState={voiceState}
-              onVoicePress={onVoicePress}
-            />
+            {!voiceActive && !voiceError ? (
+              <AssistantComposer
+                value={composerValue}
+                onChangeText={onComposerChange}
+                onSubmit={onSubmit}
+                disabled={isRunning}
+                autoFocus={surface === 'compact' && voiceState === 'idle'}
+                voiceState={voiceState}
+                onVoicePress={onVoicePress}
+              />
+            ) : null}
           </View>
         </View>
       </AssistantMaterial>
@@ -489,6 +505,11 @@ const styles = StyleSheet.create({
   },
   voiceError: {
     paddingVertical: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  voiceErrorActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.xs,
   },
 });

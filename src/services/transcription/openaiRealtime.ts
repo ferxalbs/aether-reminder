@@ -83,12 +83,19 @@ function mapRealtimeErrorCode(value: unknown): TranscriptionErrorCode {
   return 'SESSION_FAILED';
 }
 
-function openAiRequestError(status: number, providerCode?: string): AIProviderError {
-  const normalizedCode = providerCode?.toLowerCase() ?? '';
-  const code = normalizedCode.includes('insufficient_quota') || normalizedCode.includes('billing') || status === 402
+function openAiRequestError(
+  status: number,
+  providerCode?: string,
+  providerMessage?: string,
+  retryAfterSeconds?: number,
+): AIProviderError {
+  const diagnostic = `${providerCode ?? ''} ${providerMessage ?? ''}`.toLowerCase();
+  const code = diagnostic.includes('insufficient_quota') || diagnostic.includes('billing') || status === 402
     ? 'INSUFFICIENT_CREDITS'
-    : status === 401
+    : status === 401 || diagnostic.includes('invalid_api_key') || diagnostic.includes('authentication')
     ? 'INVALID_API_KEY'
+    : diagnostic.includes('model_not_found') || diagnostic.includes('model access') || diagnostic.includes('not have access')
+      ? 'MODEL_NOT_FOUND'
     : status === 429
       ? 'RATE_LIMITED'
       : status === 408 || status === 504
@@ -98,6 +105,7 @@ function openAiRequestError(status: number, providerCode?: string): AIProviderEr
         : 'INVALID_REQUEST';
   return new AIProviderError(code, getAIErrorMessage(new AIProviderError(code, '', { provider: 'OpenAI' })), {
     status,
+    retryAfterSeconds,
     provider: 'OpenAI',
   });
 }
@@ -363,11 +371,14 @@ export function createOpenAIRealtimeTranscriptionSession(
 }
 
 /** Validate an OpenAI key against the current realtime transcription model only. */
-export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ provider: 'OpenAI'; connected: true }> {
+export async function testOpenAIRealtimeConnection(
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<{ provider: 'OpenAI'; connected: true }> {
   const key = requireOpenAiKey(apiKey);
   await retryWithBackoff(
     async () => {
-      const timeout = createTimeoutSignal(undefined, OPENAI_CONNECTION_TEST_TIMEOUT_MS);
+      const timeout = createTimeoutSignal(signal, OPENAI_CONNECTION_TEST_TIMEOUT_MS);
       try {
         let response: Response;
         try {
@@ -391,7 +402,8 @@ export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ pr
             }),
             signal: timeout.signal,
           });
-        } catch {
+        } catch (error) {
+          if (signal?.aborted) throw error;
           throw new AIProviderError(
             timeout.didTimeout() ? 'TIMEOUT' : 'NETWORK_ERROR',
             timeout.didTimeout() ? 'OpenAI connection test timed out.' : 'Could not reach OpenAI.',
@@ -400,21 +412,40 @@ export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ pr
         }
         if (!response.ok) {
           let providerCode: string | undefined;
+          let providerMessage: string | undefined;
           try {
-            const payload = await response.json() as { error?: { code?: unknown } };
+            const payload = await response.json() as { error?: { code?: unknown; message?: unknown } };
             if (typeof payload.error?.code === 'string') providerCode = payload.error.code;
+            if (typeof payload.error?.message === 'string') providerMessage = payload.error.message;
           } catch {
             // Status still provides a typed, user-visible fallback.
           }
-          throw openAiRequestError(response.status, providerCode);
+          const retryAfterHeader = response.headers.get('retry-after');
+          const retryAfterSeconds = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined;
+          reportNonFatalError(
+            'openai-realtime-access',
+            new Error(
+              `status=${response.status} code=${providerCode ?? 'unknown'} requestId=${response.headers.get('x-request-id') ?? 'unknown'}`,
+            ),
+          );
+          throw openAiRequestError(
+            response.status,
+            providerCode,
+            providerMessage,
+            Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined,
+          );
         }
       } finally {
         timeout.cleanup();
       }
     },
     {
+      signal,
       shouldRetry: (error) => error instanceof AIProviderError
         && ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE'].includes(error.code),
+      getRetryAfterMs: (error) => error instanceof AIProviderError && error.retryAfterSeconds !== undefined
+        ? error.retryAfterSeconds * 1_000
+        : undefined,
       onRetry: (nextAttempt, delayMs, error) => {
         reportNonFatalError('openai-connection-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof AIProviderError ? error.code : 'unknown'}`));
       },

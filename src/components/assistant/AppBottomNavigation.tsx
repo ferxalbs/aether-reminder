@@ -15,6 +15,7 @@ import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useSemanticColors } from '@/theme/useSemanticColors';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
+import { useAssistantActive } from './AssistantHost';
 
 type Destination = '/' | '/tasks' | '/all' | '/settings';
 
@@ -35,6 +36,7 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   const isDark = useIsDark();
   const geometry = useBottomChromeGeometry();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const assistantActive = useAssistantActive();
 
   useEffect(() => {
     const show = Keyboard.addListener(
@@ -48,7 +50,7 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
     };
   }, []);
 
-  if (keyboardVisible) return null;
+  if (keyboardVisible || assistantActive) return null;
 
   const isActive = (destination: Destination) =>
     pathname === destination || (destination === '/' && pathname === '/index');

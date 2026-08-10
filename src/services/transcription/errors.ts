@@ -1,3 +1,5 @@
+import { AIProviderError } from '@/services/ai/providers';
+
 export type TranscriptionErrorCode =
   | 'PERMISSION_DENIED'
   | 'AUDIO_UNAVAILABLE'
@@ -35,6 +37,50 @@ export class TranscriptionError extends Error {
   }
 }
 
+export function toTranscriptionError(error: unknown): TranscriptionError {
+  if (error instanceof TranscriptionError) return error;
+  if (error instanceof AIProviderError) {
+    const code: TranscriptionErrorCode = (() => {
+      switch (error.code) {
+        case 'MISSING_API_KEY': return 'MISSING_API_KEY';
+        case 'INVALID_API_KEY': return 'INVALID_API_KEY';
+        case 'INSUFFICIENT_CREDITS': return 'INSUFFICIENT_CREDITS';
+        case 'MODEL_NOT_FOUND': return 'MODEL_UNAVAILABLE';
+        case 'RATE_LIMITED': return 'RATE_LIMITED';
+        case 'NETWORK_ERROR': return 'NETWORK_ERROR';
+        case 'TIMEOUT': return 'TIMEOUT';
+        case 'PROVIDER_UNAVAILABLE': return 'PROVIDER_UNAVAILABLE';
+        default: return 'SESSION_FAILED';
+      }
+    })();
+    return new TranscriptionError(code, error.message, {
+      status: error.status,
+      retryAfterSeconds: error.retryAfterSeconds,
+    });
+  }
+  return new TranscriptionError(
+    'SESSION_FAILED',
+    error instanceof Error && error.message
+      ? error.message
+      : 'The OpenAI realtime transcription session failed.',
+  );
+}
+
+export function getTranscriptionErrorTitle(code: TranscriptionErrorCode | null): string {
+  if (code === 'PERMISSION_DENIED' || code === 'AUDIO_UNAVAILABLE' || code === 'INVALID_AUDIO') {
+    return 'Microphone unavailable';
+  }
+  if (code === 'HANDOFF_FAILED') return 'Reminder processing unavailable';
+  return 'Transcription unavailable';
+}
+
+export function needsTranscriptionProviderSettings(code: TranscriptionErrorCode | null): boolean {
+  return code === 'MISSING_API_KEY'
+    || code === 'INVALID_API_KEY'
+    || code === 'INSUFFICIENT_CREDITS'
+    || code === 'MODEL_UNAVAILABLE';
+}
+
 export function getTranscriptionErrorMessage(error: unknown): string {
   if (error instanceof TranscriptionError) {
     switch (error.code) {
@@ -65,9 +111,7 @@ export function getTranscriptionErrorMessage(error: unknown): string {
       case 'INVALID_EVENT':
         return 'OpenAI returned an invalid realtime event. The voice session was stopped safely.';
       case 'SESSION_FAILED':
-        return error.message && error.message !== 'The OpenAI realtime transcription session failed.'
-          ? `OpenAI rejected the realtime transcription session: ${error.message}`
-          : 'The OpenAI realtime transcription session failed.';
+        return 'The OpenAI realtime transcription session failed.';
       case 'EMPTY_TRANSCRIPT':
         return 'No speech was captured. Nothing was sent to AETHER.';
       case 'HANDOFF_FAILED':

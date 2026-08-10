@@ -75,11 +75,13 @@ export function useAgentSessionController({
       const message = rawMessage.trim();
       if (!message || runningRef.current) return false;
       if (!apiKeyLoaded) {
+        setSemanticState('error');
         setError('Secure storage is still loading. Try again in a moment.');
         setCanRetry(false);
         return false;
       }
       if (!apiKey) {
+        setSemanticState('error');
         setError('Add an OpenRouter API key in Settings to ask AETHER.');
         setCanRetry(false);
         return false;

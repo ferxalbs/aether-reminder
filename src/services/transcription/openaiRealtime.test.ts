@@ -134,6 +134,46 @@ describe('OpenAI realtime transcription transport', () => {
     }
   });
 
+  test('preserves invalid-key HTTP status and provider classification', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      error: { code: 'invalid_api_key', message: 'Incorrect API key provided.' },
+    }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', 'x-request-id': 'request-1' },
+    })) as typeof fetch;
+    try {
+      await expect(testOpenAIRealtimeConnection('invalid-key')).rejects.toMatchObject({
+        code: 'INVALID_API_KEY',
+        status: 401,
+        provider: 'OpenAI',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('retries provider 5xx responses and preserves the final status', async () => {
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ error: { code: 'server_error' } }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '0' },
+      });
+    }) as typeof fetch;
+    try {
+      await expect(testOpenAIRealtimeConnection('openai-key')).rejects.toMatchObject({
+        code: 'PROVIDER_UNAVAILABLE',
+        status: 503,
+      });
+      expect(calls).toBe(3);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('retries transient OpenAI connection-test failures', async () => {
     const originalFetch = globalThis.fetch;
     let calls = 0;
@@ -145,6 +185,30 @@ describe('OpenAI realtime transcription transport', () => {
     try {
       await expect(testOpenAIRealtimeConnection('openai-key')).resolves.toEqual({ provider: 'OpenAI', connected: true });
       expect(calls).toBe(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('cancels connection validation with the voice lifecycle signal', async () => {
+    const originalFetch = globalThis.fetch;
+    const controller = new AbortController();
+    let requestSignal: AbortSignal | null = null;
+    globalThis.fetch = ((_, init) => {
+      requestSignal = init?.signal as AbortSignal;
+      return new Promise<Response>((_, reject) => {
+        requestSignal?.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      });
+    }) as typeof fetch;
+    try {
+      const validation = testOpenAIRealtimeConnection('openai-key', controller.signal);
+      controller.abort();
+      await expect(validation).rejects.toMatchObject({ name: 'AbortError' });
+      expect(requestSignal?.aborted).toBe(true);
     } finally {
       globalThis.fetch = originalFetch;
     }
