@@ -4,12 +4,12 @@
     "slug": "aether-reminder",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/aether-reminder.png",
     "scheme": "taskflowai",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/aether-reminder.png",
       "bundleIdentifier": "com.ferxalbs.aetherreminder",
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
@@ -33,7 +33,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#000000",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/aether-reminder-android-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -46,7 +46,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#000000",
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/aether-reminder-splash.png",
           "imageWidth": 76
         }
       ],
@@ -55,6 +55,7 @@
         "expo-audio",
         {
           "microphonePermission": "Allow $(PRODUCT_NAME) to record voice commands.",
+          "recordAudioAndroid": true,
           "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false
         }

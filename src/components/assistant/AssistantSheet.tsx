@@ -25,6 +25,7 @@ import type {
 } from './assistantTypes';
 import type { AgentSemanticState } from '@/services/agent';
 import type { VoiceState } from './VoiceController';
+import { isVoiceFailureState } from './VoiceController';
 
 interface AssistantSheetProps {
   surface: AssistantSurfaceState;
@@ -167,8 +168,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const isVisible = surface !== 'closed';
   const showHeader = surface !== 'closing';
   const showConversation = surface === 'medium' || surface === 'full';
-  const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
-  const voiceFailed = voiceState === 'error' && Boolean(voiceError);
+  const voiceActive = ['checking_permission', 'connecting', 'listening', 'committing', 'finalizing', 'parsing'].includes(voiceState);
+  const voiceFailed = isVoiceFailureState(voiceState) && Boolean(voiceError);
   const targetHeight =
     surface === 'opening' || surface === 'compact'
         ? voiceActive ? 260 : voiceError ? 220 : 128
@@ -292,11 +293,17 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           ) : null}
 
           <View style={styles.composerContainer}>
-            {voiceState !== 'idle' && voiceState !== 'error' ? (
+            {voiceActive ? (
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                 <View style={styles.voiceStatusRow}>
                   <View style={styles.voiceStatusCopy}>
-                    <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
+                    <Typography variant="bodyBold">{
+                      voiceState === 'checking_permission' ? 'Checking microphone…'
+                        : voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…'
+                          : voiceState === 'listening' ? 'Listening…'
+                            : voiceState === 'parsing' ? 'Understanding reminder…'
+                              : 'Finalizing…'
+                    }</Typography>
                     <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                       Say the reminder, date, and time in one sentence.
                     </Typography>
@@ -304,10 +311,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   <VoiceMeter level={voiceAudioLevel} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
-                {voiceLocked || voiceState === 'connecting' ? (
+                {voiceLocked || voiceState === 'connecting' || voiceState === 'checking_permission' ? (
                   <View style={styles.voiceActions}>
                     <Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} />
-                    {voiceState !== 'connecting' ? (
+                    {voiceState === 'listening' ? (
                       <Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} />
                     ) : null}
                   </View>
@@ -332,7 +339,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 onChangeText={onComposerChange}
                 onSubmit={onSubmit}
                 disabled={isRunning}
-                autoFocus={surface === 'compact' && voiceState === 'idle'}
+                autoFocus={surface === 'compact' && !voiceFailed}
                 voiceState={voiceState}
                 onVoicePress={onVoicePress}
               />

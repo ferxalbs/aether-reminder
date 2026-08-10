@@ -1,137 +1,124 @@
-import { AIProviderError } from '@/services/ai/providers';
-
-export type TranscriptionErrorCode =
-  | 'PERMISSION_DENIED'
-  | 'AUDIO_UNAVAILABLE'
-  | 'MISSING_API_KEY'
-  | 'INVALID_API_KEY'
-  | 'INSUFFICIENT_CREDITS'
-  | 'MODEL_UNAVAILABLE'
-  | 'RATE_LIMITED'
-  | 'NETWORK_ERROR'
-  | 'TIMEOUT'
-  | 'INVALID_AUDIO'
-  | 'PROVIDER_UNAVAILABLE'
-  | 'INVALID_EVENT'
-  | 'SESSION_FAILED'
+export type VoiceErrorCode =
+  | 'MIC_PERMISSION_DENIED'
+  | 'MIC_PERMISSION_BLOCKED'
+  | 'AUDIO_STREAM_START_FAILED'
+  | 'AUDIO_FORMAT_UNSUPPORTED'
+  | 'RESAMPLE_FAILED'
+  | 'REALTIME_AUTH_FAILED'
+  | 'INVALID_CREDENTIAL'
+  | 'ACCOUNT_NOT_AUTHORIZED'
+  | 'TIER_NOT_SUPPORTED'
+  | 'SESSION_CONFIGURATION_INVALID'
+  | 'MODEL_TEMPORARILY_UNAVAILABLE'
+  | 'REALTIME_CONNECT_FAILED'
+  | 'REALTIME_CONNECTION_LOST'
+  | 'TRANSCRIPTION_FAILED'
+  | 'TRANSCRIPTION_TIMEOUT'
   | 'EMPTY_TRANSCRIPT'
-  | 'HANDOFF_FAILED'
+  | 'PARSING_FAILED'
   | 'CANCELLED'
   | 'UNKNOWN';
 
-export class TranscriptionError extends Error {
-  readonly code: TranscriptionErrorCode;
+export class VoiceError extends Error {
+  readonly code: VoiceErrorCode;
+  readonly cause?: unknown;
   readonly status?: number;
   readonly retryAfterSeconds?: number;
+  readonly providerError?: {
+    code?: string;
+    message?: string;
+    type?: string;
+    param?: string;
+    requestId?: string;
+  };
 
   constructor(
-    code: TranscriptionErrorCode,
+    code: VoiceErrorCode,
     message: string,
-    options?: { status?: number; retryAfterSeconds?: number }
+    options?: {
+      cause?: unknown;
+      status?: number;
+      retryAfterSeconds?: number;
+      providerError?: VoiceError['providerError'];
+    },
   ) {
     super(message);
-    this.name = 'TranscriptionError';
+    this.name = 'VoiceError';
     this.code = code;
+    this.cause = options?.cause;
     this.status = options?.status;
     this.retryAfterSeconds = options?.retryAfterSeconds;
+    this.providerError = options?.providerError;
   }
 }
 
-export function toTranscriptionError(error: unknown): TranscriptionError {
-  if (error instanceof TranscriptionError) return error;
-  if (error instanceof AIProviderError) {
-    const code: TranscriptionErrorCode = (() => {
-      switch (error.code) {
-        case 'MISSING_API_KEY': return 'MISSING_API_KEY';
-        case 'INVALID_API_KEY': return 'INVALID_API_KEY';
-        case 'INSUFFICIENT_CREDITS': return 'INSUFFICIENT_CREDITS';
-        case 'MODEL_NOT_FOUND': return 'MODEL_UNAVAILABLE';
-        case 'RATE_LIMITED': return 'RATE_LIMITED';
-        case 'NETWORK_ERROR': return 'NETWORK_ERROR';
-        case 'TIMEOUT': return 'TIMEOUT';
-        case 'PROVIDER_UNAVAILABLE': return 'PROVIDER_UNAVAILABLE';
-        default: return 'SESSION_FAILED';
-      }
-    })();
-    return new TranscriptionError(code, error.message, {
-      status: error.status,
-      retryAfterSeconds: error.retryAfterSeconds,
-    });
-  }
-  return new TranscriptionError(
-    'SESSION_FAILED',
-    error instanceof Error && error.message
-      ? error.message
-      : 'The OpenAI realtime transcription session failed.',
+export function toVoiceError(error: unknown, fallback: VoiceErrorCode = 'UNKNOWN'): VoiceError {
+  if (error instanceof VoiceError) return error;
+  return new VoiceError(
+    fallback,
+    error instanceof Error && error.message ? error.message : 'Voice capture failed.',
+    { cause: error },
   );
 }
 
-export function getTranscriptionErrorTitle(code: TranscriptionErrorCode | null): string {
-  if (code === 'PERMISSION_DENIED' || code === 'AUDIO_UNAVAILABLE' || code === 'INVALID_AUDIO') {
+export function isRetryableVoiceErrorCode(code: VoiceErrorCode): boolean {
+  return code === 'MIC_PERMISSION_DENIED'
+    || code === 'AUDIO_STREAM_START_FAILED'
+    || code === 'REALTIME_AUTH_FAILED'
+    || code === 'MODEL_TEMPORARILY_UNAVAILABLE'
+    || code === 'REALTIME_CONNECT_FAILED'
+    || code === 'REALTIME_CONNECTION_LOST'
+    || code === 'TRANSCRIPTION_FAILED'
+    || code === 'TRANSCRIPTION_TIMEOUT';
+}
+
+export function getVoiceErrorTitle(code: VoiceErrorCode | null): string {
+  if (code?.startsWith('MIC_') || code?.startsWith('AUDIO_') || code === 'RESAMPLE_FAILED') {
     return 'Microphone unavailable';
   }
-  if (code === 'HANDOFF_FAILED') return 'Reminder processing unavailable';
+  if (code === 'PARSING_FAILED') return 'Reminder processing unavailable';
   return 'Transcription unavailable';
 }
 
-export function needsTranscriptionProviderSettings(code: TranscriptionErrorCode | null): boolean {
-  return code === 'MISSING_API_KEY'
-    || code === 'INVALID_API_KEY'
-    || code === 'INSUFFICIENT_CREDITS'
-    || code === 'MODEL_UNAVAILABLE';
-}
-
-export function getTranscriptionErrorMessage(error: unknown): string {
-  if (error instanceof TranscriptionError) {
-    switch (error.code) {
-      case 'PERMISSION_DENIED':
-        return 'Microphone permission was denied. Enable it in system settings to use voice capture.';
-      case 'AUDIO_UNAVAILABLE':
-        return 'Realtime audio is unavailable in this environment. Use an Expo development build with native audio.';
-      case 'MISSING_API_KEY':
-        return 'Add an OpenAI API key in Settings before using voice transcription.';
-      case 'INVALID_API_KEY':
-        return 'The OpenAI API key was rejected. Check it in Settings.';
-      case 'INSUFFICIENT_CREDITS':
-        return 'OpenAI billing or credits do not allow realtime transcription. Add credits and confirm your API usage tier.';
-      case 'MODEL_UNAVAILABLE':
-        return 'This OpenAI project does not have access to the realtime transcription model.';
-      case 'RATE_LIMITED':
-        return error.retryAfterSeconds
-          ? `OpenAI rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
-          : 'OpenAI rate limit reached. Try again shortly.';
-      case 'NETWORK_ERROR':
-        return 'Could not reach OpenAI realtime transcription. Check your connection.';
-      case 'TIMEOUT':
-        return 'OpenAI realtime transcription took too long to respond. Try again.';
-      case 'INVALID_AUDIO':
-        return 'The microphone did not provide the required 24 kHz mono PCM audio.';
-      case 'PROVIDER_UNAVAILABLE':
-        return 'OpenAI realtime transcription is temporarily unavailable. Try again shortly.';
-      case 'INVALID_EVENT':
-        return 'OpenAI returned an invalid realtime event. The voice session was stopped safely.';
-      case 'SESSION_FAILED':
-        return 'The OpenAI realtime transcription session failed.';
-      case 'EMPTY_TRANSCRIPT':
-        return 'No speech was captured. Nothing was sent to AETHER.';
-      case 'HANDOFF_FAILED':
-        return 'AETHER could not receive that transcript. Try voice capture again.';
-      case 'CANCELLED':
-        return 'Voice capture was cancelled.';
-      default:
-        return 'Voice transcription failed. Try again.';
-    }
+export function getVoiceErrorMessage(error: VoiceError): string {
+  switch (error.code) {
+    case 'MIC_PERMISSION_DENIED':
+      return 'Microphone permission is required to capture a voice reminder.';
+    case 'MIC_PERMISSION_BLOCKED':
+      return 'Microphone access is blocked. Enable it in system Settings to use voice capture.';
+    case 'AUDIO_STREAM_START_FAILED':
+      return 'The microphone stream could not start. Try again.';
+    case 'AUDIO_FORMAT_UNSUPPORTED':
+      return 'The microphone returned an unsupported audio format.';
+    case 'RESAMPLE_FAILED':
+      return 'The microphone audio could not be prepared for transcription.';
+    case 'REALTIME_AUTH_FAILED':
+      return 'OpenAI could not authorize realtime transcription.';
+    case 'INVALID_CREDENTIAL':
+      return 'The OpenAI API key was rejected. Check it in Settings.';
+    case 'ACCOUNT_NOT_AUTHORIZED':
+      return 'This OpenAI project is not authorized to use realtime transcription.';
+    case 'TIER_NOT_SUPPORTED':
+      return 'GPT Live Transcribe requires a supported OpenAI API usage tier.';
+    case 'SESSION_CONFIGURATION_INVALID':
+      return 'OpenAI rejected the realtime transcription session configuration.';
+    case 'MODEL_TEMPORARILY_UNAVAILABLE':
+      return 'GPT Live Transcribe is temporarily unavailable. Try again shortly.';
+    case 'REALTIME_CONNECT_FAILED':
+      return 'Could not connect to OpenAI realtime transcription. Check your connection.';
+    case 'REALTIME_CONNECTION_LOST':
+      return 'The realtime transcription connection was interrupted.';
+    case 'TRANSCRIPTION_FAILED':
+      return 'OpenAI could not transcribe this voice turn.';
+    case 'TRANSCRIPTION_TIMEOUT':
+      return 'The final transcript took too long to arrive. Try again.';
+    case 'EMPTY_TRANSCRIPT':
+      return 'No speech was recognized. Nothing was sent to AETHER.';
+    case 'PARSING_FAILED':
+      return 'AETHER could not interpret that transcript. Try again.';
+    case 'CANCELLED':
+      return 'Voice capture was cancelled.';
+    default:
+      return 'Voice capture failed. Try again.';
   }
-  return 'Voice transcription failed. Try again.';
-}
-
-export function isRetryableTranscriptionErrorCode(code: string): boolean {
-  return code === 'NETWORK_ERROR'
-    || code === 'TIMEOUT'
-    || code === 'RATE_LIMITED'
-    || code === 'PROVIDER_UNAVAILABLE';
-}
-
-export function isRetryableTranscriptionError(error: unknown): error is TranscriptionError {
-  return error instanceof TranscriptionError && isRetryableTranscriptionErrorCode(error.code);
 }

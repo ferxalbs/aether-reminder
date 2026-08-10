@@ -12,6 +12,7 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import type { VoiceState } from './VoiceController';
+import { isVoiceFailureState } from './VoiceController';
 
 interface AssistantVoiceButtonProps {
   voiceState: VoiceState;
@@ -31,8 +32,8 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
   onPress,
 }) => {
   const isDark = useIsDark();
-  const isError = voiceState === 'error';
-  const isActive = voiceState !== 'idle' && !isError;
+  const isError = isVoiceFailureState(voiceState);
+  const isActive = ['checking_permission', 'connecting', 'listening', 'committing', 'finalizing', 'parsing'].includes(voiceState);
   const Icon = isError ? AlertCircle : isActive ? Square : Mic;
   const iconColor = isError
     ? isDark

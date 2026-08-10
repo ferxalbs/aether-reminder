@@ -1,29 +1,42 @@
 export {
-  OPENAI_REALTIME_TRANSCRIPTION_CHANNELS,
-  OPENAI_REALTIME_TRANSCRIPTION_MODEL,
-  OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,
-  createOpenAIRealtimeTranscriptionSession,
+  OpenAIByokClientSecretProvider,
+  buildRealtimeSessionPayload,
+  classifyOpenAIModelAccessError,
   testOpenAIRealtimeConnection,
-  type OpenAIRealtimeSession,
-  type OpenAIRealtimeSessionOptions,
-} from './openaiRealtime';
+} from './auth';
+export { Pcm16StreamNormalizer, pcm16AudioLevel, pcm16ToBase64, type NativePcmBuffer } from './audio';
+export { expoAudioSession, type AudioSessionGateway } from './audioSession';
 export {
-  TranscriptionError,
-  getTranscriptionErrorMessage,
-  getTranscriptionErrorTitle,
-  isRetryableTranscriptionError,
-  isRetryableTranscriptionErrorCode,
-  needsTranscriptionProviderSettings,
-  toTranscriptionError,
-  type TranscriptionErrorCode,
+  VoiceError,
+  getVoiceErrorMessage,
+  getVoiceErrorTitle,
+  isRetryableVoiceErrorCode,
+  toVoiceError,
+  type VoiceErrorCode,
 } from './errors';
+export { ensureMicrophonePermission, type MicrophonePermissionGateway } from './permissions';
+export { OpenAIRealtimeWebSocketTransport, type OpenAIRealtimeTransportOptions } from './openaiRealtimeTransport';
+export { TranscriptReconciler } from './reconciler';
 export {
-  initialRealtimeTranscriptionSnapshot,
-  parseRealtimeServerEvent,
-  reduceRealtimeTranscription,
-  type RealtimeServerEvent,
-  type RealtimeTranscriptionSnapshot,
-  type RealtimeTranscriptionState,
-} from './realtimeReducer';
-export { pcm16ArrayBufferToBase64, pcm16AudioLevel, normalizePcm16 } from './audio';
-export { deliverFinalTranscript, type SubmissionGuard } from './finalTranscript';
+  VoiceStateMachine,
+  failureStateFor,
+  initialVoiceSnapshot,
+  isFailureState,
+  type VoicePermissionState,
+  type VoiceSnapshot,
+  type VoiceState,
+} from './stateMachine';
+export {
+  REALTIME_PCM_CHANNELS,
+  REALTIME_PCM_SAMPLE_RATE,
+  REALTIME_TRANSCRIPTION_MODEL,
+  defaultRealtimeTranscriptionConfig,
+  type NativeAudioCapture,
+  type RealtimeClientSecret,
+  type RealtimeClientSecretProvider,
+  type RealtimeTranscriptionConfig,
+  type RealtimeTranscriptionTransport,
+  type RealtimeTransportEvent,
+  type TranscriptionContext,
+} from './types';
+export { VoiceSession, type VoiceSessionDependencies } from './voiceSession';

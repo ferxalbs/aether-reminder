@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, Layout, useReducedMotion } from 'react-native-reanimated';
 import {
   Check,
@@ -66,6 +67,7 @@ function formatContextLength(contextLength?: number): string {
 type ProviderName = 'OpenRouter' | 'OpenAI';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const reduceMotion = useReducedMotion();
   const entering = reduceMotion ? undefined : settingsEntering;
   const geometry = useBottomChromeGeometry();
@@ -695,6 +697,29 @@ export default function SettingsScreen() {
               />
             </View>
 
+          </Card>
+        </Animated.View>
+
+        {/* Section: Dev Tools */}
+        <Animated.View entering={entering}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
+            DEV TOOLS (TEMPORAL)
+          </Typography>
+          <Card variant="outline" style={styles.cardSection}>
+            <AnimatedPressable
+              onPress={() => router.push('/orb-mockup')}
+              style={[
+                styles.pullDownButton,
+                {
+                  backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                },
+              ]}
+            >
+              <Typography variant="bodyBold" style={{ flex: 1 }}>
+                Open Orb Mockup
+              </Typography>
+            </AnimatedPressable>
           </Card>
         </Animated.View>
 

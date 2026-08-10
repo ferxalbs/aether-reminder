@@ -8,16 +8,14 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import type { ContextSnapshot } from '@/services/agent';
 import {
-  getTranscriptionErrorTitle,
-  needsTranscriptionProviderSettings,
-  TranscriptionError,
+  getVoiceErrorTitle,
 } from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAgentSessionController } from './AgentSessionController';
 import { AssistantSheet } from './AssistantSheet';
 import type { AssistantSurfaceState } from './assistantTypes';
-import { useVoiceController } from './VoiceController';
+import { isVoiceFailureState, useVoiceController } from './VoiceController';
 import { impactAsync, notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
@@ -200,19 +198,19 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     setSurface('medium');
     const accepted = await controller.submit(text, { invocationSource: 'voice' });
     if (!accepted) {
-      throw new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.');
+      throw new Error('AETHER could not receive the final transcript.');
     }
   }, [controller]);
   const voice = useVoiceController({ onTranscript: onVoiceTranscript });
 
   const openTextAssistant = useCallback(() => {
-    if (voice.state !== 'idle' && voice.state !== 'error') void voice.cancel();
+    if (!['idle', 'review', 'committed'].includes(voice.state) && !isVoiceFailureState(voice.state)) void voice.cancel();
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     setSurface('compact');
   }, [voice]);
 
   const startVoiceAssistant = useCallback(() => {
-    if (voice.state !== 'idle' && voice.state !== 'error') return;
+    if (!['idle', 'review', 'committed'].includes(voice.state) && !isVoiceFailureState(voice.state)) return;
     if (useSettingsStore.getState().hapticsEnabled) {
       impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((error: unknown) => {
         reportNonFatalError('haptics', error);
@@ -307,16 +305,19 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         voiceState={voice.state}
         voiceLocked={voice.locked}
         voiceError={voice.error}
-        voiceErrorTitle={getTranscriptionErrorTitle(voice.errorCode)}
-        voiceNeedsSystemSettings={voice.errorCode === 'PERMISSION_DENIED'}
-        voiceNeedsAppSettings={needsTranscriptionProviderSettings(voice.errorCode)}
+        voiceErrorTitle={getVoiceErrorTitle(voice.errorCode)}
+        voiceNeedsSystemSettings={voice.errorCode === 'MIC_PERMISSION_BLOCKED'}
+        voiceNeedsAppSettings={voice.errorCode === 'REALTIME_AUTH_FAILED'
+          || voice.errorCode === 'INVALID_CREDENTIAL'
+          || voice.errorCode === 'ACCOUNT_NOT_AUTHORIZED'
+          || voice.errorCode === 'TIER_NOT_SUPPORTED'}
         voiceCanRetry={voice.canRetry}
         voiceRetryAttempt={voice.retryAttempt}
         voiceTranscript={voice.transcript}
         voiceAudioLevel={voice.audioLevel}
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
-        onVoiceRetry={startVoiceAssistant}
+        onVoiceRetry={voice.retry}
         onVoiceDismiss={voice.cancel}
         onVoiceOpenAppSettings={openVoiceConfiguration}
         onVoiceOpenSettings={openMicrophoneSettings}

@@ -1,53 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { requestRecordingPermissionsAsync, useAudioStream } from 'expo-audio';
+import {
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+  useAudioStream,
+  type AudioStreamBuffer,
+} from 'expo-audio';
+import { usePathname } from 'expo-router';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import {
-  createOpenAIRealtimeTranscriptionSession,
-  initialRealtimeTranscriptionSnapshot,
-  OPENAI_REALTIME_TRANSCRIPTION_CHANNELS,
-  OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,
-  parseRealtimeServerEvent,
-  reduceRealtimeTranscription,
-  TranscriptionError,
-  getTranscriptionErrorMessage,
-  isRetryableTranscriptionError,
-  deliverFinalTranscript,
-  pcm16AudioLevel,
-  normalizePcm16,
-  testOpenAIRealtimeConnection,
-  toTranscriptionError,
-  type OpenAIRealtimeSession,
-  type RealtimeTranscriptionSnapshot,
-  type RealtimeTranscriptionState,
+  OpenAIByokClientSecretProvider,
+  OpenAIRealtimeWebSocketTransport,
+  VoiceSession,
+  defaultRealtimeTranscriptionConfig,
+  expoAudioSession,
+  getVoiceErrorMessage,
+  initialVoiceSnapshot,
+  isFailureState,
+  isRetryableVoiceErrorCode,
+  type NativeAudioCapture,
+  type VoiceErrorCode,
+  type VoicePermissionState,
+  type VoiceSnapshot,
+  type VoiceState,
 } from '@/services/transcription';
 import { useSettingsStore } from '@/stores/settings.store';
-import { impactAsync, notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import { retryWithBackoff } from '@/lib/retry';
-import { getVoiceReleaseAction } from './voiceRelease';
 
-export type VoiceState = RealtimeTranscriptionState;
-
-interface AudioStreamBuffer {
-  data: ArrayBuffer;
-  sampleRate: number;
-  channels: number;
-  timestamp: number;
-}
+export type { VoiceState } from '@/services/transcription';
 
 interface VoiceControllerOptions {
   onTranscript: (text: string) => void | Promise<void>;
 }
 
-interface VoiceControllerResult {
+export interface VoiceControllerResult {
   state: VoiceState;
+  permission: VoicePermissionState;
   locked: boolean;
   error: string | null;
-  errorCode: TranscriptionError['code'] | null;
+  errorCode: VoiceErrorCode | null;
   canRetry: boolean;
   retryAttempt: number;
+  partialTranscript: string;
+  finalTranscript: string;
   transcript: string;
   audioLevel: SharedValue<number>;
   begin: () => void;
@@ -55,361 +50,135 @@ interface VoiceControllerResult {
   release: () => void;
   lock: () => void;
   stopAndSend: () => void;
+  retry: () => void;
   cancel: () => void;
 }
 
-function haptic(kind: 'start' | 'stop' | 'cancel' | 'error'): void {
-  if (!useSettingsStore.getState().hapticsEnabled) return;
-  const action = kind === 'error'
-    ? notificationAsync(Haptics.NotificationFeedbackType.Error)
-    : kind === 'cancel'
-      ? notificationAsync(Haptics.NotificationFeedbackType.Warning)
-      : impactAsync(kind === 'start' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
-  action.catch((error: unknown) => {
-    reportNonFatalError('haptics', error);
-  });
-}
-
 export function useVoiceController({ onTranscript }: VoiceControllerOptions): VoiceControllerResult {
+  const pathname = usePathname();
   const openAiApiKey = useSettingsStore((state) => state.openAiApiKey);
   const openAiKeyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
-  const onTranscriptRef = useRef(onTranscript);
-  useEffect(() => {
-    onTranscriptRef.current = onTranscript;
-  }, [onTranscript]);
-
-  const sessionRef = useRef<OpenAIRealtimeSession | null>(null);
-  const activeRef = useRef(false);
-  const stateRef = useRef<VoiceState>('idle');
-  const snapshotRef = useRef<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
-  const audioBytesRef = useRef(0);
-  const finishingRef = useRef(false);
-  const releaseRequestedRef = useRef(false);
-  const lockRequestedRef = useRef(false);
-  const finalSubmittedRef = useRef(false);
-  const lastAudioLevelAtRef = useRef(0);
-  const mountedRef = useRef(true);
-  const streamRef = useRef<{ stop: () => void } | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const [state, setState] = useState<VoiceState>('idle');
-  const [locked, setLocked] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<TranscriptionError['code'] | null>(null);
-  const [canRetry, setCanRetry] = useState(false);
-  const [retryAttempt, setRetryAttempt] = useState(0);
-  const [snapshot, setSnapshot] = useState<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
+  const bufferListenerRef = useRef<((buffer: AudioStreamBuffer) => void) | null>(null);
+  const previousPathnameRef = useRef(pathname);
+  const wasStreamingRef = useRef(false);
+  const [snapshot, setSnapshot] = useState<VoiceSnapshot>(initialVoiceSnapshot);
   const audioLevel = useSharedValue(0);
 
-  const setVoiceState = useCallback((next: VoiceState) => {
-    stateRef.current = next;
-    if (mountedRef.current) setState(next);
-  }, []);
-
-  const setRealtimeSnapshot = useCallback((next: RealtimeTranscriptionSnapshot) => {
-    snapshotRef.current = next;
-    if (mountedRef.current) setSnapshot(next);
-  }, []);
-
-  const cleanupResources = useCallback((cancelSession: boolean, stopStream = true) => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    activeRef.current = false;
-    finishingRef.current = false;
-    releaseRequestedRef.current = false;
-    lockRequestedRef.current = false;
-    if (stopStream) streamRef.current?.stop();
-    streamRef.current = null;
-    const session = sessionRef.current;
-    sessionRef.current = null;
-    if (session) {
-      if (cancelSession) session.cancel();
-      else session.close();
-    }
-    audioBytesRef.current = 0;
-    finalSubmittedRef.current = false;
-    lastAudioLevelAtRef.current = 0;
-    audioLevel.set(0);
-  }, [audioLevel]);
-
-  const fail = useCallback((caught: unknown) => {
-    const transcriptionError = toTranscriptionError(caught);
-    cleanupResources(true);
-    setVoiceState('error');
-    reportNonFatalError(
-      'voice-controller',
-      new Error(
-        `code=${transcriptionError.code} status=${transcriptionError.status ?? 'none'} message=${transcriptionError.message}`,
-      ),
-    );
-    if (mountedRef.current) {
-      setError(getTranscriptionErrorMessage(transcriptionError));
-      setErrorCode(transcriptionError.code);
-      setCanRetry(isRetryableTranscriptionError(transcriptionError));
-      setLocked(false);
-    }
-    haptic('error');
-  }, [cleanupResources, setVoiceState]);
-
-  const handleRealtimeEvent = useCallback((rawEvent: unknown) => {
-    if (!activeRef.current) return;
-    let parsed;
-    try {
-      parsed = parseRealtimeServerEvent(rawEvent);
-    } catch {
-      fail(new TranscriptionError('INVALID_EVENT', 'OpenAI returned a malformed realtime event.'));
-      return;
-    }
-    if (!parsed) return;
-    const next = reduceRealtimeTranscription(snapshotRef.current, parsed);
-    setRealtimeSnapshot(next);
-    if (parsed.type === 'server.error') {
-      fail(new TranscriptionError(parsed.code, parsed.message));
-      return;
-    }
-    setVoiceState(next.state);
-    if (parsed.type === 'transcription.completed') {
-      const finalText = next.finalText.trim();
-      let submitted = false;
-      try {
-        submitted = deliverFinalTranscript(finalText, finalSubmittedRef, (committedText) => {
-          const callbackResult = onTranscriptRef.current(committedText);
-          if (callbackResult && typeof (callbackResult as Promise<void>).catch === 'function') {
-            void (callbackResult as Promise<void>).catch((error: unknown) => {
-              fail(error instanceof TranscriptionError
-                ? error
-                : new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.'));
-            });
-          }
-        });
-      } catch (caught) {
-        fail(caught instanceof TranscriptionError
-          ? caught
-          : new TranscriptionError('HANDOFF_FAILED', 'AETHER could not receive the final transcript.'));
-        return;
-      }
-      if (!submitted) return;
-      cleanupResources(false);
-      setVoiceState('idle');
-      if (mountedRef.current) {
-        setLocked(false);
-        setError(null);
-      }
-    }
-  }, [cleanupResources, fail, setRealtimeSnapshot, setVoiceState]);
-
-  const handleAudioBuffer = useCallback((buffer: AudioStreamBuffer) => {
-    const session = sessionRef.current;
-    if (!activeRef.current || !session) return;
-    if (
-      buffer.data.byteLength % 2 !== 0
-    ) {
-      fail(new TranscriptionError('INVALID_AUDIO', 'The native stream delivered incomplete PCM16 audio.'));
-      return;
-    }
-    try {
-      const normalized = normalizePcm16(buffer.data, buffer.sampleRate, buffer.channels, OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE);
-      session.appendPcm16(normalized);
-      audioBytesRef.current += normalized.byteLength;
-      if (releaseRequestedRef.current && !finishingRef.current) {
-        releaseRequestedRef.current = false;
-        finishingRef.current = true;
-        setVoiceState('finalizing');
-        setRealtimeSnapshot(reduceRealtimeTranscription(snapshotRef.current, { type: 'client.commit' }));
-        haptic('stop');
-        streamRef.current?.stop();
-        streamRef.current = null;
-        session.commit();
-        return;
-      }
-      const now = Date.now();
-      if (now - lastAudioLevelAtRef.current >= 50) {
-        // Kept local to the voice controller; this never enters Zustand or persistence.
-        lastAudioLevelAtRef.current = now;
-        if (mountedRef.current) {
-          audioLevel.set(pcm16AudioLevel(normalized));
-        }
-      }
-    } catch (caught) {
-      fail(caught);
-    }
-  }, [audioLevel, fail, setRealtimeSnapshot, setVoiceState]);
-
   const audioStream = useAudioStream({
-    sampleRate: OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE,
-    channels: OPENAI_REALTIME_TRANSCRIPTION_CHANNELS,
+    sampleRate: defaultRealtimeTranscriptionConfig.sampleRate,
+    channels: 1,
     encoding: 'int16',
-    onBuffer: handleAudioBuffer,
+    onBuffer: (buffer) => bufferListenerRef.current?.(buffer),
   });
 
-  useEffect(() => {
-    streamRef.current = audioStream.stream;
-  }, [audioStream.stream]);
+  const capture = useMemo<NativeAudioCapture>(() => ({
+    async start(onBuffer) {
+      bufferListenerRef.current = onBuffer;
+      await audioStream.stream.start();
+    },
+    async stop() {
+      bufferListenerRef.current = null;
+      audioStream.stream.stop();
+    },
+  }), [audioStream.stream]);
+
+  // VoiceSession's constructor only stores these callbacks; it does not invoke ref-backed capture during render.
+  // eslint-disable-next-line react-hooks/refs
+  const voiceSession = useMemo(() => new VoiceSession({
+    permission: {
+      get: getRecordingPermissionsAsync,
+      request: requestRecordingPermissionsAsync,
+    },
+    audioSession: expoAudioSession,
+    capture,
+    clientSecrets: new OpenAIByokClientSecretProvider(openAiKeyLoaded ? openAiApiKey : ''),
+    createTransport: () => new OpenAIRealtimeWebSocketTransport({
+      model: defaultRealtimeTranscriptionConfig.model,
+    }),
+    config: defaultRealtimeTranscriptionConfig,
+    onFinalTranscript: onTranscript,
+    onAudioLevel: (level) => audioLevel.set(level),
+    onTechnicalError: (error) => reportNonFatalError('voice-cleanup', error),
+  }), [audioLevel, capture, onTranscript, openAiApiKey, openAiKeyLoaded]);
+
+  useEffect(() => voiceSession.subscribe((next) => {
+    setSnapshot(next);
+    if (next.error) {
+      reportNonFatalError(
+        'voice-session',
+        new Error(`code=${next.error.code} message=${next.error.message}`, { cause: next.error.cause }),
+      );
+    }
+  }), [voiceSession]);
+
+  useEffect(() => () => {
+    void voiceSession.dispose();
+  }, [voiceSession]);
 
   const cancel = useCallback(() => {
-    if (!activeRef.current && stateRef.current === 'idle') return;
-    cleanupResources(true);
-    setRealtimeSnapshot(initialRealtimeTranscriptionSnapshot);
-    setVoiceState('idle');
-    if (mountedRef.current) {
-      setError(null);
-      setErrorCode(null);
-      setCanRetry(false);
-      setLocked(false);
-    }
-    haptic('cancel');
-  }, [cleanupResources, setRealtimeSnapshot, setVoiceState]);
-
-  const stopAndSend = useCallback(() => {
-    if (!activeRef.current || finishingRef.current) return;
-    if (!['listening', 'transcribing'].includes(stateRef.current)) return;
-    finishingRef.current = true;
-    setVoiceState('finalizing');
-    setRealtimeSnapshot(reduceRealtimeTranscription(snapshotRef.current, { type: 'client.commit' }));
-    haptic('stop');
-    streamRef.current?.stop();
-    streamRef.current = null;
-    const session = sessionRef.current;
-    if (!session) {
-      fail(new TranscriptionError('SESSION_FAILED', 'The OpenAI realtime session disappeared before commit.'));
-      return;
-    }
-    if (audioBytesRef.current === 0) {
-      fail(new TranscriptionError('EMPTY_TRANSCRIPT', 'No microphone audio was captured.'));
-      return;
-    }
-    try {
-      session.commit();
-    } catch (caught) {
-      fail(caught);
-    }
-  }, [fail, setRealtimeSnapshot, setVoiceState]);
-
-  const release = useCallback(() => {
-    const action = getVoiceReleaseAction(stateRef.current, activeRef.current, locked);
-    if (action === 'ignore') return;
-    if (action === 'defer') {
-      releaseRequestedRef.current = true;
-      return;
-    }
-    stopAndSend();
-  }, [locked, stopAndSend]);
-
-  const lock = useCallback(() => {
-    if (!activeRef.current || stateRef.current !== 'listening') return;
-    setLocked(true);
-    haptic('start');
-  }, []);
-
-  const beginSession = useCallback((startLocked: boolean) => {
-    if (activeRef.current || !['idle', 'error'].includes(stateRef.current)) return;
-    activeRef.current = true;
-    finishingRef.current = false;
-    releaseRequestedRef.current = false;
-    lockRequestedRef.current = startLocked;
-    finalSubmittedRef.current = false;
-    audioBytesRef.current = 0;
-    setError(null);
-    setErrorCode(null);
-    setCanRetry(false);
-    setRetryAttempt(0);
-    setLocked(false);
-    setRealtimeSnapshot({ ...initialRealtimeTranscriptionSnapshot, state: 'connecting' });
-    setVoiceState('connecting');
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    streamRef.current = audioStream.stream;
-
-    void (async () => {
-      try {
-        if (!openAiKeyLoaded) throw new TranscriptionError('SESSION_FAILED', 'Secure storage is still loading. Try again in a moment.');
-        if (!openAiApiKey.trim()) throw new TranscriptionError('MISSING_API_KEY', 'An OpenAI API key is required.');
-        const permission = await requestRecordingPermissionsAsync();
-        if (!permission.granted) throw new TranscriptionError('PERMISSION_DENIED', 'Microphone permission was denied.');
-        if (abortController.signal.aborted || !activeRef.current) return;
-
-        // A native WebSocket handshake does not expose its HTTP status/body on
-        // Android. Validate the exact transcription session first so credential,
-        // billing, model-access, and provider failures retain actionable codes.
-        await testOpenAIRealtimeConnection(openAiApiKey, abortController.signal);
-        if (abortController.signal.aborted || !activeRef.current) return;
-
-        await retryWithBackoff(
-          async () => {
-            const session = createOpenAIRealtimeTranscriptionSession(openAiApiKey, {
-              onEvent: handleRealtimeEvent,
-              onError: (error) => {
-                if (stateRef.current !== 'connecting') fail(error);
-              },
-            });
-            sessionRef.current = session;
-            try {
-              await session.connect();
-            } catch (caught) {
-              if (sessionRef.current === session) sessionRef.current = null;
-              throw caught;
-            }
-          },
-          {
-            signal: abortController.signal,
-            maxAttempts: 3,
-            baseDelayMs: 300,
-            maxDelayMs: 1_500,
-            shouldRetry: isRetryableTranscriptionError,
-            onRetry: (nextAttempt, delayMs, error) => {
-              setRetryAttempt(nextAttempt);
-              reportNonFatalError('voice-connect-retry', new Error(`attempt=${nextAttempt} delayMs=${delayMs} code=${error instanceof TranscriptionError ? error.code : 'unknown'}`));
-            },
-          }
-        );
-        if (abortController.signal.aborted || !activeRef.current) return;
-        await audioStream.stream.start();
-        if (abortController.signal.aborted || !activeRef.current) return;
-        setRetryAttempt(0);
-        setVoiceState('listening');
-        if (lockRequestedRef.current) setLocked(true);
-        haptic('start');
-      } catch (caught) {
-        if (activeRef.current) fail(caught);
-      }
-    })();
-  }, [audioStream.stream, fail, handleRealtimeEvent, openAiApiKey, openAiKeyLoaded, setRealtimeSnapshot, setVoiceState]);
-
-  const begin = useCallback(() => beginSession(false), [beginSession]);
-  const beginLocked = useCallback(() => beginSession(true), [beginSession]);
+    void voiceSession.cancel();
+  }, [voiceSession]);
 
   useEffect(() => {
     const onAppStateChange = (next: AppStateStatus) => {
-      if (next !== 'active' && activeRef.current) cancel();
+      if (next !== 'active' && voiceSession.snapshot.state !== 'idle') cancel();
     };
     const subscription = AppState.addEventListener('change', onAppStateChange);
     return () => subscription.remove();
-  }, [cancel]);
+  }, [cancel, voiceSession]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      // useAudioStream owns the shared object's unmount lifecycle and releases it
-      // before this consumer cleanup runs. Releasing it also stops native capture.
-      cleanupResources(true, false);
-    };
-  }, [cleanupResources]);
+    if (previousPathnameRef.current !== pathname) {
+      previousPathnameRef.current = pathname;
+      if (voiceSession.snapshot.state !== 'idle') cancel();
+    }
+  }, [cancel, pathname, voiceSession]);
 
+  useEffect(() => {
+    if (audioStream.isStreaming) {
+      wasStreamingRef.current = true;
+      return;
+    }
+    if (wasStreamingRef.current
+      && (voiceSession.snapshot.state === 'connecting' || voiceSession.snapshot.state === 'listening')) {
+      wasStreamingRef.current = false;
+      void voiceSession.captureInterrupted();
+    }
+  }, [audioStream.isStreaming, voiceSession]);
+
+  const begin = useCallback(() => {
+    void voiceSession.start();
+  }, [voiceSession]);
+  const stopAndSend = useCallback(() => {
+    void voiceSession.stop();
+  }, [voiceSession]);
+  const retry = useCallback(() => {
+    void voiceSession.retry();
+  }, [voiceSession]);
+
+  const error = snapshot.error ? getVoiceErrorMessage(snapshot.error) : null;
   return {
-    state,
-    locked,
+    state: snapshot.state,
+    permission: snapshot.permission,
+    locked: snapshot.state === 'listening',
     error,
-    errorCode,
-    canRetry,
-    retryAttempt,
-    transcript: snapshot.finalText || snapshot.partialText,
+    errorCode: snapshot.error?.code ?? null,
+    canRetry: snapshot.error ? isRetryableVoiceErrorCode(snapshot.error.code) : false,
+    retryAttempt: snapshot.retryAttempt,
+    partialTranscript: snapshot.partialTranscript,
+    finalTranscript: snapshot.finalTranscript,
+    transcript: snapshot.finalTranscript || snapshot.partialTranscript,
     audioLevel,
     begin,
-    beginLocked,
-    release,
-    lock,
+    beginLocked: begin,
+    release: stopAndSend,
+    lock: () => undefined,
     stopAndSend,
+    retry,
     cancel,
   };
+}
+
+export function isVoiceFailureState(state: VoiceState): boolean {
+  return isFailureState(state);
 }
