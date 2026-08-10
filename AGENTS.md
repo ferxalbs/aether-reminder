@@ -46,6 +46,41 @@ Use `expo-blur` only when blur is needed, following its Android API requirements
 (`BlurTargetView` and an appropriate `blurMethod`) and its documented performance
 limitations on older Android versions.
 
+## Android Runtime & Native-View Safety
+
+- A `BlurTargetView` must never contain a `BlurView` or `GlassSurface` that targets
+  that same `BlurTargetView`. Dimezis BlurView forbids this recursive capture
+  hierarchy and it can terminate the Android process during mounts, navigation, or
+  overlay creation.
+- Never distribute a root blur target through context or another implicit global
+  mechanism. Pass a blur target explicitly only to bounded floating chrome that is
+  a sibling of, and rendered outside, the target it captures.
+- Never wrap the navigator, route tree, or an entire screen in a live `BlurView`.
+  A full-screen `BlurTargetView` may capture route content only when every blur view
+  using it is outside that target. Route-local Android glass without such a safe
+  sibling target must render the approved translucent Tier C material without a
+  native blur view.
+- Treat mounting a menu, sheet, portal, modal, animated overlay, or newly focused
+  route as a native-view lifecycle event. Audit its complete rendered hierarchy,
+  explicit target/ref ownership, cleanup, and Android back behavior before assuming
+  navigation itself is at fault.
+- Keep one Expo Router navigator and derive custom-navigation selection from Router
+  state. Global overlays may be siblings of the navigator, but route-derived state
+  must be published only by the focused route so inactive mounted tabs cannot
+  overwrite it.
+- Android back handlers must be scoped to visible state and removed on cleanup. The
+  handling order is context menu, modal/sheet/assistant, nested route, then system
+  behavior; a handler must return `true` only when it actually owns the dismissal.
+- For Android process exits, collect `adb logcat` around `AndroidRuntime`, React
+  Native, Hermes, Reanimated, and the app process whenever device tooling exists.
+  Do not call an interaction fixed solely because typecheck, lint, unit tests, or a
+  bundle succeeds. If no device or `adb` is available, state that limitation and
+  distinguish a statically corrected path from a runtime-confirmed fix.
+- After changes to navigation, global overlays, blur/glass, gestures, Reanimated, or
+  modal state, exercise launch, every tab transition, ten repeated tab loops, every
+  quick-action path, assistant open/close followed by navigation, keyboard input,
+  and Android back on a real Android runtime before declaring runtime validation.
+
 ## Coding Style & Naming Conventions
 
 Use 2-space indentation, strict TypeScript, and the existing ESLint configuration. Use `PascalCase` for React components and classes, `camelCase` for functions, variables, and hooks (`useResolvedTheme`), and descriptive `*.test.ts` names. Prefer the `@/*` path alias for `src` imports. Keep styling in React Native `StyleSheet`s and reuse tokens from `src/theme/tokens.ts` rather than introducing ad hoc values.

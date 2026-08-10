@@ -2,6 +2,58 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.09 (3) [Android Runtime Crash Safety and Overlay Ownership]
+
+### Native blur hierarchy correction
+
+- Removed implicit global blur-target propagation from `GlassSurface`; Android
+  route-local glass now uses the existing translucent Tier C material unless it is
+  given an explicit, structurally safe target.
+- Restricted Android live blur to bounded floating chrome outside its capture
+  target. `AppBottomNavigation` now receives the route target explicitly as a
+  sibling, while composers, quick-action menus, route content, and other descendants
+  cannot recursively capture an ancestor containing themselves.
+- Traced the Schedule, Reminders, repeated-tab, and composer `+` failures to the
+  recursive native hierarchy introduced when the tab tree became a shared
+  `BlurTargetView` and all descendant `GlassSurface` instances inherited it. Expo 57
+  bundles Dimezis BlurView 3.1, whose target contract explicitly forbids that
+  hierarchy.
+
+### Focus, assistant, and Android back ownership
+
+- Scoped assistant context publication to the focused Expo Router tab so inactive
+  mounted tabs cannot overwrite the assistant's route snapshot during navigation or
+  task-store refreshes.
+- Added visible-state Android back handling for the quick-action menu and assistant,
+  including voice cancellation through the existing assistant close path, while
+  preserving native modal and router/system behavior.
+- Confirmed the custom bottom navigation still uses one Expo Router `Tabs`
+  navigator, registered routes, `router.navigate`, and pathname-derived selection;
+  no duplicate router or independent tab state was introduced.
+
+### Preventive repository rules
+
+- Added Android native-view safety rules to `AGENTS.md` covering forbidden recursive
+  blur targets, explicit sibling ownership, Tier C fallback, focused-route global
+  state, scoped back handlers, logcat collection, and the real-device interaction
+  matrix required before claiming runtime validation.
+- Audited the redesign range for unintended persistence, recurrence, notification,
+  provider, transcription, and settings-storage changes; this correction does not
+  modify those business paths or add native dependencies, permissions, plugins, or
+  configuration.
+
+### Validation and remaining device scope
+
+- `bun run typecheck`, `bun run lint`, and `git diff --check`: passed.
+- `bun test`: 135 passed, 1 intentional OpenRouter smoke test skipped, 0 failed.
+- `bun x expo install --check`: dependencies aligned; `bun x expo-doctor@latest`:
+  20/20 checks passed.
+- Android Hermes export passed with 3,672 modules. Native Gradle assembly could not
+  start because the audit environment had no Java runtime.
+- No Android device, emulator, or `adb` was available, so the corrected interactions
+  remain statically verified and bundle-validated rather than real-device confirmed;
+  no post-fix logcat stack or ten-loop interaction run is claimed.
+
 ## Unreleased - 2026.08.09 (2) [AETHER Visual and Interaction Architecture Redesign]
 
 ### Platform-split architecture and OLED dark canvas
