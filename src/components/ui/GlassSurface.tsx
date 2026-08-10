@@ -66,10 +66,9 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
   const useLiquidGlass =
     isIOS && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  // Android BlurView must be a sibling of its BlurTargetView. These reusable
-  // surfaces can render inside that target, so use the solid fallback rather
-  // than creating a recursive native blur capture during route transitions.
-  const useBlurView = isIOS;
+  // On Android, only explicitly targeted overlays may blur. Context consumers
+  // can render inside the target itself and must use the solid fallback.
+  const useBlurView = isIOS || (isAndroid && Boolean(blurTarget));
 
   return (
     <View

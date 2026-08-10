@@ -56,7 +56,7 @@ export function Picker<Value extends string | number>({
       ? Colors.glassBorderDark
       : Colors.glassBorderLight;
   const controlBackgroundColor = isDark ? Colors.surfaceRaisedDark : '#EEF2F8';
-  const selectedBackgroundColor = isDark ? Colors.brandBlueDark : Colors.brandInk;
+  const selectedBackgroundColor = isDark ? Colors.white : Colors.black;
   const selectedTextColor = isDark ? Colors.brandInk : Colors.white;
 
   const selectValue = (nextValue: Value) => {

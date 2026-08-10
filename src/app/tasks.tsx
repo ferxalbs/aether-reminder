@@ -150,7 +150,7 @@ export default function TasksScreen() {
             <View style={styles.header}>
               <Typography
                 variant="caption"
-                color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.eyebrow}
               >
                 YOUR RUNWAY
@@ -169,7 +169,7 @@ export default function TasksScreen() {
               <View style={styles.summaryIcon}>
                 <CalendarDays
                   size={19}
-                  color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                  color={isDark ? Colors.white : Colors.black}
                   strokeWidth={2.1}
                 />
               </View>
@@ -220,7 +220,7 @@ export default function TasksScreen() {
                   },
                 ]}
               >
-                <CalendarDays size={26} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+                <CalendarDays size={26} color={isDark ? Colors.white : Colors.black} />
               </View>
               <Typography variant="headline" align="center">
                 Nothing scheduled ahead.

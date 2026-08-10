@@ -368,7 +368,7 @@ function TaskEditorForm({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.intro}>
-            <CalendarDays size={18} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+            <CalendarDays size={18} color={isDark ? Colors.white : Colors.black} />
             <Typography variant="caption" color={secondaryTextColor} style={styles.introCopy}>
               Stored locally. Date, time, and repeat rules work without AI or network access.
             </Typography>
@@ -463,7 +463,7 @@ function TaskEditorForm({
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.inlineTitle}>
-                <Repeat2 size={16} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+                <Repeat2 size={16} color={isDark ? Colors.white : Colors.black} />
                 <Typography variant="caption" color={textColor} style={styles.sectionLabel}>Repeat</Typography>
               </View>
               {recurrenceLoading ? <Typography variant="tiny" color={secondaryTextColor}>Loading…</Typography> : null}

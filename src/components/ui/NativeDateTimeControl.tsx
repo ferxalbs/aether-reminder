@@ -50,7 +50,7 @@ export function NativeDateTimeControl({
   const isDark = useIsDark();
   const [dialogOpen, setDialogOpen] = useState(false);
   const formatted = useMemo(() => formatValue(value, mode), [mode, value]);
-  const accentColor = isDark ? Colors.brandCyan : Colors.brandBlue;
+  const accentColor = isDark ? Colors.white : Colors.black;
   const secondary = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
   const Icon = mode === 'date' ? CalendarDays : Clock3;
 

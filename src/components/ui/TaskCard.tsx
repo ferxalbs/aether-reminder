@@ -141,7 +141,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
       <View style={styles.metaRow}>
         {task.aiSuggested && (
-          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.16)' : 'rgba(47, 124, 255, 0.10)' }]}>
+          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)' }]}>
             <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
             <Typography variant="tiny" style={styles.badgeText}>
               AI Suggested
@@ -198,11 +198,11 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             {
               borderColor: task.completed
                 ? isDark
-                  ? Colors.brandCyan
-                  : Colors.brandBlue
+                  ? Colors.white
+                  : Colors.black
                 : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight,
               backgroundColor: task.completed
-                ? isDark ? Colors.brandCyan : Colors.brandBlue
+                ? isDark ? Colors.white : Colors.black
                 : 'transparent',
             },
           ]}
@@ -211,7 +211,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             {task.completed && (
               <Check
                 size={14}
-                color={Colors.white}
+                color={isDark ? Colors.black : Colors.white}
                 strokeWidth={3}
               />
             )}

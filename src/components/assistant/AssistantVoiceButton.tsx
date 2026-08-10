@@ -32,8 +32,8 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
       ? Colors.destructiveTextDark
       : Colors.destructiveTextLight
     : isDark
-      ? Colors.brandCyan
-      : Colors.brandBlue;
+      ? Colors.white
+      : Colors.black;
 
   return (
     <AnimatedPressable
@@ -52,15 +52,15 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
               ? Colors.destructiveBackgroundDark
               : Colors.destructiveBackgroundLight
             : isDark
-              ? 'rgba(101, 214, 192, 0.12)'
-              : 'rgba(47, 124, 255, 0.10)',
+              ? 'rgba(255, 255, 255, 0.12)'
+              : 'rgba(0, 0, 0, 0.10)',
           borderColor: isError
             ? isDark
               ? Colors.destructiveBorderDark
               : Colors.destructiveBorderLight
             : isDark
-              ? 'rgba(101, 214, 192, 0.22)'
-              : 'rgba(47, 124, 255, 0.18)',
+              ? 'rgba(255, 255, 255, 0.22)'
+              : 'rgba(0, 0, 0, 0.18)',
         },
         disabled && styles.disabled,
       ]}

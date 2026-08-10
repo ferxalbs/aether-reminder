@@ -220,7 +220,7 @@ export default function AllScreen() {
             <View style={styles.header}>
               <Typography
                 variant="caption"
-                color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.eyebrow}
               >
                 YOUR LIBRARY
@@ -239,7 +239,7 @@ export default function AllScreen() {
               <View style={styles.summaryIcon}>
                 <ListTodo
                   size={19}
-                  color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                  color={isDark ? Colors.white : Colors.black}
                   strokeWidth={2.1}
                 />
               </View>
@@ -340,9 +340,9 @@ export default function AllScreen() {
                 ]}
               >
                 {filter === 'completed' ? (
-                  <Check size={26} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+                  <Check size={26} color={isDark ? Colors.white : Colors.black} />
                 ) : (
-                  <ListTodo size={26} color={isDark ? Colors.brandCyan : Colors.brandBlue} />
+                  <ListTodo size={26} color={isDark ? Colors.white : Colors.black} />
                 )}
               </View>
               <Typography variant="headline" align="center">

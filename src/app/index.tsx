@@ -257,14 +257,14 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <IconButton
-                    icon={<Sparkles size={20} color={isDark ? Colors.brandCyan : Colors.brandBlue} strokeWidth={2.1} />}
+                    icon={<Sparkles size={20} color={isDark ? Colors.white : Colors.zinc800} strokeWidth={2.1} />}
                     onPress={openTextAssistant}
                     accessibilityLabel="Ask AETHER"
                     variant="ghost"
                     size={40}
                   />
                   <IconButton
-                    icon={<Mic size={20} color={isDark ? Colors.brandCyan : Colors.brandBlue} strokeWidth={2.1} />}
+                    icon={<Mic size={20} color={isDark ? Colors.white : Colors.zinc800} strokeWidth={2.1} />}
                     onPress={startVoiceAssistant}
                     accessibilityLabel="Speak a reminder"
                     variant="ghost"

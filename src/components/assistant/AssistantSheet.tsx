@@ -168,7 +168,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           {showHeader ? (
             <View style={styles.header}>
               <View style={styles.headerTitle}>
-                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? Colors.destructiveTextLight : isDark ? Colors.brandCyan : Colors.brandBlue }]} />
+                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? Colors.destructiveTextLight : isDark ? Colors.white : Colors.black }]} />
                 <View>
                   <Typography variant="bodyBold">AETHER</Typography>
                   <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessibilityLiveRegion="polite">
@@ -258,7 +258,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8' }]}>
                 <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
                 {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
-                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: isDark ? Colors.brandCyan : Colors.brandBlue }, voiceLevelStyle]} /></View> : null}
+                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: isDark ? Colors.white : Colors.black }, voiceLevelStyle]} /></View> : null}
                 {voiceLocked || voiceState === 'connecting' ? (
                   <View style={styles.voiceActions}>
                     <Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} />

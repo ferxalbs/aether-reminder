@@ -9,8 +9,8 @@ interface AetherMarkProps {
 
 /** A small, asset-free AETHER mark that stays crisp at every density. */
 export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false }) => {
-  const ringColor = muted ? Colors.tertiaryTextLight : Colors.brandBlue;
-  const darkRingColor = muted ? Colors.tertiaryTextDark : Colors.brandBlueDark;
+  const ringColor = muted ? Colors.tertiaryTextLight : Colors.black;
+  const darkRingColor = muted ? Colors.tertiaryTextDark : Colors.white;
 
   return (
     <View
@@ -22,7 +22,7 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
           height: size,
           borderRadius: size / 2,
           borderColor: ringColor,
-          boxShadow: `0 3px ${Math.max(8, Math.round(size * 0.45))}px rgba(47, 124, 255, 0.22)`,
+          boxShadow: `0 3px ${Math.max(8, Math.round(size * 0.45))}px rgba(255, 255, 255, 0.15)`,
         },
       ]}
     >
@@ -44,7 +44,7 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
             width: size * 0.19,
             height: size * 0.19,
             borderRadius: size,
-            backgroundColor: muted ? Colors.tertiaryTextDark : Colors.brandGold,
+            backgroundColor: muted ? Colors.tertiaryTextDark : Colors.white,
           },
         ]}
       />

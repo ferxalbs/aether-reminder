@@ -20,7 +20,7 @@ import { Typography } from '@/components/ui/Typography';
 import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
 import { GlassSurfaceProvider } from '@/components/ui/GlassSurface';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
-import { AppBottomNavigation, type TabRouteName } from '@/components/assistant/AppBottomNavigation';
+import { AppBottomNavigation } from '@/components/assistant/AppBottomNavigation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
 type BootState =
@@ -175,58 +175,7 @@ export default function RootLayout() {
           <GlassSurfaceProvider blurTarget={blurTarget}>
             <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
               <Tabs
-                tabBar={({ state, navigation }) => {
-                  const activeRoute = state.routes[state.index];
-                  const activeRouteName = activeRoute?.name as TabRouteName;
-
-                  return (
-                    <AppBottomNavigation
-                      activeRouteName={activeRouteName}
-                      blurTarget={blurTarget}
-                      onNavigate={(routeName) => {
-                        const route = state.routes.find((candidate) => candidate.name === routeName);
-                        if (__DEV__) {
-                          console.info('[AETHER tabs] resolve', {
-                            activeIndex: state.index,
-                            activeRoute: activeRoute?.name,
-                            destination: routeName,
-                            matchedRoute: route?.name ?? null,
-                            registeredRoutes: state.routes.map((candidate) => candidate.name),
-                          });
-                        }
-                        if (!route) {
-                          console.error('[AETHER tabs] destination is not registered', { routeName });
-                          return;
-                        }
-                        if (route.key === activeRoute?.key) return;
-
-                        const event = navigation.emit({
-                          type: 'tabPress',
-                          target: route.key,
-                          canPreventDefault: true,
-                        });
-                        if (__DEV__) {
-                          console.info('[AETHER tabs] tabPress emitted', {
-                            destination: route.name,
-                            defaultPrevented: event.defaultPrevented,
-                          });
-                        }
-                        if (event.defaultPrevented) return;
-
-                        try {
-                          navigation.navigate(route.name, route.params);
-                          if (__DEV__) console.info('[AETHER tabs] navigate dispatched', { destination: route.name });
-                        } catch (error) {
-                          console.error('[AETHER tabs] navigate threw', {
-                            destination: route.name,
-                            error,
-                          });
-                          throw error;
-                        }
-                      }}
-                    />
-                  );
-                }}
+                tabBar={() => null}
                 screenOptions={{
                   headerShown: false,
                   tabBarHideOnKeyboard: true,
@@ -248,6 +197,7 @@ export default function RootLayout() {
                 <Tabs.Screen name="transcribe" options={{ href: null }} />
               </Tabs>
             </BlurTargetView>
+            <AppBottomNavigation blurTarget={blurTarget} />
             <AssistantHost blurTarget={blurTarget} />
           </GlassSurfaceProvider>
         </AssistantSurfaceProvider>

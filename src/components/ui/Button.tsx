@@ -47,13 +47,13 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk,
+          backgroundColor: isDark ? Colors.white : Colors.black,
           borderColor: 'transparent',
         };
       case 'secondary':
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : '#E9EEF7',
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: isDark ? Colors.white : Colors.black,
+          borderColor: isDark ? Colors.white : Colors.black,
         };
       case 'glass':
         return {
@@ -81,7 +81,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getTextColor = () => {
     if (isDisabled) return Colors.zinc500;
-    if (variant === 'primary') return isDark ? Colors.brandInk : Colors.white;
+    if (variant === 'primary') return isDark ? Colors.black : Colors.white;
     if (variant === 'destructive') {
       return isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight;
     }

@@ -57,7 +57,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   };
 
   const animatedTrackStyle = useAnimatedStyle(() => {
-    const activeColor = isDark ? Colors.brandCyan : Colors.brandBlue;
+    const activeColor = isDark ? Colors.white : Colors.black;
     const inactiveColor = isDark ? Colors.surfaceRaisedDark : '#DCE4EF';
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
     return { backgroundColor };
