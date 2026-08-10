@@ -146,7 +146,15 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
 
   const onMutation = useCallback(
     (toolId: string) => {
-      if (!['tasks.create', 'tasks.update', 'tasks.complete', 'tasks.reopen', 'tasks.delete'].includes(toolId)) return;
+      const taskSurfaceMutations = [
+        'tasks.create',
+        'tasks.create_recurring',
+        'tasks.update',
+        'tasks.complete',
+        'tasks.reopen',
+        'tasks.delete',
+      ];
+      if (!taskSurfaceMutations.includes(toolId)) return;
       void refreshAllSurfaces().catch((error: unknown) => {
         reportNonFatalError('assistant-refresh-task-surfaces', error);
       });

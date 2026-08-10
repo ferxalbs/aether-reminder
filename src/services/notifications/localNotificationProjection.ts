@@ -4,13 +4,17 @@ import type { TasksRepository } from '@/db/repositories/tasksRepository';
 import { getDeviceTimeZone } from '@/temporal/localCalendar';
 import { localDateTimeInZoneToDate } from '@/temporal/resolve';
 import {
+  AETHER_NOTIFICATION_CATEGORY,
+  configureNotificationActionCategory,
+} from './notificationActions';
+import {
   NotificationError,
   toNotificationError,
 } from './errors';
 
 export interface LocalNotificationAdapter {
   list(): Promise<{ identifier: string; reminderId?: string }[]>;
-  schedule(input: { reminderId: string; title: string; date: Date }): Promise<string>;
+  schedule(input: { reminderId: string; taskId: string; title: string; date: Date }): Promise<string>;
   cancel(identifier: string): Promise<void>;
 }
 
@@ -40,7 +44,12 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
       );
     }
     return Notifications.scheduleNotificationAsync({
-      content: { title: 'AETHER Reminder', body: input.title, data: { reminderId: input.reminderId } },
+      content: {
+        title: 'AETHER Reminder',
+        body: input.title,
+        categoryIdentifier: AETHER_NOTIFICATION_CATEGORY,
+        data: { reminderId: input.reminderId, taskId: input.taskId },
+      },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: input.date,
@@ -119,8 +128,15 @@ export class LocalNotificationProjection {
       }
       const task = await this.tasks.getById(reminder.taskId);
       if (!task) throw new Error('Reminder task no longer exists.');
+      // Completed tasks retain their reminder domain record for reversible
+      // history, but must never be re-projected as fresh OS notifications.
+      if (task.completed) {
+        await this.reminders.setProjection(reminder.id, null, null);
+        return 'cancelled';
+      }
       const nativeId = await this.adapter.schedule({
         reminderId: reminder.id,
+        taskId: reminder.taskId,
         title: task.title,
         date: resolveReminderNotificationDate(reminder),
       });
@@ -273,6 +289,7 @@ export async function configureLocalNotifications(): Promise<void> {
         shouldSetBadge: false,
       }),
     });
+    await configureNotificationActionCategory();
   } catch (error) {
     throw toNotificationError(
       error,
