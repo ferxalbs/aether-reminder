@@ -107,14 +107,14 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     if (mountedRef.current) setSnapshot(next);
   }, []);
 
-  const cleanupResources = useCallback((cancelSession: boolean) => {
+  const cleanupResources = useCallback((cancelSession: boolean, stopStream = true) => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     activeRef.current = false;
     finishingRef.current = false;
     releaseRequestedRef.current = false;
     lockRequestedRef.current = false;
-    streamRef.current?.stop();
+    if (stopStream) streamRef.current?.stop();
     streamRef.current = null;
     const session = sessionRef.current;
     sessionRef.current = null;
@@ -374,7 +374,9 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      cleanupResources(true);
+      // useAudioStream owns the shared object's unmount lifecycle and releases it
+      // before this consumer cleanup runs. Releasing it also stops native capture.
+      cleanupResources(true, false);
     };
   }, [cleanupResources]);
 
