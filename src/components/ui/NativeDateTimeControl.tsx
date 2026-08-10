@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import DateTimePicker from '@expo/ui/community/datetime-picker';
+import ExpoDateTimePicker from '@expo/ui/community/datetime-picker';
 import { CalendarDays, Clock3 } from 'lucide-react-native';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -70,7 +70,7 @@ export function NativeDateTimeControl({
           ]}
         >
           <Icon size={16} color={secondary} />
-          <DateTimePicker
+          <ExpoDateTimePicker
             value={value}
             mode={mode}
             display="compact"
@@ -112,7 +112,7 @@ export function NativeDateTimeControl({
         </Typography>
       </AnimatedPressable>
       {dialogOpen ? (
-        <DateTimePicker
+        <ExpoDateTimePicker
           value={value}
           mode={mode}
           presentation="dialog"
