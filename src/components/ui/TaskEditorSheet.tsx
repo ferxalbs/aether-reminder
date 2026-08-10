@@ -179,12 +179,8 @@ function TaskEditorForm({
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (mode !== 'edit' || !task) {
-      setRecurrenceLoading(false);
-      return;
-    }
+    if (mode !== 'edit' || !task) return;
     let cancelled = false;
-    setRecurrenceLoading(true);
     void getRecurrenceRule(task.id)
       .then((rule) => {
         if (cancelled) return;
