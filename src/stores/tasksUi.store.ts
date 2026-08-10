@@ -40,6 +40,8 @@ export interface TasksUiState {
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
   refreshAll: () => Promise<void>;
+  /** Refresh all task projections concurrently and publish one coherent snapshot. */
+  refreshAllSurfaces: () => Promise<void>;
   createTask: (input: {
     title: string;
     notes?: string;
@@ -146,6 +148,32 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  refreshAllSurfaces: async () => {
+    set({ status: 'loading', error: null });
+    try {
+      const tasks = core().services.tasks;
+      const localDate = getLocalDateString();
+      const [today, upcoming, all] = await Promise.all([
+        tasks.listTasks({ scope: 'today', localDate }),
+        tasks.listTasks({ scope: 'upcoming', localDate, limit: 100 }),
+        tasks.listTasks({ scope: 'all' }),
+      ]);
+      set({
+        todayTasks: today.map(toTaskListItem),
+        upcomingTasks: upcoming.map(toTaskListItem),
+        allTasks: all.map(toTaskListItem),
+        status: 'ready',
+        error: null,
+      });
+    } catch (error) {
+      reportNonFatalError('tasks-refresh-surfaces', error);
+      set({
+        status: 'error',
+        error: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
   createTask: async (input) => {
     let value: Task;
     let receipt: ActionReceipt;
@@ -168,9 +196,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
     set({ undoReceipt: receipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
-    await get().refreshToday();
-    await get().refreshUpcoming();
-    await get().refreshAll();
+    await get().refreshAllSurfaces();
     return value;
   },
 
@@ -186,9 +212,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
     set({ undoReceipt: receipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
-    await get().refreshToday();
-    await get().refreshUpcoming();
-    await get().refreshAll();
+    await get().refreshAllSurfaces();
     return value;
   },
 
@@ -218,9 +242,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
     if (lastReceipt) set({ undoReceipt: lastReceipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
-    await get().refreshToday();
-    await get().refreshUpcoming();
-    await get().refreshAll();
+    await get().refreshAllSurfaces();
   },
 
   toggleTask: async (id) => {
@@ -263,9 +285,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       });
       return;
     }
-    await get().refreshToday();
-    await get().refreshUpcoming();
-    await get().refreshAll();
+    await get().refreshAllSurfaces();
   },
 
   softDeleteTask: async (id) => {
@@ -293,9 +313,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       });
       return;
     }
-    await get().refreshToday();
-    await get().refreshUpcoming();
-    await get().refreshAll();
+    await get().refreshAllSurfaces();
   },
 
   setUndoReceipt: (receipt) => {
@@ -344,9 +362,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         undoing: false,
         revision: s.revision + 1,
       }));
-      await get().refreshToday();
-      await get().refreshUpcoming();
-      await get().refreshAll();
+      await get().refreshAllSurfaces();
     } catch (error) {
       reportNonFatalError('task-undo', error);
       set({

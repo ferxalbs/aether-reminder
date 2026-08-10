@@ -13,7 +13,7 @@ import {
   ArrowUp,
   CalendarDays,
   Clock3,
-  Inbox,
+  Flag,
   Mic,
   Plus,
   Sparkles,
@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/Button';
 import { AetherMark } from '@/components/ui/AetherMark';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
+import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
 import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
@@ -62,6 +63,23 @@ function MetaChip({
       </Typography>
     </View>
   );
+}
+
+function getQuickDateLabel(dueDate: string): string {
+  const today = new Date();
+  const tomorrow = new Date(today.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayString = getLocalDateString(today);
+  const tomorrowString = getLocalDateString(tomorrow);
+  if (dueDate === todayString) return 'Today';
+  if (dueDate === tomorrowString) return 'Tomorrow';
+  return dueDate;
+}
+
+function getPriorityLabel(priority: 'low' | 'medium' | 'high'): string {
+  if (priority === 'high') return 'High priority';
+  if (priority === 'low') return 'Low priority';
+  return 'Normal priority';
 }
 
 export default function HomeScreen() {
@@ -100,6 +118,11 @@ export default function HomeScreen() {
   const completedCount = todayTasks.filter((task) => task.completed).length;
   const totalCount = todayTasks.length;
   const pendingCount = Math.max(0, totalCount - completedCount);
+  const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
+  const quickDateLabel = useMemo(
+    () => getQuickDateLabel(quickIntent.dueDate),
+    [quickIntent.dueDate],
+  );
 
   const assistantContext = useMemo(
     () => ({
@@ -115,16 +138,18 @@ export default function HomeScreen() {
   useAssistantSurface(assistantContext);
 
   const handleQuickCapture = useCallback(async () => {
-    const title = quickTitle.trim();
-    if (!title || quickSaving) return;
+    const rawTitle = quickTitle.trim();
+    if (!rawTitle || quickSaving) return;
 
     setQuickSaving(true);
     setQuickError(null);
     try {
       await createTask({
-        title,
-        dueDate: getLocalDateString(),
-        priority: 'medium',
+        title: quickIntent.title,
+        dueDate: quickIntent.dueDate,
+        dueTime: quickIntent.dueTime,
+        dueTimezone: quickIntent.dueTimezone,
+        priority: quickIntent.priority,
         source: 'manual',
       });
       setQuickTitle('');
@@ -133,7 +158,7 @@ export default function HomeScreen() {
     } finally {
       setQuickSaving(false);
     }
-  }, [createTask, quickSaving, quickTitle]);
+  }, [createTask, quickIntent, quickSaving, quickTitle]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -261,94 +286,95 @@ export default function HomeScreen() {
               entering={reduceMotion ? undefined : FadeInDown.duration(260).delay(80).springify()}
               style={styles.captureWrap}
             >
-                <Card variant="elevated" padding={Spacing.lg} style={styles.captureCard}>
-                  <View style={styles.cardEyebrowRow}>
-                    <Typography
-                      variant="caption"
-                      color={isDark ? Colors.brandCyan : Colors.brandBlue}
-                      style={styles.eyebrow}
-                    >
-                      NEW REMINDER
-                    </Typography>
-                    <AetherMark size={26} muted={isDark} />
-                  </View>
-                  <Typography variant="headline" style={styles.captureTitle}>
-                    What would you like to remember?
+              <Card variant="elevated" padding={Spacing.lg} style={styles.captureCard}>
+                <View style={styles.cardEyebrowRow}>
+                  <Typography
+                    variant="caption"
+                    color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                    style={styles.eyebrow}
+                  >
+                    NEW REMINDER
                   </Typography>
-                  <TextInput
-                    value={quickTitle}
-                    onChangeText={(value) => {
-                      setQuickTitle(value);
-                      if (quickError) setQuickError(null);
-                    }}
-                    placeholder="Pick up dry cleaning after the team meeting"
-                    placeholderTextColor={
-                      isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                    }
-                    multiline
-                    textAlignVertical="top"
-                    returnKeyType="done"
-                    blurOnSubmit
-                    onSubmitEditing={() => void handleQuickCapture()}
-                    style={[
-                      styles.quickInput,
-                      {
-                        color: isDark ? Colors.textDark : Colors.textLight,
-                        backgroundColor: isDark
-                          ? 'rgba(255, 255, 255, 0.045)'
-                          : '#F7F9FC',
-                        borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                      },
-                    ]}
-                    accessibilityLabel="New reminder"
-                  />
-                  <View style={styles.metaRow}>
-                    <MetaChip icon={<CalendarDays size={15} />} label="Today" />
-                    <MetaChip icon={<Clock3 size={15} />} label="Any time" />
-                    <MetaChip icon={<Inbox size={15} />} label="Inbox" />
-                  </View>
-                  {quickError ? (
-                    <Typography
-                      variant="caption"
-                      color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
-                      style={styles.formError}
-                    >
-                      {quickError}
-                    </Typography>
-                  ) : null}
-                  <Button
-                    label={quickSaving ? 'Saving reminder' : 'Add Reminder'}
-                    onPress={() => void handleQuickCapture()}
-                    loading={quickSaving}
-                    disabled={!quickTitle.trim()}
-                    fullWidth
-                    size="lg"
-                    icon={
-                      <ArrowUp
-                        size={18}
-                        color={isDark ? Colors.brandInk : Colors.white}
-                        strokeWidth={2.5}
-                      />
-                    }
-                    style={styles.captureButton}
-                  />
-                  <Button
-                    label="Speak instead"
-                    variant="ghost"
-                    size="sm"
-                    onPress={startVoiceAssistant}
-                    accessibilityLabel="Speak a reminder instead"
-                    accessibilityHint="Start voice capture with AETHER"
-                    icon={
-                      <Mic
-                        size={17}
-                        color={isDark ? Colors.brandCyan : Colors.brandBlue}
-                        strokeWidth={2.1}
-                      />
-                    }
-                    style={styles.voiceButton}
-                  />
-                </Card>
+                  <AetherMark size={26} muted={isDark} />
+                </View>
+                <Typography variant="headline" style={styles.captureTitle}>
+                  What would you like to remember?
+                </Typography>
+                <TextInput
+                  value={quickTitle}
+                  onChangeText={(value) => {
+                    setQuickTitle(value);
+                    if (quickError) setQuickError(null);
+                  }}
+                  placeholder="Pick up dry cleaning tomorrow at 6pm !high"
+                  placeholderTextColor={
+                    isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
+                  }
+                  multiline
+                  textAlignVertical="top"
+                  returnKeyType="done"
+                  blurOnSubmit
+                  onSubmitEditing={() => void handleQuickCapture()}
+                  style={[
+                    styles.quickInput,
+                    {
+                      color: isDark ? Colors.textDark : Colors.textLight,
+                      backgroundColor: isDark
+                        ? 'rgba(255, 255, 255, 0.045)'
+                        : '#F7F9FC',
+                      borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                    },
+                  ]}
+                  accessibilityLabel="New reminder"
+                  accessibilityHint="Understands today, tomorrow, relative time and priority markers locally"
+                />
+                <View style={styles.metaRow}>
+                  <MetaChip icon={<CalendarDays size={15} />} label={quickDateLabel} />
+                  <MetaChip icon={<Clock3 size={15} />} label={quickIntent.dueTime ?? 'Any time'} />
+                  <MetaChip icon={<Flag size={15} />} label={getPriorityLabel(quickIntent.priority)} />
+                </View>
+                {quickError ? (
+                  <Typography
+                    variant="caption"
+                    color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+                    style={styles.formError}
+                  >
+                    {quickError}
+                  </Typography>
+                ) : null}
+                <Button
+                  label={quickSaving ? 'Saving reminder' : 'Add Reminder'}
+                  onPress={() => void handleQuickCapture()}
+                  loading={quickSaving}
+                  disabled={!quickTitle.trim()}
+                  fullWidth
+                  size="lg"
+                  icon={
+                    <ArrowUp
+                      size={18}
+                      color={isDark ? Colors.brandInk : Colors.white}
+                      strokeWidth={2.5}
+                    />
+                  }
+                  style={styles.captureButton}
+                />
+                <Button
+                  label="Speak instead"
+                  variant="ghost"
+                  size="sm"
+                  onPress={startVoiceAssistant}
+                  accessibilityLabel="Speak a reminder instead"
+                  accessibilityHint="Start voice capture with AETHER"
+                  icon={
+                    <Mic
+                      size={17}
+                      color={isDark ? Colors.brandCyan : Colors.brandBlue}
+                      strokeWidth={2.1}
+                    />
+                  }
+                  style={styles.voiceButton}
+                />
+              </Card>
             </Animated.View>
 
             <Animated.View
@@ -368,7 +394,7 @@ export default function HomeScreen() {
                     variant="caption"
                     color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
                   >
-                    {status === 'loading'
+                    {status === 'loading' || status === 'idle'
                       ? 'Refreshing your focus'
                       : pendingCount + ' active ' + (pendingCount === 1 ? 'reminder' : 'reminders')}
                   </Typography>
@@ -394,7 +420,7 @@ export default function HomeScreen() {
           </View>
         }
         empty={
-          status !== 'loading' ? (
+          status === 'ready' ? (
             <Animated.View
               entering={reduceMotion ? undefined : FadeIn.duration(180).delay(160)}
               style={styles.emptyState}

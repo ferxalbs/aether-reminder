@@ -12,7 +12,6 @@ import { syncLocalNotifications } from '@/services/notifications/notificationBoo
 import { getAetherCore } from '@/core';
 import { getDatabaseErrorMessage } from '@/db/errors';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
@@ -33,7 +32,6 @@ type NotificationSyncState = {
 
 export default function RootLayout() {
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
-  const refreshToday = useTasksUiStore((s) => s.refreshToday);
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
@@ -82,8 +80,8 @@ export default function RootLayout() {
       try {
         await bootstrapAppData();
         if (cancelled) return;
-        await refreshToday();
-        if (cancelled) return;
+        // Task projections are loaded by the focused route. Keeping boot limited
+        // to database readiness avoids querying Today twice on cold start.
         setBoot({ phase: 'ready' });
         void syncNotifications();
       } catch (error) {
@@ -94,7 +92,7 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, [refreshToday, syncNotifications]);
+  }, [syncNotifications]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
