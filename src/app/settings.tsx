@@ -309,7 +309,7 @@ export default function SettingsScreen() {
 
         {/* Header */}
         <Animated.View entering={entering} style={styles.header}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.headerCaption}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.headerCaption}>
             PREFERENCES
           </Typography>
           <Typography variant="display" style={styles.headerTitle}>
@@ -319,32 +319,32 @@ export default function SettingsScreen() {
 
         {/* Section 1: OpenRouter AI Reasoning */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             OPENROUTER — AI REASONING
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                 <Key size={18} color={isDark ? Colors.white : Colors.black} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">OpenRouter API Key</Typography>
-                <Typography variant="caption" color={Colors.zinc500}>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   Powers AETHER’s tool reasoning agent.
                 </Typography>
               </View>
             </View>
 
-            <View style={[styles.statusBanner, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+            <View style={[styles.statusBanner, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
               <View style={{ flex: 1 }}>
-                <Typography variant="tiny" color={openRouterConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500}>
+                <Typography variant="tiny" color={openRouterConfigured ? (isDark ? Colors.white : Colors.black) : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   KEY STATUS
                 </Typography>
-                <Typography variant="bodyBold" style={{ color: openRouterConfigured ? (isDark ? Colors.white : Colors.zinc950) : Colors.zinc500 }}>
+                <Typography variant="bodyBold" style={{ color: isDark ? Colors.white : Colors.black }}>
                   {openRouterKeyLoaded ? (openRouterConfigured ? 'Saved in SecureStore' : 'No key configured') : 'Checking SecureStore…'}
                 </Typography>
               </View>
-              {openRouterConfigured && <Shield size={18} color={isDark ? '#4ADE80' : '#16A34A'} />}
+              {openRouterConfigured && <Shield size={18} color={isDark ? Colors.white : Colors.black} />}
             </View>
 
             <View style={styles.inputWrapper}>
@@ -352,16 +352,16 @@ export default function SettingsScreen() {
                 value={openRouterInput}
                 onChangeText={setOpenRouterInput}
                 placeholder={openRouterConfigured ? '••••••••••••••••••••••••' : 'Enter OpenRouter API Key'}
-                placeholderTextColor={Colors.zinc500}
+                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
                 secureTextEntry={!showOpenRouterKey}
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={[
                   styles.textInput,
                   {
-                    color: isDark ? Colors.white : Colors.zinc950,
-                    backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100,
-                    borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
+                    color: isDark ? Colors.white : Colors.black,
+                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                   },
                 ]}
               />
@@ -372,11 +372,11 @@ export default function SettingsScreen() {
                 style={styles.eyeButton}
                 accessibilityLabel={showOpenRouterKey ? 'Hide key' : 'Show key'}
               >
-                {showOpenRouterKey ? <EyeOff size={18} color={Colors.zinc400} /> : <Eye size={18} color={Colors.zinc400} />}
+                {showOpenRouterKey ? <EyeOff size={18} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} /> : <Eye size={18} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} />}
               </AnimatedPressable>
             </View>
 
-            <Typography variant="caption" color={Colors.zinc500} style={styles.storageNote}>
+            <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.storageNote}>
               {storageDescription}
             </Typography>
 
@@ -402,7 +402,7 @@ export default function SettingsScreen() {
                   label="Delete Key"
                   onPress={() => deleteKey('OpenRouter')}
                   variant="destructive"
-                  icon={<Trash2 size={16} color={isDark ? '#FCA5A5' : '#DC2626'} />}
+                  icon={<Trash2 size={16} color={isDark ? Colors.white : Colors.black} />}
                   disabled={!openRouterKeyLoaded || savingProvider !== null || testingProvider !== null}
                   fullWidth
                 />
@@ -412,7 +412,7 @@ export default function SettingsScreen() {
             {openRouterMessage ? (
               <Typography
                 variant="caption"
-                color={openRouterMessage.startsWith('✓') ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc400}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.statusMessage}
               >
                 {openRouterMessage}
@@ -423,32 +423,32 @@ export default function SettingsScreen() {
 
         {/* Section 2: OpenAI Realtime Transcription */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             OPENAI — REALTIME TRANSCRIPTION
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                 <Mic size={18} color={isDark ? Colors.white : Colors.black} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">OpenAI API Key</Typography>
-                <Typography variant="caption" color={Colors.zinc500}>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   Used strictly for realtime voice transcription.
                 </Typography>
               </View>
             </View>
 
-            <View style={[styles.statusBanner, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+            <View style={[styles.statusBanner, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
               <View style={{ flex: 1 }}>
-                <Typography variant="tiny" color={openAiConfigured ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc500}>
+                <Typography variant="tiny" color={openAiConfigured ? (isDark ? Colors.white : Colors.black) : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   KEY STATUS
                 </Typography>
-                <Typography variant="bodyBold" style={{ color: openAiConfigured ? (isDark ? Colors.white : Colors.zinc950) : Colors.zinc500 }}>
+                <Typography variant="bodyBold" style={{ color: isDark ? Colors.white : Colors.black }}>
                   {openAiKeyLoaded ? (openAiConfigured ? 'Saved in SecureStore' : 'No key configured') : 'Checking SecureStore…'}
                 </Typography>
               </View>
-              {openAiConfigured && <Shield size={18} color={isDark ? '#4ADE80' : '#16A34A'} />}
+              {openAiConfigured && <Shield size={18} color={isDark ? Colors.white : Colors.black} />}
             </View>
 
             <View style={styles.inputWrapper}>
@@ -456,16 +456,16 @@ export default function SettingsScreen() {
                 value={openAiInput}
                 onChangeText={setOpenAiInput}
                 placeholder={openAiConfigured ? '••••••••••••••••••••••••' : 'Enter OpenAI API Key'}
-                placeholderTextColor={Colors.zinc500}
+                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
                 secureTextEntry={!showOpenAiKey}
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={[
                   styles.textInput,
                   {
-                    color: isDark ? Colors.white : Colors.zinc950,
-                    backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100,
-                    borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
+                    color: isDark ? Colors.white : Colors.black,
+                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                   },
                 ]}
               />
@@ -476,11 +476,11 @@ export default function SettingsScreen() {
                 style={styles.eyeButton}
                 accessibilityLabel={showOpenAiKey ? 'Hide key' : 'Show key'}
               >
-                {showOpenAiKey ? <EyeOff size={18} color={Colors.zinc400} /> : <Eye size={18} color={Colors.zinc400} />}
+                {showOpenAiKey ? <EyeOff size={18} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} /> : <Eye size={18} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} />}
               </AnimatedPressable>
             </View>
 
-            <Typography variant="caption" color={Colors.zinc500} style={styles.storageNote}>
+            <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.storageNote}>
               {storageDescription}
             </Typography>
 
@@ -506,7 +506,7 @@ export default function SettingsScreen() {
                   label="Delete Key"
                   onPress={() => deleteKey('OpenAI')}
                   variant="destructive"
-                  icon={<Trash2 size={16} color={isDark ? '#FCA5A5' : '#DC2626'} />}
+                  icon={<Trash2 size={16} color={isDark ? Colors.white : Colors.black} />}
                   disabled={!openAiKeyLoaded || savingProvider !== null || testingProvider !== null}
                   fullWidth
                 />
@@ -516,7 +516,7 @@ export default function SettingsScreen() {
             {openAiMessage ? (
               <Typography
                 variant="caption"
-                color={openAiMessage.startsWith('✓') ? (isDark ? '#4ADE80' : '#16A34A') : Colors.zinc400}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.statusMessage}
               >
                 {openAiMessage}
@@ -527,32 +527,32 @@ export default function SettingsScreen() {
 
         {/* Section 3: OpenRouter Model Selection */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             MODEL SELECTION
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                 <Cpu size={18} color={isDark ? Colors.white : Colors.black} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">Tool-Enabled Model</Typography>
-                <Typography variant="caption" color={Colors.zinc500}>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   Active: {activeModelDetails.name}
                 </Typography>
               </View>
             </View>
 
-            {/* Active Model Hero Card */}
-            <View style={[styles.activeModelCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight }]}>
+            {/* Active Model Card */}
+            <View style={[styles.activeModelCard, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
               <View style={{ flex: 1 }}>
-                <Typography variant="tiny" color={Colors.zinc400} style={{ letterSpacing: 0.5 }}>
+                <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={{ letterSpacing: 0.5 }}>
                   SELECTED MODEL ID
                 </Typography>
                 <Typography variant="bodyBold" style={{ marginTop: 2 }}>
                   {selectedModel}
                 </Typography>
-                <Typography variant="tiny" color={Colors.zinc500} style={{ marginTop: 2 }}>
+                <Typography variant="tiny" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={{ marginTop: 2 }}>
                   Provider: {activeModelDetails.provider}
                 </Typography>
               </View>
@@ -562,7 +562,7 @@ export default function SettingsScreen() {
                   onPress={() => {
                     setModel(DEFAULT_OPENROUTER_MODEL_ID);
                   }}
-                  style={styles.resetButton}
+                  style={[styles.resetButton, { borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}
                   accessibilityLabel="Reset model to default"
                 >
                   <RotateCcw size={14} color={isDark ? Colors.white : Colors.black} />
@@ -571,7 +571,7 @@ export default function SettingsScreen() {
                   </Typography>
                 </AnimatedPressable>
               ) : (
-                <View style={[styles.defaultBadge, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]}>
+                <View style={[styles.defaultBadge, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
                   <Typography variant="tiny" color={isDark ? Colors.white : Colors.black}>
                     Default
                   </Typography>
@@ -579,7 +579,6 @@ export default function SettingsScreen() {
               )}
             </View>
 
-            {/* Apple HIG Pull-Down Button for Model Selection */}
             <AnimatedPressable
               onPress={() => {
                 setModelPickerVisible(true);
@@ -588,30 +587,30 @@ export default function SettingsScreen() {
               style={[
                 styles.pullDownButton,
                 {
-                  backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100,
-                  borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
+                  backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                 },
               ]}
             >
               <Typography variant="bodyBold" style={{ flex: 1 }}>
                 Change Reasoning Model…
               </Typography>
-              <ChevronDown size={18} color={Colors.zinc400} />
+              <ChevronDown size={18} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />
             </AnimatedPressable>
           </Card>
         </Animated.View>
 
-        {/* Section 4: App Preferences (Apple HIG Segmented Picker Control) */}
+        {/* Section 4: App Preferences */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             APP PREFERENCES
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
 
-            {/* Apple HIG Segmented Control for Theme Preference */}
+            {/* Segmented Control for Theme Preference */}
             <View style={{ marginBottom: Spacing.xs }}>
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                   <Moon size={18} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
@@ -619,19 +618,18 @@ export default function SettingsScreen() {
                 </Typography>
               </View>
 
-              {/* Authentic Apple HIG Segmented Control Capsule */}
               <View
                 style={[
                   styles.segmentedContainer,
                   {
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                    borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
+                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                   },
                 ]}
               >
                 {(['dark', 'light', 'system'] as UserSettings['theme'][]).map((val) => {
                   const isActive = theme === val;
-                  const label = val === 'system' ? 'System' : val === 'dark' ? 'Dark' : 'Light';
+                  const label = val === 'system' ? 'System' : val === 'dark' ? 'OLED Dark' : 'Light';
                   return (
                     <AnimatedPressable
                       key={val}
@@ -643,16 +641,15 @@ export default function SettingsScreen() {
                         styles.segmentedItem,
                         {
                           backgroundColor: isActive
-                            ? (isDark ? 'rgba(255,255,255,0.15)' : '#FFFFFF')
+                            ? (isDark ? Colors.white : Colors.black)
                             : 'transparent',
-                          shadowOpacity: isActive && !isDark ? 0.1 : 0,
                         },
                       ]}
                     >
                       <Typography
                         variant="caption"
                         style={{
-                          color: isActive ? (isDark ? Colors.white : Colors.zinc950) : Colors.zinc500,
+                          color: isActive ? (isDark ? Colors.black : Colors.white) : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight,
                           fontWeight: isActive ? '600' : '500',
                         }}
                       >
@@ -664,17 +661,17 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]} />
+            <View style={[styles.divider, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]} />
 
             {/* Haptic Feedback Switch */}
             <View style={styles.rowBetween}>
               <View style={styles.rowLeftGroup}>
-                <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                   <Vibrate size={18} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">Haptic Feedback</Typography>
-                  <Typography variant="tiny" color={Colors.zinc500}>
+                  <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                     Tactile touch responses on actions
                   </Typography>
                 </View>
@@ -686,17 +683,17 @@ export default function SettingsScreen() {
               />
             </View>
 
-            <View style={[styles.divider, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]} />
+            <View style={[styles.divider, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]} />
 
             {/* Auto Task Summarize Switch */}
             <View style={styles.rowBetween}>
               <View style={styles.rowLeftGroup}>
-                <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                   <Sparkles size={18} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">Auto Task Summarize</Typography>
-                  <Typography variant="tiny" color={Colors.zinc500}>
+                  <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                     Automatically suggest task details with AI
                   </Typography>
                 </View>
@@ -713,17 +710,17 @@ export default function SettingsScreen() {
 
         {/* Section 5: Hardware Security & Storage */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             SECURITY INTEGRITY
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.1)' }]}>
-                <Lock size={18} color={isDark ? '#4ADE80' : '#16A34A'} />
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
+                <Lock size={18} color={isDark ? Colors.white : Colors.black} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="bodyBold">Expo SecureStore Encrypted</Typography>
-                <Typography variant="caption" color={Colors.zinc500}>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   API keys are stored strictly in hardware Keychain / Keystore and never written to AsyncStorage or cloud backups.
                 </Typography>
               </View>
@@ -733,10 +730,10 @@ export default function SettingsScreen() {
 
         {/* Section 6: About & Privacy Accordions */}
         <Animated.View entering={entering}>
-          <Typography variant="caption" color={Colors.zinc500} style={styles.sectionHeader}>
+          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
             ABOUT & LEGAL
           </Typography>
-          <Card variant="glass" style={styles.cardSection}>
+          <Card variant="outline" style={styles.cardSection}>
 
             {/* About AETHER */}
             <AnimatedLayoutView>
@@ -746,7 +743,7 @@ export default function SettingsScreen() {
                 }}
                 style={styles.accordionHeader}
               >
-                <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                   <Info size={18} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
@@ -755,14 +752,14 @@ export default function SettingsScreen() {
               </AnimatedPressable>
               {showAbout ? (
                 <Animated.View layout={settingsLayout} style={styles.accordionBody}>
-                  <Typography variant="body" color={Colors.zinc400} style={styles.accordionText}>
+                  <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.accordionText}>
                     AETHER is a local-first, privacy-respecting task assistant. OpenRouter powers reasoning and tool execution; OpenAI powers realtime voice transcription.
                   </Typography>
                 </Animated.View>
               ) : null}
             </AnimatedLayoutView>
 
-            <View style={[styles.divider, { backgroundColor: isDark ? Colors.zinc800 : Colors.zinc200 }]} />
+            <View style={[styles.divider, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]} />
 
             {/* Privacy Policy */}
             <AnimatedLayoutView>
@@ -772,7 +769,7 @@ export default function SettingsScreen() {
                 }}
                 style={styles.accordionHeader}
               >
-                <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
                   <Shield size={18} color={isDark ? Colors.white : Colors.black} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
@@ -781,7 +778,7 @@ export default function SettingsScreen() {
               </AnimatedPressable>
               {showPrivacy ? (
                 <Animated.View layout={settingsLayout} style={styles.accordionBody}>
-                  <Typography variant="body" color={Colors.zinc400} style={styles.accordionText}>
+                  <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.accordionText}>
                     API keys remain isolated in SecureStore and are never included in analytics, error logs, or AsyncStorage. Task content is sent to OpenRouter only when requested. Voice audio is streamed to OpenAI only during active transcription sessions.
                   </Typography>
                 </Animated.View>
@@ -791,7 +788,7 @@ export default function SettingsScreen() {
           </Card>
 
           {/* App Version Footer */}
-          <Typography variant="tiny" align="center" color={Colors.zinc500} style={styles.versionFooter}>
+          <Typography variant="tiny" align="center" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.versionFooter}>
             AETHER v1.0.0 • Expo SDK 57
           </Typography>
         </Animated.View>
@@ -806,12 +803,12 @@ export default function SettingsScreen() {
         onRequestClose={() => setModelPickerVisible(false)}
       >
         <View style={styles.sheetOverlay}>
-          <View style={[styles.sheetContainer, { backgroundColor: isDark ? Colors.zinc950 : Colors.white }]}>
+          <View style={[styles.sheetContainer, { backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
 
             <View style={styles.sheetHeader}>
               <View style={{ flex: 1 }}>
                 <Typography variant="title">OpenRouter Model Catalog</Typography>
-                <Typography variant="caption" color={Colors.zinc500}>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                   Select a tool-capable reasoning model
                 </Typography>
               </View>
@@ -823,36 +820,36 @@ export default function SettingsScreen() {
                 accessibilityLabel="Force refresh model catalog"
                 style={styles.iconPressable}
               >
-                <RefreshCw size={18} color={Colors.zinc400} />
+                <RefreshCw size={18} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />
               </AnimatedPressable>
 
               <AnimatedPressable
                 onPress={() => setModelPickerVisible(false)}
                 style={styles.iconPressable}
               >
-                <X size={20} color={Colors.zinc400} />
+                <X size={20} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />
               </AnimatedPressable>
             </View>
 
-            <View style={[styles.searchBox, { backgroundColor: isDark ? Colors.zinc900 : Colors.zinc100, borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight }]}>
-              <Search size={16} color={Colors.zinc500} />
+            <View style={[styles.searchBox, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
+              <Search size={16} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} />
               <TextInput
                 value={modelSearch}
                 onChangeText={setModelSearch}
                 placeholder="Search models or providers…"
-                placeholderTextColor={Colors.zinc500}
-                style={[styles.searchInput, { color: isDark ? Colors.white : Colors.zinc950 }]}
+                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+                style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
               />
             </View>
 
             {modelsLoading ? (
               <ActivityIndicator style={styles.centerLoader} color={isDark ? Colors.white : Colors.black} />
             ) : modelsError ? (
-              <Typography variant="caption" color={Colors.zinc500} style={styles.modelsErrorText}>
+              <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.modelsErrorText}>
                 {modelsError}
               </Typography>
             ) : filteredModels.length === 0 ? (
-              <Typography variant="caption" color={Colors.zinc500} style={styles.modelsErrorText}>
+              <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.modelsErrorText}>
                 No models match &quot;{modelSearch}&quot;.
               </Typography>
             ) : (
@@ -886,11 +883,11 @@ export default function SettingsScreen() {
                         styles.modelCardItem,
                         {
                           backgroundColor: isSelected
-                            ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)')
+                            ? (isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight)
                             : 'transparent',
                           borderColor: isSelected
                             ? (isDark ? Colors.white : Colors.black)
-                            : (isDark ? Colors.zinc800 : Colors.zinc200),
+                            : (isDark ? Colors.borderDark : Colors.borderLight),
                           opacity: isSelectable || isSelected ? 1 : 0.45,
                         },
                       ]}
@@ -898,14 +895,14 @@ export default function SettingsScreen() {
                       <View style={{ flex: 1 }}>
                         <Typography variant="bodyBold">{model.name}</Typography>
                         <View style={styles.modelMetadataRow}>
-                          <Typography variant="tiny" color={Colors.zinc400}>
+                          <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                             {model.provider}
                           </Typography>
-                          <Typography variant="tiny" color={Colors.zinc500}>
+                          <Typography variant="tiny" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}>
                             • {formatContextLength(model.contextLength)}
                           </Typography>
-                          <View style={[styles.capabilityPill, { backgroundColor: isSelectable ? (isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.1)') : (isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)') }]}>
-                            <Typography variant="tiny" style={{ color: isSelectable ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#EF4444' : '#DC2626') }}>
+                          <View style={[styles.capabilityPill, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
+                            <Typography variant="tiny" style={{ color: isDark ? Colors.white : Colors.black }}>
                               {statusLabel}
                             </Typography>
                           </View>
@@ -971,7 +968,6 @@ const styles = StyleSheet.create({
   cardSection: {
     marginBottom: Spacing.md,
     padding: Spacing.md,
-    borderCurve: 'continuous',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -993,7 +989,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     marginTop: Spacing.md,
   },
   inputWrapper: {
@@ -1003,7 +998,6 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
@@ -1033,7 +1027,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     borderWidth: 1,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
@@ -1046,7 +1039,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: Colors.zinc500,
   },
   defaultBadge: {
     paddingHorizontal: 10,
@@ -1057,7 +1049,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
@@ -1066,9 +1057,8 @@ const styles = StyleSheet.create({
   segmentedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 4,
+    padding: 3,
     borderRadius: Radius.pill,
-    borderCurve: 'continuous',
     borderWidth: 1,
     marginTop: Spacing.sm,
   },
@@ -1076,9 +1066,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: Radius.pill,
-    borderCurve: 'continuous',
   },
   iconPressable: {
     padding: 6,
@@ -1117,14 +1106,15 @@ const styles = StyleSheet.create({
   },
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
     height: '75%',
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
-    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderBottomWidth: 0,
     padding: Spacing.lg,
   },
   sheetHeader: {
@@ -1137,7 +1127,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: Spacing.sm,
     marginBottom: Spacing.md,
@@ -1162,7 +1151,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderRadius: Radius.md,
-    borderCurve: 'continuous',
     borderWidth: 1,
     marginBottom: Spacing.xs,
   },

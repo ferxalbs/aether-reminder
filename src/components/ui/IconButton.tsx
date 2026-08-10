@@ -36,19 +36,22 @@ export const IconButton: React.FC<IconButtonProps> = ({
     switch (variant) {
       case 'solid':
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk,
-          borderColor: 'transparent',
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderWidth: 1,
         };
       case 'glass':
         return {
           backgroundColor: 'transparent',
-          borderColor: 'transparent',
-          borderWidth: 0,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderWidth: 1,
         };
       case 'ghost':
+      default:
         return {
           backgroundColor: 'transparent',
           borderColor: 'transparent',
+          borderWidth: 0,
         };
     }
   };
@@ -93,7 +96,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderCurve: 'continuous',
   },
   disabled: {
     opacity: 0.4,

@@ -1,36 +1,45 @@
 export const Colors = {
-  // Neutral and legacy values retained for provider/settings states.
+  // Pure monochrome base values
   black: '#000000',
   white: '#FFFFFF',
 
-  // AETHER foundation palette. The light surface is intentionally quiet so
-  // the capture action and reminder state carry the visual weight.
-  backgroundLight: '#F5F7FB',
-  backgroundDark: '#071019',
+  // Light Canvas & Surfaces (Crisp White & Minimal Gray)
+  backgroundLight: '#FFFFFF',
   surfaceLight: '#FFFFFF',
-  surfaceDark: '#101B27',
-  surfaceRaisedLight: '#FBFCFF',
-  surfaceRaisedDark: '#142231',
-  textLight: '#0E1722',
-  textDark: '#F7FAFC',
-  secondaryTextLight: '#637084',
-  secondaryTextDark: '#A8B5C4',
-  tertiaryTextLight: '#8D99A8',
-  tertiaryTextDark: '#77879A',
-  borderLight: 'rgba(14, 23, 34, 0.10)',
-  borderDark: 'rgba(247, 250, 252, 0.13)',
-  brandInk: '#0C1622',
-  successLight: '#18864B',
-  successDark: '#6BE7A2',
-  warningLight: '#9A5C00',
-  warningDark: '#F8C66D',
-  
-  // Grayscale levels (dark mode primary, adapt for high contrast)
+  surfaceRaisedLight: '#F4F4F5',
+
+  // OLED Dark Mode Canvas & Surfaces (True #000000 Pitch Black)
+  backgroundDark: '#000000',
+  surfaceDark: '#000000',
+  surfaceRaisedDark: '#121212',
+
+  // Typography Contrast Levels
+  textLight: '#0A0A0A',
+  textDark: '#FFFFFF',
+  secondaryTextLight: '#666666',
+  secondaryTextDark: '#8E8E93',
+  tertiaryTextLight: '#999999',
+  tertiaryTextDark: '#52525B',
+
+  // Subtle 1px Borders & Separators (Zero shadows/glows)
+  borderLight: '#E5E5E7',
+  borderDark: '#262626',
+  separatorLight: '#EEEEEE',
+  separatorDark: '#1C1C1E',
+
+  // Monochrome Ink & Statuses
+  brandInk: '#000000',
+  successLight: '#000000',
+  successDark: '#FFFFFF',
+  warningLight: '#333333',
+  warningDark: '#D4D4D8',
+
+  // Neutral Grayscale Scale
   zinc950: '#09090B',
-  zinc900: '#18181B',
-  zinc800: '#27272A',
-  zinc700: '#3F3F46',
-  zinc600: '#52525B',
+  zinc900: '#121212',
+  zinc800: '#18181B',
+  zinc700: '#27272A',
+  zinc600: '#3F3F46',
   zinc500: '#71717A',
   zinc400: '#A1A1AA',
   zinc300: '#D4D4D8',
@@ -38,46 +47,46 @@ export const Colors = {
   zinc100: '#F4F4F5',
   zinc50: '#FAFAFA',
 
-  // Translucent glass overlays
-  glassDark: 'rgba(24, 24, 27, 0.75)',
-  glassLight: 'rgba(255, 255, 255, 0.75)',
-  glassBorderDark: 'rgba(255, 255, 255, 0.12)',
-  glassBorderLight: 'rgba(0, 0, 0, 0.08)',
-  
-  // Shadows & Elevators
-  shadowDark: 'rgba(0, 0, 0, 0.5)',
-  shadowLight: 'rgba(0, 0, 0, 0.05)',
+  // Surface Overlays & Glass Fallbacks (Strict Monochrome)
+  glassDark: 'rgba(18, 18, 18, 0.85)',
+  glassLight: 'rgba(255, 255, 255, 0.85)',
+  glassBorderDark: '#262626',
+  glassBorderLight: '#E5E5E7',
 
-  // System
-  systemGreenLight: '#34C759',
-  systemGreenDark: '#30D158',
-  systemGray4Light: '#D1D1D6',
-  systemGray4Dark: '#3A3A3C',
+  // Shadows & Elevators (Deprecated to transparent for clean separation via borders/surfaces)
+  shadowDark: 'transparent',
+  shadowLight: 'transparent',
 
-  // Semantic action colors
-  destructiveBackgroundLight: 'rgba(239, 68, 68, 0.10)',
-  destructiveBackgroundDark: 'rgba(239, 68, 68, 0.16)',
-  destructiveBorderLight: 'rgba(239, 68, 68, 0.20)',
-  destructiveBorderDark: 'rgba(239, 68, 68, 0.30)',
-  destructiveTextLight: '#DC2626',
-  destructiveTextDark: '#FCA5A5',
-  priorityBadgeBackgroundLight: 'rgba(39, 39, 42, 0.20)',
-  priorityBadgeBackgroundDark: 'rgba(228, 228, 231, 0.20)',
+  // System Badges (Monochrome High-Contrast)
+  systemGreenLight: '#000000',
+  systemGreenDark: '#FFFFFF',
+  systemGray4Light: '#E5E5E7',
+  systemGray4Dark: '#262626',
 
-  // Platform feedback surfaces
-  rippleLight: 'rgba(0, 0, 0, 0.12)',
-  rippleDark: 'rgba(255, 255, 255, 0.18)',
-  scrimLight: 'rgba(0, 0, 0, 0.18)',
-  scrimDark: 'rgba(0, 0, 0, 0.50)',
+  // Semantic Actions (Monochrome Neutral Contrast)
+  destructiveBackgroundLight: '#F4F4F5',
+  destructiveBackgroundDark: '#18181B',
+  destructiveBorderLight: '#E5E5E7',
+  destructiveBorderDark: '#262626',
+  destructiveTextLight: '#000000',
+  destructiveTextDark: '#FFFFFF',
+  priorityBadgeBackgroundLight: '#F4F4F5',
+  priorityBadgeBackgroundDark: '#18181B',
+
+  // Touch & Feedback Surfaces
+  rippleLight: 'rgba(0, 0, 0, 0.08)',
+  rippleDark: 'rgba(255, 255, 255, 0.12)',
+  scrimLight: 'rgba(0, 0, 0, 0.40)',
+  scrimDark: 'rgba(0, 0, 0, 0.75)',
 } as const;
 
 export const Spacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 40,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
   huge: 48,
 } as const;
 
@@ -87,35 +96,35 @@ export const LayoutTokens = {
   contentMaxWidth: 980,
   readingMaxWidth: 680,
   navigationMaxWidth: 640,
-  navigationHeight: 78,
+  navigationHeight: 72,
 } as const;
 
 export const Radius = {
-  sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 28,
+  sm: 6,
+  md: 10,
+  lg: 16,
+  xl: 24,
   pill: 9999,
 } as const;
 
 export const ControlTokens = {
   borderWidth: 1,
-  fieldPaddingHorizontal: Spacing.md,
-  fieldPaddingVertical: Spacing.sm,
+  fieldPaddingHorizontal: Spacing.lg,
+  fieldPaddingVertical: Spacing.md,
   fieldContentGap: Spacing.sm,
   fieldLabelGap: Spacing.xs,
   fieldMessageGap: Spacing.xs,
   fieldIconSize: 18,
-  disabledOpacity: 0.55,
-  pickerOptionPaddingHorizontal: Spacing.md,
-  pickerOptionPaddingVertical: Spacing.sm,
+  disabledOpacity: 0.5,
+  pickerOptionPaddingHorizontal: Spacing.lg,
+  pickerOptionPaddingVertical: Spacing.md,
   pickerChevronSize: 18,
-  sheetHandleWidth: Spacing.xl,
-  sheetHandleHeight: Spacing.xs,
-  sheetHorizontalPadding: Spacing.md,
-  sheetContentGap: Spacing.sm,
+  sheetHandleWidth: 36,
+  sheetHandleHeight: 4,
+  sheetHorizontalPadding: Spacing.lg,
+  sheetContentGap: Spacing.md,
   sheetTopRadius: Radius.xl,
-  sheetElevation: 8,
+  sheetElevation: 0,
   sheetMaxHeight: '90%',
 } as const;
 
@@ -129,19 +138,19 @@ export const getMinimumTouchTarget = (platform: string): number =>
 
 export const Motion = {
   pressSpring: {
-    damping: 26.5,
-    stiffness: 350,
+    damping: 28,
+    stiffness: 380,
     mass: 0.5,
   },
   toggleSpring: {
-    damping: 28,
-    stiffness: 200,
+    damping: 30,
+    stiffness: 220,
     mass: 1,
     overshootClamping: true,
   },
   cardSpring: {
-    damping: 34.5,
-    stiffness: 300,
+    damping: 35,
+    stiffness: 320,
     mass: 1,
   },
   buttonPressScale: 0.97,
@@ -150,24 +159,24 @@ export const Motion = {
   pressScale: 0.96,
   reducedMotionDuration: 120,
   screenSpring: {
-    damping: 24,
-    stiffness: 180,
+    damping: 26,
+    stiffness: 200,
     mass: 0.8,
   },
 } as const;
 
 export const TypographyTokens = {
   display: {
-    fontSize: 36,
-    lineHeight: 42,
-    letterSpacing: -1.1,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -1.0,
     fontWeight: '700' as const,
   },
   headline: {
-    fontSize: 25,
-    lineHeight: 31,
-    letterSpacing: -0.55,
-    fontWeight: '700' as const,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.6,
+    fontWeight: '600' as const,
   },
   title: {
     fontSize: 18,
@@ -176,14 +185,14 @@ export const TypographyTokens = {
     fontWeight: '600' as const,
   },
   body: {
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 22,
     letterSpacing: 0,
     fontWeight: '400' as const,
   },
   bodyBold: {
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 22,
     letterSpacing: 0,
     fontWeight: '600' as const,
   },

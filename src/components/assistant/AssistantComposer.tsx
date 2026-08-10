@@ -50,7 +50,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
       style={[
         styles.composer,
         {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8',
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
@@ -65,7 +65,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder="Ask anything…"
-        placeholderTextColor={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+        placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
         multiline
         maxLength={2000}
         editable={!disabled}
@@ -88,16 +88,16 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
           accessibilityState={{ disabled }}
           style={({ pressed }) => [
             styles.sendButton,
-            { backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk },
+            { backgroundColor: isDark ? Colors.white : Colors.black },
             pressed && styles.pressed,
             disabled && styles.disabled,
           ]}
         >
-          <ArrowUp size={18} color={isDark ? Colors.brandInk : Colors.white} strokeWidth={2.8} />
+          <ArrowUp size={18} color={isDark ? Colors.black : Colors.white} strokeWidth={2.8} />
         </Pressable>
       ) : null}
       {!hasText ? (
-        <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.hint}>
+        <Typography variant="tiny" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.hint}>
           Tap microphone to speak
         </Typography>
       ) : null}
@@ -117,27 +117,26 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.xs,
     paddingVertical: Spacing.xs,
     gap: Spacing.xs,
-    borderCurve: 'continuous',
   },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 112,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 22,
     paddingTop: 9,
     paddingBottom: 9,
   },
   sendButton: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   hint: {
     position: 'absolute',
-    right: 52,
+    right: 50,
     bottom: 14,
   },
   pressed: {

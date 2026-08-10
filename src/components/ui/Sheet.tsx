@@ -49,7 +49,7 @@ export const Sheet: React.FC<SheetProps> = ({
   const reduceMotion = useReducedMotion();
   const isIOS = Platform.OS === 'ios';
   const isAndroid = Platform.OS === 'android';
-  const surfaceBackgroundColor = isDark ? Colors.surfaceDark : Colors.surfaceLight;
+  const surfaceBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight;
   const dialogLabel = accessibilityLabel ?? title ?? 'Sheet';
 
   const handleRequestClose = () => {
@@ -99,12 +99,17 @@ export const Sheet: React.FC<SheetProps> = ({
           style={[
             styles.surface,
             isIOS && styles.iosSurface,
-            isAndroid && styles.androidSurface,
-            { backgroundColor: 'transparent' },
+            isAndroid && [
+              styles.androidSurface,
+              {
+                backgroundColor: surfaceBackgroundColor,
+                borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+              },
+            ],
             surfaceStyle,
           ]}
         >
-          {isIOS || isAndroid ? (
+          {isIOS ? (
             <GlassSurface
               pointerEvents="none"
               borderRadius={Radius.xl}
@@ -112,12 +117,24 @@ export const Sheet: React.FC<SheetProps> = ({
               style={StyleSheet.absoluteFill}
             />
           ) : null}
-          {isAndroid ? <View style={styles.androidHandle} accessible={false} /> : null}
+          {isAndroid ? (
+            <View
+              style={[
+                styles.androidHandle,
+                { backgroundColor: isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight },
+              ]}
+              accessible={false}
+            />
+          ) : null}
           {title || subtitle || headerAction ? (
             <View style={styles.header}>
               <View style={styles.headerCopy}>
                 {title ? <Typography variant="title">{title}</Typography> : null}
-                {subtitle ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>{subtitle}</Typography> : null}
+                {subtitle ? (
+                  <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                    {subtitle}
+                  </Typography>
+                ) : null}
               </View>
               {headerAction ? (
                 <View
@@ -163,8 +180,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderTopLeftRadius: ControlTokens.sheetTopRadius,
     borderTopRightRadius: ControlTokens.sheetTopRadius,
-    borderCurve: 'continuous',
-    boxShadow: '0 -8px 28px rgba(8, 18, 31, 0.22)',
+    borderWidth: 1,
+    borderBottomWidth: 0,
   },
   androidHandle: {
     alignSelf: 'center',
@@ -172,7 +189,6 @@ const styles = StyleSheet.create({
     height: ControlTokens.sheetHandleHeight,
     marginBottom: ControlTokens.sheetContentGap,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.secondaryTextLight,
   },
   header: {
     flexDirection: 'row',

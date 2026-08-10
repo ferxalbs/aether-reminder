@@ -16,7 +16,7 @@ interface AssistantMaterialProps {
   blurTarget?: RefObject<View | null>;
 }
 
-/** iOS 26 gets native Liquid Glass; Android and older iOS get platform-safe materials. */
+/** Crisp, minimal monochrome material surface for floating toolbars and panels. */
 export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   children,
   style,
@@ -49,7 +49,7 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         {
           borderRadius,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
         },
         style,
       ]}
@@ -76,7 +76,7 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
           StyleSheet.absoluteFill,
           {
             borderRadius,
-            backgroundColor: isDark ? 'rgba(16, 27, 39, 0.62)' : 'rgba(255, 255, 255, 0.58)',
+            backgroundColor: isDark ? Colors.glassDark : Colors.glassLight,
           },
         ]}
       />
@@ -91,8 +91,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     borderWidth: 1,
-    borderCurve: 'continuous',
-    boxShadow: '0 8px 26px rgba(8, 18, 31, 0.16)',
   },
   content: {
     flex: 1,

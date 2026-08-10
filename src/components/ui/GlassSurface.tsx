@@ -35,7 +35,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   style,
   contentStyle,
-  intensity = 60,
+  intensity = 50,
   tint,
   borderRadius = Radius.lg,
   borderWidth = 1,
@@ -62,12 +62,10 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
         ? 'systemMaterialDark'
         : 'systemMaterialLight');
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-  const backgroundColor = isDark ? 'rgba(16, 27, 39, 0.58)' : 'rgba(255, 255, 255, 0.58)';
+  const backgroundColor = isDark ? Colors.glassDark : Colors.glassLight;
 
   const useLiquidGlass =
     isIOS && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  // On Android, only explicitly targeted overlays may blur. Context consumers
-  // can render inside the target itself and must use the solid fallback.
   const useBlurView = isIOS || (isAndroid && Boolean(blurTarget));
 
   return (
@@ -113,8 +111,6 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    borderCurve: 'continuous',
-    boxShadow: '0 8px 24px rgba(8, 18, 31, 0.13)',
   },
   content: {
     zIndex: 1,

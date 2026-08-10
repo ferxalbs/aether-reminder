@@ -119,7 +119,7 @@ function NavigationButton({
         pointerEvents="none"
         style={[
           styles.activeIndicator,
-          { backgroundColor: isDark ? 'rgba(101, 214, 192, 0.14)' : 'rgba(47, 124, 255, 0.10)' },
+          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)' },
           animatedIndicatorStyle,
         ]}
       />
@@ -154,7 +154,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: LayoutTokens.navigationHeight,
     paddingHorizontal: Spacing.xs,
-    borderCurve: 'continuous',
   },
   navRow: {
     flex: 1,
@@ -168,7 +167,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     borderRadius: Radius.lg,
-    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   activeIndicator: {
@@ -179,7 +177,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     marginVertical: 5,
     borderRadius: Radius.lg,
-    borderCurve: 'continuous',
   },
   navLabel: {
     fontSize: 10,

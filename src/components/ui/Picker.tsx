@@ -48,16 +48,18 @@ export function Picker<Value extends string | number>({
   const isSegmented = isIOS && options.length > 0 && options.length <= 4;
   const selectedOption = options.find((option) => option.value === value);
   const selectedLabel = selectedOption?.label ?? String(value);
+
   const controlBorderColor = error
     ? isDark
-      ? Colors.destructiveTextDark
-      : Colors.destructiveTextLight
+      ? Colors.white
+      : Colors.black
     : isDark
-      ? Colors.glassBorderDark
-      : Colors.glassBorderLight;
-  const controlBackgroundColor = isDark ? Colors.surfaceRaisedDark : '#EEF2F8';
+      ? Colors.borderDark
+      : Colors.borderLight;
+
+  const controlBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
   const selectedBackgroundColor = isDark ? Colors.white : Colors.black;
-  const selectedTextColor = isDark ? Colors.brandInk : Colors.white;
+  const selectedTextColor = isDark ? Colors.black : Colors.white;
 
   const selectValue = (nextValue: Value) => {
     if (isDisabled) return;
@@ -96,14 +98,14 @@ export function Picker<Value extends string | number>({
             backgroundColor: isSelected
               ? selectedBackgroundColor
               : 'transparent',
-            borderRadius: segmented ? Radius.pill : Radius.md,
+            borderRadius: segmented ? Radius.pill : Radius.sm,
           },
           optionDisabled && styles.disabled,
         ]}
       >
         <Typography
           variant="caption"
-          color={isSelected ? selectedTextColor : isDark ? Colors.zinc300 : Colors.zinc700}
+          color={isSelected ? selectedTextColor : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
           style={styles.optionLabel}
         >
           {option.label}
@@ -114,7 +116,7 @@ export function Picker<Value extends string | number>({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700} accessible={false}>
+      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessible={false}>
         {label}
       </Typography>
       {isSegmented ? (
@@ -152,19 +154,18 @@ export function Picker<Value extends string | number>({
               {
                 minHeight: getMinimumTouchTarget(Platform.OS),
                 borderColor: controlBorderColor,
-                borderRadius: Radius.lg,
+                borderRadius: Radius.md,
                 backgroundColor: controlBackgroundColor,
               },
-              Platform.OS === 'android' && styles.androidSurface,
               isDisabled && styles.disabled,
             ]}
           >
-            <Typography variant="body" color={isDark ? Colors.white : Colors.zinc950} style={styles.triggerLabel}>
+            <Typography variant="body" color={isDark ? Colors.textDark : Colors.textLight} style={styles.triggerLabel}>
               {selectedLabel}
             </Typography>
             <ChevronDown
               size={ControlTokens.pickerChevronSize}
-              color={isDark ? Colors.zinc300 : Colors.zinc600}
+              color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
             />
           </AnimatedPressable>
           {open ? (
@@ -175,7 +176,6 @@ export function Picker<Value extends string | number>({
                   borderColor: controlBorderColor,
                   backgroundColor: controlBackgroundColor,
                 },
-                Platform.OS === 'android' && styles.androidSurface,
               ]}
             >
               {options.map((option) => renderOption(option, false))}
@@ -186,7 +186,7 @@ export function Picker<Value extends string | number>({
       {error ? (
         <Typography
           variant="caption"
-          color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+          color={isDark ? Colors.white : Colors.black}
           style={styles.message}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
@@ -194,7 +194,7 @@ export function Picker<Value extends string | number>({
           {error}
         </Typography>
       ) : helperText ? (
-        <Typography variant="caption" color={Colors.zinc500} style={styles.message}>
+        <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.message}>
           {helperText}
         </Typography>
       ) : null}
@@ -209,10 +209,9 @@ const styles = StyleSheet.create({
   segmentedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: ControlTokens.fieldLabelGap,
+    padding: 2,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
-    borderCurve: 'continuous',
   },
   segment: {
     flex: 1,
@@ -227,19 +226,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
-    borderCurve: 'continuous',
-  },
-  androidSurface: {
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
   },
   triggerLabel: {
     flex: 1,
   },
   menu: {
+    marginTop: 4,
     borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.md,
     overflow: 'hidden',
-    borderCurve: 'continuous',
   },
   menuOption: {
     alignItems: 'flex-start',

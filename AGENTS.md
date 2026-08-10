@@ -57,6 +57,7 @@ Tests use Bun’s test runner and are colocated with the implementation, for exa
 ## Architecture & Configuration Rules
 
 Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
+NEVER use, invoke, install, reference, depend on, or run GStack/gstack for this repository.
 
 ## Changelog Guidelines
 

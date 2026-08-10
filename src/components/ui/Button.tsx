@@ -10,7 +10,7 @@ import {
 import { AnimatedPressable } from './AnimatedPressable';
 import { GlassSurface } from './GlassSurface';
 import { Typography } from './Typography';
-import { Colors, getMinimumTouchTarget, Motion, Radius, Spacing } from '@/theme/tokens';
+import { Colors, ControlTokens, getMinimumTouchTarget, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface ButtonProps {
@@ -48,18 +48,17 @@ export const Button: React.FC<ButtonProps> = ({
       case 'primary':
         return {
           backgroundColor: isDark ? Colors.white : Colors.black,
-          borderColor: 'transparent',
+          borderColor: isDark ? Colors.white : Colors.black,
         };
       case 'secondary':
         return {
-          backgroundColor: isDark ? Colors.white : Colors.black,
-          borderColor: isDark ? Colors.white : Colors.black,
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         };
       case 'glass':
         return {
           backgroundColor: 'transparent',
-          borderColor: 'transparent',
-          borderWidth: 0,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         };
       case 'destructive':
         return {
@@ -80,13 +79,12 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextColor = () => {
-    if (isDisabled) return Colors.zinc500;
+    if (isDisabled) return isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
     if (variant === 'primary') return isDark ? Colors.black : Colors.white;
-    if (variant === 'destructive') {
-      return isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight;
-    }
-    if (variant === 'ghost') return isDark ? Colors.zinc300 : Colors.zinc700;
-    return isDark ? Colors.white : Colors.zinc950;
+    if (variant === 'secondary') return isDark ? Colors.white : Colors.black;
+    if (variant === 'destructive') return isDark ? Colors.white : Colors.black;
+    if (variant === 'ghost') return isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+    return isDark ? Colors.white : Colors.black;
   };
 
   const getSizeStyle = () => {
@@ -94,23 +92,23 @@ export const Button: React.FC<ButtonProps> = ({
       case 'sm':
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          borderRadius: Radius.md,
+          paddingVertical: Spacing.xs,
+          paddingHorizontal: Spacing.md,
+          borderRadius: Radius.sm,
         };
       case 'lg':
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
-          paddingVertical: 16,
-          paddingHorizontal: 26,
+          paddingVertical: Spacing.md,
+          paddingHorizontal: Spacing.xl,
           borderRadius: Radius.lg,
         };
       case 'md':
       default:
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
-          paddingVertical: 12,
-          paddingHorizontal: 20,
+          paddingVertical: Spacing.sm,
+          paddingHorizontal: Spacing.lg,
           borderRadius: Radius.md,
         };
     }
@@ -169,7 +167,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'transparent',
-    borderCurve: 'continuous',
   },
   fullWidth: {
     width: '100%',
@@ -180,9 +177,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconMargin: {
-    marginRight: Spacing.xs,
+    marginRight: Spacing.sm,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: ControlTokens.disabledOpacity,
   },
 });

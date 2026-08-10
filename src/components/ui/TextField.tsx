@@ -59,26 +59,28 @@ export const TextField: React.FC<TextFieldProps> = ({
   const [focused, setFocused] = useState(false);
   const isDisabled = editable === false;
   const hasError = Boolean(error);
+
   const borderColor = hasError
     ? isDark
-      ? Colors.destructiveTextDark
-      : Colors.destructiveTextLight
+      ? Colors.white
+      : Colors.black
     : focused
       ? isDark
         ? Colors.white
-        : Colors.zinc950
+        : Colors.black
       : isDark
-        ? Colors.glassBorderDark
-        : Colors.glassBorderLight;
+        ? Colors.borderDark
+        : Colors.borderLight;
+
   const backgroundColor = variant === 'filled'
     ? isDark
       ? Colors.surfaceRaisedDark
-      : '#EEF2F8'
+      : Colors.surfaceRaisedLight
     : 'transparent';
+
   const textColor = isDark ? Colors.textDark : Colors.textLight;
-  // Keep the shared primitive contract stable while the surrounding surface carries the new palette.
-  const placeholderColor = Colors.zinc500;
-  const fieldRadius = Radius.lg;
+  const placeholderColor = isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
+  const fieldRadius = Radius.md;
 
   const handleFocus: NonNullable<TextInputProps['onFocus']> = (event) => {
     setFocused(true);
@@ -92,7 +94,7 @@ export const TextField: React.FC<TextFieldProps> = ({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700} accessible={false}>
+      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessible={false}>
         {label}
       </Typography>
       <View
@@ -103,7 +105,6 @@ export const TextField: React.FC<TextFieldProps> = ({
             borderColor,
             borderRadius: fieldRadius,
           },
-          Platform.OS === 'android' && variant === 'filled' && styles.androidFilled,
           multiline && styles.multilineShell,
           isDisabled && styles.disabled,
         ]}
@@ -128,8 +129,8 @@ export const TextField: React.FC<TextFieldProps> = ({
           onBlur={handleBlur}
           onFocus={handleFocus}
           placeholderTextColor={placeholderColor}
-          selectionColor={isDark ? Colors.white : Colors.zinc950}
-          cursorColor={isDark ? Colors.white : Colors.zinc950}
+          selectionColor={isDark ? Colors.white : Colors.black}
+          cursorColor={isDark ? Colors.white : Colors.black}
           style={[
             styles.input,
             { color: textColor },
@@ -142,7 +143,7 @@ export const TextField: React.FC<TextFieldProps> = ({
       {error ? (
         <Typography
           variant="caption"
-          color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+          color={isDark ? Colors.white : Colors.black}
           style={styles.message}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
@@ -150,7 +151,7 @@ export const TextField: React.FC<TextFieldProps> = ({
           {error}
         </Typography>
       ) : helperText ? (
-        <Typography variant="caption" color={Colors.zinc500} style={styles.message}>
+        <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.message}>
           {helperText}
         </Typography>
       ) : null}
@@ -169,10 +170,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
     overflow: 'hidden',
-    borderCurve: 'continuous',
-  },
-  androidFilled: {
-    borderWidth: ControlTokens.borderWidth,
   },
   multilineShell: {
     alignItems: 'flex-start',

@@ -44,11 +44,11 @@ function FilterPill({
         {
           backgroundColor: selected
             ? isDark
-              ? Colors.surfaceRaisedLight
-              : Colors.brandInk
+              ? Colors.white
+              : Colors.black
             : isDark
-              ? 'rgba(255, 255, 255, 0.055)'
-              : '#F1F4F8',
+              ? Colors.surfaceRaisedDark
+              : Colors.surfaceRaisedLight,
           borderColor: selected
             ? 'transparent'
             : isDark
@@ -62,7 +62,7 @@ function FilterPill({
         color={
           selected
             ? isDark
-              ? Colors.brandInk
+              ? Colors.black
               : Colors.white
             : isDark
               ? Colors.secondaryTextDark
@@ -210,17 +210,17 @@ export default function AllScreen() {
                 accessibilityLabel="Create a reminder"
                 style={[
                   styles.addButton,
-                  { backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk },
+                  { backgroundColor: isDark ? Colors.white : Colors.black },
                 ]}
               >
-                <Plus size={19} color={isDark ? Colors.brandInk : Colors.white} strokeWidth={2.5} />
+                <Plus size={19} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />
               </AnimatedPressable>
             </View>
 
             <View style={styles.header}>
               <Typography
                 variant="caption"
-                color={isDark ? Colors.white : Colors.black}
+                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
                 style={styles.eyebrow}
               >
                 YOUR LIBRARY
@@ -235,12 +235,12 @@ export default function AllScreen() {
               </Typography>
             </View>
 
-            <Card variant="glass" padding={Spacing.md} style={styles.summaryCard}>
-              <View style={styles.summaryIcon}>
+            <Card variant="outline" padding={Spacing.md} style={styles.summaryCard}>
+              <View style={[styles.summaryIcon, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
                 <ListTodo
                   size={19}
                   color={isDark ? Colors.white : Colors.black}
-                  strokeWidth={2.1}
+                  strokeWidth={2}
                 />
               </View>
               <View style={styles.summaryCopy}>
@@ -271,7 +271,7 @@ export default function AllScreen() {
               style={[
                 styles.searchField,
                 {
-                  backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight,
+                  backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
                   borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                 },
               ]}
@@ -284,7 +284,7 @@ export default function AllScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search reminders"
+                placeholder="Search reminders…"
                 placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
                 returnKeyType="search"
                 clearButtonMode="while-editing"
@@ -319,7 +319,7 @@ export default function AllScreen() {
             {error ? (
               <Typography
                 variant="caption"
-                color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.error}
               >
                 {error}
@@ -334,7 +334,7 @@ export default function AllScreen() {
                 style={[
                   styles.emptyIcon,
                   {
-                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight,
+                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
                     borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                   },
                 ]}
@@ -365,7 +365,7 @@ export default function AllScreen() {
                   icon={
                     <Plus
                       size={17}
-                      color={isDark ? Colors.brandInk : Colors.white}
+                      color={isDark ? Colors.black : Colors.white}
                       strokeWidth={2.5}
                     />
                   }
@@ -416,7 +416,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderCurve: 'continuous',
   },
   header: {
     maxWidth: LayoutTokens.readingMaxWidth,
@@ -444,7 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.md,
-    backgroundColor: 'rgba(47, 124, 255, 0.10)',
+    borderWidth: 1,
   },
   summaryCopy: {
     flex: 1,
@@ -455,21 +454,19 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   searchField: {
-    minHeight: 52,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
     borderWidth: 1,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     marginBottom: Spacing.md,
-    borderCurve: 'continuous',
-    boxShadow: '0 4px 14px rgba(20, 45, 78, 0.04)',
   },
   searchInput: {
     flex: 1,
-    minHeight: 50,
-    fontSize: 16,
+    minHeight: 46,
+    fontSize: 15,
     lineHeight: 22,
   },
   filterHeader: {
@@ -493,7 +490,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderCurve: 'continuous',
   },
   filterLabel: {
     fontSize: 12,
@@ -516,7 +512,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderCurve: 'continuous',
     marginBottom: Spacing.sm,
   },
   emptyCopy: {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 
 interface AetherMarkProps {
@@ -7,10 +8,24 @@ interface AetherMarkProps {
   muted?: boolean;
 }
 
-/** A small, asset-free AETHER mark that stays crisp at every density. */
+/** Crisp, minimal monochrome AETHER mark with zero decorative shadow or glow. */
 export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false }) => {
-  const ringColor = muted ? Colors.tertiaryTextLight : Colors.black;
-  const darkRingColor = muted ? Colors.tertiaryTextDark : Colors.white;
+  const isDark = useIsDark();
+  const ringColor = muted
+    ? isDark
+      ? Colors.tertiaryTextDark
+      : Colors.tertiaryTextLight
+    : isDark
+      ? Colors.white
+      : Colors.black;
+
+  const coreColor = muted
+    ? isDark
+      ? Colors.secondaryTextDark
+      : Colors.secondaryTextLight
+    : isDark
+      ? Colors.white
+      : Colors.black;
 
   return (
     <View
@@ -22,7 +37,7 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
           height: size,
           borderRadius: size / 2,
           borderColor: ringColor,
-          boxShadow: `0 3px ${Math.max(8, Math.round(size * 0.45))}px rgba(255, 255, 255, 0.15)`,
+          backgroundColor: isDark ? Colors.black : Colors.white,
         },
       ]}
     >
@@ -33,7 +48,7 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
             width: size * 0.55,
             height: size * 0.55,
             borderRadius: size,
-            borderColor: darkRingColor,
+            borderColor: ringColor,
           },
         ]}
       />
@@ -41,21 +56,10 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
         style={[
           styles.core,
           {
-            width: size * 0.19,
-            height: size * 0.19,
+            width: size * 0.22,
+            height: size * 0.22,
             borderRadius: size,
-            backgroundColor: muted ? Colors.tertiaryTextDark : Colors.white,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.highlight,
-          {
-            width: size * 0.27,
-            height: size * 0.12,
-            borderRadius: size,
-            backgroundColor: 'rgba(255,255,255,0.86)',
+            backgroundColor: coreColor,
           },
         ]}
       />
@@ -67,24 +71,15 @@ const styles = StyleSheet.create({
   mark: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.brandInk,
-    borderWidth: 1.2,
-    borderCurve: 'continuous',
+    borderWidth: 1.5,
   },
   innerRing: {
-    borderWidth: 1.4,
-    opacity: 0.9,
+    borderWidth: 1.2,
+    opacity: 0.8,
   },
   core: {
     position: 'absolute',
-    right: '22%',
-    bottom: '21%',
-  },
-  highlight: {
-    position: 'absolute',
-    top: '21%',
-    left: '22%',
-    transform: [{ rotate: '-28deg' }],
-    opacity: 0.92,
+    right: '20%',
+    bottom: '20%',
   },
 });

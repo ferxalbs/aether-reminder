@@ -11,9 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import {
   ArrowUp,
-  CalendarDays,
-  Clock3,
-  Flag,
   Mic,
   Plus,
   Sparkles,
@@ -34,8 +31,6 @@ import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 import type { TaskListItem } from '@/domain/entities';
-
-
 
 export default function HomeScreen() {
   const isDark = useIsDark();
@@ -70,9 +65,6 @@ export default function HomeScreen() {
     }, [refreshToday]),
   );
 
-  const completedCount = todayTasks.filter((task) => task.completed).length;
-  const totalCount = todayTasks.length;
-  const pendingCount = Math.max(0, totalCount - completedCount);
   const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
 
   const assistantContext = useMemo(
@@ -176,17 +168,20 @@ export default function HomeScreen() {
               style={styles.largeTitleContainer}
             >
               <Typography variant="display" style={styles.largeTitle}>
-                Reminders
+                AETHER
+              </Typography>
+              <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                Capture & organize thoughts
               </Typography>
             </Animated.View>
 
-            {error ? (
+            {error || quickError ? (
               <Typography
                 variant="caption"
-                color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.listError}
               >
-                {error}
+                {error || quickError}
               </Typography>
             ) : null}
           </View>
@@ -225,7 +220,7 @@ export default function HomeScreen() {
           >
             <View style={styles.floatingComposerInner}>
               <IconButton
-                icon={<Plus size={20} color={isDark ? Colors.white : Colors.zinc700} strokeWidth={2.5} />}
+                icon={<Plus size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2.2} />}
                 onPress={() => openEditor()}
                 accessibilityLabel="Open full reminder composer"
                 variant="ghost"
@@ -237,8 +232,8 @@ export default function HomeScreen() {
                   setQuickTitle(value);
                   if (quickError) setQuickError(null);
                 }}
-                placeholder="New Reminder..."
-                placeholderTextColor={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                placeholder="New reminder…"
+                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
                 style={[
                   styles.floatingInput,
                   { color: isDark ? Colors.textDark : Colors.textLight }
@@ -248,7 +243,7 @@ export default function HomeScreen() {
               />
               {quickTitle.trim().length > 0 ? (
                 <IconButton
-                  icon={<ArrowUp size={20} color={isDark ? Colors.brandInk : Colors.white} strokeWidth={2.5} />}
+                  icon={<ArrowUp size={20} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />}
                   onPress={() => void handleQuickCapture()}
                   accessibilityLabel="Add Reminder"
                   variant="solid"
@@ -257,14 +252,14 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <IconButton
-                    icon={<Sparkles size={20} color={isDark ? Colors.white : Colors.zinc800} strokeWidth={2.1} />}
+                    icon={<Sparkles size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
                     onPress={openTextAssistant}
                     accessibilityLabel="Ask AETHER"
                     variant="ghost"
                     size={40}
                   />
                   <IconButton
-                    icon={<Mic size={20} color={isDark ? Colors.white : Colors.zinc800} strokeWidth={2.1} />}
+                    icon={<Mic size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
                     onPress={startVoiceAssistant}
                     accessibilityLabel="Speak a reminder"
                     variant="ghost"
@@ -303,12 +298,13 @@ const styles = StyleSheet.create({
   },
   largeTitleContainer: {
     paddingVertical: Spacing.lg,
+    gap: Spacing.xs,
   },
   largeTitle: {
-    fontSize: 34,
-    lineHeight: 41,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: '700',
-    letterSpacing: 0.4,
+    letterSpacing: -1.0,
   },
   listError: {
     marginBottom: Spacing.sm,
@@ -337,8 +333,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderCurve: 'continuous',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
   },
   floatingComposerInner: {
     flexDirection: 'row',
@@ -349,8 +343,8 @@ const styles = StyleSheet.create({
   },
   floatingInput: {
     flex: 1,
-    fontSize: 17,
+    fontSize: 15,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
 });

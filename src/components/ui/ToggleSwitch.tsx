@@ -58,20 +58,20 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 
   const animatedTrackStyle = useAnimatedStyle(() => {
     const activeColor = isDark ? Colors.white : Colors.black;
-    const inactiveColor = isDark ? Colors.surfaceRaisedDark : '#DCE4EF';
+    const inactiveColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
-    return { backgroundColor };
+    const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
+    return { backgroundColor, borderColor };
   });
 
   const animatedThumbStyle = useAnimatedStyle(() => {
-    // Both platform variants use a light thumb; the track and motion differ.
-    const thumbColor = Colors.white;
-
-    // Track width 51, thumb width 27, padding 2 -> max translateX = 51 - 27 - 4 = 20px
+    const activeThumbColor = isDark ? Colors.black : Colors.white;
+    const inactiveThumbColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+    const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveThumbColor, activeThumbColor]);
     const translateX = progress.value * 20;
 
     return {
-      backgroundColor: thumbColor,
+      backgroundColor,
       transform: [{ translateX }],
     };
   });
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     borderRadius: 15.5,
     padding: 2,
     justifyContent: 'center',
-    borderCurve: 'continuous',
+    borderWidth: 1,
   },
   androidTrack: {
     width: 52,
@@ -127,13 +127,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   thumb: {
-    width: 27,
-    height: 27,
-    borderRadius: 13.5,
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
     alignItems: 'center',
     justifyContent: 'center',
-    borderCurve: 'continuous',
-    boxShadow: '0 2px 4px rgba(8, 18, 31, 0.18)',
   },
   disabled: {
     opacity: 0.45,

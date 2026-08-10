@@ -92,9 +92,9 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       case 'high':
         return { label: 'High', color: isDark ? Colors.white : Colors.black };
       case 'medium':
-        return { label: 'Med', color: Colors.zinc400 };
+        return { label: 'Med', color: isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight };
       case 'low':
-        return { label: 'Low', color: Colors.zinc500 };
+        return { label: 'Low', color: isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight };
     }
   };
 
@@ -103,13 +103,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     styles.card,
     {
       backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
-      borderBottomColor: task.completed
-        ? isDark
-          ? 'rgba(168, 181, 196, 0.16)'
-          : 'rgba(99, 112, 132, 0.12)'
-        : isDark
-          ? Colors.borderDark
-          : Colors.borderLight,
+      borderBottomColor: isDark ? Colors.borderDark : Colors.borderLight,
     },
   ];
 
@@ -118,6 +112,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       <View style={styles.headerLine}>
         <Typography
           variant="bodyBold"
+          color={isDark ? Colors.textDark : Colors.textLight}
           style={[
             styles.titleText,
             task.completed && styles.strikethrough,
@@ -131,7 +126,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       {task.notes ? (
         <Typography
           variant="caption"
-          color={Colors.zinc500}
+          color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
           numberOfLines={1}
           style={styles.notesText}
         >
@@ -141,9 +136,9 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
       <View style={styles.metaRow}>
         {task.aiSuggested && (
-          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)' }]}>
+          <View style={[styles.badge, { borderColor: isDark ? Colors.borderDark : Colors.borderLight, backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
             <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
-            <Typography variant="tiny" style={styles.badgeText}>
+            <Typography variant="tiny" color={isDark ? Colors.textDark : Colors.textLight} style={styles.badgeText}>
               AI Suggested
             </Typography>
           </View>
@@ -151,8 +146,8 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {task.dueDate && (
           <View style={styles.dateMeta}>
-            <Clock size={11} color={Colors.zinc500} />
-            <Typography variant="tiny" color={Colors.zinc500} style={styles.dateText}>
+            <Clock size={11} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} />
+            <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.dateText}>
               {task.dueDate}{task.dueTime ? ` · ${task.dueTime}` : ''}
             </Typography>
           </View>
@@ -163,15 +158,16 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             styles.priorityBadge,
             {
               backgroundColor: isDark
-                ? Colors.priorityBadgeBackgroundDark
-                : Colors.priorityBadgeBackgroundLight,
+                ? Colors.surfaceRaisedDark
+                : Colors.surfaceRaisedLight,
+              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
             },
           ]}
         >
           <Typography
             variant="tiny"
             color={priorityTag.color}
-            style={{ fontWeight: '700' }}
+            style={{ fontWeight: '600' }}
           >
             {priorityTag.label}
           </Typography>
@@ -210,7 +206,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
           <Animated.View style={checkScaleStyle}>
             {task.completed && (
               <Check
-                size={14}
+                size={13}
                 color={isDark ? Colors.black : Colors.white}
                 strokeWidth={3}
               />
@@ -234,7 +230,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
       {/* Delete action button */}
       <IconButton
-        icon={<Trash2 size={16} color={Colors.zinc500} />}
+        icon={<Trash2 size={16} color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} />}
         onPress={() => onDelete(task.id)}
         accessibilityLabel={`Delete ${task.title}`}
         variant="ghost"
@@ -249,9 +245,9 @@ TaskCard.displayName = 'TaskCard';
 
 const styles = StyleSheet.create({
   card: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
   },
   row: {
     flexDirection: 'row',
@@ -260,13 +256,14 @@ const styles = StyleSheet.create({
   checkboxTouchTarget: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    marginRight: Spacing.md,
+    marginTop: 2,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 2,
+    width: 20,
+    height: 20,
+    borderRadius: Radius.sm,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -277,7 +274,6 @@ const styles = StyleSheet.create({
   contentPressable: {
     flex: 1,
     marginRight: Spacing.sm,
-    borderRadius: Radius.md,
   },
   headerLine: {
     flexDirection: 'row',
@@ -290,21 +286,22 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   notesText: {
-    marginTop: 3,
+    marginTop: 4,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: Spacing.sm,
     flexWrap: 'wrap',
-    gap: 8,
+    gap: Spacing.sm,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: Spacing.xs + 2,
     paddingVertical: 2,
     borderRadius: Radius.sm,
+    borderWidth: 1,
     gap: 4,
   },
   badgeText: {
@@ -319,8 +316,9 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   priorityBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: Spacing.xs + 2,
     paddingVertical: 2,
     borderRadius: Radius.sm,
+    borderWidth: 1,
   },
 });

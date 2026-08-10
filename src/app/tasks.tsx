@@ -140,17 +140,17 @@ export default function TasksScreen() {
                 accessibilityLabel="Create a reminder"
                 style={[
                   styles.addButton,
-                  { backgroundColor: isDark ? Colors.surfaceRaisedLight : Colors.brandInk },
+                  { backgroundColor: isDark ? Colors.white : Colors.black },
                 ]}
               >
-                <Plus size={19} color={isDark ? Colors.brandInk : Colors.white} strokeWidth={2.5} />
+                <Plus size={19} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />
               </AnimatedPressable>
             </View>
 
             <View style={styles.header}>
               <Typography
                 variant="caption"
-                color={isDark ? Colors.white : Colors.black}
+                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
                 style={styles.eyebrow}
               >
                 YOUR RUNWAY
@@ -165,12 +165,12 @@ export default function TasksScreen() {
               </Typography>
             </View>
 
-            <Card variant="glass" padding={Spacing.md} style={styles.summaryCard}>
-              <View style={styles.summaryIcon}>
+            <Card variant="outline" padding={Spacing.md} style={styles.summaryCard}>
+              <View style={[styles.summaryIcon, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
                 <CalendarDays
                   size={19}
                   color={isDark ? Colors.white : Colors.black}
-                  strokeWidth={2.1}
+                  strokeWidth={2}
                 />
               </View>
               <View style={styles.summaryCopy}>
@@ -200,7 +200,7 @@ export default function TasksScreen() {
             {error ? (
               <Typography
                 variant="caption"
-                color={isDark ? Colors.destructiveTextDark : Colors.destructiveTextLight}
+                color={isDark ? Colors.white : Colors.black}
                 style={styles.error}
               >
                 {error}
@@ -215,7 +215,7 @@ export default function TasksScreen() {
                 style={[
                   styles.emptyIcon,
                   {
-                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight,
+                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
                     borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                   },
                 ]}
@@ -239,7 +239,7 @@ export default function TasksScreen() {
                 icon={
                   <Plus
                     size={17}
-                    color={isDark ? Colors.brandInk : Colors.white}
+                    color={isDark ? Colors.black : Colors.white}
                     strokeWidth={2.5}
                   />
                 }
@@ -289,7 +289,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.pill,
-    borderCurve: 'continuous',
   },
   header: {
     maxWidth: LayoutTokens.readingMaxWidth,
@@ -317,7 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.md,
-    backgroundColor: 'rgba(47, 124, 255, 0.10)',
+    borderWidth: 1,
   },
   summaryCopy: {
     flex: 1,
@@ -342,7 +341,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderRadius: Radius.xl,
-    borderCurve: 'continuous',
     marginBottom: Spacing.md,
   },
   emptyCopy: {

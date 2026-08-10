@@ -25,8 +25,8 @@ export const Card: React.FC<CardProps> = ({
   onPress,
   variant = 'elevated',
   style,
-  padding = Spacing.md,
-  borderRadius = Radius.xl,
+  padding = Spacing.lg,
+  borderRadius = Radius.lg,
   accessibilityLabel,
   accessibilityHint,
 }) => {
@@ -36,12 +36,9 @@ export const Card: React.FC<CardProps> = ({
     switch (variant) {
       case 'elevated':
         return {
-          backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
-          boxShadow: isDark
-            ? '0 16px 40px rgba(0, 0, 0, 0.4)'
-            : '0 12px 32px rgba(20, 45, 78, 0.12)',
         };
       case 'glass':
         return {
@@ -50,6 +47,7 @@ export const Card: React.FC<CardProps> = ({
           borderWidth: 1,
         };
       case 'outline':
+      default:
         return {
           backgroundColor: 'transparent',
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
@@ -99,6 +97,5 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   base: {
     overflow: 'hidden',
-    borderCurve: 'continuous',
   },
 });
