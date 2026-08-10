@@ -77,6 +77,27 @@ async function connectedTransport(diagnostics?: DevelopmentVoiceDiagnostics) {
   return { transport, events, channel, peer, call };
 }
 
+async function transportWithOptions(options: {
+  maxQueuedPackets?: number;
+  maxDataChannelBufferedBytes?: number;
+}) {
+  const channel = new FakeDataChannel();
+  const peer = new FakePeerConnection(channel);
+  const events: unknown[] = [];
+  const transport = new OpenAIRealtimeWebRtcTransport({
+    ...options,
+    packetBytes: 2,
+    peerConnectionFactory: (() => peer) as RealtimePeerConnectionFactory,
+    fetch: (async () => new Response('remote-answer-sdp', { status: 201 })) as typeof fetch,
+  });
+  transport.subscribe((event) => events.push(event));
+  await transport.connect('ephemeral-secret');
+  const configuring = transport.configure(defaultRealtimeTranscriptionConfig);
+  channel.message({ type: 'session.updated' });
+  await configuring;
+  return { transport, channel, events };
+}
+
 async function drainMicrotasks(count = 8): Promise<void> {
   for (let index = 0; index < count; index += 1) await Promise.resolve();
 }
@@ -126,6 +147,24 @@ describe('OpenAI Realtime WebRTC transport', () => {
     ]);
     expect(JSON.parse(channel.sent[1]).audio).toBe('AAE=');
     expect(JSON.parse(channel.sent[2]).audio).toBe('AgM=');
+  });
+
+  test('surfaces bounded data-channel backpressure instead of dropping PCM', async () => {
+    const { transport, channel, events } = await transportWithOptions({
+      maxQueuedPackets: 1,
+      maxDataChannelBufferedBytes: 0,
+    });
+    channel.bufferedAmount = 1;
+    transport.appendPcm(new Uint8Array([0, 1]).buffer);
+    await drainMicrotasks();
+    expect(() => transport.appendPcm(new Uint8Array([2, 3]).buffer)).toThrow(
+      'Realtime audio backpressure limit was exceeded.',
+    );
+    expect(events).toContainEqual(expect.objectContaining({
+      type: 'failed',
+      error: expect.objectContaining({ code: 'REALTIME_CONNECTION_LOST' }),
+    }));
+    expect(channel.sent.map((value) => JSON.parse(value).type)).toEqual(['session.update']);
   });
 
   test('emits deltas and authoritative completion with item ids', async () => {
