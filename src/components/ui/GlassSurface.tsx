@@ -1,4 +1,4 @@
-import React, { createContext, type RefObject, useContext } from 'react';
+import React, { type RefObject } from 'react';
 import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
 import { BlurView, type BlurViewProps } from 'expo-blur';
 import { Colors, Hairline, Radius } from '@/theme/tokens';
@@ -23,16 +23,6 @@ export interface GlassSurfaceProps {
   blurTarget?: RefObject<View | null>;
 }
 
-const GlassBlurTargetContext = createContext<RefObject<View | null> | undefined>(undefined);
-
-export const GlassSurfaceProvider: React.FC<
-  React.PropsWithChildren<{ blurTarget: RefObject<View | null> }>
-> = ({ blurTarget, children }) => (
-  <GlassBlurTargetContext.Provider value={blurTarget}>
-    {children}
-  </GlassBlurTargetContext.Provider>
-);
-
 export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   style,
@@ -50,14 +40,15 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   blurTarget,
 }) => {
   const isDark = useIsDark();
-  const inheritedBlurTarget = useContext(GlassBlurTargetContext);
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
   const fallbackBg = isDark ? Colors.glassDarkFallback : Colors.glassLightFallback;
   const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
   const resolvedTint = tint ?? (isDark ? 'dark' : 'light');
 
-  // Tier C fallback or unsupported blur platforms (translucent no-blur material)
-  if (tier === 'C') {
+  // Android's native blur requires a BlurTargetView outside the BlurView's own
+  // hierarchy. Route-local surfaces intentionally fall back rather than target
+  // an ancestor that contains them, which Dimezis BlurView explicitly forbids.
+  if (tier === 'C' || (Platform.OS === 'android' && !blurTarget)) {
     return (
       <View
         style={[
@@ -105,7 +96,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
       <BlurView
         intensity={blurIntensity}
         tint={resolvedTint}
-        blurTarget={blurTarget ?? inheritedBlurTarget}
+        blurTarget={blurTarget}
         blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
         style={StyleSheet.absoluteFill}
       />

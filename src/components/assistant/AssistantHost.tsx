@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { AccessibilityInfo, Keyboard, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { AccessibilityInfo, BackHandler, Keyboard, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -64,9 +64,11 @@ export function useAssistantSurface(snapshot: ContextSnapshot): void {
   const context = useContext(AssistantSurfaceContext);
   if (!context) throw new Error('useAssistantSurface must be used inside AssistantSurfaceProvider');
   const setSnapshot = context.setSnapshot;
-  useEffect(() => {
-    setSnapshot(snapshot);
-  }, [setSnapshot, snapshot]);
+  useFocusEffect(
+    useCallback(() => {
+      setSnapshot(snapshot);
+    }, [setSnapshot, snapshot]),
+  );
 }
 
 export function useAssistantActions(): {
@@ -220,6 +222,15 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     setSurface('closing');
     transitionTimerRef.current = setTimeout(() => setSurface('closed'), reduceMotion ? 100 : 220);
   }, [reduceMotion, voice]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || surface === 'closed') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (surface !== 'closing') closeAssistant();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeAssistant, surface]);
 
   const openMicrophoneSettings = useCallback(() => {
     void Linking.openSettings().catch((error: unknown) => {

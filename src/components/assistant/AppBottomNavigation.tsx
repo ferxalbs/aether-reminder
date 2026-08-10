@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { type RefObject, useEffect, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { CalendarDays, CheckCircle2, ListTodo, Settings } from 'lucide-react-native';
@@ -25,7 +25,11 @@ const navigationItems = [
   { destination: '/settings' as const, label: 'Settings', icon: Settings },
 ];
 
-export function AppBottomNavigation() {
+interface AppBottomNavigationProps {
+  blurTarget?: RefObject<View | null>;
+}
+
+export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -52,6 +56,7 @@ export function AppBottomNavigation() {
   return (
     <View style={[styles.host, { bottom: Math.max(12, insets.bottom + 4) }]} pointerEvents="box-none">
       <GlassSurface
+        blurTarget={blurTarget}
         borderRadius={Radius.pill}
         intensity={Platform.OS === 'ios' ? 65 : 45}
         tier={Platform.OS === 'android' ? 'A' : undefined}

@@ -18,7 +18,6 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
 import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
-import { GlassSurfaceProvider } from '@/components/ui/GlassSurface';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
 import { AppBottomNavigation } from '@/components/assistant/AppBottomNavigation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
@@ -141,7 +140,7 @@ export default function RootLayout() {
             AssistantHost and AppBottomNavigation are gated on boot.phase === 'ready'
             because they call getDatabase() synchronously at render time. */}
         <AssistantSurfaceProvider>
-          <GlassSurfaceProvider blurTarget={blurTarget}>
+          <>
             <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
               <Tabs
                 tabBar={() => null}
@@ -166,11 +165,11 @@ export default function RootLayout() {
             </BlurTargetView>
             {boot.phase === 'ready' && (
               <>
-                <AppBottomNavigation />
+                <AppBottomNavigation blurTarget={blurTarget} />
                 <AssistantHost blurTarget={blurTarget} />
               </>
             )}
-          </GlassSurfaceProvider>
+          </>
         </AssistantSurfaceProvider>
 
         {/* Loading overlay — rendered on top while the DB bootstraps */}

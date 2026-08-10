@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  BackHandler,
   Keyboard,
   Platform,
   Pressable,
@@ -41,6 +42,15 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const isDark = useIsDark();
   const colors = useSemanticColors();
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !menuOpen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setMenuOpen(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [menuOpen]);
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
