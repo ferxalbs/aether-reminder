@@ -9,6 +9,7 @@ export interface TaskListProps {
   onDelete: (id: string) => void;
   onPress?: (task: TaskListItem) => void;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  style?: StyleProp<ViewStyle>;
   header?: React.ReactElement | null;
   empty?: React.ReactElement | null;
 }
@@ -19,6 +20,7 @@ export function TaskList({
   onDelete,
   onPress,
   contentContainerStyle,
+  style,
   header,
   empty,
 }: TaskListProps) {
@@ -31,6 +33,7 @@ export function TaskList({
 
   return (
     <FlatList
+      style={style}
       data={tasks}
       keyExtractor={(task) => task.id}
       renderItem={renderTask}

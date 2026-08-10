@@ -1,7 +1,6 @@
 import React, { createContext, useContext, type RefObject } from 'react';
-import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
-import { BlurView, BlurViewProps } from 'expo-blur';
-import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
+import type { BlurViewProps } from 'expo-blur';
 import { Colors, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
@@ -47,26 +46,9 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   blurTarget,
 }) => {
   const isDark = useIsDark();
-  const isIOS = Platform.OS === 'ios';
-  const isAndroid = Platform.OS === 'android';
-  const contextBlurTarget = useContext(GlassBlurTargetContext);
-  const resolvedBlurTarget = blurTarget ?? contextBlurTarget;
-
-  const activeTint =
-    tint ||
-    (isAndroid
-      ? isDark
-        ? 'dark'
-        : 'light'
-      : isDark
-        ? 'systemMaterialDark'
-        : 'systemMaterialLight');
+  useContext(GlassBlurTargetContext);
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-  const backgroundColor = isDark ? Colors.glassDark : Colors.glassLight;
-
-  const useLiquidGlass =
-    isIOS && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  const useBlurView = isIOS || (isAndroid && Boolean(blurTarget));
+  const backgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
 
   return (
     <View
@@ -86,23 +68,6 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
       accessibilityRole={accessibilityRole}
       pointerEvents={pointerEvents}
     >
-      {useLiquidGlass ? (
-        <GlassView
-          style={StyleSheet.absoluteFill}
-          glassEffectStyle="regular"
-          isInteractive
-          colorScheme={isDark ? 'dark' : 'light'}
-        />
-      ) : useBlurView ? (
-        <BlurView
-          tint={activeTint}
-          intensity={intensity}
-          blurTarget={isAndroid ? resolvedBlurTarget : undefined}
-          blurMethod={isAndroid ? 'dimezisBlurViewSdk31Plus' : undefined}
-          blurReductionFactor={isAndroid ? 3 : undefined}
-          style={[StyleSheet.absoluteFill, { borderRadius }]}
-        />
-      ) : null}
       <View style={[styles.content, contentStyle]}>{children}</View>
     </View>
   );
@@ -113,6 +78,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   content: {
-    zIndex: 1,
   },
 });

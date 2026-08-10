@@ -64,8 +64,8 @@ export function NativeDateTimeControl({
           style={[
             styles.iosControl,
             {
-              borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-              backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8',
+              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+              backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
             },
           ]}
         >
@@ -101,8 +101,8 @@ export function NativeDateTimeControl({
           styles.androidTrigger,
           {
             minHeight: getMinimumTouchTarget(Platform.OS),
-            borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight,
-            backgroundColor: isDark ? Colors.surfaceRaisedDark : '#EEF2F8',
+            borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+            backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
           },
         ]}
       >

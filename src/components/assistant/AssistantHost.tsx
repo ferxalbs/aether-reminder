@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { Colors } from '@/theme/tokens';
 import type { ContextSnapshot } from '@/services/agent';
 import { TranscriptionError } from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
@@ -238,7 +239,10 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         <Pressable
           onPress={closeAssistant}
           accessibilityLabel="Dismiss assistant surface"
-          style={[styles.scrim, { backgroundColor: isDark ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.08)' }]}
+          style={[
+            styles.scrim,
+            { backgroundColor: isDark ? Colors.scrimDark : Colors.scrimLight },
+          ]}
         />
       ) : null}
       <AssistantSheet

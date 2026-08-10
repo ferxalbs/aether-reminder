@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { CalendarDays, Flag, Minus, Plus, Repeat2, X } from 'lucide-react-native';
+import { Flag, Mic, Minus, Plus, Repeat2, X } from 'lucide-react-native';
 import type {
   RecurrenceFrequency,
   RecurrenceMode,
@@ -23,6 +23,7 @@ import { Sheet } from './Sheet';
 import { TextField } from './TextField';
 import { AnimatedPressable } from './AnimatedPressable';
 import { NativeDateTimeControl } from './NativeDateTimeControl';
+import { useAssistantActions } from '@/components/assistant/AssistantHost';
 import {
   applyRepeatPreset,
   buildRecurrenceDraft,
@@ -89,7 +90,7 @@ function ChoicePill({
         {
           backgroundColor: selected
             ? isDark ? Colors.surfaceRaisedLight : Colors.brandInk
-            : isDark ? 'rgba(255, 255, 255, 0.055)' : '#F1F4F8',
+            : isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
           borderColor: selected ? 'transparent' : isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
@@ -123,7 +124,7 @@ function NumberStepper({
   return (
     <View style={styles.stepperBlock}>
       <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700}>{label}</Typography>
-      <View style={[styles.stepper, { borderColor: isDark ? Colors.glassBorderDark : Colors.glassBorderLight }]}>
+      <View style={[styles.stepper, { borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
         <IconButton
           icon={<Minus size={16} color={secondary} />}
           onPress={() => onChange(Math.max(min, value - 1))}
@@ -152,6 +153,7 @@ function TaskEditorForm({
   initialTitle = '',
 }: TaskEditorSheetProps) {
   const isDark = useIsDark();
+  const { startVoiceAssistant } = useAssistantActions();
   const { width } = useWindowDimensions();
   const compact = width < 390;
   const today = useMemo(() => getLocalDateString(), []);
@@ -338,12 +340,26 @@ function TaskEditorForm({
       subtitle={mode === 'edit' ? 'Refine the schedule without losing your place.' : 'Capture it now. AETHER handles the calendar locally.'}
       accessibilityLabel={mode === 'edit' ? 'Edit reminder' : 'New reminder'}
       headerAction={(
-        <IconButton
-          icon={<X size={18} color={secondaryTextColor} />}
-          onPress={onClose}
-          accessibilityLabel={`Close ${mode === 'edit' ? 'edit' : 'new reminder'} dialog`}
-          variant="ghost"
-        />
+        <View style={styles.headerActions}>
+          {mode === 'create' ? (
+            <IconButton
+              icon={<Mic size={18} color={secondaryTextColor} />}
+              onPress={() => {
+                onClose();
+                startVoiceAssistant();
+              }}
+              accessibilityLabel="Switch to voice capture"
+              accessibilityHint="Replaces this manual form with voice input"
+              variant="ghost"
+            />
+          ) : null}
+          <IconButton
+            icon={<X size={18} color={secondaryTextColor} />}
+            onPress={onClose}
+            accessibilityLabel={`Close ${mode === 'edit' ? 'edit' : 'new reminder'} dialog`}
+            variant="ghost"
+          />
+        </View>
       )}
       footer={(
         <Button
@@ -368,9 +384,10 @@ function TaskEditorForm({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.intro}>
-            <CalendarDays size={18} color={isDark ? Colors.white : Colors.black} />
             <Typography variant="caption" color={secondaryTextColor} style={styles.introCopy}>
-              Stored locally. Date, time, and repeat rules work without AI or network access.
+              {mode === 'create'
+                ? 'Type the details below, or switch to voice from the microphone above.'
+                : 'Changes are stored locally and keep the existing reminder history.'}
             </Typography>
           </View>
 
@@ -628,11 +645,14 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
   },
   intro: {
+    paddingBottom: Spacing.xs,
+  },
+  introCopy: { flex: 1 },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  introCopy: { flex: 1 },
   section: { gap: Spacing.sm },
   sectionHeader: {
     flexDirection: 'row',

@@ -1,109 +1,102 @@
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { Typography } from '@/components/ui/Typography';
-import { Colors, LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { CalendarDays, ListTodo, PenLine, Settings } from 'lucide-react-native';
-import React, { useEffect, type RefObject } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AssistantMaterial } from './AssistantMaterial';
-
-interface AppBottomNavigationProps {
-  blurTarget?: RefObject<View | null>;
-}
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Typography } from '@/components/ui/Typography';
+import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
+import { useSemanticColors } from '@/theme/useSemanticColors';
 
 type Destination = '/' | '/tasks' | '/all' | '/settings';
 
-const navigationItems: {
-  key: string;
-  destination: Destination;
-  label: string;
-  icon: typeof PenLine;
-}[] = [
-  { key: 'home', destination: '/', label: 'Compose', icon: PenLine },
-  { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: CalendarDays },
-  { key: 'all', destination: '/all', label: 'All', icon: ListTodo },
-  { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
+const navigationItems = [
+  { destination: '/' as const, label: 'Compose', icon: PenLine },
+  { destination: '/tasks' as const, label: 'Upcoming', icon: CalendarDays },
+  { destination: '/all' as const, label: 'All', icon: ListTodo },
+  { destination: '/settings' as const, label: 'Settings', icon: Settings },
 ];
 
-export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
-  blurTarget,
-}) => {
+export function AppBottomNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  const navigate = (destination: Destination) => {
-    const isHome = destination === '/' && (pathname === '/' || pathname === '/index');
-    if (pathname === destination || isHome) return;
-    if (__DEV__) console.info('[AETHER tabs] navigate', { pathname, destination });
-    router.navigate(destination);
-  };
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  if (keyboardVisible) return null;
+
+  const isActive = (destination: Destination) =>
+    pathname === destination || (destination === '/' && pathname === '/index');
 
   return (
-    <Animated.View
-      style={[styles.host, { bottom: Math.max(insets.bottom, 8) + 10 }]}
+    <View
+      style={[
+        styles.host,
+        {
+          paddingBottom: insets.bottom,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.separator,
+        },
+      ]}
     >
-      <AssistantMaterial style={styles.bar} borderRadius={Radius.pill} blurTarget={blurTarget}>
-        <View style={styles.navRow}>
-          {navigationItems.map((item) => (
-            <NavigationButton
-              key={item.key}
-              item={item}
-              active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
-              isDark={isDark}
-              onPress={() => {
-                if (__DEV__) {
-                  console.info('[AETHER tabs] press', {
-                    pathname,
-                    destination: item.destination,
-                  });
-                }
-                navigate(item.destination);
-              }}
-            />
-          ))}
-        </View>
-      </AssistantMaterial>
-    </Animated.View>
+      <View style={styles.navigation} accessibilityRole="tablist">
+        {navigationItems.map((item) => (
+          <NavigationButton
+            key={item.destination}
+            item={item}
+            active={isActive(item.destination)}
+            onPress={() => {
+              if (!isActive(item.destination)) router.navigate(item.destination);
+            }}
+          />
+        ))}
+      </View>
+    </View>
   );
-};
+}
 
 function NavigationButton({
   item,
   active,
-  isDark,
   onPress,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
-  isDark: boolean;
   onPress: () => void;
 }) {
-  const activeAnim = useSharedValue(active ? 1 : 0);
+  const colors = useSemanticColors();
+  const reduceMotion = useReducedMotion();
+  const selected = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
-    activeAnim.value = withSpring(active ? 1 : 0, {
-      ...Motion.pressSpring,
-    });
-  }, [active, activeAnim]);
+    selected.value = reduceMotion
+      ? active ? 1 : 0
+      : withSpring(active ? 1 : 0, Motion.pressSpring);
+  }, [active, reduceMotion, selected]);
 
-  const animatedIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: activeAnim.value * 0.92,
-    transform: [{ scaleX: 0.76 + activeAnim.value * 0.24 }],
+  const indicatorStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: reduceMotion ? 0 : -selected.value }],
   }));
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + activeAnim.value * 0.05 }, { translateY: -activeAnim.value * 1 }],
-  }));
-  const animatedLabelStyle = useAnimatedStyle(() => ({
-    opacity: 0.58 + activeAnim.value * 0.42,
-  }));
-
-  const activeColor = isDark ? Colors.white : Colors.black;
-  const inactiveColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
   const Icon = item.icon;
 
   return (
@@ -112,76 +105,72 @@ function NavigationButton({
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
-      scaleTo={0.95}
-      style={styles.navButton}
+      scaleTo={Motion.pressScale}
+      style={styles.item}
     >
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.activeIndicator,
-          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)' },
-          animatedIndicatorStyle,
+          styles.selected,
+          { backgroundColor: colors.selected },
+          indicatorStyle,
         ]}
       />
-      <Animated.View style={animatedIconStyle}>
-        <Icon size={20} color={active ? activeColor : inactiveColor} strokeWidth={active ? 2.35 : 1.9} />
+      <Animated.View style={iconStyle}>
+        <Icon
+          size={19}
+          color={active ? colors.textPrimary : colors.textSecondary}
+          strokeWidth={active ? 2.35 : 1.9}
+        />
       </Animated.View>
-      <Animated.View style={animatedLabelStyle}>
-        <Typography
-          variant="tiny"
-          color={active ? activeColor : inactiveColor}
-          style={styles.navLabel}
-          numberOfLines={1}
-        >
-          {item.label}
-        </Typography>
-      </Animated.View>
+      <Typography
+        variant="tiny"
+        color={active ? colors.textPrimary : colors.textSecondary}
+        style={styles.label}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Typography>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   host: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: '92%',
+    borderTopWidth: 1,
+  },
+  navigation: {
+    width: '100%',
     maxWidth: LayoutTokens.navigationMaxWidth,
     height: LayoutTokens.navigationHeight,
-    zIndex: 30,
-    alignItems: 'center',
-  },
-  bar: {
-    width: '100%',
-    height: LayoutTokens.navigationHeight,
-    paddingHorizontal: Spacing.xs,
-  },
-  navRow: {
-    flex: 1,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: Spacing.xs,
   },
-  navButton: {
+  item: {
     flex: 1,
-    height: 66,
+    height: 52,
+    minWidth: 64,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
     overflow: 'hidden',
   },
-  activeIndicator: {
+  selected: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     top: 0,
+    right: 0,
     bottom: 0,
-    marginVertical: 5,
-    borderRadius: Radius.lg,
+    left: 0,
+    marginHorizontal: Spacing.xs,
+    marginVertical: 3,
+    borderRadius: Radius.md,
   },
-  navLabel: {
+  label: {
     fontSize: 10,
     lineHeight: 13,
-    letterSpacing: 0.1,
     textAlign: 'center',
   },
 });

@@ -89,6 +89,32 @@ function confirmationTitle(pending: PendingAssistantConfirmation): string {
   return 'Confirm this action?';
 }
 
+function VoiceMeter({ level, color }: { level: SharedValue<number>; color: string }) {
+  return (
+    <View style={styles.voiceMeter} accessibilityElementsHidden>
+      {[0.45, 0.7, 0.95, 1.2, 0.95, 0.7, 0.45].map((weight, index) => (
+        <VoiceMeterBar key={index} level={level} weight={weight} color={color} />
+      ))}
+    </View>
+  );
+}
+
+function VoiceMeterBar({
+  level,
+  weight,
+  color,
+}: {
+  level: SharedValue<number>;
+  weight: number;
+  color: string;
+}) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: Math.max(0.2, Math.min(1, level.value * weight + 0.16)) }],
+    opacity: 0.46 + Math.min(1, level.value) * 0.54,
+  }));
+  return <Animated.View style={[styles.voiceMeterBar, { backgroundColor: color }, animatedStyle]} />;
+}
+
 export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   surface,
   messages,
@@ -126,16 +152,13 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const height = useSharedValue(0);
   const keyboardShift = useSharedValue(0);
-  const voiceLevelStyle = useAnimatedStyle(() => ({
-    width: `${Math.round(Math.min(1, voiceAudioLevel.value) * 100)}%`,
-  }));
   const isVisible = surface !== 'closed';
   const showHeader = surface !== 'closing';
   const showConversation = surface === 'medium' || surface === 'full';
   const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-        ? voiceActive ? 196 : 128
+        ? voiceActive ? 260 : 128
       : surface === 'medium'
         ? Math.min(windowWidth >= 760 ? 520 : 480, windowHeight * 0.62)
         : surface === 'full'
@@ -170,9 +193,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               <View style={styles.headerTitle}>
                 <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? (isDark ? Colors.white : Colors.black) : isDark ? Colors.white : Colors.black }]} />
                 <View>
-                  <Typography variant="bodyBold">AETHER</Typography>
+                  <Typography variant="bodyBold">{voiceActive ? 'Voice reminder' : 'AETHER'}</Typography>
                   <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessibilityLiveRegion="polite">
-                    {assistantStateLabel(semanticState)}
+                    {voiceActive ? 'Alternative to manual entry' : assistantStateLabel(semanticState)}
                   </Typography>
                 </View>
               </View>
@@ -258,9 +281,16 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           <View style={styles.composerContainer}>
             {voiceState !== 'idle' && voiceState !== 'error' ? (
               <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
-                <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening (locked)' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
+                <View style={styles.voiceStatusRow}>
+                  <View style={styles.voiceStatusCopy}>
+                    <Typography variant="bodyBold">{voiceState === 'connecting' ? voiceRetryAttempt > 0 ? 'Retrying connection…' : 'Connecting…' : voiceLocked ? 'Listening' : voiceState === 'listening' ? 'Listening…' : voiceState === 'transcribing' ? 'Transcribing…' : 'Finalizing…'}</Typography>
+                    <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                      Say the reminder, date, and time in one sentence.
+                    </Typography>
+                  </View>
+                  <VoiceMeter level={voiceAudioLevel} color={isDark ? Colors.white : Colors.black} />
+                </View>
                 {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
-                {voiceState === 'listening' || voiceState === 'transcribing' ? <View style={[styles.voiceLevelTrack, { backgroundColor: isDark ? Colors.borderDark : Colors.borderLight }]}><Animated.View style={[styles.voiceLevelFill, { backgroundColor: isDark ? Colors.white : Colors.black }, voiceLevelStyle]} /></View> : null}
                 {voiceLocked || voiceState === 'connecting' ? (
                   <View style={styles.voiceActions}>
                     <Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} />
@@ -326,6 +356,28 @@ const styles = StyleSheet.create({
   statusMark: {
     width: 8,
     height: 8,
+    borderRadius: Radius.pill,
+  },
+  voiceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  voiceStatusCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  voiceMeter: {
+    width: 54,
+    height: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  voiceMeterBar: {
+    width: 3,
+    height: 28,
     borderRadius: Radius.pill,
   },
   headerActions: {
@@ -433,14 +485,5 @@ const styles = StyleSheet.create({
   voiceError: {
     paddingVertical: Spacing.xs,
     gap: Spacing.xs,
-  },
-  voiceLevelTrack: {
-    height: 4,
-    borderRadius: Radius.pill,
-    overflow: 'hidden',
-  },
-  voiceLevelFill: {
-    height: 4,
-    borderRadius: Radius.pill,
   },
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import type { ActionReceipt } from '@/domain/receipts';
-import { Radius, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Button } from './Button';
 import { Typography } from './Typography';
@@ -23,7 +23,7 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
   onDismiss,
 }) => {
   const isDark = useIsDark();
-  const textColor = isDark ? '#FEF3C7' : '#92400E';
+  const textColor = isDark ? Colors.textDark : Colors.textLight;
 
   return (
     <View
@@ -34,19 +34,19 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: isDark ? 'rgba(120, 53, 15, 0.42)' : '#FFFBEB',
-          borderColor: isDark ? 'rgba(251, 191, 36, 0.34)' : '#FDE68A',
+          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
     >
       <View style={styles.copyRow}>
-        <AlertTriangle size={18} color={isDark ? '#FCD34D' : '#B45309'} />
+        <AlertTriangle size={18} color={textColor} />
         <View style={styles.copy}>
           <Typography variant="caption" color={textColor}>
             {receipt.summary}
           </Typography>
           {error ? (
-            <Typography variant="tiny" color={isDark ? '#FECACA' : '#B91C1C'}>
+            <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
               Undo failed: {error}
             </Typography>
           ) : null}

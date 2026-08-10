@@ -2,79 +2,24 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, ListFilter, ListTodo, Plus, Search } from 'lucide-react-native';
+import { Check, ListTodo, Plus, Search } from 'lucide-react-native';
+import type { MenuAction } from '@expo/ui/community/menu';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { AetherMark } from '@/components/ui/AetherMark';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
+import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
 
 type TaskFilter = 'all' | 'active' | 'completed';
-
-function FilterPill({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const isDark = useIsDark();
-
-  return (
-    <AnimatedPressable
-      onPress={onPress}
-      scaleTo={0.96}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      style={[
-        styles.filterPill,
-        {
-          backgroundColor: selected
-            ? isDark
-              ? Colors.white
-              : Colors.black
-            : isDark
-              ? Colors.surfaceRaisedDark
-              : Colors.surfaceRaisedLight,
-          borderColor: selected
-            ? 'transparent'
-            : isDark
-              ? Colors.borderDark
-              : Colors.borderLight,
-        },
-      ]}
-    >
-      <Typography
-        variant="caption"
-        color={
-          selected
-            ? isDark
-              ? Colors.black
-              : Colors.white
-            : isDark
-              ? Colors.secondaryTextDark
-              : Colors.secondaryTextLight
-        }
-        style={styles.filterLabel}
-      >
-        {label}
-      </Typography>
-    </AnimatedPressable>
-  );
-}
 
 export default function AllScreen() {
   const isDark = useIsDark();
@@ -85,6 +30,7 @@ export default function AllScreen() {
   const [query, setQuery] = useState('');
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const { startVoiceAssistant } = useAssistantActions();
 
   const allTasks = useTasksUiStore((state) => state.allTasks);
   const status = useTasksUiStore((state) => state.status);
@@ -108,9 +54,6 @@ export default function AllScreen() {
       return `${task.title} ${task.notes ?? ''}`.toLocaleLowerCase().includes(normalizedQuery);
     });
   }, [allTasks, filter, query]);
-
-  const activeCount = allTasks.filter((task) => !task.completed).length;
-  const completedCount = allTasks.length - activeCount;
 
   const assistantContext = useMemo(
     () => ({
@@ -159,8 +102,37 @@ export default function AllScreen() {
     setEditingTask(null);
   }, []);
 
+  const contextualActions = useMemo<MenuAction[]>(
+    () => [
+      { id: 'create', title: 'New reminder', image: 'square.and.pencil' },
+      { id: 'voice', title: 'Speak a reminder', image: 'waveform' },
+      {
+        title: 'Show',
+        image: 'line.3.horizontal.decrease.circle',
+        subactions: [
+          { id: 'filter-all', title: 'All reminders', state: filter === 'all' ? 'on' : 'off' },
+          { id: 'filter-active', title: 'Active', state: filter === 'active' ? 'on' : 'off' },
+          { id: 'filter-completed', title: 'Completed', state: filter === 'completed' ? 'on' : 'off' },
+        ],
+      },
+    ],
+    [filter],
+  );
+
+  const handleContextAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'create') openEditor();
+      if (actionId === 'voice') startVoiceAssistant();
+      if (actionId === 'filter-all') setFilter('all');
+      if (actionId === 'filter-active') setFilter('active');
+      if (actionId === 'filter-completed') setFilter('completed');
+    },
+    [openEditor, startVoiceAssistant],
+  );
+
   return (
     <SafeAreaView
+      edges={['top', 'left', 'right']}
       style={[
         styles.safeArea,
         { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
@@ -176,6 +148,7 @@ export default function AllScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
+      <ContextualTopBar actions={contextualActions} onAction={handleContextAction} />
       <TaskList
         tasks={visibleTasks}
         onToggle={handleToggle}
@@ -190,82 +163,16 @@ export default function AllScreen() {
         ]}
         header={
           <View style={styles.headerContent}>
-            <View style={styles.topBar}>
-              <View style={styles.brandLockup}>
-                <AetherMark size={32} muted={isDark} />
-                <View>
-                  <Typography variant="bodyBold">AETHER</Typography>
-                  <Typography
-                    variant="tiny"
-                    color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                  >
-                    All reminders
-                  </Typography>
-                </View>
-              </View>
-              <AnimatedPressable
-                onPress={() => openEditor()}
-                scaleTo={0.94}
-                accessibilityRole="button"
-                accessibilityLabel="Create a reminder"
-                style={[
-                  styles.addButton,
-                  { backgroundColor: isDark ? Colors.white : Colors.black },
-                ]}
-              >
-                <Plus size={19} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />
-              </AnimatedPressable>
-            </View>
-
             <View style={styles.header}>
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.eyebrow}
-              >
-                YOUR LIBRARY
-              </Typography>
               <Typography variant="display">All reminders</Typography>
               <Typography
                 variant="body"
                 color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
                 style={styles.subtitle}
               >
-                One calm place for everything you have captured, active or complete.
+                Search and review everything you have captured.
               </Typography>
             </View>
-
-            <Card variant="outline" padding={Spacing.md} style={styles.summaryCard}>
-              <View style={[styles.summaryIcon, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
-                <ListTodo
-                  size={19}
-                  color={isDark ? Colors.white : Colors.black}
-                  strokeWidth={2}
-                />
-              </View>
-              <View style={styles.summaryCopy}>
-                <Typography variant="bodyBold">
-                  {activeCount === 0 ? 'Everything is complete' : activeCount + ' active reminders'}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                >
-                  {completedCount === 0
-                    ? 'Your library is ready for the next thought.'
-                    : completedCount + ' completed and kept for reference.'}
-                </Typography>
-              </View>
-              <View style={styles.summaryCount}>
-                <Typography variant="title">{allTasks.length}</Typography>
-                <Typography
-                  variant="tiny"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                >
-                  TOTAL
-                </Typography>
-              </View>
-            </Card>
 
             <View
               style={[
@@ -293,28 +200,15 @@ export default function AllScreen() {
               />
             </View>
 
-            <View style={styles.filterHeader}>
-              <View style={styles.filterTitleRow}>
-                <ListFilter
-                  size={17}
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                />
-                <Typography variant="bodyBold">Show</Typography>
-              </View>
-              <View style={styles.filterRow}>
-                <FilterPill label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-                <FilterPill
-                  label="Active"
-                  selected={filter === 'active'}
-                  onPress={() => setFilter('active')}
-                />
-                <FilterPill
-                  label="Done"
-                  selected={filter === 'completed'}
-                  onPress={() => setFilter('completed')}
-                />
-              </View>
-            </View>
+            {filter !== 'all' ? (
+              <Typography
+                variant="tiny"
+                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                style={styles.activeFilter}
+              >
+                Showing {filter === 'active' ? 'active' : 'completed'} reminders
+              </Typography>
+            ) : null}
 
             {error ? (
               <Typography
@@ -392,66 +286,19 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     alignSelf: 'center',
-    paddingTop: Spacing.md,
-    paddingBottom: 144,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
   },
   headerContent: {
     width: '100%',
   },
-  topBar: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xl,
-  },
-  brandLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   header: {
     maxWidth: LayoutTokens.readingMaxWidth,
-    marginBottom: Spacing.lg,
-  },
-  eyebrow: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '700',
-    letterSpacing: 1.55,
+    marginBottom: Spacing.xxl,
   },
   subtitle: {
     maxWidth: 650,
     marginTop: Spacing.sm,
-  },
-  summaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  summaryIcon: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  summaryCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  summaryCount: {
-    alignItems: 'flex-end',
-    gap: 1,
   },
   searchField: {
     minHeight: 48,
@@ -469,31 +316,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  filterHeader: {
-    gap: Spacing.sm,
+  activeFilter: {
+    marginTop: -Spacing.sm,
     marginBottom: Spacing.md,
-  },
-  filterTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-  },
-  filterPill: {
-    minHeight: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-  },
-  filterLabel: {
-    fontSize: 12,
-    lineHeight: 16,
   },
   error: {
     marginBottom: Spacing.md,

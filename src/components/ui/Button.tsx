@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -6,18 +6,25 @@ import {
   View,
   StyleProp,
   ViewStyle,
-} from 'react-native';
-import { AnimatedPressable } from './AnimatedPressable';
-import { GlassSurface } from './GlassSurface';
-import { Typography } from './Typography';
-import { Colors, ControlTokens, getMinimumTouchTarget, Motion, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
+} from "react-native";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { GlassSurface } from "./GlassSurface";
+import { Typography } from "./Typography";
+import {
+  Colors,
+  ControlTokens,
+  getMinimumTouchTarget,
+  Motion,
+  Radius,
+  Spacing,
+} from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
 export interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'glass' | 'ghost' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "glass" | "ghost" | "destructive";
+  size?: "sm" | "md" | "lg";
   icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
@@ -30,8 +37,8 @@ export interface ButtonProps {
 export const Button: React.FC<ButtonProps> = ({
   label,
   onPress,
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   icon,
   loading = false,
   disabled = false,
@@ -45,22 +52,24 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getContainerStyle = () => {
     switch (variant) {
-      case 'primary':
+      case "primary":
         return {
           backgroundColor: isDark ? Colors.white : Colors.black,
           borderColor: isDark ? Colors.white : Colors.black,
         };
-      case 'secondary':
+      case "secondary":
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          backgroundColor: isDark
+            ? Colors.surfaceRaisedDark
+            : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         };
-      case 'glass':
+      case "glass":
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         };
-      case 'destructive':
+      case "destructive":
         return {
           backgroundColor: isDark
             ? Colors.destructiveBackgroundDark
@@ -69,41 +78,43 @@ export const Button: React.FC<ButtonProps> = ({
             ? Colors.destructiveBorderDark
             : Colors.destructiveBorderLight,
         };
-      case 'ghost':
+      case "ghost":
       default:
         return {
-          backgroundColor: 'transparent',
-          borderColor: 'transparent',
+          backgroundColor: "transparent",
+          borderColor: "transparent",
         };
     }
   };
 
   const getTextColor = () => {
-    if (isDisabled) return isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
-    if (variant === 'primary') return isDark ? Colors.black : Colors.white;
-    if (variant === 'secondary') return isDark ? Colors.white : Colors.black;
-    if (variant === 'destructive') return isDark ? Colors.white : Colors.black;
-    if (variant === 'ghost') return isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+    if (isDisabled)
+      return isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
+    if (variant === "primary") return isDark ? Colors.black : Colors.white;
+    if (variant === "secondary") return isDark ? Colors.white : Colors.black;
+    if (variant === "destructive") return isDark ? Colors.white : Colors.black;
+    if (variant === "ghost")
+      return isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
     return isDark ? Colors.white : Colors.black;
   };
 
   const getSizeStyle = () => {
     switch (size) {
-      case 'sm':
+      case "sm":
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderRadius: Radius.sm,
         };
-      case 'lg':
+      case "lg":
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: Spacing.md,
           paddingHorizontal: Spacing.xl,
           borderRadius: Radius.lg,
         };
-      case 'md':
+      case "md":
       default:
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
@@ -124,7 +135,9 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+      android_ripple={{
+        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+      }}
       scaleTo={Motion.buttonPressScale}
       style={[
         styles.base,
@@ -135,7 +148,7 @@ export const Button: React.FC<ButtonProps> = ({
         style,
       ]}
     >
-      {variant === 'glass' ? (
+      {variant === "glass" ? (
         <GlassSurface
           pointerEvents="none"
           borderRadius={sizeStyle.borderRadius}
@@ -148,9 +161,9 @@ export const Button: React.FC<ButtonProps> = ({
         <View style={styles.contentRow}>
           {icon && <View style={styles.iconMargin}>{icon}</View>}
           <Typography
-            variant={size === 'sm' ? 'caption' : 'bodyBold'}
+            variant={size === "sm" ? "caption" : "bodyBold"}
             color={getTextColor()}
-            style={{ fontWeight: '600' }}
+            style={{ fontWeight: "600" }}
           >
             {label}
           </Typography>
@@ -162,19 +175,19 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   fullWidth: {
-    width: '100%',
+    width: "100%",
   },
   contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconMargin: {
     marginRight: Spacing.sm,

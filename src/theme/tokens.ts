@@ -47,16 +47,6 @@ export const Colors = {
   zinc100: '#F4F4F5',
   zinc50: '#FAFAFA',
 
-  // Surface Overlays & Glass Fallbacks (Strict Monochrome)
-  glassDark: 'rgba(18, 18, 18, 0.85)',
-  glassLight: 'rgba(255, 255, 255, 0.85)',
-  glassBorderDark: '#262626',
-  glassBorderLight: '#E5E5E7',
-
-  // Shadows & Elevators (Deprecated to transparent for clean separation via borders/surfaces)
-  shadowDark: 'transparent',
-  shadowLight: 'transparent',
-
   // System Badges (Monochrome High-Contrast)
   systemGreenLight: '#000000',
   systemGreenDark: '#FFFFFF',
@@ -80,6 +70,43 @@ export const Colors = {
   scrimDark: 'rgba(0, 0, 0, 0.75)',
 } as const;
 
+export const SemanticColors = {
+  light: {
+    background: Colors.backgroundLight,
+    surface: Colors.surfaceLight,
+    elevatedSurface: Colors.surfaceRaisedLight,
+    textPrimary: Colors.textLight,
+    textSecondary: Colors.secondaryTextLight,
+    textTertiary: Colors.tertiaryTextLight,
+    border: Colors.borderLight,
+    separator: Colors.separatorLight,
+    interactive: Colors.black,
+    interactiveForeground: Colors.white,
+    interactivePressed: Colors.zinc800,
+    selected: Colors.zinc100,
+    destructive: Colors.black,
+    focus: Colors.black,
+    scrim: Colors.scrimLight,
+  },
+  dark: {
+    background: Colors.backgroundDark,
+    surface: Colors.surfaceDark,
+    elevatedSurface: Colors.surfaceRaisedDark,
+    textPrimary: Colors.textDark,
+    textSecondary: Colors.secondaryTextDark,
+    textTertiary: Colors.tertiaryTextDark,
+    border: Colors.borderDark,
+    separator: Colors.separatorDark,
+    interactive: Colors.white,
+    interactiveForeground: Colors.black,
+    interactivePressed: Colors.zinc200,
+    selected: Colors.zinc800,
+    destructive: Colors.white,
+    focus: Colors.white,
+    scrim: Colors.scrimDark,
+  },
+} as const;
+
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -96,14 +123,18 @@ export const LayoutTokens = {
   contentMaxWidth: 980,
   readingMaxWidth: 680,
   navigationMaxWidth: 640,
-  navigationHeight: 72,
+  navigationHeight: 60,
+  composerHeight: 60,
+  sectionGap: 32,
+  titleToDescriptionGap: 8,
+  descriptionToContentGap: 24,
 } as const;
 
 export const Radius = {
   sm: 6,
   md: 10,
-  lg: 16,
-  xl: 24,
+  lg: 14,
+  xl: 18,
   pill: 9999,
 } as const;
 

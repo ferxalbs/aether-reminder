@@ -51,7 +51,6 @@ import type { UserSettings } from '@/types';
 import * as Haptics from 'expo-haptics';
 import { notificationAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import { AetherMark } from '@/components/ui/AetherMark';
 
 const settingsEntering = Platform.OS === 'ios' ? FadeInDown.duration(240).damping(20).stiffness(200) : undefined;
 const settingsLayout = Platform.OS === 'ios' ? Layout.springify().damping(20).stiffness(200) : undefined;
@@ -285,6 +284,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView
+      edges={['top', 'left', 'right']}
       style={[
         styles.safeArea,
         { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
@@ -294,26 +294,17 @@ export default function SettingsScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-
-        <View style={styles.brandRow}>
-          <AetherMark size={34} muted={isDark} />
-          <View>
-            <Typography variant="bodyBold" style={styles.brandName}>AETHER</Typography>
-            <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-              Private by design
-            </Typography>
-          </View>
-        </View>
-
         {/* Header */}
         <Animated.View entering={entering} style={styles.header}>
-          <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.headerCaption}>
-            PREFERENCES
-          </Typography>
           <Typography variant="display" style={styles.headerTitle}>
             Settings
+          </Typography>
+          <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.headerDescription}>
+            Private, local preferences for AI, voice, appearance, and feedback.
           </Typography>
         </Animated.View>
 
@@ -802,7 +793,12 @@ export default function SettingsScreen() {
         animationType="slide"
         onRequestClose={() => setModelPickerVisible(false)}
       >
-        <View style={styles.sheetOverlay}>
+        <View
+          style={[
+            styles.sheetOverlay,
+            { backgroundColor: isDark ? Colors.scrimDark : Colors.scrimLight },
+          ]}
+        >
           <View style={[styles.sheetContainer, { backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
 
             <View style={styles.sheetHeader}>
@@ -936,27 +932,18 @@ const styles = StyleSheet.create({
     maxWidth: LayoutTokens.contentMaxWidth,
     alignSelf: 'center',
     paddingHorizontal: LayoutTokens.screenHorizontal,
-    paddingTop: Spacing.md,
-    paddingBottom: 144,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  brandName: {
-    letterSpacing: 2.2,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.huge,
   },
   header: {
-    marginBottom: Spacing.xl,
-  },
-  headerCaption: {
-    letterSpacing: 1.2,
-    marginBottom: 4,
+    maxWidth: LayoutTokens.readingMaxWidth,
+    marginBottom: Spacing.xxl,
   },
   headerTitle: {
     letterSpacing: -0.8,
+  },
+  headerDescription: {
+    marginTop: Spacing.sm,
   },
   sectionHeader: {
     fontSize: 11,
@@ -1106,7 +1093,6 @@ const styles = StyleSheet.create({
   },
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {

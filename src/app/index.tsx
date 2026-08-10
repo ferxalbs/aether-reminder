@@ -1,5 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   StatusBar,
   StyleSheet,
   TextInput,
@@ -13,8 +15,8 @@ import {
   ArrowUp,
   Mic,
   Plus,
-  Sparkles,
 } from 'lucide-react-native';
+import type { MenuAction } from '@expo/ui/community/menu';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
@@ -22,7 +24,6 @@ import { TaskList } from '@/components/ui/TaskList';
 import { IconButton } from '@/components/ui/IconButton';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { GlassSurface } from '@/components/ui/GlassSurface';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
@@ -31,6 +32,13 @@ import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 import type { TaskListItem } from '@/domain/entities';
+import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
+
+const homeActions: MenuAction[] = [
+  { id: 'detailed-reminder', title: 'Detailed reminder', image: 'square.and.pencil' },
+  { id: 'voice-reminder', title: 'Speak a reminder', image: 'waveform' },
+  { id: 'command', title: 'Command AETHER', image: 'command' },
+];
 
 export default function HomeScreen() {
   const isDark = useIsDark();
@@ -131,8 +139,18 @@ export default function HomeScreen() {
     setEditingTask(null);
   }, []);
 
+  const handleContextAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'detailed-reminder') openEditor();
+      if (actionId === 'voice-reminder') startVoiceAssistant();
+      if (actionId === 'command') openTextAssistant();
+    },
+    [openEditor, openTextAssistant, startVoiceAssistant],
+  );
+
   return (
     <SafeAreaView
+      edges={['top', 'left', 'right']}
       style={[
         styles.safeArea,
         { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
@@ -149,76 +167,90 @@ export default function HomeScreen() {
         />
       ) : null}
 
-      <TaskList
-        tasks={todayTasks}
-        onToggle={handleToggle}
-        onDelete={handleDelete}
-        onPress={openEditor}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingHorizontal: horizontalPadding,
-            maxWidth: LayoutTokens.contentMaxWidth,
-          },
-        ]}
-        header={
-          <View style={styles.headerContent}>
-            <Animated.View
-              entering={reduceMotion ? undefined : FadeInDown.duration(240).springify()}
-              style={styles.largeTitleContainer}
-            >
-              <Typography variant="display" style={styles.largeTitle}>
-                AETHER
-              </Typography>
-              <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                Capture & organize thoughts
-              </Typography>
-            </Animated.View>
-
-            {error || quickError ? (
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.white : Colors.black}
-                style={styles.listError}
-              >
-                {error || quickError}
-              </Typography>
-            ) : null}
-          </View>
-        }
-        empty={
-          status === 'ready' ? (
-            <Animated.View
-              entering={reduceMotion ? undefined : FadeIn.duration(180).delay(160)}
-              style={styles.emptyState}
-            >
-              <Typography
-                variant="body"
-                align="center"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.emptyCopy}
-              >
-                No reminders today.
-              </Typography>
-            </Animated.View>
-          ) : null
-        }
-      />
-
-      {/* Floating Bottom Composer */}
-      <Animated.View
-        style={[styles.floatingComposerWrap, { paddingHorizontal: horizontalPadding }]}
-        entering={reduceMotion ? undefined : FadeInDown.duration(400).delay(100).springify()}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
-        <View style={styles.floatingComposerContainer}>
-          <GlassSurface
-            borderRadius={Radius.xl}
+        <ContextualTopBar actions={homeActions} onAction={handleContextAction} />
+        <TaskList
+          style={styles.flex}
+          tasks={todayTasks}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+          onPress={openEditor}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingHorizontal: horizontalPadding,
+              maxWidth: LayoutTokens.contentMaxWidth,
+            },
+          ]}
+          header={
+            <View style={styles.headerContent}>
+              <Animated.View
+                entering={reduceMotion ? undefined : FadeInDown.duration(240).springify()}
+                style={styles.titleBlock}
+              >
+                <Typography variant="display">Today</Typography>
+                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                  Capture what matters. Everything else can wait.
+                </Typography>
+              </Animated.View>
+
+              {error || quickError ? (
+                <Typography
+                  variant="caption"
+                  color={isDark ? Colors.white : Colors.black}
+                  style={styles.listError}
+                  accessibilityRole="alert"
+                >
+                  {error || quickError}
+                </Typography>
+              ) : null}
+            </View>
+          }
+          empty={
+            status === 'ready' ? (
+              <Animated.View
+                entering={reduceMotion ? undefined : FadeIn.duration(180).delay(120)}
+                style={styles.emptyState}
+              >
+                <Typography variant="title" align="center">Your day is clear.</Typography>
+                <Typography
+                  variant="body"
+                  align="center"
+                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                  style={styles.emptyCopy}
+                >
+                  Type below or speak naturally to add a reminder.
+                </Typography>
+              </Animated.View>
+            ) : null
+          }
+        />
+
+        <Animated.View
+          style={[
+            styles.composerWrap,
+            {
+              paddingHorizontal: horizontalPadding,
+              backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight,
+              borderTopColor: isDark ? Colors.separatorDark : Colors.separatorLight,
+            },
+          ]}
+          entering={reduceMotion ? undefined : FadeInDown.duration(300).delay(80).springify()}
+        >
+          <View
             style={[
-              styles.floatingComposerGlass,
-              { borderColor: isDark ? Colors.borderDark : Colors.borderLight }
+              styles.composer,
+              {
+                backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+              },
             ]}
           >
-            <View style={styles.floatingComposerInner}>
+            <View style={styles.composerInputRow}>
               <IconButton
                 icon={<Plus size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2.2} />}
                 onPress={() => openEditor()}
@@ -235,11 +267,13 @@ export default function HomeScreen() {
                 placeholder="New reminder…"
                 placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
                 style={[
-                  styles.floatingInput,
+                  styles.composerInput,
                   { color: isDark ? Colors.textDark : Colors.textLight }
                 ]}
                 onSubmitEditing={() => void handleQuickCapture()}
                 returnKeyType="done"
+                multiline
+                maxLength={240}
               />
               {quickTitle.trim().length > 0 ? (
                 <IconButton
@@ -250,27 +284,19 @@ export default function HomeScreen() {
                   size={36}
                 />
               ) : (
-                <>
-                  <IconButton
-                    icon={<Sparkles size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
-                    onPress={openTextAssistant}
-                    accessibilityLabel="Ask AETHER"
-                    variant="ghost"
-                    size={40}
-                  />
-                  <IconButton
-                    icon={<Mic size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
-                    onPress={startVoiceAssistant}
-                    accessibilityLabel="Speak a reminder"
-                    variant="ghost"
-                    size={40}
-                  />
-                </>
+                <IconButton
+                  icon={<Mic size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
+                  onPress={startVoiceAssistant}
+                  accessibilityLabel="Speak a reminder"
+                  accessibilityHint="Opens voice capture as an alternative to typing"
+                  variant="ghost"
+                  size={40}
+                />
               )}
             </View>
-          </GlassSurface>
-        </View>
-      </Animated.View>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -283,6 +309,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   safeArea: {
     flex: 1,
   },
@@ -290,21 +317,16 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingTop: Spacing.md,
-    paddingBottom: 144,
+    paddingBottom: Spacing.xl,
   },
   headerContent: {
     width: '100%',
     paddingBottom: Spacing.sm,
   },
-  largeTitleContainer: {
-    paddingVertical: Spacing.lg,
-    gap: Spacing.xs,
-  },
-  largeTitle: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '700',
-    letterSpacing: -1.0,
+  titleBlock: {
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
+    gap: Spacing.sm,
   },
   listError: {
     marginBottom: Spacing.sm,
@@ -318,32 +340,28 @@ const styles = StyleSheet.create({
   emptyCopy: {
     marginTop: Spacing.md,
   },
-  floatingComposerWrap: {
-    position: 'absolute',
-    bottom: Spacing.lg,
-    left: 0,
-    right: 0,
+  composerWrap: {
+    borderTopWidth: 1,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
     alignItems: 'center',
   },
-  floatingComposerContainer: {
+  composer: {
     width: '100%',
     maxWidth: LayoutTokens.contentMaxWidth,
-  },
-  floatingComposerGlass: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: Radius.lg,
     borderWidth: 1,
+    padding: Spacing.xs,
   },
-  floatingComposerInner: {
+  composerInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: Spacing.xs,
-    flex: 1,
   },
-  floatingInput: {
+  composerInput: {
     flex: 1,
     fontSize: 15,
+    lineHeight: 21,
+    maxHeight: 72,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 10,
   },

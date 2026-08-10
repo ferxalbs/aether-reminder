@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
@@ -130,58 +129,25 @@ export default function RootLayout() {
     };
   }, [boot.phase, refreshAllSurfaces, syncNotifications]);
 
-  if (boot.phase === 'loading') {
-    return (
-      <SafeAreaProvider>
-        <View style={[styles.boot, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-          <ActivityIndicator color={isDark ? Colors.white : Colors.black} />
-          <Typography variant="caption" color={Colors.zinc500} style={styles.bootText}>
-            Preparing local data…
-          </Typography>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
-
-  if (boot.phase === 'error') {
-    return (
-      <SafeAreaProvider>
-        <View style={[styles.boot, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-          <Typography variant="title" align="center">
-            Database unavailable
-          </Typography>
-          <Typography variant="body" color={Colors.zinc500} align="center" style={styles.bootText}>
-            {boot.message}
-          </Typography>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
+  const bgColor = isDark ? Colors.backgroundDark : Colors.backgroundLight;
 
   return (
     <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <View style={[styles.root, { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight }]}>
-        {notificationSync.message ? (
-          <NotificationSyncBanner
-            message={notificationSync.message}
-            retrying={notificationSync.phase === 'syncing'}
-            onRetry={() => { void syncNotifications(); }}
-          />
-        ) : null}
+      <View style={[styles.root, { backgroundColor: bgColor }]}>
+        {/* Always mount the Tabs navigator so Expo Router's useLinking can apply
+            the initial URL state without the "state update before mount" warning.
+            AssistantHost and AppBottomNavigation are gated on boot.phase === 'ready'
+            because they call getDatabase() synchronously at render time. */}
         <AssistantSurfaceProvider>
           <GlassSurfaceProvider blurTarget={blurTarget}>
-            <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
+            <View ref={blurTarget} style={styles.routeTarget}>
               <Tabs
                 tabBar={() => null}
                 screenOptions={{
                   headerShown: false,
                   tabBarHideOnKeyboard: true,
-                  sceneStyle: {
-                    backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight,
-                  },
+                  sceneStyle: { backgroundColor: bgColor },
                 }}
                 screenListeners={{
                   state: (event) => {
@@ -196,11 +162,45 @@ export default function RootLayout() {
                 <Tabs.Screen name="ai" options={{ href: null }} />
                 <Tabs.Screen name="transcribe" options={{ href: null }} />
               </Tabs>
-            </BlurTargetView>
-            <AppBottomNavigation blurTarget={blurTarget} />
-            <AssistantHost blurTarget={blurTarget} />
+            </View>
+            {boot.phase === 'ready' && (
+              <>
+                <AppBottomNavigation />
+                <AssistantHost blurTarget={blurTarget} />
+              </>
+            )}
           </GlassSurfaceProvider>
         </AssistantSurfaceProvider>
+
+        {/* Loading overlay — rendered on top while the DB bootstraps */}
+        {boot.phase === 'loading' && (
+          <View style={[StyleSheet.absoluteFill, styles.boot, { backgroundColor: bgColor }]}>
+            <ActivityIndicator color={isDark ? Colors.white : Colors.black} />
+            <Typography variant="caption" color={Colors.zinc500} style={styles.bootText}>
+              Preparing local data…
+            </Typography>
+          </View>
+        )}
+
+        {/* Error overlay — rendered on top if DB bootstrap fails */}
+        {boot.phase === 'error' && (
+          <View style={[StyleSheet.absoluteFill, styles.boot, { backgroundColor: bgColor }]}>
+            <Typography variant="title" align="center">
+              Database unavailable
+            </Typography>
+            <Typography variant="body" color={Colors.zinc500} align="center" style={styles.bootText}>
+              {boot.message}
+            </Typography>
+          </View>
+        )}
+
+        {boot.phase === 'ready' && notificationSync.message ? (
+          <NotificationSyncBanner
+            message={notificationSync.message}
+            retrying={notificationSync.phase === 'syncing'}
+            onRetry={() => { void syncNotifications(); }}
+          />
+        ) : null}
       </View>
     </SafeAreaProvider>
   );

@@ -3,22 +3,27 @@ import { StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CalendarDays, Plus } from 'lucide-react-native';
+import type { MenuAction } from '@expo/ui/community/menu';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { AetherMark } from '@/components/ui/AetherMark';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
+import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
+
+const upcomingActions: MenuAction[] = [
+  { id: 'create', title: 'New reminder', image: 'square.and.pencil' },
+  { id: 'voice', title: 'Speak a reminder', image: 'waveform' },
+  { id: 'refresh', title: 'Refresh upcoming', image: 'arrow.clockwise' },
+];
 
 export default function TasksScreen() {
   const isDark = useIsDark();
@@ -27,6 +32,7 @@ export default function TasksScreen() {
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const { startVoiceAssistant } = useAssistantActions();
 
   const upcomingTasks = useTasksUiStore((state) => state.upcomingTasks);
   const status = useTasksUiStore((state) => state.status);
@@ -39,8 +45,6 @@ export default function TasksScreen() {
   const undoing = useTasksUiStore((state) => state.undoing);
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
-
-  const activeCount = upcomingTasks.length;
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -70,6 +74,15 @@ export default function TasksScreen() {
     setEditingTask(null);
   }, []);
 
+  const handleContextAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'create') openEditor();
+      if (actionId === 'voice') startVoiceAssistant();
+      if (actionId === 'refresh') void refreshUpcoming();
+    },
+    [openEditor, refreshUpcoming, startVoiceAssistant],
+  );
+
   const assistantContext = useMemo(
     () => ({
       surface: 'upcoming',
@@ -91,6 +104,7 @@ export default function TasksScreen() {
 
   return (
     <SafeAreaView
+      edges={['top', 'left', 'right']}
       style={[
         styles.safeArea,
         { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
@@ -106,6 +120,7 @@ export default function TasksScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
+      <ContextualTopBar actions={upcomingActions} onAction={handleContextAction} />
       <TaskList
         tasks={upcomingTasks}
         onToggle={handleToggle}
@@ -120,82 +135,16 @@ export default function TasksScreen() {
         ]}
         header={
           <View style={styles.headerContent}>
-            <View style={styles.topBar}>
-              <View style={styles.brandLockup}>
-                <AetherMark size={32} muted={isDark} />
-                <View>
-                  <Typography variant="bodyBold">AETHER</Typography>
-                  <Typography
-                    variant="tiny"
-                    color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                  >
-                    Upcoming
-                  </Typography>
-                </View>
-              </View>
-              <AnimatedPressable
-                onPress={() => openEditor()}
-                scaleTo={0.94}
-                accessibilityRole="button"
-                accessibilityLabel="Create a reminder"
-                style={[
-                  styles.addButton,
-                  { backgroundColor: isDark ? Colors.white : Colors.black },
-                ]}
-              >
-                <Plus size={19} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />
-              </AnimatedPressable>
-            </View>
-
             <View style={styles.header}>
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.eyebrow}
-              >
-                YOUR RUNWAY
-              </Typography>
               <Typography variant="display">Upcoming</Typography>
               <Typography
                 variant="body"
                 color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
                 style={styles.subtitle}
               >
-                Keep the next few steps in view, without losing the calm.
+                Active reminders scheduled after today.
               </Typography>
             </View>
-
-            <Card variant="outline" padding={Spacing.md} style={styles.summaryCard}>
-              <View style={[styles.summaryIcon, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}>
-                <CalendarDays
-                  size={19}
-                  color={isDark ? Colors.white : Colors.black}
-                  strokeWidth={2}
-                />
-              </View>
-              <View style={styles.summaryCopy}>
-                <Typography variant="bodyBold">
-                  {activeCount === 0 ? 'Your runway is clear' : activeCount + ' upcoming reminders'}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                >
-                  {activeCount === 0
-                    ? 'Schedule the next thought when you are ready.'
-                    : 'Only active reminders with a future date appear here.'}
-                </Typography>
-              </View>
-              <View style={styles.summaryCount}>
-                <Typography variant="title">{upcomingTasks.length}</Typography>
-                <Typography
-                  variant="tiny"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                >
-                  TOTAL
-                </Typography>
-              </View>
-            </Card>
 
             {error ? (
               <Typography
@@ -231,7 +180,7 @@ export default function TasksScreen() {
                 align="center"
                 style={styles.emptyCopy}
               >
-                Capture a thought here or open All to revisit your complete library.
+                Add a reminder when you know what comes next.
               </Typography>
               <Button
                 label="Create a reminder"
@@ -265,65 +214,18 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     alignSelf: 'center',
-    paddingTop: Spacing.md,
-    paddingBottom: 144,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
   },
   headerContent: {
     width: '100%',
   },
-  topBar: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xl,
-  },
-  brandLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-  },
   header: {
     maxWidth: LayoutTokens.readingMaxWidth,
-    marginBottom: Spacing.lg,
-  },
-  eyebrow: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '700',
-    letterSpacing: 1.55,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.xxl,
   },
   subtitle: {
     marginTop: Spacing.xs,
-  },
-  summaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  summaryIcon: {
-    width: 38,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  summaryCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  summaryCount: {
-    alignItems: 'flex-end',
   },
   error: {
     marginBottom: Spacing.sm,

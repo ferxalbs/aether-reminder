@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlertCircle, Mic, Square } from 'lucide-react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -52,23 +59,54 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
               ? Colors.destructiveBackgroundDark
               : Colors.destructiveBackgroundLight
             : isDark
-              ? 'rgba(255, 255, 255, 0.12)'
-              : 'rgba(0, 0, 0, 0.10)',
+              ? Colors.rippleDark
+              : Colors.rippleLight,
           borderColor: isError
             ? isDark
               ? Colors.destructiveBorderDark
               : Colors.destructiveBorderLight
             : isDark
-              ? 'rgba(255, 255, 255, 0.22)'
-              : 'rgba(0, 0, 0, 0.18)',
+              ? Colors.borderDark
+              : Colors.borderLight,
         },
         disabled && styles.disabled,
       ]}
     >
-      <Icon size={18} color={iconColor} strokeWidth={2.2} />
+      {isActive ? (
+        <View style={styles.waveform} accessibilityElementsHidden>
+          <VoiceBar active delay={0} color={iconColor} />
+          <VoiceBar active delay={100} color={iconColor} />
+          <VoiceBar active delay={200} color={iconColor} />
+        </View>
+      ) : (
+        <Icon size={18} color={iconColor} strokeWidth={2.2} />
+      )}
     </AnimatedPressable>
   );
 };
+
+function VoiceBar({ active, delay, color }: { active: boolean; delay: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const scale = useSharedValue(0.55);
+
+  useEffect(() => {
+    if (!active || reduceMotion) {
+      scale.value = 0.7;
+      return;
+    }
+    scale.value = withRepeat(
+      withTiming(1, { duration: 320 + delay }),
+      -1,
+      true,
+    );
+  }, [active, delay, reduceMotion, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: scale.value }],
+  }));
+
+  return <Animated.View style={[styles.waveBar, { backgroundColor: color }, animatedStyle]} />;
+}
 
 const styles = StyleSheet.create({
   button: {
@@ -76,12 +114,25 @@ const styles = StyleSheet.create({
     height: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     borderWidth: 1,
     borderCurve: 'continuous',
     marginBottom: Spacing.xs,
   },
   disabled: {
     opacity: 0.5,
+  },
+  waveform: {
+    width: 18,
+    height: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  waveBar: {
+    width: 3,
+    height: 16,
+    borderRadius: Radius.pill,
   },
 });
