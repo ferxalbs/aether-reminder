@@ -10,7 +10,6 @@ import { TranscriptionError } from '@/services/transcription';
 import type { ActionReceipt } from '@/domain/receipts';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { useAgentSessionController } from './AgentSessionController';
-import { AppBottomNavigation } from './AppBottomNavigation';
 import { AssistantSheet } from './AssistantSheet';
 import type { AssistantSurfaceState } from './assistantTypes';
 import { useVoiceController } from './VoiceController';
@@ -273,10 +272,6 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
         onVoicePress={startVoiceAssistant}
-      />
-      <AppBottomNavigation
-        keyboardOffset={keyboardOffset}
-        blurTarget={blurTarget}
       />
     </View>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import { Typography } from '@/components/ui/Typography';
 import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
 import { GlassSurfaceProvider } from '@/components/ui/GlassSurface';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
+import { AppBottomNavigation } from '@/components/assistant/AppBottomNavigation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
 type BootState =
@@ -173,20 +174,23 @@ export default function RootLayout() {
         <AssistantSurfaceProvider>
           <GlassSurfaceProvider blurTarget={blurTarget}>
             <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
-              <Stack
+              <Tabs
+                tabBar={() => <AppBottomNavigation blurTarget={blurTarget} />}
                 screenOptions={{
                   headerShown: false,
-                  animation: 'fade_from_bottom',
-                  contentStyle: {
+                  tabBarHideOnKeyboard: true,
+                  sceneStyle: {
                     backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight,
                   },
                 }}
               >
-                <Stack.Screen name="index" options={{ title: 'Compose' }} />
-                <Stack.Screen name="tasks" options={{ title: 'Upcoming' }} />
-                <Stack.Screen name="all" options={{ title: 'All' }} />
-                <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-              </Stack>
+                <Tabs.Screen name="index" options={{ title: 'Compose' }} />
+                <Tabs.Screen name="tasks" options={{ title: 'Upcoming' }} />
+                <Tabs.Screen name="all" options={{ title: 'All' }} />
+                <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+                <Tabs.Screen name="ai" options={{ href: null }} />
+                <Tabs.Screen name="transcribe" options={{ href: null }} />
+              </Tabs>
             </BlurTargetView>
             <AssistantHost blurTarget={blurTarget} />
           </GlassSurfaceProvider>

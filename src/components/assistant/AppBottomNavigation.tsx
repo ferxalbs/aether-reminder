@@ -6,12 +6,11 @@ import { usePathname, useRouter } from 'expo-router';
 import { CalendarDays, ListTodo, PenLine, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantMaterial } from './AssistantMaterial';
 
 interface AppBottomNavigationProps {
-  keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
 }
 
@@ -30,30 +29,21 @@ const navigationItems: {
 ];
 
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
-  keyboardOffset,
   blurTarget,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const isDark = useIsDark();
-  const keyboardVisible = keyboardOffset > 0;
-
   const navigate = (destination: Destination) => {
     const isHome = destination === '/' && (pathname === '/' || pathname === '/index');
     if (pathname === destination || isHome) return;
-    router.replace(destination as never);
+    router.navigate(destination);
   };
-
-  const dockStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(keyboardVisible ? 0 : 1, { duration: 160 }),
-    transform: [{ translateY: withTiming(keyboardVisible ? 18 : 0, { duration: 180 }) }],
-  }));
 
   return (
     <Animated.View
-      pointerEvents={keyboardVisible ? 'none' : 'box-none'}
-      style={[styles.host, { bottom: Math.max(insets.bottom, 8) + 10 }, dockStyle]}
+      style={[styles.host, { height: LayoutTokens.navigationHeight + Math.max(insets.bottom, 8) + 10 }]}
     >
       <AssistantMaterial style={styles.bar} borderRadius={Radius.pill} blurTarget={blurTarget}>
         <View style={styles.navRow}>
@@ -142,13 +132,11 @@ function NavigationButton({
 
 const styles = StyleSheet.create({
   host: {
-    position: 'absolute',
     alignSelf: 'center',
     width: '92%',
     maxWidth: LayoutTokens.navigationMaxWidth,
-    height: LayoutTokens.navigationHeight,
-    zIndex: 30,
     alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   bar: {
     width: '100%',
