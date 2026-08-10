@@ -111,25 +111,27 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
         },
         ctx.eventSource,
       );
-      const reminder = startTime
-        ? await ctx.commands.scheduleReminder(
-            {
-              taskId: result.task.id,
-              scheduledDate: startDate,
-              scheduledTime: startTime,
-              timezone: ctx.context.timezone,
-              semantics: 'floating',
-            },
-            ctx.eventSource,
-          )
-        : null;
+      // The command layer owns the primary due-time reminder for every task.
+      // Do not schedule a second notification here.
+      const reminders = startTime
+        ? await ctx.services.reminders.listReminders({ taskId: result.task.id, enabledOnly: true })
+        : [];
+      const reminder = reminders.find((item) =>
+        item.scheduledDate === startDate && item.scheduledTime === startTime
+      ) ?? null;
       return {
         ok: true,
         data: {
           task: result.task,
           recurrence: result.rule,
-          reminder: reminder?.value,
-          osNotificationProjection: reminder?.osNotificationProjection,
+          reminder,
+          osNotificationProjection: reminder
+            ? reminder.projectionError
+              ? 'failed'
+              : reminder.nativeNotificationId
+                ? 'scheduled'
+                : undefined
+            : undefined,
         },
         receipt: { ...result.receipt, toolId: 'tasks.create_recurring' },
       };

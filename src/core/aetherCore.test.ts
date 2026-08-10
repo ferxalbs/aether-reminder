@@ -67,6 +67,13 @@ describe('AETHER Core execution boundary', () => {
       },
     });
 
+    const initialReminders = await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    });
+    expect(initialReminders).toHaveLength(1);
+    expect(initialReminders[0]?.scheduledTime).toBe('09:00');
+
     const completed = await core.commands.completeTask(created.task.id);
     expect(completed.value.completed).toBe(true);
     expect(completed.receipt.undo?.kind).toBe('task.reopen');
@@ -87,6 +94,77 @@ describe('AETHER Core execution boundary', () => {
     expect(await core.services.tasks.getTask('recurrence_daily-review-rule_2')).toBeNull();
     const restoredRule = await core.services.recurrence.getRuleForTask(created.task.id);
     expect(restoredRule?.occurrenceCount).toBe(1);
+
+    await db.closeAsync?.();
+  });
+
+  test('task editor save moves recurrence and its primary due reminder, then can disable both', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db);
+    await runMigrations(db);
+    const core = new AetherCore({ db });
+
+    const created = await core.commands.createRecurringTask({
+      task: {
+        title: 'Weekly planning',
+        dueDate: '2026-08-10',
+        dueTime: '09:00',
+        dueTimezone: 'America/Lima',
+        dueSemantics: 'floating',
+      },
+      recurrence: {
+        id: 'weekly-planning-rule',
+        frequency: 'weekly',
+        interval: 1,
+        weekdays: [1],
+        startDate: '2026-08-10',
+        timezone: 'America/Lima',
+      },
+    });
+
+    await core.commands.saveTaskEditorState(created.task.id, {
+      task: {
+        dueDate: '2026-08-12',
+        dueTime: '14:00',
+        dueTimezone: 'America/Lima',
+        dueSemantics: 'floating',
+      },
+      recurrence: {
+        frequency: 'weekly',
+        interval: 1,
+        weekdays: [3],
+        monthDays: null,
+        startDate: '2026-08-12',
+        endDate: null,
+        maxOccurrences: null,
+        mode: 'fixed',
+        timezone: 'America/Lima',
+      },
+    });
+
+    const movedTask = await core.services.tasks.getTask(created.task.id);
+    const movedRule = await core.services.recurrence.getRuleForTask(created.task.id);
+    const movedReminders = await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    });
+    expect(movedTask?.dueDate).toBe('2026-08-12');
+    expect(movedTask?.dueTime).toBe('14:00');
+    expect(movedRule?.startDate).toBe('2026-08-12');
+    expect(movedRule?.weekdays).toEqual([3]);
+    expect(movedReminders).toHaveLength(1);
+    expect(movedReminders[0]?.scheduledDate).toBe('2026-08-12');
+    expect(movedReminders[0]?.scheduledTime).toBe('14:00');
+
+    await core.commands.saveTaskEditorState(created.task.id, {
+      task: { title: 'Weekly planning', dueTime: null },
+      recurrence: null,
+    });
+    expect(await core.services.recurrence.getRuleForTask(created.task.id)).toBeNull();
+    expect(await core.services.reminders.listReminders({
+      taskId: created.task.id,
+      enabledOnly: true,
+    })).toHaveLength(0);
 
     await db.closeAsync?.();
   });

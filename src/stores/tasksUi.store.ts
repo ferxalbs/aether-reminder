@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { getDatabase, getDatabaseErrorMessage, isDatabaseReady } from '@/db';
 import type {
   CreateTaskInput,
+  RecurrenceRule,
   Task,
   TaskListItem,
   TaskPriority,
@@ -14,12 +15,25 @@ import type {
 } from '@/domain/entities';
 import { toTaskListItem } from '@/domain/entities';
 import { getAetherCore, type AetherCore } from '@/core';
+import type { TaskEditorRecurrenceDraft } from '@/core/commands';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import type { ActionReceipt } from '@/domain/receipts';
 import { getTaskUndoAction, getTaskUndoRestoreFields, getTaskUndoTaskId } from './taskUndo';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export interface TaskEditorCreateInput {
+  title: string;
+  notes?: string;
+  priority?: TaskPriority;
+  dueDate: string;
+  dueTime?: string | null;
+  dueTimezone?: string | null;
+  dueSemantics?: CreateTaskInput['dueSemantics'];
+  source?: CreateTaskInput['source'];
+  recurrence: TaskEditorRecurrenceDraft;
+}
 
 export interface TasksUiState {
   status: TasksUiStatus;
@@ -42,6 +56,7 @@ export interface TasksUiState {
   refreshAll: () => Promise<void>;
   /** Refresh all task projections concurrently and publish one coherent snapshot. */
   refreshAllSurfaces: () => Promise<void>;
+  getRecurrenceRule: (taskId: string) => Promise<RecurrenceRule | null>;
   createTask: (input: {
     title: string;
     notes?: string;
@@ -52,6 +67,11 @@ export interface TasksUiState {
     dueSemantics?: CreateTaskInput['dueSemantics'];
     source?: CreateTaskInput['source'];
   }) => Promise<Task>;
+  createTaskWithRecurrence: (input: TaskEditorCreateInput) => Promise<Task>;
+  saveTaskEditor: (
+    id: string,
+    input: { task: UpdateTaskInput; recurrence: TaskEditorRecurrenceDraft | null },
+  ) => Promise<Task>;
   createTasksBatch: (
     inputs: {
       title: string;
@@ -174,6 +194,15 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  getRecurrenceRule: async (taskId) => {
+    try {
+      return await core().services.recurrence.getRuleForTask(taskId);
+    } catch (error) {
+      reportNonFatalError('task-recurrence-read', error);
+      throw error;
+    }
+  },
+
   createTask: async (input) => {
     let value: Task;
     let receipt: ActionReceipt;
@@ -198,6 +227,50 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshAllSurfaces();
     return value;
+  },
+
+  createTaskWithRecurrence: async (input) => {
+    try {
+      const result = await core().commands.createRecurringTask(
+        {
+          task: {
+            title: input.title,
+            notes: input.notes ?? null,
+            priority: input.priority ?? 'medium',
+            dueDate: input.dueDate,
+            dueTime: input.dueTime ?? null,
+            dueTimezone: input.dueTimezone ?? null,
+            dueSemantics: input.dueSemantics ?? 'floating',
+            source: input.source ?? 'manual',
+            creationOrigin: input.source ?? 'manual',
+          },
+          recurrence: input.recurrence,
+        },
+        input.source ?? 'manual',
+      );
+      set({ undoReceipt: result.receipt, undoError: null });
+      set((s) => ({ revision: s.revision + 1 }));
+      await get().refreshAllSurfaces();
+      return result.task;
+    } catch (error) {
+      reportNonFatalError('task-create-recurring', error);
+      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  saveTaskEditor: async (id, input) => {
+    try {
+      const result = await core().commands.saveTaskEditorState(id, input);
+      set({ undoReceipt: result.receipt, undoError: null });
+      set((s) => ({ revision: s.revision + 1 }));
+      await get().refreshAllSurfaces();
+      return result.value;
+    } catch (error) {
+      reportNonFatalError('task-editor-save', error);
+      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
   },
 
   updateTask: async (id, input) => {
