@@ -40,6 +40,8 @@ interface AssistantSurfaceContextValue {
   setSnapshot: (snapshot: ContextSnapshot) => void;
   requestAssistant: (mode: keyof AssistantActionHandlers) => void;
   registerAssistantActions: (actions: AssistantActionHandlers | null) => void;
+  assistantActive: boolean;
+  setAssistantActive: (active: boolean) => void;
 }
 
 const AssistantSurfaceContext = createContext<AssistantSurfaceContextValue | null>(null);
@@ -50,12 +52,13 @@ export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({ ch
   const requestAssistant = useCallback((mode: keyof AssistantActionHandlers) => {
     actionsRef.current?.[mode]();
   }, []);
+  const [assistantActive, setAssistantActive] = useState(false);
   const registerAssistantActions = useCallback((actions: AssistantActionHandlers | null) => {
     actionsRef.current = actions;
   }, []);
   const value = useMemo(
-    () => ({ snapshot, setSnapshot, requestAssistant, registerAssistantActions }),
-    [registerAssistantActions, requestAssistant, snapshot],
+    () => ({ snapshot, setSnapshot, requestAssistant, registerAssistantActions, assistantActive, setAssistantActive }),
+    [registerAssistantActions, requestAssistant, snapshot, assistantActive, setAssistantActive],
   );
   return <AssistantSurfaceContext.Provider value={value}>{children}</AssistantSurfaceContext.Provider>;
 };
@@ -69,6 +72,11 @@ export function useAssistantSurface(snapshot: ContextSnapshot): void {
       setSnapshot(snapshot);
     }, [setSnapshot, snapshot]),
   );
+}
+
+export function useAssistantActive(): boolean {
+  const context = useContext(AssistantSurfaceContext);
+  return context?.assistantActive ?? false;
 }
 
 export function useAssistantActions(): {
@@ -89,11 +97,13 @@ export function useAssistantActions(): {
 export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const router = useRouter();
   const isDark = useIsDark();
-  const { snapshot, registerAssistantActions } = useContext(AssistantSurfaceContext) ?? {
+  const { snapshot, registerAssistantActions, setAssistantActive } = useContext(AssistantSurfaceContext) ?? {
     snapshot: defaultSnapshot,
     setSnapshot: () => undefined,
     requestAssistant: () => undefined,
     registerAssistantActions: () => undefined,
+    assistantActive: false,
+    setAssistantActive: () => undefined,
   };
   const [surface, setSurface] = useState<AssistantSurfaceState>('closed');
   const [composerValue, setComposerValue] = useState('');
@@ -248,7 +258,11 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     });
   }, [composerValue, controller]);
 
-  const showScrim = surface === 'medium' || surface === 'full';
+  useEffect(() => {
+    setAssistantActive(surface !== 'closed' && surface !== 'closing');
+  }, [surface, setAssistantActive]);
+
+  const showScrim = surface !== 'closed' && surface !== 'closing';
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

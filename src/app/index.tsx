@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,8 +20,9 @@ import { AetherComposer } from '@/components/ui/AetherComposer';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
-import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
+import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 import type { TaskListItem } from '@/domain/entities';
@@ -33,6 +34,8 @@ export default function TodayScreen() {
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
   const { startVoiceAssistant } = useAssistantActions();
+  const geometry = useBottomChromeGeometry();
+  const assistantActive = useAssistantActive();
 
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -160,6 +163,7 @@ export default function TodayScreen() {
             {
               paddingHorizontal: horizontalPadding,
               maxWidth: LayoutTokens.contentMaxWidth,
+              paddingBottom: geometry.contentBottomInset,
             },
           ]}
           header={
@@ -197,16 +201,18 @@ export default function TodayScreen() {
           }
         />
 
-        <Animated.View
-          style={[
-            styles.composerWrap,
-            {
-              paddingHorizontal: horizontalPadding,
-            },
-          ]}
-          entering={reduceMotion ? undefined : FadeInDown.duration(260).springify()}
-        >
-          <AetherComposer
+        {!assistantActive && (
+          <Animated.View
+            style={[
+              styles.composerWrap,
+              {
+                paddingHorizontal: horizontalPadding,
+                bottom: geometry.composerBottom,
+              },
+            ]}
+            entering={reduceMotion ? undefined : FadeInDown.duration(260).springify()}
+          >
+            <AetherComposer
             value={quickTitle}
             onChangeText={(val) => {
               setQuickTitle(val);
@@ -220,6 +226,7 @@ export default function TodayScreen() {
             onAttachFile={() => openEditor()}
           />
         </Animated.View>
+        )}
       </KeyboardAvoidingView>
 
       <TaskEditorSheet
@@ -241,7 +248,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingTop: Spacing.md,
-    paddingBottom: 120,
   },
   headerContent: {
     width: '100%',
@@ -261,7 +267,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 80,
     alignItems: 'center',
     zIndex: 90,
   },

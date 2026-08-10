@@ -8,13 +8,13 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useSemanticColors } from '@/theme/useSemanticColors';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
 
 type Destination = '/' | '/tasks' | '/all' | '/settings';
 
@@ -32,8 +32,8 @@ interface AppBottomNavigationProps {
 export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const insets = useSafeAreaInsets();
   const isDark = useIsDark();
+  const geometry = useBottomChromeGeometry();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
     pathname === destination || (destination === '/' && pathname === '/index');
 
   return (
-    <View style={[styles.host, { bottom: Math.max(12, insets.bottom + 4) }]} pointerEvents="box-none">
+    <View style={[styles.host, { bottom: geometry.navigationBottom }]} pointerEvents="box-none">
       <GlassSurface
         blurTarget={blurTarget}
         borderRadius={Radius.pill}

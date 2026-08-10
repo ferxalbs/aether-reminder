@@ -39,12 +39,17 @@ export class AetherCore {
 }
 
 let appCore: AetherCore | null = null;
+let appCoreDatabase: SqlDatabase | null = null;
 
 export function getAetherCore(db: SqlDatabase): AetherCore {
-  appCore ??= new AetherCore({ db });
+  if (!appCore || appCoreDatabase !== db) {
+    appCore = new AetherCore({ db });
+    appCoreDatabase = db;
+  }
   return appCore;
 }
 
 export function resetAetherCoreForTests(): void {
   appCore = null;
+  appCoreDatabase = null;
 }

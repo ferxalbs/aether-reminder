@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
-import { getDatabase } from '@/db';
+import {
+  getDatabase,
+  recoverDatabase,
+  RECREATE_DATABASE_CONFIRMATION,
+  type DatabaseRecoveryMode,
+} from '@/db';
 import { configureLocalNotifications } from '@/services/notifications/localNotificationProjection';
 import { registerNotificationActionListener } from '@/services/notifications/notificationActions';
 import { getNotificationErrorMessage } from '@/services/notifications/errors';
@@ -17,6 +22,7 @@ import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Colors } from '@/theme/tokens';
 import { Typography } from '@/components/ui/Typography';
+import { Button } from '@/components/ui/Button';
 import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
 import { AppBottomNavigation } from '@/components/assistant/AppBottomNavigation';
@@ -71,6 +77,64 @@ export default function RootLayout() {
     return operation;
   }, []);
 
+  const runDatabaseRecovery = useCallback(async (mode: Exclude<DatabaseRecoveryMode, 'check'>) => {
+    setBoot({ phase: 'loading' });
+    try {
+      await recoverDatabase(
+        mode,
+        mode === 'recreate' ? RECREATE_DATABASE_CONFIRMATION : undefined,
+      );
+      await bootstrapAppData();
+      if (mode === 'recreate') {
+        useTasksUiStore.setState({
+          status: 'idle',
+          error: null,
+          todayTasks: [],
+          upcomingTasks: [],
+          allTasks: [],
+          undoReceipt: null,
+          undoError: null,
+          undoing: false,
+        });
+      }
+      setBoot({ phase: 'ready' });
+      await refreshAllSurfaces();
+      void syncNotifications();
+    } catch (error) {
+      reportNonFatalError(`database-recovery-${mode}`, error);
+      setBoot({ phase: 'error', message: getDatabaseErrorMessage(error) });
+    }
+  }, [refreshAllSurfaces, syncNotifications]);
+
+  const confirmDatabaseRecreation = useCallback(() => {
+    Alert.alert(
+      'Recreate local database?',
+      'This permanently deletes all reminders and local history on this device. Saved provider credentials are not deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete and recreate',
+          style: 'destructive',
+          onPress: () => { void runDatabaseRecovery('recreate'); },
+        },
+      ],
+    );
+  }, [runDatabaseRecovery]);
+
+  const checkDatabaseIntegrity = useCallback(async () => {
+    setBoot({ phase: 'loading' });
+    try {
+      await recoverDatabase('check');
+      setBoot({
+        phase: 'error',
+        message: 'Integrity check passed. Your data was not changed. You can retry safely.',
+      });
+    } catch (error) {
+      reportNonFatalError('database-integrity-check', error);
+      setBoot({ phase: 'error', message: getDatabaseErrorMessage(error) });
+    }
+  }, []);
+
   useEffect(() => {
     void loadCredentials().catch((error: unknown) => {
       reportNonFatalError('credentials-load', error);
@@ -89,6 +153,7 @@ export default function RootLayout() {
         void syncNotifications();
       } catch (error) {
         if (cancelled) return;
+        reportNonFatalError('database-bootstrap', error);
         setBoot({ phase: 'error', message: getDatabaseErrorMessage(error) });
       }
     })();
@@ -191,6 +256,25 @@ export default function RootLayout() {
             <Typography variant="body" color={Colors.zinc500} align="center" style={styles.bootText}>
               {boot.message}
             </Typography>
+            <View style={styles.recoveryActions}>
+              <Button
+                label="Retry safely"
+                onPress={() => { void runDatabaseRecovery('retry'); }}
+                fullWidth
+              />
+              <Button
+                label="Check database"
+                onPress={() => { void checkDatabaseIntegrity(); }}
+                variant="secondary"
+                fullWidth
+              />
+              <Button
+                label="Recreate local database"
+                onPress={confirmDatabaseRecreation}
+                variant="destructive"
+                fullWidth
+              />
+            </View>
           </View>
         )}
 
@@ -219,6 +303,12 @@ const styles = StyleSheet.create({
   },
   bootText: {
     marginTop: 4,
+  },
+  recoveryActions: {
+    width: '100%',
+    maxWidth: 360,
+    gap: 12,
+    marginTop: 12,
   },
   routeTarget: {
     flex: 1,

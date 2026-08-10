@@ -42,6 +42,7 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useAssistantSurface } from '@/components/assistant/AssistantHost';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
 import { DEFAULT_OPENROUTER_MODEL_ID, type AIModel } from '@/services/ai/models';
 import { canRunAsAgent } from '@/services/ai/inference';
 import { fetchAvailableModels, testOpenRouterConnection } from '@/services/ai/openrouter';
@@ -67,6 +68,7 @@ type ProviderName = 'OpenRouter' | 'OpenAI';
 export default function SettingsScreen() {
   const reduceMotion = useReducedMotion();
   const entering = reduceMotion ? undefined : settingsEntering;
+  const geometry = useBottomChromeGeometry();
   const theme = useSettingsStore((s) => s.theme);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
   const openAiApiKey = useSettingsStore((s) => s.openAiApiKey);
@@ -292,7 +294,7 @@ export default function SettingsScreen() {
     >
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: geometry.settingsContentBottomInset }]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         keyboardShouldPersistTaps="handled"
@@ -930,7 +932,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: LayoutTokens.screenHorizontal,
     paddingTop: Spacing.xl,
-    paddingBottom: Spacing.huge,
   },
   header: {
     maxWidth: LayoutTokens.readingMaxWidth,

@@ -14,8 +14,9 @@ import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
-import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
+import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 
@@ -33,6 +34,8 @@ export default function RemindersScreen() {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
   const { startVoiceAssistant } = useAssistantActions();
+  const geometry = useBottomChromeGeometry();
+  const assistantActive = useAssistantActive();
 
   const allTasks = useTasksUiStore((state) => state.allTasks);
   const status = useTasksUiStore((state) => state.status);
@@ -157,6 +160,7 @@ export default function RemindersScreen() {
           {
             paddingHorizontal: horizontalPadding,
             maxWidth: LayoutTokens.contentMaxWidth,
+            paddingBottom: geometry.contentBottomInset,
           },
         ]}
         header={
@@ -215,10 +219,14 @@ export default function RemindersScreen() {
         }
       />
 
+      {!assistantActive && (
       <View
         style={[
           styles.composerWrap,
-          { paddingHorizontal: horizontalPadding },
+          { 
+            paddingHorizontal: horizontalPadding,
+            bottom: geometry.composerBottom,
+          },
         ]}
       >
         <AetherComposer
@@ -232,6 +240,7 @@ export default function RemindersScreen() {
           onAttachFile={() => openEditor()}
         />
       </View>
+      )}
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -251,7 +260,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingTop: Spacing.lg,
-    paddingBottom: 120,
   },
   headerContent: {
     width: '100%',
@@ -286,7 +294,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 80,
     alignItems: 'center',
     zIndex: 90,
   },

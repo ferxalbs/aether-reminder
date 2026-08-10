@@ -4,7 +4,7 @@
  * (and small helpers). Mutations go through domain services, not raw SQL.
  */
 import { create } from 'zustand';
-import { getDatabase, getDatabaseErrorMessage, isDatabaseReady } from '@/db';
+import { getDatabaseErrorMessage, initializeDatabase } from '@/db';
 import type {
   CreateTaskInput,
   RecurrenceRule,
@@ -89,11 +89,9 @@ export interface TasksUiState {
   dismissUndo: () => void;
 }
 
-function core(): AetherCore {
-  if (!isDatabaseReady()) {
-    throw new Error('Database not ready');
-  }
-  return getAetherCore(getDatabase());
+async function core(): Promise<AetherCore> {
+  const { db } = await initializeDatabase();
+  return getAetherCore(db);
 }
 
 export const useTasksUiStore = create<TasksUiState>((set, get) => ({
@@ -110,7 +108,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshToday: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await core().services.tasks.listTasks({
+      const tasks = await (await core()).services.tasks.listTasks({
         scope: 'today',
         localDate: getLocalDateString(),
       });
@@ -131,7 +129,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshUpcoming: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await core().services.tasks.listTasks({
+      const tasks = await (await core()).services.tasks.listTasks({
         scope: 'upcoming',
         localDate: getLocalDateString(),
         limit: 100,
@@ -153,7 +151,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshAll: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = await core().services.tasks.listTasks({ scope: 'all' });
+      const tasks = await (await core()).services.tasks.listTasks({ scope: 'all' });
       set({
         allTasks: tasks.map(toTaskListItem),
         status: 'ready',
@@ -171,7 +169,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   refreshAllSurfaces: async () => {
     set({ status: 'loading', error: null });
     try {
-      const tasks = core().services.tasks;
+      const tasks = (await core()).services.tasks;
       const localDate = getLocalDateString();
       const [today, upcoming, all] = await Promise.all([
         tasks.listTasks({ scope: 'today', localDate }),
@@ -196,7 +194,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
   getRecurrenceRule: async (taskId) => {
     try {
-      return await core().services.recurrence.getRuleForTask(taskId);
+      return await (await core()).services.recurrence.getRuleForTask(taskId);
     } catch (error) {
       reportNonFatalError('task-recurrence-read', error);
       throw error;
@@ -207,7 +205,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     let value: Task;
     let receipt: ActionReceipt;
     try {
-      ({ value, receipt } = await core().commands.createTask({
+      ({ value, receipt } = await (await core()).commands.createTask({
         title: input.title,
         notes: input.notes ?? null,
         priority: input.priority ?? 'medium',
@@ -231,7 +229,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
   createTaskWithRecurrence: async (input) => {
     try {
-      const result = await core().commands.createRecurringTask(
+      const result = await (await core()).commands.createRecurringTask(
         {
           task: {
             title: input.title,
@@ -261,7 +259,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
   saveTaskEditor: async (id, input) => {
     try {
-      const result = await core().commands.saveTaskEditorState(id, input);
+      const result = await (await core()).commands.saveTaskEditorState(id, input);
       set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
       await get().refreshAllSurfaces();
@@ -277,7 +275,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     let value: Task;
     let receipt: ActionReceipt;
     try {
-      ({ value, receipt } = await core().commands.updateTask(id, input));
+      ({ value, receipt } = await (await core()).commands.updateTask(id, input));
     } catch (error) {
       reportNonFatalError('task-update', error);
       set({ status: 'error', error: getDatabaseErrorMessage(error) });
@@ -292,7 +290,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   createTasksBatch: async (inputs) => {
     let lastReceipt: ActionReceipt | null = null;
     try {
-      const commands = core().commands;
+      const commands = (await core()).commands;
       for (const input of inputs) {
         const result = await commands.createTask({
           title: input.title,
@@ -342,7 +340,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      const commands = core().commands;
+      const commands = (await core()).commands;
       const result = nextCompleted
         ? await commands.completeTask(id)
         : await commands.reopenTask(id);
@@ -373,7 +371,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }));
 
     try {
-      const result = await core().commands.deleteTask(id);
+      const result = await (await core()).commands.deleteTask(id);
       set({ undoReceipt: result.receipt, undoError: null });
     } catch (error) {
       reportNonFatalError('task-delete', error);
@@ -407,7 +405,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
     set({ undoing: true, undoError: null });
     try {
-      const commands = core().commands;
+      const commands = (await core()).commands;
       switch (action) {
         case 'task.soft_delete':
           await commands.deleteTask(taskId, 'undo');

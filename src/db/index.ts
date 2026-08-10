@@ -3,10 +3,13 @@ export {
   getDatabase,
   isDatabaseReady,
   getDatabaseInitError,
+  recoverDatabase,
   initializeDatabaseWith,
   __setDatabaseForTests,
   DATABASE_NAME,
+  RECREATE_DATABASE_CONFIRMATION,
 } from './client';
+export type { DatabaseRecoveryMode, DatabaseRecoveryResult } from './client';
 export { bootstrapAppData } from './bootstrap';
 export type { BootstrapResult } from './bootstrap';
 export { DatabaseError, getDatabaseErrorMessage } from './errors';

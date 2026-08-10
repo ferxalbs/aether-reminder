@@ -9,6 +9,10 @@ export type DatabaseErrorCode =
   | 'LEGACY_MIGRATION_FAILED'
   | 'LEGACY_MIGRATION_INCOMPLETE'
   | 'TRANSACTION_FAILED'
+  | 'INTEGRITY_CHECK_FAILED'
+  | 'RECOVERY_FAILED'
+  | 'RECOVERY_CONFIRMATION_REQUIRED'
+  | 'RECOVERY_IN_PROGRESS'
   | 'UNKNOWN';
 
 export class DatabaseError extends Error {
@@ -34,6 +38,14 @@ export function getDatabaseErrorMessage(error: unknown): string {
         return 'Database upgrade failed. Your data was not partially applied.';
       case 'LEGACY_MIGRATION_FAILED':
         return 'Could not import previous tasks. Existing data was left unchanged.';
+      case 'INTEGRITY_CHECK_FAILED':
+        return 'The local database did not pass its integrity check.';
+      case 'RECOVERY_FAILED':
+        return 'Database recovery did not complete. Retry recovery before continuing.';
+      case 'RECOVERY_CONFIRMATION_REQUIRED':
+        return 'Database recreation requires confirmation.';
+      case 'RECOVERY_IN_PROGRESS':
+        return 'Database recovery is already in progress.';
       case 'NOT_FOUND':
         return 'That item was not found.';
       case 'VALIDATION_FAILED':

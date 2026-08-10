@@ -2,6 +2,38 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.09 (4) [Safe Database Startup and Recovery]
+
+### Startup readiness boundary
+
+- Removed the synchronous task-store readiness exception that could emit
+  `Database not ready` while Expo Router mounted the focused route during normal
+  database bootstrap.
+- Task reads and mutations now join the idempotent database initialization promise,
+  and the AETHER core is rebuilt when recovery replaces its database handle.
+
+### Guarded recovery modes
+
+- Added data-preserving retry, read-only SQLite `quick_check`, and destructive
+  recreation modes. Recovery operations are serialized, failed initialization
+  handles are closed, and destructive recreation requires an exact confirmation
+  token before deleting only `aether.db` and rerunning migrations.
+- Added boot-error controls for safe retry and integrity checking, plus a separate
+  destructive confirmation dialog that states reminders and local history will be
+  removed while SecureStore provider credentials remain untouched.
+- Added focused tests for retry preservation, integrity pass/failure behavior,
+  destructive confirmation, and overlapping recovery rejection.
+
+### Validation and remaining device scope
+
+- `bun test`: 140 passed, 1 intentional OpenRouter smoke test skipped, 0 failed.
+- `bun run typecheck` and `git diff --check`: passed. `bun run lint` completed
+  with one unrelated unused-variable warning in an existing uncommitted
+  `AppBottomNavigation` edit.
+- Android Hermes export passed with 3,673 modules.
+- No Android device, emulator, or `adb` was available, so database recreation and
+  the recovery dialog remain statically verified rather than real-device confirmed.
+
 ## Unreleased - 2026.08.09 (3) [Android Runtime Crash Safety and Overlay Ownership]
 
 ### Native blur hierarchy correction

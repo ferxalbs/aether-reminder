@@ -13,9 +13,19 @@ export interface DatabaseHandle {
   migration: MigrationResult;
 }
 
+export type DatabaseRecoveryMode = 'retry' | 'check' | 'recreate';
+
+export type DatabaseRecoveryResult =
+  | { mode: 'retry' | 'recreate'; handle: DatabaseHandle }
+  | { mode: 'check'; integrity: 'ok' };
+
+/** Exact token required by the destructive recovery path. */
+export const RECREATE_DATABASE_CONFIRMATION = 'RECREATE_LOCAL_DATABASE';
+
 let readyHandle: DatabaseHandle | null = null;
 let initPromise: Promise<DatabaseHandle> | null = null;
 let lastError: DatabaseError | null = null;
+let recoveryInProgress = false;
 
 function wrapExpoDatabase(native: SQLiteDatabase): SqlDatabase {
   return {
@@ -53,16 +63,18 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
+    let db: SqlDatabase | null = null;
     try {
       const { openDatabaseAsync } = await import('expo-sqlite');
       const native = await openDatabaseAsync(DATABASE_NAME);
-      const db = wrapExpoDatabase(native);
+      db = wrapExpoDatabase(native);
       await applyPragmas(db);
       const migration = await runMigrations(db);
       readyHandle = { db, status: 'ready', migration };
       lastError = null;
       return readyHandle;
     } catch (cause) {
+      await db?.closeAsync?.().catch(() => undefined);
       lastError =
         cause instanceof DatabaseError
           ? cause
@@ -73,6 +85,75 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
   })();
 
   return initPromise;
+}
+
+/**
+ * Explicit recovery boundary. Retry and check preserve data. Recreate is the
+ * only destructive mode and requires the exported confirmation token.
+ */
+export async function recoverDatabase(
+  mode: DatabaseRecoveryMode,
+  confirmation?: string,
+): Promise<DatabaseRecoveryResult> {
+  if (recoveryInProgress) {
+    throw new DatabaseError('RECOVERY_IN_PROGRESS', 'Database recovery is already in progress.');
+  }
+  if (mode === 'recreate' && confirmation !== RECREATE_DATABASE_CONFIRMATION) {
+    throw new DatabaseError(
+      'RECOVERY_CONFIRMATION_REQUIRED',
+      'Refusing to recreate the database without explicit confirmation.',
+    );
+  }
+
+  recoveryInProgress = true;
+  try {
+    if (mode === 'check') {
+      await initPromise?.catch(() => undefined);
+      let transientDatabase: SqlDatabase | null = null;
+      try {
+        if (!readyHandle) {
+          const { openDatabaseAsync } = await import('expo-sqlite');
+          transientDatabase = wrapExpoDatabase(await openDatabaseAsync(DATABASE_NAME));
+        }
+        const db = readyHandle?.db ?? transientDatabase;
+        const result = await db?.getFirstAsync<Record<string, string>>('PRAGMA quick_check');
+        if (!result || !Object.values(result).some((value) => value === 'ok')) {
+          throw new DatabaseError(
+            'INTEGRITY_CHECK_FAILED',
+            'SQLite PRAGMA quick_check did not return ok.',
+            result,
+          );
+        }
+      } finally {
+        await transientDatabase?.closeAsync?.().catch(() => undefined);
+      }
+      return { mode, integrity: 'ok' };
+    }
+
+    if (mode === 'retry') {
+      return { mode, handle: await initializeDatabase() };
+    }
+
+    // Any initializer already in flight must settle before its handle can be
+    // closed and the single, explicit database file can be removed.
+    await initPromise?.catch(() => undefined);
+    const handleToClose = readyHandle;
+    readyHandle = null;
+    initPromise = null;
+    lastError = null;
+    await handleToClose?.db.closeAsync?.();
+
+    const { deleteDatabaseAsync } = await import('expo-sqlite');
+    await deleteDatabaseAsync(DATABASE_NAME);
+    return { mode, handle: await initializeDatabase() };
+  } catch (cause) {
+    if (cause instanceof DatabaseError) throw cause;
+    const error = new DatabaseError('RECOVERY_FAILED', `Database ${mode} recovery failed.`, cause);
+    lastError = error;
+    throw error;
+  } finally {
+    recoveryInProgress = false;
+  }
 }
 
 export function getDatabase(): SqlDatabase {
