@@ -61,9 +61,10 @@ events, and unmount all close the active session and microphone resources.
 Only one voice session can be active. Empty or cancelled sessions cannot submit
 tasks.
 
-Expo SDK 57 `expo-audio` `useAudioStream()` supplies mono, little-endian
-PCM16 at 24 kHz. The current transport is a React Native WebSocket using the
-OpenAI Realtime transcription event contract. OpenAI's official mobile guidance
-prefers WebRTC/ephemeral tokens; this repository has no token service or
-React-Native WebRTC dependency, so live-device security and transport behavior
-still require development-build validation.
+Expo SDK 57 `expo-audio` `useAudioStream()` supplies little-endian PCM16. The
+normalizer uses the actual native sample rate and channel count to produce mono
+24 kHz PCM16. The mobile transport negotiates OpenAI Realtime through
+`/v1/realtime/calls` using a short-lived client secret, then sends bounded PCM
+append and manual commit events over an ordered WebRTC data channel. The
+application-owned or BYOK standard key never enters that transport. Native
+WebRTC behavior still requires user-driven validation in a new development build.

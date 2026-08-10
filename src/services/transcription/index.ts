@@ -24,7 +24,11 @@ export {
   type VoiceErrorCode,
 } from './errors';
 export { ensureMicrophonePermission, type MicrophonePermissionGateway } from './permissions';
-export { OpenAIRealtimeWebSocketTransport, type OpenAIRealtimeTransportOptions } from './openaiRealtimeTransport';
+export {
+  OpenAIRealtimeWebRtcTransport,
+  type OpenAIRealtimeWebRtcTransportOptions,
+  type RealtimePeerConnectionFactory,
+} from './openaiRealtimeWebRtcTransport';
 export { TranscriptReconciler } from './reconciler';
 export {
   VoiceStateMachine,

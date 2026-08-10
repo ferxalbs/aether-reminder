@@ -14,10 +14,13 @@ export type VoiceDiagnosticStage =
   | 'credential_request_started'
   | 'credential_request_succeeded'
   | 'credential_request_failed'
-  | 'websocket_connecting'
-  | 'websocket_open'
-  | 'websocket_error'
-  | 'websocket_closed'
+  | 'webrtc_call_connecting'
+  | 'webrtc_call_succeeded'
+  | 'webrtc_call_failed'
+  | 'peer_connection_state'
+  | 'data_channel_open'
+  | 'data_channel_error'
+  | 'data_channel_closed'
   | 'session_configuration_sent'
   | 'session_configuration_accepted'
   | 'session_configuration_rejected'
@@ -40,7 +43,9 @@ export interface VoiceDiagnosticFields {
   pcmChunksReceived?: number;
   pcmBytesProduced?: number;
   credentialRequest?: 'not_started' | 'pending' | 'succeeded' | 'failed';
-  webSocketState?: 'not_started' | 'connecting' | 'open' | 'error' | 'closed';
+  webRtcCallState?: 'not_started' | 'connecting' | 'succeeded' | 'failed';
+  peerConnectionState?: 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
+  dataChannelState?: 'not_started' | 'connecting' | 'open' | 'error' | 'closed';
   sessionConfiguration?: 'not_started' | 'pending' | 'accepted' | 'rejected';
   audioAppendCount?: number;
   commitSent?: boolean;
@@ -96,7 +101,9 @@ export class DevelopmentVoiceDiagnostics implements VoiceDiagnosticReporter {
     permissionState: 'unknown',
     microphoneStreamStarted: false,
     credentialRequest: 'not_started',
-    webSocketState: 'not_started',
+    webRtcCallState: 'not_started',
+    peerConnectionState: 'new',
+    dataChannelState: 'not_started',
     sessionConfiguration: 'not_started',
     pcmChunksReceived: 0,
     pcmBytesProduced: 0,

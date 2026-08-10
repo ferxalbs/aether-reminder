@@ -24,25 +24,26 @@ to the existing assistant/reminder interpretation pipeline.
   and continuously resamples the actual native rate to 24 kHz without resetting phase.
 - `OpenAIByokClientSecretProvider`: uses the user-owned SecureStore key only to create a
   short-lived `/v1/realtime/client_secrets` credential.
-- `OpenAIRealtimeWebSocketTransport`: ordered bounded PCM append queue, manual commit,
-  Realtime events, timeouts, and socket cleanup. The standard key never reaches it.
+- `OpenAIRealtimeWebRtcTransport`: GA `/v1/realtime/calls` SDP negotiation, ordered
+  `oai-events` data channel, bounded PCM append queue, manual commit, Realtime events,
+  timeouts, and native peer cleanup. The standard key never reaches it.
 - `TranscriptReconciler`: reconciles deltas and authoritative completions by `item_id`.
 - `DevelopmentVoiceDiagnostics`: development-only structured stage/counter output. Its
   schema cannot contain credentials, authorization headers, PCM, or transcript text.
 
 ## Transport decision
 
-OpenAI generally recommends WebRTC for a browser or mobile client. AETHER intentionally
-uses WebSocket for this transcription-only implementation because Expo supplies raw PCM
-buffers that must be explicitly downmixed/resampled and sent as
-`input_audio_buffer.append`. `react-native-webrtc` captures its own native media track
-and sends WebRTC audio rather than accepting Expo `ArrayBuffer` PCM. Combining both
-would require a custom native WebRTC audio source and would replace the tested PCM path.
+OpenAI recommends WebRTC for mobile clients. AETHER establishes the GA WebRTC session
+through `/v1/realtime/calls` and uses its ordered `oai-events` data channel for client
+events. Expo remains the sole microphone owner: validated, downmixed, resampled PCM16 is
+sent in bounded `input_audio_buffer.append` events, followed by a manual
+`input_audio_buffer.commit`. This avoids a second native microphone capture path while
+using the mobile Realtime transport and keeping the exact PCM contract observable.
 
-The `RealtimeTranscriptionTransport` interface keeps a future WebRTC implementation from
-changing `VoiceSession`. Such a migration would need `react-native-webrtc`, compatible
-Expo config/native integration, a new development build, and a separate capture/format
-validation strategy.
+`react-native-webrtc` is a native dependency, so this transport requires a newly built
+Expo development client. It is autolinked; no WebRTC camera/microphone config plugin is
+used because WebRTC does not own media capture in this architecture. `expo-audio`
+continues to own the sole microphone permission and audio session.
 
 ## Production configuration
 

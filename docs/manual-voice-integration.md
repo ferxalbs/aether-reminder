@@ -60,8 +60,8 @@ file or an `EXPO_PUBLIC_` variable.
     `session_summary` must show `parserHandoffCount: 1` and
     `cleanupCompleted: true`.
 13. Cancel and immediately reopen voice capture. Repeat ten open/stop/cancel loops,
-    background the app once, exercise Android Back, and verify the microphone and
-    WebSocket are released after each path.
+    background the app once, exercise Android Back, and verify the microphone,
+    WebRTC data channel, peer connection, and audio session are released after each path.
 
 For a failure, preserve the full set of lines for one `sessionId`, plus the visible UI
 error. The last successful stage identifies the boundary:
@@ -70,14 +70,18 @@ error. The last successful stage identifies the boundary:
 - No `microphone_stream_started`: Expo native PCM stream failed to start.
 - No `audio_format_detected` or `pcm_progress`: the stream started but delivered no buffer.
 - `credential_request_failed`: use its safe `errorCode` and `requestId` for OpenAI support.
-- No `websocket_open`: Realtime connection/authentication failed.
+- No `webrtc_call_succeeded`: the authenticated `/v1/realtime/calls` SDP exchange failed.
+- `webrtc_call_succeeded` but no `data_channel_open`: WebRTC negotiation completed but
+  the ordered `oai-events` channel did not open.
+- A terminal `peer_connection_state` of `disconnected`, `failed`, or `closed` before
+  completion identifies a network or native WebRTC failure.
 - `session_configuration_rejected`: OpenAI rejected the session configuration.
-- No `audio_append_progress`: normalized PCM did not reach the socket queue.
+- No `audio_append_progress`: normalized PCM did not reach the data-channel queue.
 - No `commit_sent`: manual stop did not flush/commit.
 - Deltas but no `transcription_completed`: finalization failed or timed out.
 - `transcription_completed` but no `parser_handoff`: final transcript reconciliation failed.
 - `parserHandoffCount` other than `1`: do not commit; report the complete diagnostic session.
-- No `cleanup_completed`: microphone/socket/audio-session cleanup did not finish.
+- No `cleanup_completed`: microphone/WebRTC/audio-session cleanup did not finish.
 
 Record the device, OS, development-build identifier, OpenAI project tier, exact
 provider error (if any), and observed final transcript in the validation report.
