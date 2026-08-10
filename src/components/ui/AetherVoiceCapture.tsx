@@ -1,0 +1,85 @@
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import { Typography } from './Typography';
+import { Colors, Hairline, Spacing } from '@/theme/tokens';
+import { useIsDark } from '@/theme/useResolvedTheme';
+
+export type VoiceCaptureState = 'listening' | 'processing' | 'review' | 'committed';
+
+export interface AetherVoiceCaptureProps {
+  state: VoiceCaptureState;
+  transcript?: string;
+  audioLevel?: SharedValue<number>;
+}
+
+function MeterLine({ level }: { level?: SharedValue<number> }) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const scaleY = level ? Math.max(0.2, Math.min(level.value * 2, 3)) : 1;
+    return {
+      transform: [{ scaleY }],
+    };
+  });
+
+  return <Animated.View style={[styles.meterLine, animatedStyle]} />;
+}
+
+export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
+  state,
+  transcript,
+  audioLevel,
+}) => {
+  const isDark = useIsDark();
+
+  const stateLabel =
+    state === 'listening'
+      ? 'Listening…'
+      : state === 'processing'
+      ? 'Processing…'
+      : state === 'review'
+      ? 'Ready for review'
+      : 'Committed';
+
+  return (
+    <View style={styles.container}>
+      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+        {stateLabel}
+      </Typography>
+
+      {transcript ? (
+        <Typography variant="headline" style={styles.transcript}>
+          {transcript}
+        </Typography>
+      ) : null}
+
+      {state === 'listening' ? (
+        <View style={styles.meterContainer}>
+          <MeterLine level={audioLevel} />
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  transcript: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
+  meterContainer: {
+    height: 2,
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    marginTop: Spacing.xs,
+  },
+  meterLine: {
+    height: Hairline.width * 2,
+    width: '100%',
+    backgroundColor: Colors.white,
+  },
+});

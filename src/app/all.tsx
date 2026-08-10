@@ -2,40 +2,43 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, ListTodo, Plus, Search } from 'lucide-react-native';
-import type { MenuAction } from '@expo/ui/community/menu';
+import { Search } from 'lucide-react-native';
 import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { Button } from '@/components/ui/Button';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
+import { AetherComposer } from '@/components/ui/AetherComposer';
 import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
+import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
 import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
-import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
 
 type TaskFilter = 'all' | 'active' | 'completed';
 
-export default function AllScreen() {
+export default function RemindersScreen() {
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
-  const [filter, setFilter] = useState<TaskFilter>('all');
+  const [filter] = useState<TaskFilter>('all');
   const [query, setQuery] = useState('');
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
   const { startVoiceAssistant } = useAssistantActions();
 
   const allTasks = useTasksUiStore((state) => state.allTasks);
   const status = useTasksUiStore((state) => state.status);
   const error = useTasksUiStore((state) => state.error);
   const refreshAll = useTasksUiStore((state) => state.refreshAll);
+  const createTask = useTasksUiStore((state) => state.createTask);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
   const undoReceipt = useTasksUiStore((state) => state.undoReceipt);
@@ -43,6 +46,30 @@ export default function AllScreen() {
   const undoing = useTasksUiStore((state) => state.undoing);
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
+
+  const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
+
+  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
+    const rawTitle = (titleToSave ?? quickTitle).trim();
+    if (!rawTitle || quickSaving) return;
+
+    setQuickSaving(true);
+    try {
+      await createTask({
+        title: quickIntent.title || rawTitle,
+        dueDate: quickIntent.dueDate,
+        dueTime: quickIntent.dueTime,
+        dueTimezone: quickIntent.dueTimezone,
+        priority: quickIntent.priority,
+        source: 'manual',
+      });
+      setQuickTitle('');
+    } catch (errorValue) {
+      reportNonFatalError('reminders-quick-capture', getDatabaseErrorMessage(errorValue));
+    } finally {
+      setQuickSaving(false);
+    }
+  }, [createTask, quickIntent, quickSaving, quickTitle]);
 
   const visibleTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -102,34 +129,6 @@ export default function AllScreen() {
     setEditingTask(null);
   }, []);
 
-  const contextualActions = useMemo<MenuAction[]>(
-    () => [
-      { id: 'create', title: 'New reminder', image: 'square.and.pencil' },
-      { id: 'voice', title: 'Speak a reminder', image: 'waveform' },
-      {
-        title: 'Show',
-        image: 'line.3.horizontal.decrease.circle',
-        subactions: [
-          { id: 'filter-all', title: 'All reminders', state: filter === 'all' ? 'on' : 'off' },
-          { id: 'filter-active', title: 'Active', state: filter === 'active' ? 'on' : 'off' },
-          { id: 'filter-completed', title: 'Completed', state: filter === 'completed' ? 'on' : 'off' },
-        ],
-      },
-    ],
-    [filter],
-  );
-
-  const handleContextAction = useCallback(
-    (actionId: string) => {
-      if (actionId === 'create') openEditor();
-      if (actionId === 'voice') startVoiceAssistant();
-      if (actionId === 'filter-all') setFilter('all');
-      if (actionId === 'filter-active') setFilter('active');
-      if (actionId === 'filter-completed') setFilter('completed');
-    },
-    [openEditor, startVoiceAssistant],
-  );
-
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -148,7 +147,6 @@ export default function AllScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <ContextualTopBar actions={contextualActions} onAction={handleContextAction} />
       <TaskList
         tasks={visibleTasks}
         onToggle={handleToggle}
@@ -164,50 +162,35 @@ export default function AllScreen() {
         header={
           <View style={styles.headerContent}>
             <View style={styles.header}>
-              <Typography variant="display">All reminders</Typography>
-              <Typography
-                variant="body"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.subtitle}
-              >
-                Search and review everything you have captured.
-              </Typography>
+              <Typography variant="display">Reminders</Typography>
             </View>
 
-            <View
-              style={[
-                styles.searchField,
-                {
-                  backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                },
-              ]}
-            >
-              <Search
-                size={18}
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                strokeWidth={2}
-              />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search reminders…"
-                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
-                returnKeyType="search"
-                clearButtonMode="while-editing"
-                accessibilityLabel="Search all reminders"
-                style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
-              />
-            </View>
-
-            {filter !== 'all' ? (
-              <Typography
-                variant="tiny"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.activeFilter}
+            {allTasks.length > 3 ? (
+              <View
+                style={[
+                  styles.searchField,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                  },
+                ]}
               >
-                Showing {filter === 'active' ? 'active' : 'completed'} reminders
-              </Typography>
+                <Search
+                  size={17}
+                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                  strokeWidth={2}
+                />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search reminders…"
+                  placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+                  returnKeyType="search"
+                  clearButtonMode="while-editing"
+                  accessibilityLabel="Search all reminders"
+                  style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
+                />
+              </View>
             ) : null}
 
             {error ? (
@@ -224,51 +207,32 @@ export default function AllScreen() {
         empty={
           status !== 'loading' ? (
             <View style={styles.emptyState}>
-              <View
-                style={[
-                  styles.emptyIcon,
-                  {
-                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
-                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                  },
-                ]}
-              >
-                {filter === 'completed' ? (
-                  <Check size={26} color={isDark ? Colors.white : Colors.black} />
-                ) : (
-                  <ListTodo size={26} color={isDark ? Colors.white : Colors.black} />
-                )}
-              </View>
-              <Typography variant="headline" align="center">
-                {query.trim() ? 'No reminders found.' : filter === 'completed' ? 'Nothing completed yet.' : 'Your library is empty.'}
+              <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                {query.trim() ? 'No reminders found.' : 'Your library is empty.'}
               </Typography>
-              <Typography
-                variant="body"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                align="center"
-                style={styles.emptyCopy}
-              >
-                {query.trim()
-                  ? 'Try another word or clear the search.'
-                  : 'Capture one thought on Compose and it will stay here until you remove it.'}
-              </Typography>
-              {!query.trim() && filter !== 'completed' ? (
-                <Button
-                  label="Create a reminder"
-                  onPress={() => openEditor()}
-                  icon={
-                    <Plus
-                      size={17}
-                      color={isDark ? Colors.black : Colors.white}
-                      strokeWidth={2.5}
-                    />
-                  }
-                />
-              ) : null}
             </View>
           ) : null
         }
       />
+
+      <View
+        style={[
+          styles.composerWrap,
+          { paddingHorizontal: horizontalPadding },
+        ]}
+      >
+        <AetherComposer
+          value={quickTitle}
+          onChangeText={setQuickTitle}
+          onSubmit={(text) => void handleQuickCapture(text)}
+          onVoicePress={startVoiceAssistant}
+          onAddDate={() => openEditor()}
+          onSetPriority={() => openEditor()}
+          onAddLocation={() => openEditor()}
+          onAttachFile={() => openEditor()}
+        />
+      </View>
+
       <TaskEditorSheet
         visible={editorVisible}
         onClose={closeEditor}
@@ -286,61 +250,44 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     alignSelf: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxl,
+    paddingTop: Spacing.lg,
+    paddingBottom: 120,
   },
   headerContent: {
     width: '100%',
   },
   header: {
-    maxWidth: LayoutTokens.readingMaxWidth,
-    marginBottom: Spacing.xxl,
-  },
-  subtitle: {
-    maxWidth: 650,
-    marginTop: Spacing.sm,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   searchField: {
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
     borderWidth: 1,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.md,
     marginBottom: Spacing.md,
   },
   searchInput: {
     flex: 1,
-    minHeight: 46,
+    height: 42,
     fontSize: 15,
-    lineHeight: 22,
-  },
-  activeFilter: {
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.md,
   },
   error: {
     marginBottom: Spacing.md,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.huge,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
   },
-  emptyIcon: {
-    width: 64,
-    height: 64,
+  composerWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 80,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    marginBottom: Spacing.sm,
-  },
-  emptyCopy: {
-    maxWidth: 430,
-    marginBottom: Spacing.sm,
+    zIndex: 90,
   },
 });

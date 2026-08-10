@@ -43,6 +43,7 @@ interface VoiceControllerResult {
   state: VoiceState;
   locked: boolean;
   error: string | null;
+  errorCode: TranscriptionError['code'] | null;
   canRetry: boolean;
   retryAttempt: number;
   transcript: string;
@@ -92,6 +93,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const [state, setState] = useState<VoiceState>('idle');
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<TranscriptionError['code'] | null>(null);
   const [canRetry, setCanRetry] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<RealtimeTranscriptionSnapshot>(initialRealtimeTranscriptionSnapshot);
@@ -131,12 +133,18 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const fail = useCallback((caught: unknown) => {
     const transcriptionError = caught instanceof TranscriptionError
       ? caught
-      : new TranscriptionError('SESSION_FAILED', 'The OpenAI realtime transcription session failed.');
+      : new TranscriptionError(
+          'SESSION_FAILED',
+          caught instanceof Error && caught.message
+            ? caught.message
+            : 'The OpenAI realtime transcription session failed.'
+        );
     cleanupResources(true);
     setVoiceState('error');
     reportNonFatalError('voice-controller', transcriptionError);
     if (mountedRef.current) {
       setError(getTranscriptionErrorMessage(transcriptionError));
+      setErrorCode(transcriptionError.code);
       setCanRetry(isRetryableTranscriptionError(transcriptionError));
       setLocked(false);
     }
@@ -156,7 +164,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     const next = reduceRealtimeTranscription(snapshotRef.current, parsed);
     setRealtimeSnapshot(next);
     if (parsed.type === 'server.error') {
-      fail(new TranscriptionError(parsed.code, 'OpenAI rejected the realtime transcription session.'));
+      fail(new TranscriptionError(parsed.code, parsed.message));
       return;
     }
     setVoiceState(next.state);
@@ -245,6 +253,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     setVoiceState('idle');
     if (mountedRef.current) {
       setError(null);
+      setErrorCode(null);
       setCanRetry(false);
       setLocked(false);
     }
@@ -301,6 +310,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     finalSubmittedRef.current = false;
     audioBytesRef.current = 0;
     setError(null);
+    setErrorCode(null);
     setCanRetry(false);
     setRetryAttempt(0);
     setLocked(false);
@@ -384,6 +394,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     state,
     locked,
     error,
+    errorCode,
     canRetry,
     retryAttempt,
     transcript: snapshot.finalText || snapshot.partialText,

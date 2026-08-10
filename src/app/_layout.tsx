@@ -155,9 +155,9 @@ export default function RootLayout() {
                   },
                 }}
               >
-                <Tabs.Screen name="index" options={{ title: 'Compose' }} />
-                <Tabs.Screen name="tasks" options={{ title: 'Upcoming' }} />
-                <Tabs.Screen name="all" options={{ title: 'All' }} />
+                <Tabs.Screen name="index" options={{ title: 'Today' }} />
+                <Tabs.Screen name="tasks" options={{ title: 'Schedule' }} />
+                <Tabs.Screen name="all" options={{ title: 'Reminders' }} />
                 <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
                 <Tabs.Screen name="ai" options={{ href: null }} />
                 <Tabs.Screen name="transcribe" options={{ href: null }} />

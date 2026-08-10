@@ -303,15 +303,12 @@ export default function SettingsScreen() {
           <Typography variant="display" style={styles.headerTitle}>
             Settings
           </Typography>
-          <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.headerDescription}>
-            Private, local preferences for AI, voice, appearance, and feedback.
-          </Typography>
         </Animated.View>
 
         {/* Section 1: OpenRouter AI Reasoning */}
         <Animated.View entering={entering}>
           <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.sectionHeader}>
-            OPENROUTER — AI REASONING
+            AI Reasoning
           </Typography>
           <Card variant="outline" style={styles.cardSection}>
             <View style={styles.cardHeaderRow}>

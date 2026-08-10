@@ -16,4 +16,11 @@ describe('transcription error handling', () => {
     expect(getTranscriptionErrorMessage(new TranscriptionError('HANDOFF_FAILED', 'private provider detail')))
       .toBe('AETHER could not receive that transcript. Try voice capture again.');
   });
+
+  test('explains billing and unknown OpenAI session failures', () => {
+    expect(getTranscriptionErrorMessage(new TranscriptionError('INSUFFICIENT_CREDITS', 'insufficient_quota')))
+      .toContain('billing or credits');
+    expect(getTranscriptionErrorMessage(new TranscriptionError('SESSION_FAILED', 'Unsupported transcription configuration.')))
+      .toContain('Unsupported transcription configuration.');
+  });
 });

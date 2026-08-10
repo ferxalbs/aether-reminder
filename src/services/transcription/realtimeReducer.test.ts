@@ -47,4 +47,23 @@ describe('OpenAI realtime transcription reducer', () => {
     expect(() => parseRealtimeServerEvent({ type: 'conversation.item.input_audio_transcription.delta', item_id: 'item-1' })).toThrow();
     expect(parseRealtimeServerEvent({ type: 'rate_limits.updated', rate_limits: [] })).toBeNull();
   });
+
+  test('classifies the actionable reason returned by OpenAI', () => {
+    expect(parseRealtimeServerEvent({
+      type: 'error',
+      error: { code: 'insufficient_quota', message: 'Please check your billing details.' },
+    })).toEqual({
+      type: 'server.error',
+      code: 'INSUFFICIENT_CREDITS',
+      message: 'Please check your billing details.',
+    });
+    expect(parseRealtimeServerEvent({
+      type: 'error',
+      error: { code: 'invalid_request_error', message: 'Project does not have access to this model.' },
+    })?.type).toBe('server.error');
+    expect((parseRealtimeServerEvent({
+      type: 'error',
+      error: { code: 'invalid_request_error', message: 'Project does not have access to this model.' },
+    }) as { code: string }).code).toBe('MODEL_UNAVAILABLE');
+  });
 });

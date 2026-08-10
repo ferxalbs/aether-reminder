@@ -94,11 +94,13 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-function mapServerErrorCode(value: unknown): TranscriptionErrorCode {
-  if (typeof value !== 'string') return 'SESSION_FAILED';
-  if (value.includes('auth') || value.includes('api_key')) return 'INVALID_API_KEY';
-  if (value.includes('rate')) return 'RATE_LIMITED';
-  if (value.includes('audio')) return 'INVALID_AUDIO';
+function mapServerErrorCode(code: unknown, message: unknown): TranscriptionErrorCode {
+  const diagnostic = `${typeof code === 'string' ? code : ''} ${typeof message === 'string' ? message : ''}`.toLowerCase();
+  if (diagnostic.includes('auth') || diagnostic.includes('api_key') || diagnostic.includes('invalid key')) return 'INVALID_API_KEY';
+  if (diagnostic.includes('insufficient_quota') || diagnostic.includes('billing') || diagnostic.includes('credit')) return 'INSUFFICIENT_CREDITS';
+  if (diagnostic.includes('model_not_found') || diagnostic.includes('model access') || diagnostic.includes('not have access')) return 'MODEL_UNAVAILABLE';
+  if (diagnostic.includes('rate') || diagnostic.includes('quota')) return 'RATE_LIMITED';
+  if (diagnostic.includes('audio')) return 'INVALID_AUDIO';
   return 'SESSION_FAILED';
 }
 
@@ -127,7 +129,7 @@ export function parseRealtimeServerEvent(value: unknown): RealtimeServerEvent | 
       const message = typeof error.message === 'string' ? error.message : 'OpenAI realtime session error.';
       return {
         type: 'server.error',
-        code: mapServerErrorCode(error.code),
+        code: mapServerErrorCode(error.code, message),
         message,
       };
     }

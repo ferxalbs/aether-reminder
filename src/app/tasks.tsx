@@ -2,42 +2,40 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarDays, Plus } from 'lucide-react-native';
-import type { MenuAction } from '@expo/ui/community/menu';
-import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
+import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { Button } from '@/components/ui/Button';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
+import { AetherComposer } from '@/components/ui/AetherComposer';
 import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
+import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
 import { useAssistantActions, useAssistantSurface } from '@/components/assistant/AssistantHost';
+import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
-import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
 
-const upcomingActions: MenuAction[] = [
-  { id: 'create', title: 'New reminder', image: 'square.and.pencil' },
-  { id: 'voice', title: 'Speak a reminder', image: 'waveform' },
-  { id: 'refresh', title: 'Refresh upcoming', image: 'arrow.clockwise' },
-];
+import { addLocalCalendarDays } from '@/temporal/recurrence';
 
-export default function TasksScreen() {
+export default function ScheduleScreen() {
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
   const { startVoiceAssistant } = useAssistantActions();
 
   const upcomingTasks = useTasksUiStore((state) => state.upcomingTasks);
   const status = useTasksUiStore((state) => state.status);
   const error = useTasksUiStore((state) => state.error);
   const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
+  const createTask = useTasksUiStore((state) => state.createTask);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
   const undoReceipt = useTasksUiStore((state) => state.undoReceipt);
@@ -45,6 +43,30 @@ export default function TasksScreen() {
   const undoing = useTasksUiStore((state) => state.undoing);
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
+
+  const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
+
+  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
+    const rawTitle = (titleToSave ?? quickTitle).trim();
+    if (!rawTitle || quickSaving) return;
+
+    setQuickSaving(true);
+    try {
+      await createTask({
+        title: quickIntent.title || rawTitle,
+        dueDate: quickIntent.dueDate || addLocalCalendarDays(getLocalDateString(), 1),
+        dueTime: quickIntent.dueTime,
+        dueTimezone: quickIntent.dueTimezone,
+        priority: quickIntent.priority,
+        source: 'manual',
+      });
+      setQuickTitle('');
+    } catch (errorValue) {
+      reportNonFatalError('schedule-quick-capture', getDatabaseErrorMessage(errorValue));
+    } finally {
+      setQuickSaving(false);
+    }
+  }, [createTask, quickIntent, quickSaving, quickTitle]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -73,15 +95,6 @@ export default function TasksScreen() {
     setEditorVisible(false);
     setEditingTask(null);
   }, []);
-
-  const handleContextAction = useCallback(
-    (actionId: string) => {
-      if (actionId === 'create') openEditor();
-      if (actionId === 'voice') startVoiceAssistant();
-      if (actionId === 'refresh') void refreshUpcoming();
-    },
-    [openEditor, refreshUpcoming, startVoiceAssistant],
-  );
 
   const assistantContext = useMemo(
     () => ({
@@ -120,7 +133,6 @@ export default function TasksScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <ContextualTopBar actions={upcomingActions} onAction={handleContextAction} />
       <TaskList
         tasks={upcomingTasks}
         onToggle={handleToggle}
@@ -136,14 +148,7 @@ export default function TasksScreen() {
         header={
           <View style={styles.headerContent}>
             <View style={styles.header}>
-              <Typography variant="display">Upcoming</Typography>
-              <Typography
-                variant="body"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                style={styles.subtitle}
-              >
-                Active reminders scheduled after today.
-              </Typography>
+              <Typography variant="display">Schedule</Typography>
             </View>
 
             {error ? (
@@ -160,43 +165,32 @@ export default function TasksScreen() {
         empty={
           status !== 'loading' ? (
             <View style={styles.emptyState}>
-              <View
-                style={[
-                  styles.emptyIcon,
-                  {
-                    backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
-                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                  },
-                ]}
-              >
-                <CalendarDays size={26} color={isDark ? Colors.white : Colors.black} />
-              </View>
-              <Typography variant="headline" align="center">
+              <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                 Nothing scheduled ahead.
               </Typography>
-              <Typography
-                variant="body"
-                color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                align="center"
-                style={styles.emptyCopy}
-              >
-                Add a reminder when you know what comes next.
-              </Typography>
-              <Button
-                label="Create a reminder"
-                onPress={() => openEditor()}
-                icon={
-                  <Plus
-                    size={17}
-                    color={isDark ? Colors.black : Colors.white}
-                    strokeWidth={2.5}
-                  />
-                }
-              />
             </View>
           ) : null
         }
       />
+
+      <View
+        style={[
+          styles.composerWrap,
+          { paddingHorizontal: horizontalPadding },
+        ]}
+      >
+        <AetherComposer
+          value={quickTitle}
+          onChangeText={setQuickTitle}
+          onSubmit={(text) => void handleQuickCapture(text)}
+          onVoicePress={startVoiceAssistant}
+          onAddDate={() => openEditor()}
+          onSetPriority={() => openEditor()}
+          onAddLocation={() => openEditor()}
+          onAttachFile={() => openEditor()}
+        />
+      </View>
+
       <TaskEditorSheet
         visible={editorVisible}
         onClose={closeEditor}
@@ -214,40 +208,29 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     alignSelf: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxl,
+    paddingTop: Spacing.lg,
+    paddingBottom: 120,
   },
   headerContent: {
     width: '100%',
   },
   header: {
-    maxWidth: LayoutTokens.readingMaxWidth,
-    marginBottom: Spacing.xxl,
-  },
-  subtitle: {
-    marginTop: Spacing.xs,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   error: {
     marginBottom: Spacing.sm,
   },
   emptyState: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.huge,
-    paddingBottom: Spacing.xl,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
   },
-  emptyIcon: {
-    width: 62,
-    height: 62,
+  composerWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 80,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.xl,
-    marginBottom: Spacing.md,
-  },
-  emptyCopy: {
-    maxWidth: 420,
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.lg,
+    zIndex: 90,
   },
 });

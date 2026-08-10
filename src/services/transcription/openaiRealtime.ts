@@ -83,8 +83,11 @@ function mapRealtimeErrorCode(value: unknown): TranscriptionErrorCode {
   return 'SESSION_FAILED';
 }
 
-function openAiRequestError(status: number): AIProviderError {
-  const code = status === 401 || status === 403
+function openAiRequestError(status: number, providerCode?: string): AIProviderError {
+  const normalizedCode = providerCode?.toLowerCase() ?? '';
+  const code = normalizedCode.includes('insufficient_quota') || normalizedCode.includes('billing') || status === 402
+    ? 'INSUFFICIENT_CREDITS'
+    : status === 401
     ? 'INVALID_API_KEY'
     : status === 429
       ? 'RATE_LIMITED'
@@ -368,9 +371,24 @@ export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ pr
       try {
         let response: Response;
         try {
-          response = await fetch(`${OPENAI_API_BASE_URL}/models/${encodeURIComponent(OPENAI_REALTIME_TRANSCRIPTION_MODEL)}`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${key}` },
+          response = await fetch(`${OPENAI_API_BASE_URL}/realtime/client_secrets`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              session: {
+                type: 'transcription',
+                audio: {
+                  input: {
+                    format: { type: 'audio/pcm', rate: OPENAI_REALTIME_TRANSCRIPTION_SAMPLE_RATE },
+                    transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
+                    turn_detection: null,
+                  },
+                },
+              },
+            }),
             signal: timeout.signal,
           });
         } catch {
@@ -380,7 +398,16 @@ export async function testOpenAIRealtimeConnection(apiKey: string): Promise<{ pr
             { provider: 'OpenAI' }
           );
         }
-        if (!response.ok) throw openAiRequestError(response.status);
+        if (!response.ok) {
+          let providerCode: string | undefined;
+          try {
+            const payload = await response.json() as { error?: { code?: unknown } };
+            if (typeof payload.error?.code === 'string') providerCode = payload.error.code;
+          } catch {
+            // Status still provides a typed, user-visible fallback.
+          }
+          throw openAiRequestError(response.status, providerCode);
+        }
       } finally {
         timeout.cleanup();
       }

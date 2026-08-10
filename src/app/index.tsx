@@ -4,26 +4,19 @@ import {
   Platform,
   StatusBar,
   StyleSheet,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import {
-  ArrowUp,
-  Mic,
-  Plus,
-} from 'lucide-react-native';
-import type { MenuAction } from '@expo/ui/community/menu';
-import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
+import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
-import { IconButton } from '@/components/ui/IconButton';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
+import { AetherComposer } from '@/components/ui/AetherComposer';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
@@ -32,21 +25,14 @@ import { getDatabaseErrorMessage } from '@/db';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 import type { TaskListItem } from '@/domain/entities';
-import { ContextualTopBar } from '@/components/navigation/ContextualTopBar';
 
-const homeActions: MenuAction[] = [
-  { id: 'detailed-reminder', title: 'Detailed reminder', image: 'square.and.pencil' },
-  { id: 'voice-reminder', title: 'Speak a reminder', image: 'waveform' },
-  { id: 'command', title: 'Command AETHER', image: 'command' },
-];
-
-export default function HomeScreen() {
+export default function TodayScreen() {
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
-  const { openTextAssistant, startVoiceAssistant } = useAssistantActions();
+  const { startVoiceAssistant } = useAssistantActions();
 
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -88,15 +74,15 @@ export default function HomeScreen() {
   );
   useAssistantSurface(assistantContext);
 
-  const handleQuickCapture = useCallback(async () => {
-    const rawTitle = quickTitle.trim();
+  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
+    const rawTitle = (titleToSave ?? quickTitle).trim();
     if (!rawTitle || quickSaving) return;
 
     setQuickSaving(true);
     setQuickError(null);
     try {
       await createTask({
-        title: quickIntent.title,
+        title: quickIntent.title || rawTitle,
         dueDate: quickIntent.dueDate,
         dueTime: quickIntent.dueTime,
         dueTimezone: quickIntent.dueTimezone,
@@ -139,15 +125,6 @@ export default function HomeScreen() {
     setEditingTask(null);
   }, []);
 
-  const handleContextAction = useCallback(
-    (actionId: string) => {
-      if (actionId === 'detailed-reminder') openEditor();
-      if (actionId === 'voice-reminder') startVoiceAssistant();
-      if (actionId === 'command') openTextAssistant();
-    },
-    [openEditor, openTextAssistant, startVoiceAssistant],
-  );
-
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -172,7 +149,6 @@ export default function HomeScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <ContextualTopBar actions={homeActions} onAction={handleContextAction} />
         <TaskList
           style={styles.flex}
           tasks={todayTasks}
@@ -193,9 +169,6 @@ export default function HomeScreen() {
                 style={styles.titleBlock}
               >
                 <Typography variant="display">Today</Typography>
-                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                  Capture what matters. Everything else can wait.
-                </Typography>
               </Animated.View>
 
               {error || quickError ? (
@@ -213,17 +186,11 @@ export default function HomeScreen() {
           empty={
             status === 'ready' ? (
               <Animated.View
-                entering={reduceMotion ? undefined : FadeIn.duration(180).delay(120)}
+                entering={reduceMotion ? undefined : FadeIn.duration(180).delay(80)}
                 style={styles.emptyState}
               >
-                <Typography variant="title" align="center">Your day is clear.</Typography>
-                <Typography
-                  variant="body"
-                  align="center"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                  style={styles.emptyCopy}
-                >
-                  Type below or speak naturally to add a reminder.
+                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                  Your day is clear.
                 </Typography>
               </Animated.View>
             ) : null
@@ -235,66 +202,23 @@ export default function HomeScreen() {
             styles.composerWrap,
             {
               paddingHorizontal: horizontalPadding,
-              backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight,
-              borderTopColor: isDark ? Colors.separatorDark : Colors.separatorLight,
             },
           ]}
-          entering={reduceMotion ? undefined : FadeInDown.duration(300).delay(80).springify()}
+          entering={reduceMotion ? undefined : FadeInDown.duration(260).springify()}
         >
-          <View
-            style={[
-              styles.composer,
-              {
-                backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
-                borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              },
-            ]}
-          >
-            <View style={styles.composerInputRow}>
-              <IconButton
-                icon={<Plus size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2.2} />}
-                onPress={() => openEditor()}
-                accessibilityLabel="Open full reminder composer"
-                variant="ghost"
-                size={40}
-              />
-              <TextInput
-                value={quickTitle}
-                onChangeText={(value) => {
-                  setQuickTitle(value);
-                  if (quickError) setQuickError(null);
-                }}
-                placeholder="New reminder…"
-                placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
-                style={[
-                  styles.composerInput,
-                  { color: isDark ? Colors.textDark : Colors.textLight }
-                ]}
-                onSubmitEditing={() => void handleQuickCapture()}
-                returnKeyType="done"
-                multiline
-                maxLength={240}
-              />
-              {quickTitle.trim().length > 0 ? (
-                <IconButton
-                  icon={<ArrowUp size={20} color={isDark ? Colors.black : Colors.white} strokeWidth={2.5} />}
-                  onPress={() => void handleQuickCapture()}
-                  accessibilityLabel="Add Reminder"
-                  variant="solid"
-                  size={36}
-                />
-              ) : (
-                <IconButton
-                  icon={<Mic size={20} color={isDark ? Colors.white : Colors.black} strokeWidth={2} />}
-                  onPress={startVoiceAssistant}
-                  accessibilityLabel="Speak a reminder"
-                  accessibilityHint="Opens voice capture as an alternative to typing"
-                  variant="ghost"
-                  size={40}
-                />
-              )}
-            </View>
-          </View>
+          <AetherComposer
+            value={quickTitle}
+            onChangeText={(val) => {
+              setQuickTitle(val);
+              if (quickError) setQuickError(null);
+            }}
+            onSubmit={(text) => void handleQuickCapture(text)}
+            onVoicePress={startVoiceAssistant}
+            onAddDate={() => openEditor()}
+            onSetPriority={() => openEditor()}
+            onAddLocation={() => openEditor()}
+            onAttachFile={() => openEditor()}
+          />
         </Animated.View>
       </KeyboardAvoidingView>
 
@@ -317,52 +241,28 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.xl,
+    paddingBottom: 120,
   },
   headerContent: {
     width: '100%',
-    paddingBottom: Spacing.sm,
   },
   titleBlock: {
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    gap: Spacing.sm,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   listError: {
     marginBottom: Spacing.sm,
   },
   emptyState: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xl,
-  },
-  emptyCopy: {
-    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
   },
   composerWrap: {
-    borderTopWidth: 1,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 80,
     alignItems: 'center',
-  },
-  composer: {
-    width: '100%',
-    maxWidth: LayoutTokens.contentMaxWidth,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    padding: Spacing.xs,
-  },
-  composerInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  composerInput: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 21,
-    maxHeight: 72,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 10,
+    zIndex: 90,
   },
 });

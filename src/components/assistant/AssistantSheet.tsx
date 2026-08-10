@@ -47,6 +47,7 @@ interface AssistantSheetProps {
   voiceState: VoiceState;
   voiceLocked: boolean;
   voiceError: string | null;
+  voiceNeedsSystemSettings: boolean;
   voiceCanRetry: boolean;
   voiceRetryAttempt: number;
   voiceTranscript: string;
@@ -54,6 +55,7 @@ interface AssistantSheetProps {
   onVoiceStop: () => void;
   onVoiceCancel: () => void;
   onVoiceRetry: () => void;
+  onVoiceOpenSettings: () => void;
   keyboardOffset: number;
   blurTarget?: RefObject<View | null>;
   onVoicePress: () => void;
@@ -136,6 +138,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   voiceState,
   voiceLocked,
   voiceError,
+  voiceNeedsSystemSettings,
   voiceCanRetry,
   voiceRetryAttempt,
   voiceTranscript,
@@ -143,6 +146,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onVoiceStop,
   onVoiceCancel,
   onVoiceRetry,
+  onVoiceOpenSettings,
   keyboardOffset,
   blurTarget,
   onVoicePress,
@@ -158,7 +162,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const voiceActive = voiceState !== 'idle' && voiceState !== 'error';
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-        ? voiceActive ? 260 : 128
+        ? voiceActive ? 260 : voiceError ? 220 : 128
       : surface === 'medium'
         ? Math.min(windowWidth >= 760 ? 520 : 480, windowHeight * 0.62)
         : surface === 'full'
@@ -304,6 +308,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
             {voiceError ? (
               <View accessibilityLiveRegion="assertive" style={styles.voiceError}>
                 <Text style={[styles.errorText, { color: isDark ? Colors.white : Colors.black }]}>{voiceError}</Text>
+                {voiceNeedsSystemSettings ? <Button label="Open system settings" variant="secondary" size="sm" onPress={onVoiceOpenSettings} style={styles.retryButton} /> : null}
                 {voiceCanRetry ? <Button label="Try again" variant="secondary" size="sm" onPress={onVoiceRetry} style={styles.retryButton} /> : null}
               </View>
             ) : null}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { CalendarDays, ListTodo, PenLine, Settings } from 'lucide-react-native';
+import { CalendarDays, CheckCircle2, ListTodo, Settings } from 'lucide-react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -11,15 +11,17 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
+import { GlassSurface } from '@/components/ui/GlassSurface';
 import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useSemanticColors } from '@/theme/useSemanticColors';
+import { useIsDark } from '@/theme/useResolvedTheme';
 
 type Destination = '/' | '/tasks' | '/all' | '/settings';
 
 const navigationItems = [
-  { destination: '/' as const, label: 'Compose', icon: PenLine },
-  { destination: '/tasks' as const, label: 'Upcoming', icon: CalendarDays },
-  { destination: '/all' as const, label: 'All', icon: ListTodo },
+  { destination: '/' as const, label: 'Today', icon: CheckCircle2 },
+  { destination: '/tasks' as const, label: 'Schedule', icon: CalendarDays },
+  { destination: '/all' as const, label: 'Reminders', icon: ListTodo },
   { destination: '/settings' as const, label: 'Settings', icon: Settings },
 ];
 
@@ -27,7 +29,7 @@ export function AppBottomNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const colors = useSemanticColors();
+  const isDark = useIsDark();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -48,28 +50,28 @@ export function AppBottomNavigation() {
     pathname === destination || (destination === '/' && pathname === '/index');
 
   return (
-    <View
-      style={[
-        styles.host,
-        {
-          paddingBottom: insets.bottom,
-          backgroundColor: colors.surface,
-          borderTopColor: colors.separator,
-        },
-      ]}
-    >
-      <View style={styles.navigation} accessibilityRole="tablist">
+    <View style={[styles.host, { bottom: Math.max(12, insets.bottom + 4) }]} pointerEvents="box-none">
+      <GlassSurface
+        borderRadius={Radius.pill}
+        intensity={Platform.OS === 'ios' ? 65 : 45}
+        tier={Platform.OS === 'android' ? 'A' : undefined}
+        style={styles.capsule}
+        contentStyle={styles.navigation}
+        accessible
+        accessibilityRole="tablist"
+      >
         {navigationItems.map((item) => (
           <NavigationButton
             key={item.destination}
             item={item}
             active={isActive(item.destination)}
+            isDark={isDark}
             onPress={() => {
               if (!isActive(item.destination)) router.navigate(item.destination);
             }}
           />
         ))}
-      </View>
+      </GlassSurface>
     </View>
   );
 }
@@ -77,10 +79,12 @@ export function AppBottomNavigation() {
 function NavigationButton({
   item,
   active,
+  isDark,
   onPress,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
+  isDark: boolean;
   onPress: () => void;
 }) {
   const colors = useSemanticColors();
@@ -94,10 +98,9 @@ function NavigationButton({
   }, [active, reduceMotion, selected]);
 
   const indicatorStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: reduceMotion ? 0 : -selected.value }],
-  }));
   const Icon = item.icon;
+
+  const highlightBg = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.07)';
 
   return (
     <AnimatedPressable
@@ -112,17 +115,15 @@ function NavigationButton({
         pointerEvents="none"
         style={[
           styles.selected,
-          { backgroundColor: colors.selected },
+          { backgroundColor: highlightBg },
           indicatorStyle,
         ]}
       />
-      <Animated.View style={iconStyle}>
-        <Icon
-          size={19}
-          color={active ? colors.textPrimary : colors.textSecondary}
-          strokeWidth={active ? 2.35 : 1.9}
-        />
-      </Animated.View>
+      <Icon
+        size={19}
+        color={active ? colors.textPrimary : colors.textSecondary}
+        strokeWidth={active ? 2.3 : 1.8}
+      />
       <Typography
         variant="tiny"
         color={active ? colors.textPrimary : colors.textSecondary}
@@ -137,40 +138,51 @@ function NavigationButton({
 
 const styles = StyleSheet.create({
   host: {
-    borderTopWidth: 1,
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  capsule: {
+    width: '100%',
+    maxWidth: LayoutTokens.navigationMaxWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   navigation: {
     width: '100%',
-    maxWidth: LayoutTokens.navigationMaxWidth,
     height: LayoutTokens.navigationHeight,
-    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
     paddingHorizontal: Spacing.xs,
   },
   item: {
     flex: 1,
-    height: 52,
-    minWidth: 64,
+    height: 48,
+    minWidth: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    borderRadius: Radius.md,
+    gap: 3,
+    borderRadius: Radius.pill,
     overflow: 'hidden',
   },
   selected: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    marginHorizontal: Spacing.xs,
-    marginVertical: 3,
-    borderRadius: Radius.md,
+    top: 4,
+    right: 4,
+    bottom: 4,
+    left: 4,
+    borderRadius: Radius.pill,
   },
   label: {
     fontSize: 10,
     lineHeight: 13,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });

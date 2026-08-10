@@ -3,6 +3,8 @@ export type TranscriptionErrorCode =
   | 'AUDIO_UNAVAILABLE'
   | 'MISSING_API_KEY'
   | 'INVALID_API_KEY'
+  | 'INSUFFICIENT_CREDITS'
+  | 'MODEL_UNAVAILABLE'
   | 'RATE_LIMITED'
   | 'NETWORK_ERROR'
   | 'TIMEOUT'
@@ -44,6 +46,10 @@ export function getTranscriptionErrorMessage(error: unknown): string {
         return 'Add an OpenAI API key in Settings before using voice transcription.';
       case 'INVALID_API_KEY':
         return 'The OpenAI API key was rejected. Check it in Settings.';
+      case 'INSUFFICIENT_CREDITS':
+        return 'OpenAI billing or credits do not allow realtime transcription. Add credits and confirm your API usage tier.';
+      case 'MODEL_UNAVAILABLE':
+        return 'This OpenAI project does not have access to the realtime transcription model.';
       case 'RATE_LIMITED':
         return error.retryAfterSeconds
           ? `OpenAI rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
@@ -59,7 +65,9 @@ export function getTranscriptionErrorMessage(error: unknown): string {
       case 'INVALID_EVENT':
         return 'OpenAI returned an invalid realtime event. The voice session was stopped safely.';
       case 'SESSION_FAILED':
-        return 'The OpenAI realtime transcription session failed.';
+        return error.message && error.message !== 'The OpenAI realtime transcription session failed.'
+          ? `OpenAI rejected the realtime transcription session: ${error.message}`
+          : 'The OpenAI realtime transcription session failed.';
       case 'EMPTY_TRANSCRIPT':
         return 'No speech was captured. Nothing was sent to AETHER.';
       case 'HANDOFF_FAILED':

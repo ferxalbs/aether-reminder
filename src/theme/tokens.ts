@@ -1,3 +1,5 @@
+import { StyleSheet } from 'react-native';
+
 export const Colors = {
   // Pure monochrome base values
   black: '#000000',
@@ -6,12 +8,18 @@ export const Colors = {
   // Light Canvas & Surfaces (Crisp White & Minimal Gray)
   backgroundLight: '#FFFFFF',
   surfaceLight: '#FFFFFF',
-  surfaceRaisedLight: '#F4F4F5',
+  surfaceRaisedLight: '#F4F4F6',
 
   // OLED Dark Mode Canvas & Surfaces (True #000000 Pitch Black)
   backgroundDark: '#000000',
   surfaceDark: '#000000',
-  surfaceRaisedDark: '#121212',
+  surfaceRaisedDark: '#121215',
+
+  // Glass Chrome Surfaces (Restricted to Floating Chrome Only)
+  glassDark: 'rgba(18, 18, 20, 0.78)',
+  glassLight: 'rgba(244, 244, 246, 0.82)',
+  glassDarkFallback: 'rgba(18, 18, 20, 0.92)',
+  glassLightFallback: 'rgba(244, 244, 246, 0.95)',
 
   // Typography Contrast Levels
   textLight: '#0A0A0A',
@@ -21,11 +29,11 @@ export const Colors = {
   tertiaryTextLight: '#999999',
   tertiaryTextDark: '#52525B',
 
-  // Subtle 1px Borders & Separators (Zero shadows/glows)
-  borderLight: '#E5E5E7',
-  borderDark: '#262626',
-  separatorLight: '#EEEEEE',
-  separatorDark: '#1C1C1E',
+  // Subtle Hairline Borders & Separators (Semantic Hairlines)
+  borderLight: 'rgba(0, 0, 0, 0.08)',
+  borderDark: 'rgba(255, 255, 255, 0.12)',
+  separatorLight: 'rgba(0, 0, 0, 0.06)',
+  separatorDark: 'rgba(255, 255, 255, 0.08)',
 
   // Monochrome Ink & Statuses
   brandInk: '#000000',
@@ -58,8 +66,8 @@ export const Colors = {
   destructiveBackgroundDark: '#18181B',
   destructiveBorderLight: '#E5E5E7',
   destructiveBorderDark: '#262626',
-  destructiveTextLight: '#000000',
-  destructiveTextDark: '#FFFFFF',
+  destructiveTextLight: '#D70015',
+  destructiveTextDark: '#FF453A',
   priorityBadgeBackgroundLight: '#F4F4F5',
   priorityBadgeBackgroundDark: '#18181B',
 
@@ -75,6 +83,8 @@ export const SemanticColors = {
     background: Colors.backgroundLight,
     surface: Colors.surfaceLight,
     elevatedSurface: Colors.surfaceRaisedLight,
+    glassChrome: Colors.glassLight,
+    glassChromeFallback: Colors.glassLightFallback,
     textPrimary: Colors.textLight,
     textSecondary: Colors.secondaryTextLight,
     textTertiary: Colors.tertiaryTextLight,
@@ -84,7 +94,7 @@ export const SemanticColors = {
     interactiveForeground: Colors.white,
     interactivePressed: Colors.zinc800,
     selected: Colors.zinc100,
-    destructive: Colors.black,
+    destructive: Colors.destructiveTextLight,
     focus: Colors.black,
     scrim: Colors.scrimLight,
   },
@@ -92,6 +102,8 @@ export const SemanticColors = {
     background: Colors.backgroundDark,
     surface: Colors.surfaceDark,
     elevatedSurface: Colors.surfaceRaisedDark,
+    glassChrome: Colors.glassDark,
+    glassChromeFallback: Colors.glassDarkFallback,
     textPrimary: Colors.textDark,
     textSecondary: Colors.secondaryTextDark,
     textTertiary: Colors.tertiaryTextDark,
@@ -101,7 +113,7 @@ export const SemanticColors = {
     interactiveForeground: Colors.black,
     interactivePressed: Colors.zinc200,
     selected: Colors.zinc800,
-    destructive: Colors.white,
+    destructive: Colors.destructiveTextDark,
     focus: Colors.white,
     scrim: Colors.scrimDark,
   },
@@ -117,6 +129,10 @@ export const Spacing = {
   huge: 48,
 } as const;
 
+export const Hairline = {
+  width: StyleSheet.hairlineWidth || 1,
+} as const;
+
 export const LayoutTokens = {
   screenHorizontal: 20,
   screenHorizontalWide: 32,
@@ -124,7 +140,7 @@ export const LayoutTokens = {
   readingMaxWidth: 680,
   navigationMaxWidth: 640,
   navigationHeight: 60,
-  composerHeight: 60,
+  composerHeight: 56,
   sectionGap: 32,
   titleToDescriptionGap: 8,
   descriptionToContentGap: 24,
@@ -139,7 +155,7 @@ export const Radius = {
 } as const;
 
 export const ControlTokens = {
-  borderWidth: 1,
+  borderWidth: Hairline.width,
   fieldPaddingHorizontal: Spacing.lg,
   fieldPaddingVertical: Spacing.md,
   fieldContentGap: Spacing.sm,

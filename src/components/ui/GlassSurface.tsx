@@ -1,8 +1,10 @@
-import React, { createContext, useContext, type RefObject } from 'react';
-import { StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
-import type { BlurViewProps } from 'expo-blur';
-import { Colors, Radius } from '@/theme/tokens';
+import React, { createContext, type RefObject } from 'react';
+import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
+import { BlurView, type BlurViewProps } from 'expo-blur';
+import { Colors, Hairline, Radius } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+
+export type GlassTier = 'A' | 'B' | 'C';
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode;
@@ -12,6 +14,7 @@ export interface GlassSurfaceProps {
   tint?: BlurViewProps['tint'];
   borderRadius?: number;
   borderWidth?: number;
+  tier?: GlassTier;
   accessible?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -34,21 +37,50 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   style,
   contentStyle,
-  intensity = 50,
+  intensity = 45,
   tint,
-  borderRadius = Radius.lg,
-  borderWidth = 1,
+  borderRadius = Radius.xl,
+  borderWidth = Hairline.width,
+  tier = 'A',
   accessible,
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole,
   pointerEvents,
-  blurTarget,
 }) => {
   const isDark = useIsDark();
-  useContext(GlassBlurTargetContext);
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-  const backgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
+  const fallbackBg = isDark ? Colors.glassDarkFallback : Colors.glassLightFallback;
+  const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
+  const resolvedTint = tint ?? (isDark ? 'dark' : 'light');
+
+  // Tier C fallback or unsupported blur platforms (translucent no-blur material)
+  if (tier === 'C') {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            borderRadius,
+            borderWidth,
+            borderColor,
+            backgroundColor: fallbackBg,
+          },
+          style,
+        ]}
+        accessible={accessible}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        accessibilityRole={accessibilityRole}
+        pointerEvents={pointerEvents}
+      >
+        <View style={[styles.content, contentStyle]}>{children}</View>
+      </View>
+    );
+  }
+
+  // Tier A / B BlurView
+  const blurIntensity = tier === 'B' ? Math.max(15, Math.round(intensity * 0.5)) : intensity;
 
   return (
     <View
@@ -58,7 +90,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
           borderRadius,
           borderWidth,
           borderColor,
-          backgroundColor,
+          backgroundColor: glassBg,
         },
         style,
       ]}
@@ -68,6 +100,12 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
       accessibilityRole={accessibilityRole}
       pointerEvents={pointerEvents}
     >
+      <BlurView
+        intensity={blurIntensity}
+        tint={resolvedTint}
+        experimentalBlurMethod={Platform.OS === 'android' ? ('dimezis' as any) : undefined}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={[styles.content, contentStyle]}>{children}</View>
     </View>
   );
@@ -78,5 +116,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   content: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

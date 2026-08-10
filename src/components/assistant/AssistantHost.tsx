@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Keyboard, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
@@ -221,6 +221,12 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
     transitionTimerRef.current = setTimeout(() => setSurface('closed'), reduceMotion ? 100 : 220);
   }, [reduceMotion, voice]);
 
+  const openMicrophoneSettings = useCallback(() => {
+    void Linking.openSettings().catch((error: unknown) => {
+      reportNonFatalError('open-microphone-settings', error);
+    });
+  }, []);
+
   const submit = useCallback(() => {
     const value = composerValue.trim();
     if (!value) return;
@@ -266,6 +272,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         voiceState={voice.state}
         voiceLocked={voice.locked}
         voiceError={voice.error}
+        voiceNeedsSystemSettings={voice.errorCode === 'PERMISSION_DENIED'}
         voiceCanRetry={voice.canRetry}
         voiceRetryAttempt={voice.retryAttempt}
         voiceTranscript={voice.transcript}
@@ -273,6 +280,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         onVoiceStop={voice.stopAndSend}
         onVoiceCancel={voice.cancel}
         onVoiceRetry={startVoiceAssistant}
+        onVoiceOpenSettings={openMicrophoneSettings}
         keyboardOffset={keyboardOffset}
         blurTarget={blurTarget}
         onVoicePress={startVoiceAssistant}

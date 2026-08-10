@@ -98,9 +98,13 @@ describe('OpenAI realtime transcription transport', () => {
     const originalFetch = globalThis.fetch;
     let requestUrl = '';
     let authorization = '';
+    let requestMethod = '';
+    let requestBody = '';
     globalThis.fetch = (async (input, init) => {
       requestUrl = String(input);
       authorization = new Headers(init?.headers).get('Authorization') ?? '';
+      requestMethod = init?.method ?? '';
+      requestBody = String(init?.body ?? '');
       return new Response(null, { status: 200 });
     }) as typeof fetch;
     try {
@@ -108,9 +112,26 @@ describe('OpenAI realtime transcription transport', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
-    expect(requestUrl).toContain('/v1/models/gpt-realtime-whisper');
+    expect(requestUrl).toContain('/v1/realtime/client_secrets');
     expect(requestUrl).not.toContain('openrouter');
     expect(authorization).toBe('Bearer openai-key');
+    expect(requestMethod).toBe('POST');
+    expect(JSON.parse(requestBody).session.audio.input.transcription.model).toBe(OPENAI_REALTIME_TRANSCRIPTION_MODEL);
+  });
+
+  test('connection validation rejects accounts without realtime credits', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      error: { code: 'insufficient_quota' },
+    }), { status: 429, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+    try {
+      await expect(testOpenAIRealtimeConnection('openai-key')).rejects.toMatchObject({
+        code: 'INSUFFICIENT_CREDITS',
+        provider: 'OpenAI',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('retries transient OpenAI connection-test failures', async () => {

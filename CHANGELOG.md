@@ -2,6 +2,33 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.09 (2) [AETHER Visual and Interaction Architecture Redesign]
+
+### Platform-split architecture and OLED dark canvas
+
+- Redesigned AETHER from first principles around a strict platform split: system-native first on iOS (`NativeTabs`, native navigation/toolbar, native menus, native sheets) and a custom AETHER visual system on Android.
+- Enforced pitch black `#000000` canvas in OLED dark mode with zero elevated card walls around ordinary content. Glass material (`GlassSurface`) is restricted exclusively to floating interactive chrome (`AetherBottomNavigation`, `AetherComposer`, `AetherToolbar`, `AetherContextSurface`).
+- Implemented capability-driven rendering Tiers (A/B/C) on Android to guarantee visual stability and smooth performance regardless of hardware blur support.
+
+### Product vocabulary and primary navigation
+
+- Updated primary navigation tab labels and screen titles to the approved vocabulary: `Today` (what matters now), `Schedule` (what is coming), `Reminders` (everything saved), and `Settings` (configuration).
+- Maintained underlying route paths (`/index.tsx`, `/tasks.tsx`, `/all.tsx`, `/settings.tsx`) to eliminate routing churn while presenting the refined product vocabulary.
+- Simplified empty states on `Today`, `Schedule`, and `Reminders` to restrained, single-line text directly on the canvas (`"Your day is clear."`, `"Nothing scheduled ahead."`, `"Your library is empty."`), eliminating marketing copy and unnecessary centered illustration blocks.
+
+### Contextual toolbar, creation, and voice controls
+
+- Created `AetherComposer` floating bar (`[ + ]  New reminder…  [ mic ]`) anchored above the bottom navigation bar without auto-focusing the keyboard on mount.
+- Added `AetherQuickActionsMenu` (`Add date`, `Set priority`, `Add location`, `Attach file`) as a vertical contextual menu anchored to `[ + ]`.
+- Created `AetherToolbar`, `AetherToolbarGroup`, and `AetherToolbarButton` following Apple HIG toolbar grouping rules, eliminating individual circle backgrounds on grouped controls.
+- Created `AetherContextSurface`, `AetherContextMenu`, and `AetherVoiceCapture` components to consume existing AETHER voice and transcription pipelines without rewriting backend behavior.
+
+### Validation
+
+- `bun test`: 135 passed, 1 skipped (OpenRouter smoke test), 0 failed.
+- `bun run typecheck` and `bun run lint`: passed cleanly with zero errors or warnings.
+- `git diff --check`: passed cleanly.
+
 ## Unreleased - 2026.08.09 (1) [AETHER Contextual UI Redesign and Reminder Workflows]
 
 ### Four-surface navigation architecture
