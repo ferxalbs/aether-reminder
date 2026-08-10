@@ -69,7 +69,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         {
           width: touchTarget,
           height: touchTarget,
-          borderRadius: Radius.pill,
+          borderRadius: Radius.md,
         },
         getContainerStyle(),
         disabled && styles.disabled,
@@ -79,7 +79,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
       {variant === 'glass' ? (
         <GlassSurface
           pointerEvents="none"
-          borderRadius={Radius.pill}
+          borderRadius={Radius.md}
           style={StyleSheet.absoluteFill}
         />
       ) : null}

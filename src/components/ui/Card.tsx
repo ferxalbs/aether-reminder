@@ -40,8 +40,8 @@ export const Card: React.FC<CardProps> = ({
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
           boxShadow: isDark
-            ? '0 10px 28px rgba(0, 0, 0, 0.26)'
-            : '0 8px 24px rgba(20, 45, 78, 0.08)',
+            ? '0 16px 40px rgba(0, 0, 0, 0.4)'
+            : '0 12px 32px rgba(20, 45, 78, 0.12)',
         };
       case 'glass':
         return {

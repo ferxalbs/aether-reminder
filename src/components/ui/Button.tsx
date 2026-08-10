@@ -96,14 +96,14 @@ export const Button: React.FC<ButtonProps> = ({
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 8,
           paddingHorizontal: 16,
-          borderRadius: Radius.pill,
+          borderRadius: Radius.md,
         };
       case 'lg':
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 16,
           paddingHorizontal: 26,
-          borderRadius: Radius.pill,
+          borderRadius: Radius.lg,
         };
       case 'md':
       default:
@@ -111,7 +111,7 @@ export const Button: React.FC<ButtonProps> = ({
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: 12,
           paddingHorizontal: 20,
-          borderRadius: Radius.pill,
+          borderRadius: Radius.md,
         };
     }
   };

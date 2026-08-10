@@ -2,7 +2,6 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Typography } from '@/components/ui/Typography';
 import { Colors, LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
-import { usePathname, useRouter } from 'expo-router';
 import { CalendarDays, ListTodo, PenLine, Settings } from 'lucide-react-native';
 import React, { useEffect, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -11,39 +10,36 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantMaterial } from './AssistantMaterial';
 
 interface AppBottomNavigationProps {
+  activeRouteName: TabRouteName;
+  onNavigate: (routeName: TabRouteName) => void;
   blurTarget?: RefObject<View | null>;
 }
 
-type Destination = '/' | '/tasks' | '/all' | '/settings';
+export type TabRouteName = 'index' | 'tasks' | 'all' | 'settings';
 
 const navigationItems: {
   key: string;
-  destination: Destination;
+  routeName: TabRouteName;
   label: string;
   icon: typeof PenLine;
 }[] = [
-  { key: 'home', destination: '/', label: 'Compose', icon: PenLine },
-  { key: 'tasks', destination: '/tasks', label: 'Upcoming', icon: CalendarDays },
-  { key: 'all', destination: '/all', label: 'All', icon: ListTodo },
-  { key: 'settings', destination: '/settings', label: 'Settings', icon: Settings },
+  { key: 'home', routeName: 'index', label: 'Compose', icon: PenLine },
+  { key: 'tasks', routeName: 'tasks', label: 'Upcoming', icon: CalendarDays },
+  { key: 'all', routeName: 'all', label: 'All', icon: ListTodo },
+  { key: 'settings', routeName: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
+  activeRouteName,
+  onNavigate,
   blurTarget,
 }) => {
-  const router = useRouter();
-  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const isDark = useIsDark();
-  const navigate = (destination: Destination) => {
-    const isHome = destination === '/' && (pathname === '/' || pathname === '/index');
-    if (pathname === destination || isHome) return;
-    router.navigate(destination);
-  };
 
   return (
     <Animated.View
-      style={[styles.host, { height: LayoutTokens.navigationHeight + Math.max(insets.bottom, 8) + 10 }]}
+      style={[styles.host, { bottom: Math.max(insets.bottom, 8) + 10 }]}
     >
       <AssistantMaterial style={styles.bar} borderRadius={Radius.pill} blurTarget={blurTarget}>
         <View style={styles.navRow}>
@@ -51,9 +47,17 @@ export const AppBottomNavigation: React.FC<AppBottomNavigationProps> = ({
             <NavigationButton
               key={item.key}
               item={item}
-              active={pathname === item.destination || (item.destination === '/' && pathname === '/index')}
+              active={activeRouteName === item.routeName}
               isDark={isDark}
-              onPress={() => navigate(item.destination)}
+              onPress={() => {
+                if (__DEV__) {
+                  console.info('[AETHER tabs] press', {
+                    activeRouteName,
+                    destination: item.routeName,
+                  });
+                }
+                onNavigate(item.routeName);
+              }}
             />
           ))}
         </View>
@@ -132,11 +136,13 @@ function NavigationButton({
 
 const styles = StyleSheet.create({
   host: {
+    position: 'absolute',
     alignSelf: 'center',
     width: '92%',
     maxWidth: LayoutTokens.navigationMaxWidth,
+    height: LayoutTokens.navigationHeight,
+    zIndex: 30,
     alignItems: 'center',
-    justifyContent: 'flex-start',
   },
   bar: {
     width: '100%',

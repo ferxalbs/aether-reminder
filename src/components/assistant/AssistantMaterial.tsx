@@ -21,7 +21,6 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   children,
   style,
   borderRadius = Radius.xl,
-  blurTarget,
 }) => {
   const isDark = useIsDark();
   const useLiquidGlass =
@@ -58,15 +57,6 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         <BlurView
           tint={isDark ? 'systemMaterialDark' : 'systemMaterialLight'}
           intensity={82}
-          style={[StyleSheet.absoluteFill, { borderRadius }]}
-        />
-      ) : blurTarget ? (
-        <BlurView
-          tint={isDark ? 'dark' : 'light'}
-          intensity={72}
-          blurTarget={blurTarget}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          blurReductionFactor={3}
           style={[StyleSheet.absoluteFill, { borderRadius }]}
         />
       ) : null}

@@ -133,19 +133,20 @@ export const getMinimumTouchTarget = (platform: string): number =>
 
 export const Motion = {
   pressSpring: {
-    damping: 24,
+    damping: 26.5,
     stiffness: 350,
     mass: 0.5,
   },
   toggleSpring: {
-    damping: 20,
+    damping: 28,
     stiffness: 200,
     mass: 1,
     overshootClamping: true,
   },
   cardSpring: {
-    damping: 20,
+    damping: 34.5,
     stiffness: 300,
+    mass: 1,
   },
   buttonPressScale: 0.97,
   cardPressScale: 0.98,
@@ -153,7 +154,7 @@ export const Motion = {
   pressScale: 0.96,
   reducedMotionDuration: 120,
   screenSpring: {
-    damping: 1,
+    damping: 24,
     stiffness: 180,
     mass: 0.8,
   },

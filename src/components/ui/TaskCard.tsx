@@ -103,7 +103,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     styles.card,
     {
       backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
-      borderColor: task.completed
+      borderBottomColor: task.completed
         ? isDark
           ? 'rgba(168, 181, 196, 0.16)'
           : 'rgba(99, 112, 132, 0.12)'
@@ -249,13 +249,9 @@ TaskCard.displayName = 'TaskCard';
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.xl,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    marginVertical: Spacing.xs,
-    borderWidth: 1,
-    borderCurve: 'continuous',
-    boxShadow: '0 5px 18px rgba(20, 45, 78, 0.06)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   row: {
     flexDirection: 'row',
