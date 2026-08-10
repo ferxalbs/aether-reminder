@@ -1,4 +1,4 @@
-import React, { createContext, type RefObject } from 'react';
+import React, { createContext, type RefObject, useContext } from 'react';
 import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
 import { BlurView, type BlurViewProps } from 'expo-blur';
 import { Colors, Hairline, Radius } from '@/theme/tokens';
@@ -47,8 +47,10 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   accessibilityHint,
   accessibilityRole,
   pointerEvents,
+  blurTarget,
 }) => {
   const isDark = useIsDark();
+  const inheritedBlurTarget = useContext(GlassBlurTargetContext);
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
   const fallbackBg = isDark ? Colors.glassDarkFallback : Colors.glassLightFallback;
   const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
@@ -103,7 +105,8 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
       <BlurView
         intensity={blurIntensity}
         tint={resolvedTint}
-        experimentalBlurMethod={Platform.OS === 'android' ? ('dimezis' as any) : undefined}
+        blurTarget={blurTarget ?? inheritedBlurTarget}
+        blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.content, contentStyle]}>{children}</View>

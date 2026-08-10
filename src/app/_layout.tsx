@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapAppData } from '@/db/bootstrap';
@@ -141,7 +142,7 @@ export default function RootLayout() {
             because they call getDatabase() synchronously at render time. */}
         <AssistantSurfaceProvider>
           <GlassSurfaceProvider blurTarget={blurTarget}>
-            <View ref={blurTarget} style={styles.routeTarget}>
+            <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
               <Tabs
                 tabBar={() => null}
                 screenOptions={{
@@ -162,7 +163,7 @@ export default function RootLayout() {
                 <Tabs.Screen name="ai" options={{ href: null }} />
                 <Tabs.Screen name="transcribe" options={{ href: null }} />
               </Tabs>
-            </View>
+            </BlurTargetView>
             {boot.phase === 'ready' && (
               <>
                 <AppBottomNavigation />
