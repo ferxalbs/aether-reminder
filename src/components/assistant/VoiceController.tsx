@@ -58,11 +58,20 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   const pathname = usePathname();
   const openAiApiKey = useSettingsStore((state) => state.openAiApiKey);
   const openAiKeyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
+  const onTranscriptRef = useRef(onTranscript);
   const bufferListenerRef = useRef<((buffer: AudioStreamBuffer) => void) | null>(null);
   const previousPathnameRef = useRef(pathname);
   const wasStreamingRef = useRef(false);
   const [snapshot, setSnapshot] = useState<VoiceSnapshot>(initialVoiceSnapshot);
   const audioLevel = useSharedValue(0);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+
+  const deliverTranscript = useCallback((transcript: string) => (
+    onTranscriptRef.current(transcript)
+  ), []);
 
   const audioStream = useAudioStream({
     sampleRate: defaultRealtimeTranscriptionConfig.sampleRate,
@@ -97,10 +106,10 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
       diagnostics,
     }),
     config: defaultRealtimeTranscriptionConfig,
-    onFinalTranscript: onTranscript,
+    onFinalTranscript: deliverTranscript,
     onAudioLevel: (level) => audioLevel.set(level),
     onTechnicalError: (error) => reportNonFatalError('voice-cleanup', error),
-  }), [audioLevel, capture, onTranscript, openAiApiKey, openAiKeyLoaded]);
+  }), [audioLevel, capture, deliverTranscript, openAiApiKey, openAiKeyLoaded]);
 
   useEffect(() => voiceSession.subscribe((next) => {
     setSnapshot(next);

@@ -5,7 +5,7 @@ export {
   testOpenAIRealtimeConnection,
 } from './auth';
 export { Pcm16StreamNormalizer, pcm16AudioLevel, pcm16ToBase64, type NativePcmBuffer } from './audio';
-export { expoAudioSession, type AudioSessionGateway } from './audioSession';
+export { createExpoAudioSession, expoAudioSession, type AudioSessionGateway } from './audioSession';
 export {
   DevelopmentVoiceDiagnostics,
   VOICE_DIAGNOSTIC_PREFIX,

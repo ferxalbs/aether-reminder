@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { NativePcmBuffer } from './audio';
+import { createOwnedAudioSession } from './audioSessionLease';
 import { DevelopmentVoiceDiagnostics, type VoiceDiagnosticRecord } from './diagnostics';
 import { VoiceError } from './errors';
 import { VoiceSession, type VoiceSessionDependencies } from './voiceSession';
@@ -233,6 +234,28 @@ describe('VoiceSession orchestration', () => {
     await h.session.start();
     expect(h.session.snapshot.state).toBe('listening');
     expect(h.capture.starts).toBe(2);
+  });
+
+  test('cancel during audio-session activation cannot leak microphone ownership', async () => {
+    let releaseActivation = () => undefined;
+    const activationGate = new Promise<void>((resolve) => { releaseActivation = resolve; });
+    let audioModeCalls = 0;
+    const audioSession = createOwnedAudioSession(async () => {
+      audioModeCalls += 1;
+      if (audioModeCalls === 1) await activationGate;
+    });
+    const h = harness({ audioSession });
+
+    const starting = h.session.start();
+    await tick();
+    const cancelling = h.session.cancel();
+    releaseActivation();
+    await Promise.all([starting, cancelling]);
+    expect(h.session.snapshot.state).toBe('idle');
+
+    await h.session.start();
+    expect(h.session.snapshot.state).toBe('listening');
+    await h.session.cancel();
   });
 
   test('app-background cancellation semantics release capture, transport, and audio session', async () => {

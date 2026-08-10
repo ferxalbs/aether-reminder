@@ -115,22 +115,33 @@ export class VoiceSession {
       this.diagnostics.record('permission_result', { permissionState: 'granted' });
       this.transition('connecting');
 
-      await this.dependencies.audioSession.activate(this.owner);
       this.audioSessionActive = true;
-      if (runId !== this.runId) return;
+      await this.dependencies.audioSession.activate(this.owner);
+      if (runId !== this.runId) {
+        await this.dependencies.audioSession.deactivate(this.owner);
+        this.audioSessionActive = false;
+        return;
+      }
 
       try {
-        await this.dependencies.capture.start((buffer) => this.handleBuffer(runId, buffer));
         this.captureStarted = true;
+        await this.dependencies.capture.start((buffer) => this.handleBuffer(runId, buffer));
         this.diagnostics.record('microphone_stream_started', { microphoneStreamStarted: true });
       } catch (error) {
+        this.captureStarted = false;
         this.diagnostics.record('microphone_stream_failed', {
           microphoneStreamStarted: false,
           errorCode: 'AUDIO_STREAM_START_FAILED',
         });
         throw new VoiceError('AUDIO_STREAM_START_FAILED', 'Native PCM stream failed to start.', { cause: error });
       }
-      if (runId !== this.runId) return;
+      if (runId !== this.runId) {
+        await this.dependencies.capture.stop();
+        this.captureStarted = false;
+        await this.dependencies.audioSession.deactivate(this.owner);
+        this.audioSessionActive = false;
+        return;
+      }
 
       this.diagnostics.record('credential_request_started', { credentialRequest: 'pending' });
       let secret: RealtimeClientSecret;
