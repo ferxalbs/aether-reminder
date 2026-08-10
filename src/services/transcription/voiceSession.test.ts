@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { NativePcmBuffer } from './audio';
+import { DevelopmentVoiceDiagnostics, type VoiceDiagnosticRecord } from './diagnostics';
 import { VoiceError } from './errors';
 import { VoiceSession, type VoiceSessionDependencies } from './voiceSession';
 import { defaultRealtimeTranscriptionConfig, type RealtimeTransportEvent, type RealtimeTransportListener } from './types';
@@ -137,6 +138,39 @@ describe('VoiceSession orchestration', () => {
       activeItemId: 'final-item',
       finalTranscript: ' Remind me tomorrow at nine to review the report ',
     });
+  });
+
+  test('development diagnostics record PCM, one parser handoff, and cleanup without transcript text', async () => {
+    const records: VoiceDiagnosticRecord[] = [];
+    const h = harness({
+      createDiagnostics: () => new DevelopmentVoiceDiagnostics({
+        enabled: true,
+        sink: (record) => records.push(record),
+      }),
+    });
+    await h.session.start();
+    h.capture.emit(pcm([1, 2, 3, 4]), 48000, 1);
+    await h.session.stop();
+    h.transports[0].emit({
+      type: 'completed',
+      itemId: 'private-item-id',
+      transcript: 'Sensitive spoken reminder text',
+    });
+    await tick();
+    expect(records).toContainEqual(expect.objectContaining({
+      stage: 'audio_format_detected',
+      actualSampleRate: 48000,
+      channelCount: 1,
+      resamplingActive: true,
+    }));
+    expect(records.at(-1)).toMatchObject({
+      stage: 'session_summary',
+      parserHandoffCount: 1,
+      cleanupCompleted: true,
+      terminalState: 'review',
+    });
+    expect(JSON.stringify(records)).not.toContain('Sensitive spoken reminder text');
+    expect(JSON.stringify(records)).not.toContain('private-item-id');
   });
 
   test('classifies an empty completed transcript without invoking parsing', async () => {

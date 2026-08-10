@@ -1,4 +1,5 @@
 import { pcm16ToBase64 } from './audio';
+import type { VoiceDiagnosticReporter } from './diagnostics';
 import { VoiceError } from './errors';
 import type {
   RealtimeTranscriptionConfig,
@@ -28,6 +29,7 @@ export interface OpenAIRealtimeTransportOptions {
   maxQueuedPackets?: number;
   maxSocketBufferedBytes?: number;
   packetBytes?: number;
+  diagnostics?: VoiceDiagnosticReporter;
 }
 
 function defaultSocketFactory(url: string, clientSecret: string): SocketLike {
@@ -64,6 +66,7 @@ function eventError(value: unknown, transcriptionFailure = false): VoiceError {
       message,
       type: typeof record.type === 'string' ? record.type : undefined,
       param: typeof record.param === 'string' ? record.param : undefined,
+      requestId: typeof record.request_id === 'string' ? record.request_id : undefined,
     },
   });
 }
@@ -108,6 +111,9 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
   private rejectConnect: ((error: VoiceError) => void) | null = null;
   private resolveConfigure: (() => void) | null = null;
   private rejectConfigure: ((error: VoiceError) => void) | null = null;
+  private audioAppendCount = 0;
+  private transcriptionDeltaCount = 0;
+  private closeDiagnosticEmitted = false;
 
   constructor(private readonly options: OpenAIRealtimeTransportOptions = {}) {
     this.createSocket = options.socketFactory ?? defaultSocketFactory;
@@ -122,6 +128,16 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
     for (const listener of this.listeners) listener(event);
   }
 
+  private recordClosed(): void {
+    if (this.closeDiagnosticEmitted) return;
+    this.closeDiagnosticEmitted = true;
+    this.options.diagnostics?.record('websocket_closed', {
+      webSocketState: 'closed',
+      audioAppendCount: this.audioAppendCount,
+      transcriptionDeltaCount: this.transcriptionDeltaCount,
+    });
+  }
+
   private clearTimers(): void {
     if (this.connectTimer) clearTimeout(this.connectTimer);
     if (this.configureTimer) clearTimeout(this.configureTimer);
@@ -131,6 +147,15 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
   }
 
   private fail(error: VoiceError): void {
+    const configurationPending = Boolean(this.rejectConfigure);
+    this.options.diagnostics?.record(configurationPending
+      ? 'session_configuration_rejected'
+      : 'websocket_error', {
+      webSocketState: 'error',
+      sessionConfiguration: configurationPending ? 'rejected' : undefined,
+      errorCode: error.providerError?.code ?? error.code,
+      requestId: error.providerError?.requestId,
+    });
     this.rejectConnect?.(error);
     this.rejectConfigure?.(error);
     this.resolveConnect = this.rejectConnect = this.resolveConfigure = this.rejectConfigure = null;
@@ -149,6 +174,8 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
     if (this.socket) throw new VoiceError('REALTIME_CONNECT_FAILED', 'Transport is already connected.');
     if (!clientSecret.trim()) throw new VoiceError('REALTIME_AUTH_FAILED', 'Realtime client secret is empty.');
     const url = `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(this.options.model ?? 'gpt-live-transcribe')}`;
+    this.closeDiagnosticEmitted = false;
+    this.options.diagnostics?.record('websocket_connecting', { webSocketState: 'connecting' });
     return new Promise<void>((resolve, reject) => {
       this.resolveConnect = resolve;
       this.rejectConnect = reject;
@@ -166,6 +193,7 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
         this.connectTimer = null;
         this.resolveConnect?.();
         this.resolveConnect = this.rejectConnect = null;
+        this.options.diagnostics?.record('websocket_open', { webSocketState: 'open' });
         this.emit({ type: 'connected' });
       };
       this.socket.onmessage = (message) => this.handleMessage(message.data);
@@ -178,6 +206,7 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
         this.socket = null;
         this.connected = false;
         this.configured = false;
+        this.recordClosed();
         this.emit({ type: 'closed', expected });
         if (!expected) this.fail(new VoiceError('REALTIME_CONNECTION_LOST', 'Realtime WebSocket closed unexpectedly.'));
       };
@@ -192,6 +221,10 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
       throw new VoiceError('REALTIME_CONNECT_FAILED', 'Transport is not connected.');
     }
     this.model = config.model;
+    this.options.diagnostics?.record('session_configuration_sent', {
+      sessionConfiguration: 'pending',
+      requestedSampleRate: config.sampleRate,
+    });
     return new Promise<void>((resolve, reject) => {
       this.resolveConfigure = resolve;
       this.rejectConfigure = reject;
@@ -215,10 +248,19 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
           this.configureTimer = null;
           this.resolveConfigure?.();
           this.resolveConfigure = this.rejectConfigure = null;
+          this.options.diagnostics?.record('session_configuration_accepted', {
+            sessionConfiguration: 'accepted',
+          });
           this.scheduleFlush();
           break;
         case 'conversation.item.input_audio_transcription.delta':
           if (typeof event.item_id === 'string' && typeof event.delta === 'string') {
+            this.transcriptionDeltaCount += 1;
+            if (this.transcriptionDeltaCount === 1 || this.transcriptionDeltaCount % 10 === 0) {
+              this.options.diagnostics?.record('transcription_delta_progress', {
+                transcriptionDeltaCount: this.transcriptionDeltaCount,
+              });
+            }
             this.emit({ type: 'speechDelta', itemId: event.item_id, delta: event.delta });
           } else {
             throw new VoiceError('TRANSCRIPTION_FAILED', 'Malformed transcript delta.');
@@ -228,6 +270,10 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
           if (typeof event.item_id === 'string' && typeof event.transcript === 'string') {
             if (this.finalTimer) clearTimeout(this.finalTimer);
             this.finalTimer = null;
+            this.options.diagnostics?.record('transcription_completed', {
+              transcriptionDeltaCount: this.transcriptionDeltaCount,
+              transcriptionCompleted: true,
+            });
             this.emit({ type: 'completed', itemId: event.item_id, transcript: event.transcript });
           } else {
             throw new VoiceError('TRANSCRIPTION_FAILED', 'Malformed completed transcript.');
@@ -303,12 +349,22 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
     const packet = this.queue.shift();
     if (packet) {
       this.socket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm16ToBase64(packet) }));
+      this.audioAppendCount += 1;
+      if (this.audioAppendCount === 1 || this.audioAppendCount % 25 === 0) {
+        this.options.diagnostics?.record('audio_append_progress', {
+          audioAppendCount: this.audioAppendCount,
+        });
+      }
       this.scheduleFlush();
       return;
     }
     if (this.commitPending) {
       this.commitPending = false;
       this.socket.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+      this.options.diagnostics?.record('commit_sent', {
+        audioAppendCount: this.audioAppendCount,
+        commitSent: true,
+      });
       this.finalTimer = setTimeout(() => this.fail(new VoiceError(
         'TRANSCRIPTION_TIMEOUT',
         'Final transcript timed out.',
@@ -351,6 +407,7 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
     this.socket = null;
     this.connected = false;
     this.configured = false;
+    this.recordClosed();
   }
 
   close(): void {
@@ -367,5 +424,6 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
     this.socket = null;
     this.connected = false;
     this.configured = false;
+    this.recordClosed();
   }
 }

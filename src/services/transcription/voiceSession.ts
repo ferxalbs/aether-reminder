@@ -1,5 +1,9 @@
 import { Pcm16StreamNormalizer, pcm16AudioLevel, type NativePcmBuffer } from './audio';
 import type { AudioSessionGateway } from './audioSession';
+import {
+  createDevelopmentVoiceDiagnostics,
+  type VoiceDiagnosticReporter,
+} from './diagnostics';
 import { VoiceError, isRetryableVoiceErrorCode, toVoiceError } from './errors';
 import { ensureMicrophonePermission, type MicrophonePermissionGateway } from './permissions';
 import { TranscriptReconciler } from './reconciler';
@@ -10,6 +14,7 @@ import {
 } from './stateMachine';
 import type {
   NativeAudioCapture,
+  RealtimeClientSecret,
   RealtimeClientSecretProvider,
   RealtimeTranscriptionConfig,
   RealtimeTranscriptionTransport,
@@ -21,12 +26,13 @@ export interface VoiceSessionDependencies {
   audioSession: AudioSessionGateway;
   capture: NativeAudioCapture;
   clientSecrets: RealtimeClientSecretProvider;
-  createTransport: () => RealtimeTranscriptionTransport;
+  createTransport: (diagnostics: VoiceDiagnosticReporter) => RealtimeTranscriptionTransport;
   config: RealtimeTranscriptionConfig;
   onFinalTranscript: (transcript: string) => Promise<void> | void;
   onAudioLevel?: (level: number) => void;
   onTechnicalError?: (error: unknown) => void;
   maxPreconnectBytes?: number;
+  createDiagnostics?: () => VoiceDiagnosticReporter;
 }
 
 export type VoiceSnapshotListener = (snapshot: VoiceSnapshot) => void;
@@ -42,6 +48,9 @@ export class VoiceSession {
   private preconnectAudio: ArrayBuffer[] = [];
   private preconnectBytes = 0;
   private audioBytes = 0;
+  private pcmChunksReceived = 0;
+  private parserHandoffCount = 0;
+  private nativeFormatRecorded = false;
   private runId = 0;
   private stopping = false;
   private captureStarted = false;
@@ -49,6 +58,7 @@ export class VoiceSession {
   private abortController: AbortController | null = null;
   private cleanupPromise: Promise<void> = Promise.resolve();
   private lastFailure: VoiceError | null = null;
+  private diagnostics: VoiceDiagnosticReporter | null = null;
 
   constructor(private readonly dependencies: VoiceSessionDependencies) {}
 
@@ -86,13 +96,23 @@ export class VoiceSession {
     this.preconnectAudio = [];
     this.preconnectBytes = 0;
     this.audioBytes = 0;
+    this.pcmChunksReceived = 0;
+    this.parserHandoffCount = 0;
+    this.nativeFormatRecorded = false;
     this.publish(this.machine.resetForStart());
     this.abortController = new AbortController();
+    this.diagnostics = this.dependencies.createDiagnostics?.() ?? createDevelopmentVoiceDiagnostics();
+    this.diagnostics.record('session_started', {
+      permissionState: this.snapshot.permission,
+      requestedSampleRate: this.dependencies.config.sampleRate,
+    });
 
     try {
+      this.diagnostics.record('permission_checking', { permissionState: 'checking' });
       await ensureMicrophonePermission(this.dependencies.permission);
       if (runId !== this.runId) return;
       this.update({ permission: 'granted' });
+      this.diagnostics.record('permission_result', { permissionState: 'granted' });
       this.transition('connecting');
 
       await this.dependencies.audioSession.activate(this.owner);
@@ -102,18 +122,39 @@ export class VoiceSession {
       try {
         await this.dependencies.capture.start((buffer) => this.handleBuffer(runId, buffer));
         this.captureStarted = true;
+        this.diagnostics.record('microphone_stream_started', { microphoneStreamStarted: true });
       } catch (error) {
+        this.diagnostics.record('microphone_stream_failed', {
+          microphoneStreamStarted: false,
+          errorCode: 'AUDIO_STREAM_START_FAILED',
+        });
         throw new VoiceError('AUDIO_STREAM_START_FAILED', 'Native PCM stream failed to start.', { cause: error });
       }
       if (runId !== this.runId) return;
 
-      const secret = await this.dependencies.clientSecrets.create(
-        this.dependencies.config,
-        this.abortController.signal,
-      );
+      this.diagnostics.record('credential_request_started', { credentialRequest: 'pending' });
+      let secret: RealtimeClientSecret;
+      try {
+        secret = await this.dependencies.clientSecrets.create(
+          this.dependencies.config,
+          this.abortController.signal,
+        );
+        this.diagnostics.record('credential_request_succeeded', {
+          credentialRequest: 'succeeded',
+          requestId: secret.requestId,
+        });
+      } catch (error) {
+        const voiceError = toVoiceError(error, 'REALTIME_AUTH_FAILED');
+        this.diagnostics.record('credential_request_failed', {
+          credentialRequest: 'failed',
+          errorCode: voiceError.providerError?.code ?? voiceError.code,
+          requestId: voiceError.providerError?.requestId,
+        });
+        throw error;
+      }
       if (runId !== this.runId) return;
 
-      const transport = this.dependencies.createTransport();
+      const transport = this.dependencies.createTransport(this.diagnostics);
       this.transport = transport;
       this.unsubscribeTransport = transport.subscribe((event) => this.handleTransportEvent(runId, event));
       await transport.connect(secret.value);
@@ -134,9 +175,24 @@ export class VoiceSession {
     if (runId !== this.runId || this.stopping) return;
     if (this.snapshot.state !== 'connecting' && this.snapshot.state !== 'listening') return;
     try {
+      this.pcmChunksReceived += 1;
+      if (!this.nativeFormatRecorded) {
+        this.nativeFormatRecorded = true;
+        this.diagnostics?.record('audio_format_detected', {
+          actualSampleRate: buffer.sampleRate,
+          channelCount: buffer.channels,
+          resamplingActive: buffer.sampleRate !== this.dependencies.config.sampleRate || buffer.channels !== 1,
+        });
+      }
       const normalized = this.normalizer.push(buffer);
       if (!normalized.byteLength) return;
       this.audioBytes += normalized.byteLength;
+      if (this.pcmChunksReceived === 1 || this.pcmChunksReceived % 25 === 0) {
+        this.diagnostics?.record('pcm_progress', {
+          pcmChunksReceived: this.pcmChunksReceived,
+          pcmBytesProduced: this.audioBytes,
+        });
+      }
       this.dependencies.onAudioLevel?.(pcm16AudioLevel(normalized));
       if (this.transport && this.snapshot.state === 'listening') {
         this.transport.appendPcm(normalized);
@@ -206,8 +262,13 @@ export class VoiceSession {
     if (runId !== this.runId) return;
     try {
       // The completed event is authoritative; pass it unchanged to the existing pipeline.
+      this.parserHandoffCount += 1;
+      this.diagnostics?.record('parser_handoff', {
+        parserHandoffCount: this.parserHandoffCount,
+      });
       await this.dependencies.onFinalTranscript(transcript);
       this.transition('review');
+      this.diagnostics?.complete({ terminalState: 'review' });
     } catch (error) {
       await this.fail(new VoiceError('PARSING_FAILED', 'Final transcript handoff failed.', { cause: error }));
     }
@@ -234,6 +295,7 @@ export class VoiceSession {
     await this.cleanup(true);
     this.reconciler.reset();
     this.dependencies.onAudioLevel?.(0);
+    this.diagnostics?.complete({ terminalState: 'cancelled' });
     this.transition('idle', {
       permission: this.snapshot.permission,
       partialTranscript: '',
@@ -255,9 +317,21 @@ export class VoiceSession {
     ++this.runId;
     if (error.code === 'MIC_PERMISSION_DENIED') this.machine.update({ permission: 'denied' });
     if (error.code === 'MIC_PERMISSION_BLOCKED') this.machine.update({ permission: 'blocked' });
+    if (error.code === 'MIC_PERMISSION_DENIED' || error.code === 'MIC_PERMISSION_BLOCKED') {
+      this.diagnostics?.record('permission_result', {
+        permissionState: error.code === 'MIC_PERMISSION_BLOCKED' ? 'blocked' : 'denied',
+        errorCode: error.code,
+      });
+    }
     this.publish(this.machine.fail(error));
+    this.diagnostics?.record('session_failed', {
+      terminalState: this.snapshot.state,
+      errorCode: error.providerError?.code ?? error.code,
+      requestId: error.providerError?.requestId,
+    });
     await this.cleanup(true);
     this.dependencies.onAudioLevel?.(0);
+    this.diagnostics?.complete({ terminalState: this.snapshot.state });
   }
 
   private cleanup(cancelTransport: boolean): Promise<void> {
@@ -291,6 +365,12 @@ export class VoiceSession {
       this.preconnectAudio = [];
       this.preconnectBytes = 0;
       this.stopping = false;
+      this.diagnostics?.record('cleanup_completed', {
+        pcmChunksReceived: this.pcmChunksReceived,
+        pcmBytesProduced: this.audioBytes,
+        parserHandoffCount: this.parserHandoffCount,
+        cleanupCompleted: true,
+      });
     });
     return this.cleanupPromise;
   }

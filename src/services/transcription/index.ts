@@ -7,6 +7,15 @@ export {
 export { Pcm16StreamNormalizer, pcm16AudioLevel, pcm16ToBase64, type NativePcmBuffer } from './audio';
 export { expoAudioSession, type AudioSessionGateway } from './audioSession';
 export {
+  DevelopmentVoiceDiagnostics,
+  VOICE_DIAGNOSTIC_PREFIX,
+  createDevelopmentVoiceDiagnostics,
+  type VoiceDiagnosticFields,
+  type VoiceDiagnosticRecord,
+  type VoiceDiagnosticReporter,
+  type VoiceDiagnosticStage,
+} from './diagnostics';
+export {
   VoiceError,
   getVoiceErrorMessage,
   getVoiceErrorTitle,

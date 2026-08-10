@@ -92,8 +92,9 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     audioSession: expoAudioSession,
     capture,
     clientSecrets: new OpenAIByokClientSecretProvider(openAiKeyLoaded ? openAiApiKey : ''),
-    createTransport: () => new OpenAIRealtimeWebSocketTransport({
+    createTransport: (diagnostics) => new OpenAIRealtimeWebSocketTransport({
       model: defaultRealtimeTranscriptionConfig.model,
+      diagnostics,
     }),
     config: defaultRealtimeTranscriptionConfig,
     onFinalTranscript: onTranscript,

@@ -51,6 +51,7 @@ export interface RealtimeClientSecret {
   value: string;
   expiresAt: number;
   modelAccess: 'MODEL_EXISTS';
+  requestId?: string;
 }
 
 export interface RealtimeClientSecretProvider {

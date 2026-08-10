@@ -27,7 +27,7 @@ function sessionPayload(config: RealtimeTranscriptionConfig): Record<string, unk
   };
 }
 
-function parseSecret(value: unknown): RealtimeClientSecret {
+function parseSecret(value: unknown, requestId?: string): RealtimeClientSecret {
   if (!value || typeof value !== 'object') {
     throw new VoiceError('REALTIME_AUTH_FAILED', 'OpenAI returned an invalid client secret.');
   }
@@ -41,7 +41,12 @@ function parseSecret(value: unknown): RealtimeClientSecret {
     || typeof secret.expires_at !== 'number') {
     throw new VoiceError('REALTIME_AUTH_FAILED', 'OpenAI returned an invalid client secret.');
   }
-  return { value: secret.value, expiresAt: secret.expires_at, modelAccess: 'MODEL_EXISTS' };
+  return {
+    value: secret.value,
+    expiresAt: secret.expires_at,
+    modelAccess: 'MODEL_EXISTS',
+    ...(requestId ? { requestId } : {}),
+  };
 }
 
 interface OpenAIErrorPayload {
@@ -121,7 +126,7 @@ export class OpenAIByokClientSecretProvider implements RealtimeClientSecretProvi
       });
     }
     try {
-      return parseSecret(await response.json());
+      return parseSecret(await response.json(), response.headers.get('x-request-id') ?? undefined);
     } catch (error) {
       if (error instanceof VoiceError) throw error;
       throw new VoiceError('REALTIME_AUTH_FAILED', 'OpenAI returned invalid client-secret JSON.', { cause: error });

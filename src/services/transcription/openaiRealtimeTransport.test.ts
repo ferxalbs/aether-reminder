@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { DevelopmentVoiceDiagnostics, type VoiceDiagnosticRecord } from './diagnostics';
 import { OpenAIRealtimeWebSocketTransport } from './openaiRealtimeTransport';
 import { defaultRealtimeTranscriptionConfig } from './types';
 
@@ -17,12 +18,13 @@ class FakeSocket {
   drop(): void { this.onclose?.(); }
 }
 
-async function connectedTransport(socket: FakeSocket) {
+async function connectedTransport(socket: FakeSocket, diagnostics?: DevelopmentVoiceDiagnostics) {
   const events: unknown[] = [];
   let credential = '';
   const transport = new OpenAIRealtimeWebSocketTransport({
     model: defaultRealtimeTranscriptionConfig.model,
     packetBytes: 2,
+    diagnostics,
     socketFactory: (_url, secret) => { credential = secret; return socket; },
   });
   transport.subscribe((event) => events.push(event));
@@ -115,5 +117,50 @@ describe('OpenAI Realtime WebSocket transport', () => {
     transport.cancel();
     expect(JSON.parse(socket.sent.at(-1) ?? '{}')).toEqual({ type: 'input_audio_buffer.clear' });
     expect(socket.closes).toEqual([{ code: 1000, reason: 'cancelled' }]);
+  });
+
+  test('reports safe WebSocket, configuration, append, commit, and transcript counters', async () => {
+    const records: VoiceDiagnosticRecord[] = [];
+    const diagnostics = new DevelopmentVoiceDiagnostics({
+      enabled: true,
+      sink: (record) => records.push(record),
+    });
+    const socket = new FakeSocket();
+    const { transport } = await connectedTransport(socket, diagnostics);
+    transport.appendPcm(new Uint8Array([0, 1]).buffer);
+    transport.commit();
+    await drainMicrotasks();
+    socket.message({
+      type: 'conversation.item.input_audio_transcription.delta',
+      item_id: 'sensitive-item',
+      delta: 'Sensitive partial text',
+    });
+    socket.message({
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'sensitive-item',
+      transcript: 'Sensitive final text',
+    });
+    transport.close();
+
+    expect(records.map((record) => record.stage)).toEqual(expect.arrayContaining([
+      'websocket_connecting',
+      'websocket_open',
+      'session_configuration_sent',
+      'session_configuration_accepted',
+      'audio_append_progress',
+      'commit_sent',
+      'transcription_delta_progress',
+      'transcription_completed',
+      'websocket_closed',
+    ]));
+    expect(records.find((record) => record.stage === 'commit_sent')).toMatchObject({
+      audioAppendCount: 1,
+      commitSent: true,
+    });
+    const serialized = JSON.stringify(records);
+    expect(serialized).not.toContain('ephemeral-secret');
+    expect(serialized).not.toContain('Sensitive partial text');
+    expect(serialized).not.toContain('Sensitive final text');
+    expect(serialized).not.toContain('sensitive-item');
   });
 });

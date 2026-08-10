@@ -14,12 +14,17 @@ describe('Realtime client-secret authentication', () => {
       body = String(init?.body);
       return new Response(JSON.stringify({ value: 'ek_test', expires_at: 12345 }), {
         status: 200,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-request-id': 'req_success' },
       });
     }) as typeof fetch;
     const secret = await new OpenAIByokClientSecretProvider('user-standard-key')
       .create(defaultRealtimeTranscriptionConfig);
-    expect(secret).toEqual({ value: 'ek_test', expiresAt: 12345, modelAccess: 'MODEL_EXISTS' });
+    expect(secret).toEqual({
+      value: 'ek_test',
+      expiresAt: 12345,
+      modelAccess: 'MODEL_EXISTS',
+      requestId: 'req_success',
+    });
     expect(authorization).toBe('Bearer user-standard-key');
     expect(JSON.parse(body).session).toEqual(buildRealtimeSessionPayload(defaultRealtimeTranscriptionConfig));
   });

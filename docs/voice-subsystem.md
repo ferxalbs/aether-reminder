@@ -27,6 +27,8 @@ to the existing assistant/reminder interpretation pipeline.
 - `OpenAIRealtimeWebSocketTransport`: ordered bounded PCM append queue, manual commit,
   Realtime events, timeouts, and socket cleanup. The standard key never reaches it.
 - `TranscriptReconciler`: reconciles deltas and authoritative completions by `item_id`.
+- `DevelopmentVoiceDiagnostics`: development-only structured stage/counter output. Its
+  schema cannot contain credentials, authorization headers, PCM, or transcript text.
 
 ## Transport decision
 
