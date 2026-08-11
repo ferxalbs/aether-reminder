@@ -20,6 +20,7 @@ describe('schema migrations', () => {
       '0004_notification_projection',
       '0005_notification_query_indexes',
       '0006_recurrence_rules',
+      '0007_notification_reliability',
     ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
@@ -39,6 +40,7 @@ describe('schema migrations', () => {
     expect(names).toContain('agent_runs');
     expect(names).toContain('agent_events');
     expect(names).toContain('tool_executions');
+    expect(names).toContain('notification_action_receipts');
 
     const indexes = await db.getAllAsync<{ name: string }>(
       `SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name`
@@ -52,6 +54,9 @@ describe('schema migrations', () => {
       'recurrence_rules_active_idx',
       'recurrence_rules_active_task_idx',
       'recurrence_rules_last_completed_idx',
+      'idx_reminders_projection_dirty',
+      'idx_reminders_projection_error',
+      'notification_action_receipts_reminder_idx',
     ]));
     await db.closeAsync?.();
   });
@@ -71,6 +76,7 @@ describe('schema migrations', () => {
       '0004_notification_projection',
       '0005_notification_query_indexes',
       '0006_recurrence_rules',
+      '0007_notification_reliability',
     ]);
     await db.closeAsync?.();
   });

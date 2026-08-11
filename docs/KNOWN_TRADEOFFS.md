@@ -3,7 +3,8 @@
 ## Notification reconciliation batch size
 
 `NOTIFICATION_RECONCILIATION_BATCH_SIZE` is set to `8` in
-`src/services/notifications/localNotificationProjection.ts:86`.
+`src/services/notifications/localNotificationProjection.ts:274` and is used by
+`NotificationReconciliationService` for full and incremental repair batches.
 
 This value is an initial engineering heuristic. It was not derived from
 benchmarks, device profiling, or a measured platform limit, and it remains

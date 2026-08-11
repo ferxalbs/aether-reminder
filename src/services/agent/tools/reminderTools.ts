@@ -1,8 +1,15 @@
+import type { Reminder } from '@/domain/entities';
 import { assertResolvedDateTime, resolveTomorrow, resolveToday } from '@/temporal/resolve';
 import type { AgentTool, ToolResult } from './types';
 
 function asString(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;
+}
+
+function isProjectionReconciled(reminder: Reminder): boolean {
+  if (reminder.projectionDirty || reminder.projectionError) return false;
+  if (reminder.projectionState === 'scheduled') return Boolean(reminder.nativeNotificationId);
+  return !reminder.enabled || reminder.projectionState === 'not_required';
 }
 
 const OS_NOTE = 'SQLite is authoritative; local notification delivery is reconciled with the OS.';
@@ -31,7 +38,7 @@ export const remindersList: AgentTool<{ taskId?: string; enabledOnly?: boolean }
       data: {
         count: list.length,
         reminders: list,
-        osNotificationProjection: list.every((item) => !item.enabled || item.nativeNotificationId) ? 'reconciled' : 'pending_repair',
+        osNotificationProjection: list.every(isProjectionReconciled) ? 'reconciled' : 'pending_repair',
         note: OS_NOTE,
       },
     };

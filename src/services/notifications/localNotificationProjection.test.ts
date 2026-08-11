@@ -15,7 +15,10 @@ describe('local notification projection', () => {
     const base: Reminder = {
       id: 'reminder', taskId: 'task', scheduledDate: '2030-01-02', scheduledTime: '09:00',
       timezone: 'America/New_York', semantics: 'fixed', enabled: true,
-      nativeNotificationId: null, projectionError: null, createdAt: '', updatedAt: '',
+      nativeNotificationId: null, projectionState: 'pending', projectionDirty: true,
+      projectionRevision: 0, projectionAttemptCount: 0, projectionLastAttemptAt: null,
+      projectionLastSuccessAt: null, projectionErrorCode: null, projectionError: null,
+      timingPrecision: 'normal', createdAt: '', updatedAt: '',
     };
     expect(resolveReminderNotificationDate(base, 'America/Los_Angeles').toISOString())
       .toBe('2030-01-02T14:00:00.000Z');

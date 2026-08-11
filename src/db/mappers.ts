@@ -7,6 +7,8 @@ import type {
   TaskPriority,
   TaskSource,
   TemporalSemantics,
+  ReminderProjectionState,
+  ReminderTimingPrecision,
 } from '@/domain/entities';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
@@ -38,7 +40,15 @@ export interface ReminderRow {
   semantics: string;
   enabled: number;
   native_notification_id: string | null;
+  projection_state: string;
+  projection_dirty: number;
+  projection_revision: number;
+  projection_attempt_count: number;
+  projection_last_attempt_at: string | null;
+  projection_last_success_at: string | null;
+  projection_error_code: string | null;
   projection_error: string | null;
+  timing_precision: string;
   created_at: string;
   updated_at: string;
 }
@@ -92,7 +102,15 @@ export function mapReminderRow(row: ReminderRow): Reminder {
     semantics: row.semantics as TemporalSemantics,
     enabled: row.enabled === 1,
     nativeNotificationId: row.native_notification_id,
+    projectionState: row.projection_state as ReminderProjectionState,
+    projectionDirty: row.projection_dirty === 1,
+    projectionRevision: row.projection_revision,
+    projectionAttemptCount: row.projection_attempt_count,
+    projectionLastAttemptAt: row.projection_last_attempt_at,
+    projectionLastSuccessAt: row.projection_last_success_at,
+    projectionErrorCode: row.projection_error_code,
     projectionError: row.projection_error,
+    timingPrecision: row.timing_precision as ReminderTimingPrecision,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

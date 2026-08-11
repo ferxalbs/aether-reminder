@@ -2,15 +2,19 @@ import {
   NotificationError,
   toNotificationError,
 } from './errors';
-import type { NotificationReconciliationResult } from './localNotificationProjection';
+import type {
+  NotificationReconciliationOptions,
+  NotificationReconciliationResult,
+} from './notificationReconciliation';
 
 export interface NotificationSyncClient {
   configure: () => Promise<void>;
-  reconcile: () => Promise<NotificationReconciliationResult>;
+  reconcile: (options?: NotificationReconciliationOptions) => Promise<NotificationReconciliationResult>;
 }
 
 export async function syncLocalNotifications(
   client: NotificationSyncClient,
+  options: NotificationReconciliationOptions = { mode: 'full', reason: 'cold-start' },
 ): Promise<NotificationReconciliationResult> {
   try {
     await client.configure();
@@ -24,7 +28,7 @@ export async function syncLocalNotifications(
 
   let result: NotificationReconciliationResult;
   try {
-    result = await client.reconcile();
+    result = await client.reconcile(options);
   } catch (error) {
     throw toNotificationError(
       error,

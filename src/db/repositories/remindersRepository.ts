@@ -1,5 +1,5 @@
 import { createId } from '@/lib/id';
-import type { Reminder, TemporalSemantics } from '@/domain/entities';
+import type { Reminder, ReminderProjectionState, ReminderTimingPrecision, TemporalSemantics} from '@/domain/entities';
 import { DatabaseError } from '../errors';
 import { mapReminderRow, type ReminderRow } from '../mappers';
 import type { SqlDatabase } from '../types';
@@ -12,6 +12,23 @@ export interface CreateReminderInput {
   timezone?: string | null;
   semantics?: TemporalSemantics;
   enabled?: boolean;
+  timingPrecision?: ReminderTimingPrecision;
+}
+
+export interface ProjectionFailureInput {
+  code: string;
+  message: string;
+  state?: Extract<ReminderProjectionState, 'failed' | 'blocked' | 'missing'>;
+}
+
+export interface ProjectionCounts {
+  dirty: number;
+  failed: number;
+  stale: number;
+  missing: number;
+  blocked: number;
+  scheduled: number;
+  notRequired: number;
 }
 
 export class RemindersRepository {
@@ -52,6 +69,17 @@ export class RemindersRepository {
     return rows.map(mapReminderRow);
   }
 
+  async listDirty(limit = 100): Promise<Reminder[]> {
+    const rows = await this.db.getAllAsync<ReminderRow>(
+      `SELECT * FROM reminders
+       WHERE projection_dirty = 1
+       ORDER BY updated_at ASC, id ASC
+       LIMIT ?`,
+      [Math.max(1, Math.floor(limit))]
+    );
+    return rows.map(mapReminderRow);
+  }
+
   async create(input: CreateReminderInput): Promise<Reminder> {
     if (!input.taskId) {
       throw new DatabaseError('VALIDATION_FAILED', 'Reminder requires taskId.');
@@ -60,8 +88,9 @@ export class RemindersRepository {
     const now = new Date().toISOString();
     await this.db.runAsync(
       `INSERT INTO reminders (
-        id, task_id, scheduled_date, scheduled_time, timezone, semantics, enabled, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, task_id, scheduled_date, scheduled_time, timezone, semantics, enabled,
+        timing_precision, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.taskId,
@@ -70,6 +99,7 @@ export class RemindersRepository {
         input.timezone ?? null,
         input.semantics ?? 'floating',
         input.enabled === false ? 0 : 1,
+        input.timingPrecision ?? 'normal',
         now,
         now,
       ]
@@ -81,8 +111,14 @@ export class RemindersRepository {
 
   async setEnabled(id: string, enabled: boolean): Promise<Reminder> {
     const now = new Date().toISOString();
+    const nextState = enabled
+      ? `CASE WHEN projection_state = 'scheduled' THEN 'stale' ELSE 'pending' END`
+      : `'stale'`;
     await this.db.runAsync(
-      `UPDATE reminders SET enabled = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE reminders
+       SET enabled = ?, projection_dirty = 1, projection_state = ${nextState},
+           projection_revision = projection_revision + 1, updated_at = ?
+       WHERE id = ?`,
       [enabled ? 1 : 0, now, id]
     );
     const reminder = await this.getById(id);
@@ -97,6 +133,7 @@ export class RemindersRepository {
       scheduledTime?: string | null;
       timezone?: string | null;
       semantics?: TemporalSemantics;
+      timingPrecision?: ReminderTimingPrecision;
     }
   ): Promise<Reminder> {
     const existing = await this.getById(id);
@@ -105,13 +142,16 @@ export class RemindersRepository {
     const now = new Date().toISOString();
     await this.db.runAsync(
       `UPDATE reminders SET
-        scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?, updated_at = ?
+        scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?,
+        timing_precision = ?, projection_dirty = 1, projection_state = 'stale',
+        projection_revision = projection_revision + 1, updated_at = ?
        WHERE id = ?`,
       [
         input.scheduledDate !== undefined ? input.scheduledDate : existing.scheduledDate,
         input.scheduledTime !== undefined ? input.scheduledTime : existing.scheduledTime,
         input.timezone !== undefined ? input.timezone : existing.timezone,
         input.semantics ?? existing.semantics,
+        input.timingPrecision ?? existing.timingPrecision,
         now,
         id,
       ]
@@ -121,10 +161,155 @@ export class RemindersRepository {
     return reminder;
   }
 
-  async setProjection(id: string, nativeId: string | null, error: string | null): Promise<void> {
-    await this.db.runAsync(
-      `UPDATE reminders SET native_notification_id = ?, projection_error = ?, updated_at = ? WHERE id = ?`,
-      [nativeId, error, new Date().toISOString(), id]
+  async markDirty(id: string): Promise<boolean> {
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET projection_dirty = 1,
+           projection_state = CASE
+             WHEN projection_state IN ('scheduled', 'not_required') THEN 'stale'
+             ELSE 'pending'
+           END,
+           projection_revision = projection_revision + 1,
+           updated_at = ?
+       WHERE id = ?`,
+      [new Date().toISOString(), id]
     );
+    return result.changes > 0;
+  }
+
+  async markTaskDirty(taskId: string): Promise<number> {
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET projection_dirty = 1,
+           projection_state = CASE
+             WHEN projection_state IN ('scheduled', 'not_required') THEN 'stale'
+             ELSE 'pending'
+           END,
+           projection_revision = projection_revision + 1,
+           updated_at = ?
+       WHERE task_id = ?`,
+      [new Date().toISOString(), taskId]
+    );
+    return result.changes;
+  }
+
+  async recordProjectionAttempt(id: string, revision: number): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET projection_attempt_count = projection_attempt_count + 1,
+           projection_last_attempt_at = ?, updated_at = ?
+       WHERE id = ? AND projection_revision = ? AND projection_dirty = 1`,
+      [now, now, id, revision]
+    );
+    return result.changes > 0;
+  }
+
+  async recordProjectionSuccess(
+    id: string,
+    revision: number,
+    nativeId: string | null,
+    state: Extract<ReminderProjectionState, 'scheduled' | 'not_required'>,
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET native_notification_id = ?, projection_state = ?, projection_dirty = 0,
+           projection_error_code = NULL, projection_error = NULL,
+           projection_last_success_at = ?, updated_at = ?
+       WHERE id = ? AND projection_revision = ?`,
+      [nativeId, state, now, now, id, revision]
+    );
+    return result.changes > 0;
+  }
+
+  async recordProjectionFailure(
+    id: string,
+    revision: number,
+    failure: ProjectionFailureInput,
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET projection_state = ?, projection_dirty = 1,
+           projection_error_code = ?, projection_error = ?, updated_at = ?
+       WHERE id = ? AND projection_revision = ?`,
+      [failure.state ?? 'failed', failure.code, failure.message, now, id, revision]
+    );
+    return result.changes > 0;
+  }
+
+  async recordProjectionMissing(id: string, revision: number): Promise<boolean> {
+    return this.recordProjectionFailure(id, revision, {
+      code: 'NATIVE_NOTIFICATION_MISSING',
+      message: 'The device notification is missing and will be repaired.',
+      state: 'missing',
+    });
+  }
+
+  /** Compatibility helper for tests and existing callers that set projection metadata directly. */
+  async setProjection(id: string, nativeId: string | null, error: string | null): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db.runAsync(
+      `UPDATE reminders
+       SET native_notification_id = ?,
+           projection_state = ?, projection_dirty = ?,
+           projection_error_code = ?, projection_error = ?,
+           projection_last_success_at = CASE WHEN ? IS NULL THEN projection_last_success_at ELSE ? END,
+           updated_at = ?
+       WHERE id = ?`,
+      [
+        nativeId,
+        error ? 'failed' : nativeId ? 'scheduled' : 'not_required',
+        error ? 1 : 0,
+        error ? 'PROJECTION_FAILED' : null,
+        error,
+        nativeId,
+        now,
+        now,
+        id,
+      ]
+    );
+  }
+
+  async countActive(): Promise<number> {
+    const row = await this.db.getFirstAsync<{ c: number }>(
+      `SELECT COUNT(*) as c
+       FROM reminders r
+       INNER JOIN tasks t ON t.id = r.task_id
+       WHERE r.enabled = 1 AND t.completed = 0 AND t.deleted_at IS NULL`,
+    );
+    return row?.c ?? 0;
+  }
+
+  async countProjectionStates(): Promise<ProjectionCounts> {
+    const row = await this.db.getFirstAsync<{
+      dirty: number;
+      failed: number;
+      stale: number;
+      missing: number;
+      blocked: number;
+      scheduled: number;
+      not_required: number;
+    }>(
+      `SELECT
+         SUM(CASE WHEN projection_dirty = 1 THEN 1 ELSE 0 END) AS dirty,
+         SUM(CASE WHEN projection_state = 'failed' THEN 1 ELSE 0 END) AS failed,
+         SUM(CASE WHEN projection_state = 'stale' THEN 1 ELSE 0 END) AS stale,
+         SUM(CASE WHEN projection_state = 'missing' THEN 1 ELSE 0 END) AS missing,
+         SUM(CASE WHEN projection_state = 'blocked' THEN 1 ELSE 0 END) AS blocked,
+         SUM(CASE WHEN projection_state = 'scheduled' THEN 1 ELSE 0 END) AS scheduled,
+         SUM(CASE WHEN projection_state = 'not_required' THEN 1 ELSE 0 END) AS not_required
+       FROM reminders`
+    );
+    return {
+      dirty: row?.dirty ?? 0,
+      failed: row?.failed ?? 0,
+      stale: row?.stale ?? 0,
+      missing: row?.missing ?? 0,
+      blocked: row?.blocked ?? 0,
+      scheduled: row?.scheduled ?? 0,
+      notRequired: row?.not_required ?? 0,
+    };
   }
 }

@@ -13,8 +13,13 @@ import {
 } from '@/db';
 import { configureLocalNotifications } from '@/services/notifications/localNotificationProjection';
 import { registerNotificationActionListener } from '@/services/notifications/notificationActions';
-import { getNotificationErrorMessage } from '@/services/notifications/errors';
+import {
+  getNotificationErrorMessage,
+  NotificationError,
+} from '@/services/notifications/errors';
 import { syncLocalNotifications } from '@/services/notifications/notificationBootstrap';
+import type { NotificationReconciliationOptions } from '@/services/notifications/notificationReconciliation';
+import { getDeviceTimeZone } from '@/temporal/localCalendar';
 import { getAetherCore } from '@/core';
 import { getDatabaseErrorMessage } from '@/db/errors';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -47,7 +52,9 @@ export default function RootLayout() {
   const [notificationSync, setNotificationSync] = useState<NotificationSyncState>({ phase: 'idle' });
   const notificationSyncRef = useRef<Promise<void> | null>(null);
 
-  const syncNotifications = useCallback(() => {
+  const syncNotifications = useCallback((
+    options: NotificationReconciliationOptions = { mode: 'full', reason: 'cold-start' },
+  ) => {
     if (notificationSyncRef.current) return notificationSyncRef.current;
 
     const operation = (async () => {
@@ -59,11 +66,23 @@ export default function RootLayout() {
         const core = getAetherCore(getDatabase());
         await syncLocalNotifications({
           configure: configureLocalNotifications,
-          reconcile: () => core.reconcileNotifications(),
-        });
+          reconcile: (reconcileOptions) => core.reconcileNotifications(reconcileOptions),
+        }, options);
+        await core.services.repos.appMeta.set(
+          'reliability.device_timezone',
+          getDeviceTimeZone() ?? 'unknown',
+        );
         setNotificationSync({ phase: 'ready' });
       } catch (error) {
         reportNonFatalError('notifications-sync', error);
+        try {
+          await getAetherCore(getDatabase()).services.repos.appMeta.set(
+            'reliability.last_error_category',
+            error instanceof NotificationError ? error.code : 'RECONCILIATION_FAILED',
+          );
+        } catch (persistenceError) {
+          reportNonFatalError('notifications-sync-state', persistenceError);
+        }
         setNotificationSync({
           phase: 'error',
           message: getNotificationErrorMessage(error),
@@ -76,6 +95,26 @@ export default function RootLayout() {
     notificationSyncRef.current = operation;
     return operation;
   }, []);
+
+  const syncForegroundNotifications = useCallback(async () => {
+    try {
+      const core = getAetherCore(getDatabase());
+      const timezone = getDeviceTimeZone() ?? 'unknown';
+      const previousTimezone = await core.services.repos.appMeta.get('reliability.device_timezone');
+      const lastErrorCategory = await core.services.repos.appMeta.get('reliability.last_error_category');
+      const fullRepair = previousTimezone === null
+        || previousTimezone !== timezone
+        || (lastErrorCategory !== null && lastErrorCategory !== 'NONE');
+      await syncNotifications({
+        mode: fullRepair ? 'full' : 'incremental',
+        reason: fullRepair
+          ? previousTimezone !== timezone ? 'timezone-change' : 'foreground-repair'
+          : 'foreground-dirty',
+      });
+    } catch (error) {
+      reportNonFatalError('notifications-foreground-select', error);
+    }
+  }, [syncNotifications]);
 
   const runDatabaseRecovery = useCallback(async (mode: Exclude<DatabaseRecoveryMode, 'check'>) => {
     setBoot({ phase: 'loading' });
@@ -99,7 +138,7 @@ export default function RootLayout() {
       }
       setBoot({ phase: 'ready' });
       await refreshAllSurfaces();
-      void syncNotifications();
+      void syncNotifications({ mode: 'full', reason: `database-recovery-${mode}` });
     } catch (error) {
       reportNonFatalError(`database-recovery-${mode}`, error);
       setBoot({ phase: 'error', message: getDatabaseErrorMessage(error) });
@@ -165,10 +204,10 @@ export default function RootLayout() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || boot.phase !== 'ready') return;
-      void syncNotifications();
+      void syncForegroundNotifications();
     });
     return () => subscription.remove();
-  }, [boot.phase, syncNotifications]);
+  }, [boot.phase, syncForegroundNotifications]);
 
   useEffect(() => {
     if (boot.phase !== 'ready') return;
@@ -178,7 +217,7 @@ export default function RootLayout() {
 
     void registerNotificationActionListener(core, async () => {
       await refreshAllSurfaces();
-      await syncNotifications();
+      await syncNotifications({ mode: 'incremental', reason: 'notification-action' });
     })
       .then((cleanup) => {
         if (disposed) cleanup();

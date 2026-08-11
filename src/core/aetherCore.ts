@@ -4,7 +4,7 @@ import {
   AetherAgentRuntime,
   type AetherAgentRuntimeOptions,
 } from '@/services/agent/runtime';
-import { LocalNotificationProjection } from '@/services/notifications/localNotificationProjection';
+import type { NotificationReconciliationOptions } from '@/services/notifications/notificationReconciliation';
 import { AetherCommandExecutor } from './commands';
 
 export interface AetherCoreOptions
@@ -17,7 +17,6 @@ export class AetherCore {
   readonly services: DomainServices;
   readonly commands: AetherCommandExecutor;
   readonly agent: AetherAgentRuntime;
-  private readonly notifications: LocalNotificationProjection;
 
   constructor(options: AetherCoreOptions) {
     this.services = options.services ?? createDomainServices(options.db);
@@ -27,14 +26,10 @@ export class AetherCore {
       services: this.services,
       commands: this.commands,
     });
-    this.notifications = new LocalNotificationProjection(
-      this.services.repos.reminders,
-      this.services.repos.tasks,
-    );
   }
 
-  reconcileNotifications() {
-    return this.notifications.reconcile();
+  reconcileNotifications(options: NotificationReconciliationOptions = { mode: 'full', reason: 'legacy' }) {
+    return this.services.notifications.reconcile(options);
   }
 }
 

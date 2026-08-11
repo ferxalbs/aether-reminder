@@ -1,11 +1,15 @@
 import type { SqlDatabase } from '../types';
 import { AgentRuntimeRepository } from './agentRuntimeRepository';
+import { AppMetaRepository } from './appMetaRepository';
+import { NotificationActionReceiptsRepository } from './notificationActionReceiptsRepository';
 import { ProjectsRepository } from './projectsRepository';
 import { RecurrenceRulesRepository } from './recurrenceRulesRepository';
 import { RemindersRepository } from './remindersRepository';
 import { TaskEventsRepository } from './taskEventsRepository';
 import { TasksRepository } from './tasksRepository';
 
+export { AppMetaRepository } from './appMetaRepository';
+export { NotificationActionReceiptsRepository } from './notificationActionReceiptsRepository';
 export { ProjectsRepository } from './projectsRepository';
 export { RecurrenceRulesRepository } from './recurrenceRulesRepository';
 export { RemindersRepository } from './remindersRepository';
@@ -24,9 +28,12 @@ export {
  */
 export function createRepositories(db: SqlDatabase) {
   return {
+    db,
     tasks: new TasksRepository(db),
     recurrenceRules: new RecurrenceRulesRepository(db),
     reminders: new RemindersRepository(db),
+    appMeta: new AppMetaRepository(db),
+    notificationActions: new NotificationActionReceiptsRepository(db),
     projects: new ProjectsRepository(db),
     taskEvents: new TaskEventsRepository(db),
     agentRuntime: new AgentRuntimeRepository(db),

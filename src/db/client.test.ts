@@ -4,6 +4,7 @@ import {
   recoverDatabase,
   RECREATE_DATABASE_CONFIRMATION,
 } from './client';
+import { LATEST_SCHEMA_VERSION } from './migrations';
 import { DatabaseError } from './errors';
 import type { SqlDatabase } from './types';
 
@@ -16,6 +17,14 @@ function createDatabase(getFirst: SqlDatabase['getFirstAsync']): SqlDatabase {
     withTransactionAsync: async (task) => task(),
     closeAsync: async () => undefined,
   };
+}
+
+function integrityDatabase(quickCheck: string): SqlDatabase {
+  return createDatabase(async (source) => {
+    if (source.includes('user_version')) return { user_version: LATEST_SCHEMA_VERSION };
+    if (source.includes('quick_check')) return { quick_check: quickCheck };
+    return null;
+  });
 }
 
 afterEach(() => {
@@ -34,7 +43,7 @@ describe('database recovery safety', () => {
   });
 
   test('check is read-only and accepts SQLite quick_check ok', async () => {
-    const db = createDatabase(async () => ({ quick_check: 'ok' }));
+    const db = integrityDatabase('ok');
     __setDatabaseForTests(db);
 
     await expect(recoverDatabase('check')).resolves.toEqual({
@@ -44,7 +53,7 @@ describe('database recovery safety', () => {
   });
 
   test('check fails closed when SQLite reports corruption', async () => {
-    const db = createDatabase(async () => ({ quick_check: '*** in database main ***' }));
+    const db = integrityDatabase('*** in database main ***');
     __setDatabaseForTests(db);
 
     try {
@@ -76,9 +85,13 @@ describe('database recovery safety', () => {
     const waiting = new Promise<void>((resolve) => {
       releaseCheck = resolve;
     });
-    const db = createDatabase(async () => {
-      await waiting;
-      return { quick_check: 'ok' };
+    const db = createDatabase(async (source) => {
+      if (source.includes('user_version')) return { user_version: LATEST_SCHEMA_VERSION };
+      if (source.includes('quick_check')) {
+        await waiting;
+        return { quick_check: 'ok' };
+      }
+      return null;
     });
     __setDatabaseForTests(db);
 

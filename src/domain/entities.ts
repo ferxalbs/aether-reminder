@@ -4,6 +4,15 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 
 /** fixed = absolute instant semantics; floating = wall-clock in local/device zone */
 export type TemporalSemantics = 'fixed' | 'floating';
+export type ReminderProjectionState =
+  | 'pending'
+  | 'scheduled'
+  | 'stale'
+  | 'failed'
+  | 'missing'
+  | 'not_required'
+  | 'blocked';
+export type ReminderTimingPrecision = 'exact' | 'normal' | 'flexible';
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type RecurrenceMode = 'fixed' | 'after_completion';
 
@@ -72,7 +81,15 @@ export interface Reminder {
   semantics: TemporalSemantics;
   enabled: boolean;
   nativeNotificationId: string | null;
+  projectionState: ReminderProjectionState;
+  projectionDirty: boolean;
+  projectionRevision: number;
+  projectionAttemptCount: number;
+  projectionLastAttemptAt: string | null;
+  projectionLastSuccessAt: string | null;
+  projectionErrorCode: string | null;
   projectionError: string | null;
+  timingPrecision: ReminderTimingPrecision;
   createdAt: string;
   updatedAt: string;
 }

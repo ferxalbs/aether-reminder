@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  addLocalCalendarDays,
   compareLocalDates,
   getLocalDateString,
   getLocalTimeString,
+  getZonedDateTimeStrings,
   isLocalDateAfter,
   isLocalDateBefore,
 } from './localCalendar';
@@ -33,6 +35,21 @@ describe('getLocalTimeString', () => {
   test('formats HH:mm', () => {
     const d = new Date(2026, 0, 1, 9, 5, 0);
     expect(getLocalTimeString(d)).toBe('09:05');
+  });
+});
+
+describe('zoned calendar helpers', () => {
+  test('formats fixed timezone values from an instant', () => {
+    const instant = new Date('2026-08-10T03:55:00.000Z');
+    expect(getZonedDateTimeStrings(instant, 'America/New_York')).toEqual({
+      date: '2026-08-09',
+      time: '23:55',
+    });
+  });
+
+  test('adds calendar days across month boundaries', () => {
+    expect(addLocalCalendarDays('2026-01-31', 1)).toBe('2026-02-01');
+    expect(addLocalCalendarDays('2026-12-31', 1)).toBe('2027-01-01');
   });
 });
 

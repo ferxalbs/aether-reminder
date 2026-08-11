@@ -22,6 +22,47 @@ export function getLocalTimeString(date: Date = new Date()): string {
   return `${hours}:${minutes}`;
 }
 
+/** Calendar date/time represented by an instant in an explicit IANA timezone. */
+export function getZonedDateTimeStrings(
+  date: Date,
+  timezone: string,
+): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  const year = value('year');
+  const month = value('month');
+  const day = value('day');
+  const hour = value('hour');
+  const minute = value('minute');
+  if (![year, month, day, hour, minute].every(Boolean)) {
+    throw new RangeError(`Could not resolve calendar values in timezone ${timezone}.`);
+  }
+  return {
+    date: `${year}-${month}-${day}`,
+    time: `${hour}:${minute}`,
+  };
+}
+
+/** Add calendar days to a YYYY-MM-DD value without using device timezone. */
+export function addLocalCalendarDays(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day + days));
+  return [
+    value.getUTCFullYear(),
+    String(value.getUTCMonth() + 1).padStart(2, '0'),
+    String(value.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 /** Compare two YYYY-MM-DD local dates lexicographically (valid for ISO dates). */
 export function compareLocalDates(a: string, b: string): number {
   if (a < b) return -1;

@@ -1,6 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DatabaseError } from './errors';
-import { applyPragmas, runMigrations, type MigrationResult } from './migrator';
+import {
+  applyPragmas,
+  getSchemaVersion,
+  runMigrations,
+  type MigrationResult,
+} from './migrator';
+import { LATEST_SCHEMA_VERSION } from './migrations';
 import type { SqlBindParams, SqlDatabase, SqlRunResult } from './types';
 
 export const DATABASE_NAME = 'aether.db';
@@ -87,6 +93,39 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
   return initPromise;
 }
 
+export async function assertDatabaseIntegrity(db: SqlDatabase): Promise<void> {
+  const schemaVersion = await getSchemaVersion(db);
+  if (schemaVersion !== LATEST_SCHEMA_VERSION) {
+    throw new DatabaseError(
+      'INTEGRITY_CHECK_FAILED',
+      `SQLite schema is not at expected version ${LATEST_SCHEMA_VERSION}.`,
+    );
+  }
+
+  const quickCheck = await db.getFirstAsync<Record<string, unknown>>('PRAGMA quick_check');
+  if (!quickCheck || !Object.values(quickCheck).some((value) => value === 'ok')) {
+    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite quick check did not return ok.');
+  }
+
+  const foreignKeyFailure = await db.getFirstAsync<Record<string, unknown>>(
+    'PRAGMA foreign_key_check',
+  );
+  if (foreignKeyFailure) {
+    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite foreign-key check found an orphan row.');
+  }
+
+  const orphanReminder = await db.getFirstAsync<{ id: string }>(
+    `SELECT r.id
+     FROM reminders r
+     LEFT JOIN tasks t ON t.id = r.task_id
+     WHERE t.id IS NULL
+     LIMIT 1`,
+  );
+  if (orphanReminder) {
+    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'Reminder/task relationship check failed.');
+  }
+}
+
 /**
  * Explicit recovery boundary. Retry and check preserve data. Recreate is the
  * only destructive mode and requires the exported confirmation token.
@@ -116,14 +155,10 @@ export async function recoverDatabase(
           transientDatabase = wrapExpoDatabase(await openDatabaseAsync(DATABASE_NAME));
         }
         const db = readyHandle?.db ?? transientDatabase;
-        const result = await db?.getFirstAsync<Record<string, string>>('PRAGMA quick_check');
-        if (!result || !Object.values(result).some((value) => value === 'ok')) {
-          throw new DatabaseError(
-            'INTEGRITY_CHECK_FAILED',
-            'SQLite PRAGMA quick_check did not return ok.',
-            result,
-          );
+        if (!db) {
+          throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite database is unavailable.');
         }
+        await assertDatabaseIntegrity(db);
       } finally {
         await transientDatabase?.closeAsync?.().catch(() => undefined);
       }

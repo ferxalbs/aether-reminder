@@ -14,6 +14,7 @@ import type {
   RescheduleReminderInput,
   ScheduleReminderInput,
 } from '@/domain/services/reminderService';
+import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export type TaskEditorRecurrenceDraft = Omit<
   CreateRecurrenceRuleInput,
@@ -43,6 +44,25 @@ type DueReminderChange =
  */
 export class AetherCommandExecutor {
   constructor(private readonly services: DomainServices) {}
+
+  private async syncTaskProjections(taskId: string, reason: string): Promise<void> {
+    await this.services.repos.reminders.markTaskDirty(taskId);
+    try {
+      const result = await this.services.notifications.reconcile({
+        mode: 'incremental',
+        taskIds: [taskId],
+        reason,
+      });
+      if (result.failed > 0) {
+        reportNonFatalError(
+          `notification-${reason}`,
+          result.failures.map((failure) => failure.error.message).join('; '),
+        );
+      }
+    } catch (error) {
+      reportNonFatalError(`notification-${reason}`, error);
+    }
+  }
 
   private async findDueReminder(task: Task): Promise<Reminder | null> {
     if (!task.dueDate || !task.dueTime) return null;
@@ -157,7 +177,9 @@ export class AetherCommandExecutor {
     const result = await this.services.tasks.updateTask(id, input, source);
     let reminderChange: DueReminderChange = { kind: 'none' };
     try {
+      await this.services.repos.reminders.markTaskDirty(id);
       reminderChange = await this.syncDueReminder(before, result.value, source);
+      await this.syncTaskProjections(id, 'task-update');
       return result;
     } catch (error) {
       await this.rollbackDueReminder(reminderChange).catch(() => undefined);
@@ -220,7 +242,9 @@ export class AetherCommandExecutor {
     const taskResult = await this.services.tasks.updateTask(id, input.task, source);
     let reminderChange: DueReminderChange = { kind: 'none' };
     try {
+      await this.services.repos.reminders.markTaskDirty(id);
       reminderChange = await this.syncDueReminder(beforeTask, taskResult.value, source);
+      await this.syncTaskProjections(id, 'editor-update');
 
       let recurrenceResult = null;
       if (input.recurrence && targetDate) {
@@ -262,6 +286,7 @@ export class AetherCommandExecutor {
 
   async completeTask(id: string, source = 'manual') {
     const result = await this.services.tasks.completeTask(id, source);
+    await this.syncTaskProjections(id, 'task-complete');
     const recurrence = await this.services.recurrence.advanceAfterCompletion(result.value, source);
     if (!recurrence) return result;
 
@@ -284,9 +309,14 @@ export class AetherCommandExecutor {
   async reopenTask(id: string, source = 'manual') {
     if (source === 'undo') {
       const recurringUndo = await this.services.recurrence.undoLatestCompletionForTask(id);
-      if (recurringUndo) return recurringUndo;
+      if (recurringUndo) {
+        await this.syncTaskProjections(id, 'task-reopen');
+        return recurringUndo;
+      }
     }
-    return this.services.tasks.reopenTask(id, source);
+    const result = await this.services.tasks.reopenTask(id, source);
+    await this.syncTaskProjections(id, 'task-reopen');
+    return result;
   }
 
   rescheduleTask(id: string, input: RescheduleTaskInput, source = 'manual') {
@@ -298,12 +328,16 @@ export class AetherCommandExecutor {
     }, source);
   }
 
-  deleteTask(id: string, source = 'manual') {
-    return this.services.tasks.deleteTask(id, source);
+  async deleteTask(id: string, source = 'manual') {
+    const result = await this.services.tasks.deleteTask(id, source);
+    await this.syncTaskProjections(id, 'task-delete');
+    return result;
   }
 
-  restoreTask(id: string, source = 'undo') {
-    return this.services.tasks.restoreTask(id, source);
+  async restoreTask(id: string, source = 'undo') {
+    const result = await this.services.tasks.restoreTask(id, source);
+    await this.syncTaskProjections(id, 'task-restore');
+    return result;
   }
 
   createRecurrenceRule(input: CreateRecurrenceRuleInput) {

@@ -4,6 +4,7 @@ export {
   isDatabaseReady,
   getDatabaseInitError,
   recoverDatabase,
+  assertDatabaseIntegrity,
   initializeDatabaseWith,
   __setDatabaseForTests,
   DATABASE_NAME,
@@ -15,6 +16,8 @@ export type { BootstrapResult } from './bootstrap';
 export { DatabaseError, getDatabaseErrorMessage } from './errors';
 export {
   createRepositories,
+  AppMetaRepository,
+  NotificationActionReceiptsRepository,
   TasksRepository,
   RecurrenceRulesRepository,
   RemindersRepository,

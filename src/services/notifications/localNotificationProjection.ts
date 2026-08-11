@@ -1,4 +1,4 @@
-import type { Reminder } from '@/domain/entities';
+import type { Reminder, ReminderTimingPrecision } from '@/domain/entities';
 import type { RemindersRepository } from '@/db/repositories/remindersRepository';
 import type { TasksRepository } from '@/db/repositories/tasksRepository';
 import { getDeviceTimeZone } from '@/temporal/localCalendar';
@@ -8,14 +8,73 @@ import {
   configureNotificationActionCategory,
 } from './notificationActions';
 import {
+  assertTimingCapability,
+  defaultNotificationCapabilities,
+  type NotificationCapabilities,
+} from './notificationCapabilities';
+import {
   NotificationError,
   toNotificationError,
 } from './errors';
 
 export interface LocalNotificationAdapter {
   list(): Promise<{ identifier: string; reminderId?: string }[]>;
-  schedule(input: { reminderId: string; taskId: string; title: string; date: Date }): Promise<string>;
+  schedule(input: {
+    reminderId: string;
+    taskId: string;
+    title: string;
+    date: Date;
+    timingPrecision: ReminderTimingPrecision;
+  }): Promise<string>;
   cancel(identifier: string): Promise<void>;
+  getCapabilities?: () => Promise<NotificationCapabilities>;
+}
+
+const ANDROID_REMINDER_CHANNEL_ID = 'aether-reminders';
+
+async function ensureAndroidReminderChannel(): Promise<void> {
+  const Notifications = await import('expo-notifications');
+  const { Platform } = await import('react-native');
+  if (Platform.OS !== 'android') return;
+  try {
+    await Notifications.setNotificationChannelAsync(ANDROID_REMINDER_CHANNEL_ID, {
+      name: 'AETHER Reminders',
+      importance: Notifications.AndroidImportance.HIGH,
+    });
+  } catch (error) {
+    throw new NotificationError(
+      'CHANNEL_UNAVAILABLE',
+      'Reminder notifications are unavailable because their Android channel could not be created.',
+      true,
+      error,
+    );
+  }
+}
+
+async function getExpoNotificationCapabilities(): Promise<NotificationCapabilities> {
+  const Notifications = await import('expo-notifications');
+  const { Platform } = await import('react-native');
+  await ensureAndroidReminderChannel();
+
+  const permissions = await Notifications.getPermissionsAsync();
+  const permission = permissions.granted
+    ? 'granted'
+    : permissions.canAskAgain === false
+      ? 'denied'
+      : 'undetermined';
+
+  const androidVersion = Number(Platform.Version);
+  const exactTiming = Platform.OS !== 'android'
+    || !Number.isFinite(androidVersion)
+    || androidVersion < 31
+    ? 'available'
+    : 'unknown';
+
+  return {
+    permission,
+    channel: 'available',
+    exactTiming,
+  };
 }
 
 export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
@@ -23,51 +82,71 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
     const Notifications = await import('expo-notifications');
     return (await Notifications.getAllScheduledNotificationsAsync()).map((item) => ({
       identifier: item.identifier,
-      reminderId: typeof item.content.data?.reminderId === 'string' ? item.content.data.reminderId : undefined,
+      reminderId: typeof item.content.data?.reminderId === 'string'
+        ? item.content.data.reminderId
+        : undefined,
     }));
   },
   async schedule(input) {
     const Notifications = await import('expo-notifications');
-    const { Platform } = await import('react-native');
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('aether-reminders', {
-        name: 'AETHER Reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-      });
-    }
-    const permissions = await Notifications.getPermissionsAsync();
-    const granted = permissions.granted ? permissions : await Notifications.requestPermissionsAsync();
-    if (!granted.granted) {
+    await ensureAndroidReminderChannel();
+    const capabilities = await getExpoNotificationCapabilities();
+    assertTimingCapability(input.timingPrecision, capabilities);
+
+    const permissions = capabilities.permission === 'granted'
+      ? { granted: true }
+      : await Notifications.requestPermissionsAsync();
+    if (!permissions.granted) {
       throw new NotificationError(
         'PERMISSION_DENIED',
         'Notifications are disabled. Enable them in system settings, then retry.',
       );
     }
-    return Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'AETHER Reminder',
-        body: input.title,
-        categoryIdentifier: AETHER_NOTIFICATION_CATEGORY,
-        data: { reminderId: input.reminderId, taskId: input.taskId },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: input.date,
-        channelId: 'aether-reminders',
-      },
-    });
+
+    try {
+      return await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'AETHER Reminder',
+          body: input.title,
+          categoryIdentifier: AETHER_NOTIFICATION_CATEGORY,
+          data: { reminderId: input.reminderId, taskId: input.taskId },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: input.date,
+          channelId: ANDROID_REMINDER_CHANNEL_ID,
+        },
+      });
+    } catch (error) {
+      throw toNotificationError(
+        error,
+        'PROJECTION_FAILED',
+        'This reminder could not be scheduled on this device.',
+      );
+    }
   },
   async cancel(identifier) {
     const Notifications = await import('expo-notifications');
-    await Notifications.cancelScheduledNotificationAsync(identifier);
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch (error) {
+      throw toNotificationError(
+        error,
+        'NATIVE_NOTIFICATION_MISSING',
+        'The device notification could not be cancelled.',
+      );
+    }
   },
+  getCapabilities: getExpoNotificationCapabilities,
 };
 
 export function resolveReminderNotificationDate(
   reminder: Reminder,
   deviceTimezone: string | undefined = getDeviceTimeZone(),
 ): Date {
-  if (!reminder.scheduledDate) throw new Error('Reminder has no scheduled date.');
+  if (!reminder.scheduledDate) {
+    throw new NotificationError('INVALID_TRIGGER', 'Reminder has no scheduled date.');
+  }
   const timezone = reminder.semantics === 'fixed'
     ? (reminder.timezone ?? deviceTimezone)
     : deviceTimezone;
@@ -75,43 +154,38 @@ export function resolveReminderNotificationDate(
     const [year, month, day] = reminder.scheduledDate.split('-').map(Number);
     const [hour, minute] = (reminder.scheduledTime ?? '09:00').split(':').map(Number);
     const local = new Date(year, month - 1, day, hour, minute, 0, 0);
-    if (!Number.isFinite(local.getTime())) throw new Error('Reminder date is invalid.');
+    if (!Number.isFinite(local.getTime())) {
+      throw new NotificationError('INVALID_TRIGGER', 'Reminder date is invalid.');
+    }
     return local;
   }
-  return localDateTimeInZoneToDate(
-    reminder.scheduledDate,
-    reminder.scheduledTime ?? '09:00',
-    timezone,
-  );
-}
-
-/**
- * Keep startup reconciliation responsive when a user has a large reminder set.
- * The adapter and SQLite work for one reminder can still be expensive, so the
- * projection is repaired in bounded batches instead of launching unbounded
- * work or blocking on one reminder at a time.
- * See docs/KNOWN_TRADEOFFS.md for the deferred batch-size decision and its risks.
- */
-export const NOTIFICATION_RECONCILIATION_BATCH_SIZE = 8;
-
-async function mapInBatches<T, R>(
-  items: readonly T[],
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let offset = 0; offset < items.length; offset += NOTIFICATION_RECONCILIATION_BATCH_SIZE) {
-    const batch = items.slice(offset, offset + NOTIFICATION_RECONCILIATION_BATCH_SIZE);
-    results.push(...await Promise.all(batch.map(worker)));
+  try {
+    return localDateTimeInZoneToDate(
+      reminder.scheduledDate,
+      reminder.scheduledTime ?? '09:00',
+      timezone,
+    );
+  } catch (error) {
+    throw new NotificationError(
+      'INVALID_TRIGGER',
+      'Reminder time is invalid for its timezone.',
+      false,
+      error,
+    );
   }
-  return results;
 }
 
-interface ReconciliationOperationResult {
-  repaired: number;
-  failed: number;
-  failures: NotificationReconciliationFailure[];
+export type ProjectionResult = 'scheduled' | 'cancelled' | 'skipped';
+
+function failureState(code: string): 'failed' | 'blocked' | 'missing' {
+  if (code === 'PERMISSION_DENIED' || code === 'CHANNEL_UNAVAILABLE' || code === 'EXACT_TIMING_UNAVAILABLE') {
+    return 'blocked';
+  }
+  if (code === 'NATIVE_NOTIFICATION_MISSING') return 'missing';
+  return 'failed';
 }
 
+/** Single-reminder native projection. Batch orchestration lives in reconciliation service. */
 export class LocalNotificationProjection {
   constructor(
     private readonly reminders: RemindersRepository,
@@ -119,28 +193,91 @@ export class LocalNotificationProjection {
     private readonly adapter: LocalNotificationAdapter = expoLocalNotificationAdapter,
   ) {}
 
-  async project(reminder: Reminder): Promise<'scheduled' | 'cancelled'> {
+  getCapabilities(): Promise<NotificationCapabilities> {
+    return this.adapter.getCapabilities?.() ?? Promise.resolve(defaultNotificationCapabilities());
+  }
+
+  /**
+   * Compatibility wrapper for callers that still expect projection-owned repair.
+   * New code should use NotificationReconciliationService directly.
+   */
+  async reconcile(): Promise<{
+    repaired: number;
+    failed: number;
+    failures: unknown[];
+  }> {
+    const { NotificationReconciliationService } = await import('./notificationReconciliation');
+    const result = await new NotificationReconciliationService(
+      this.reminders,
+      this.tasks,
+      this,
+      this.adapter,
+    ).reconcile({ mode: 'full', reason: 'legacy-projection' });
+    return {
+      repaired: result.repaired,
+      failed: result.failed,
+      failures: result.failures,
+    };
+  }
+
+  async project(reminder: Reminder): Promise<ProjectionResult> {
+    const revision = reminder.projectionRevision;
     try {
-      if (reminder.nativeNotificationId) await this.adapter.cancel(reminder.nativeNotificationId);
+      const claimed = await this.reminders.recordProjectionAttempt(reminder.id, revision);
+      if (!claimed) return 'skipped';
+
+      if (reminder.nativeNotificationId) {
+        try {
+          await this.adapter.cancel(reminder.nativeNotificationId);
+        } catch (error) {
+          const cancellationError = toNotificationError(
+            error,
+            'PROJECTION_FAILED',
+            'The previous device notification could not be cancelled.',
+          );
+          // Missing native state is already absent; continue repairing projection.
+          if (cancellationError.code !== 'NATIVE_NOTIFICATION_MISSING') throw cancellationError;
+        }
+      }
+
       if (!reminder.enabled) {
-        await this.reminders.setProjection(reminder.id, null, null);
-        return 'cancelled';
+        const saved = await this.reminders.recordProjectionSuccess(
+          reminder.id,
+          revision,
+          null,
+          'not_required',
+        );
+        return saved ? 'cancelled' : 'skipped';
       }
+
       const task = await this.tasks.getById(reminder.taskId);
-      if (!task) throw new Error('Reminder task no longer exists.');
-      // Completed tasks retain their reminder domain record for reversible
-      // history, but must never be re-projected as fresh OS notifications.
-      if (task.completed) {
-        await this.reminders.setProjection(reminder.id, null, null);
-        return 'cancelled';
+      if (!task || task.completed) {
+        const saved = await this.reminders.recordProjectionSuccess(
+          reminder.id,
+          revision,
+          null,
+          'not_required',
+        );
+        return saved ? 'cancelled' : 'skipped';
       }
+
       const nativeId = await this.adapter.schedule({
         reminderId: reminder.id,
         taskId: reminder.taskId,
         title: task.title,
         date: resolveReminderNotificationDate(reminder),
+        timingPrecision: reminder.timingPrecision,
       });
-      await this.reminders.setProjection(reminder.id, nativeId, null);
+      const saved = await this.reminders.recordProjectionSuccess(
+        reminder.id,
+        revision,
+        nativeId,
+        'scheduled',
+      );
+      if (!saved) {
+        await this.adapter.cancel(nativeId).catch(() => undefined);
+        return 'skipped';
+      }
       return 'scheduled';
     } catch (error) {
       const notificationError = toNotificationError(
@@ -149,134 +286,25 @@ export class LocalNotificationProjection {
         'This reminder could not be synchronized with device notifications.',
       );
       try {
-        await this.reminders.setProjection(reminder.id, null, notificationError.message);
-      } catch (projectionError) {
-        throw toNotificationError(
-          projectionError,
-          'PROJECTION_FAILED',
-          'The notification synchronization state could not be saved.',
+        await this.reminders.recordProjectionFailure(reminder.id, revision, {
+          code: notificationError.code,
+          message: notificationError.message,
+          state: failureState(notificationError.code),
+        });
+      } catch (persistenceError) {
+        throw new NotificationError(
+          'PERSISTENCE_FAILED',
+          'Notification recovery state could not be saved.',
+          true,
+          persistenceError,
         );
       }
       throw notificationError;
     }
   }
-
-  async reconcile(): Promise<NotificationReconciliationResult> {
-    const native = await this.adapter.list();
-    const nativeByReminder = new Map(native.filter((n) => n.reminderId).map((n) => [n.reminderId!, n.identifier]));
-    let repaired = 0;
-    let failed = 0;
-    const failures: NotificationReconciliationFailure[] = [];
-    const reminders = await this.reminders.listAll();
-    const reminderIds = new Set(reminders.map((reminder) => reminder.id));
-
-    const addResults = (results: readonly ReconciliationOperationResult[]) => {
-      for (const result of results) {
-        repaired += result.repaired;
-        failed += result.failed;
-        failures.push(...result.failures);
-      }
-    };
-
-    const orphanResults = await mapInBatches(
-      native.filter((item) => item.reminderId && !reminderIds.has(item.reminderId)),
-      async (item): Promise<ReconciliationOperationResult> => {
-        try {
-          await this.adapter.cancel(item.identifier);
-          return { repaired: 1, failed: 0, failures: [] };
-        } catch (error) {
-          return {
-            repaired: 0,
-            failed: 1,
-            failures: [{
-              kind: 'orphan_cancel',
-              error: toNotificationError(
-                error,
-                'RECONCILIATION_FAILED',
-                'An obsolete device notification could not be removed.',
-              ),
-            }],
-          };
-        }
-      },
-    );
-    addResults(orphanResults);
-
-    const reminderResults = await mapInBatches(
-      reminders,
-      async (reminder): Promise<ReconciliationOperationResult> => {
-        const actualId = nativeByReminder.get(reminder.id);
-        if (!reminder.enabled) {
-          const id = actualId ?? reminder.nativeNotificationId;
-          try {
-            let reminderRepaired = 0;
-            if (id) {
-              await this.adapter.cancel(id);
-              reminderRepaired = 1;
-            }
-            await this.reminders.setProjection(reminder.id, null, null);
-            return { repaired: reminderRepaired, failed: 0, failures: [] };
-          } catch (error) {
-            return {
-              repaired: 0,
-              failed: 1,
-              failures: [{
-                kind: 'disabled_cancel',
-                reminderId: reminder.id,
-                error: toNotificationError(
-                  error,
-                  'RECONCILIATION_FAILED',
-                  'A disabled reminder could not be removed from device notifications.',
-                ),
-              }],
-            };
-          }
-        }
-        if (actualId && actualId === reminder.nativeNotificationId && !reminder.projectionError) {
-          return { repaired: 0, failed: 0, failures: [] };
-        }
-        try {
-          await this.project({ ...reminder, nativeNotificationId: actualId ?? reminder.nativeNotificationId });
-          return { repaired: 1, failed: 0, failures: [] };
-        } catch (error) {
-          return {
-            repaired: 0,
-            failed: 1,
-            failures: [{
-              kind: 'reminder_projection',
-              reminderId: reminder.id,
-              error: toNotificationError(
-                error,
-                'RECONCILIATION_FAILED',
-                'A reminder could not be scheduled on this device.',
-              ),
-            }],
-          };
-        }
-      },
-    );
-    addResults(reminderResults);
-
-    return { repaired, failed, failures };
-  }
 }
 
-export type NotificationReconciliationFailureKind =
-  | 'orphan_cancel'
-  | 'disabled_cancel'
-  | 'reminder_projection';
-
-export interface NotificationReconciliationFailure {
-  kind: NotificationReconciliationFailureKind;
-  reminderId?: string;
-  error: NotificationError;
-}
-
-export interface NotificationReconciliationResult {
-  repaired: number;
-  failed: number;
-  failures: NotificationReconciliationFailure[];
-}
+export const NOTIFICATION_RECONCILIATION_BATCH_SIZE = 8;
 
 export async function configureLocalNotifications(): Promise<void> {
   try {
@@ -289,6 +317,7 @@ export async function configureLocalNotifications(): Promise<void> {
         shouldSetBadge: false,
       }),
     });
+    await ensureAndroidReminderChannel();
     await configureNotificationActionCategory();
   } catch (error) {
     throw toNotificationError(

@@ -1,4 +1,9 @@
-import type { RecurrenceFrequency, RecurrenceMode, TaskPriority } from '@/domain/entities';
+import type {
+  RecurrenceFrequency,
+  RecurrenceMode,
+  Reminder,
+  TaskPriority,
+} from '@/domain/entities';
 import { resolveToday } from '@/temporal/resolve';
 import type { AgentTool, ToolResult } from './types';
 
@@ -30,6 +35,12 @@ function asFrequency(value: unknown): RecurrenceFrequency | undefined {
 
 function asMode(value: unknown): RecurrenceMode | undefined {
   return value === 'fixed' || value === 'after_completion' ? value : undefined;
+}
+
+function isProjectionReconciled(reminder: Reminder): boolean {
+  if (reminder.projectionDirty || reminder.projectionError) return false;
+  if (reminder.projectionState === 'scheduled') return Boolean(reminder.nativeNotificationId);
+  return !reminder.enabled || reminder.projectionState === 'not_required';
 }
 
 export const recurrenceGet: AgentTool<{ taskId: string }> = {
@@ -126,11 +137,11 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
           recurrence: result.rule,
           reminder,
           osNotificationProjection: reminder
-            ? reminder.projectionError
+            ? reminder.projectionError || reminder.projectionDirty
               ? 'failed'
-              : reminder.nativeNotificationId
+              : isProjectionReconciled(reminder)
                 ? 'scheduled'
-                : undefined
+                : 'pending_repair'
             : undefined,
         },
         receipt: { ...result.receipt, toolId: 'tasks.create_recurring' },

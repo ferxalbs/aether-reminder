@@ -1,4 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test';
+import { createBunSqliteDatabase } from '@/db/bunSqliteAdapter';
+import { applyPragmas, runMigrations } from '@/db/migrator';
+import { createRepositories } from '@/db/repositories';
 import type { AetherCore } from '@/core/aetherCore';
 import { getLocalDateString, getLocalTimeString } from '@/temporal/localCalendar';
 import {
@@ -78,5 +81,95 @@ describe('handleNotificationActionResponse', () => {
       timezone: 'America/Lima',
       semantics: 'floating',
     });
+  });
+
+  test('uses fixed reminder timezone and persists one snooze target across retries', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db);
+    await runMigrations(db);
+    const repos = createRepositories(db);
+    await repos.tasks.create({ id: 'task-1', title: 'Fixed reminder' });
+    const storedReminder = await repos.reminders.create({
+      id: 'reminder-1',
+      taskId: 'task-1',
+      scheduledDate: '2026-08-09',
+      scheduledTime: '23:55',
+      timezone: 'America/New_York',
+      semantics: 'fixed',
+    });
+    let attempts = 0;
+    const rescheduleReminder = mock(async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('temporary command failure');
+      return { value: storedReminder };
+    });
+    const actionCore = {
+      services: {
+        reminders: { getReminder: mock(async () => storedReminder) },
+        repos,
+      },
+      commands: {
+        completeTask: mock(async () => ({ value: { id: 'task-1' } })),
+        rescheduleReminder,
+      },
+    } as unknown as AetherCore;
+    const actionResponse = response(NOTIFICATION_ACTION_SNOOZE);
+    const firstNow = new Date('2026-08-10T03:55:00.000Z');
+
+    await expect(handleNotificationActionResponse(actionResponse, actionCore, firstNow))
+      .rejects.toThrow('temporary command failure');
+    await handleNotificationActionResponse(
+      actionResponse,
+      actionCore,
+      new Date('2026-08-10T12:00:00.000Z'),
+    );
+    await handleNotificationActionResponse(
+      actionResponse,
+      actionCore,
+      new Date('2026-08-10T13:00:00.000Z'),
+    );
+
+    expect(rescheduleReminder).toHaveBeenNthCalledWith(1, 'reminder-1', {
+      scheduledDate: '2026-08-10',
+      scheduledTime: '00:05',
+      timezone: 'America/New_York',
+      semantics: 'fixed',
+    });
+    expect(rescheduleReminder).toHaveBeenNthCalledWith(2, 'reminder-1', {
+      scheduledDate: '2026-08-10',
+      scheduledTime: '00:05',
+      timezone: 'America/New_York',
+      semantics: 'fixed',
+    });
+    expect(rescheduleReminder).toHaveBeenCalledTimes(2);
+    await db.closeAsync?.();
+  });
+
+  test('does not repeat completed action after process-local replay', async () => {
+    const db = createBunSqliteDatabase();
+    await applyPragmas(db);
+    await runMigrations(db);
+    const repos = createRepositories(db);
+    await repos.tasks.create({ id: 'task-1', title: 'Complete once' });
+    const storedReminder = await repos.reminders.create({
+      id: 'reminder-1',
+      taskId: 'task-1',
+      scheduledDate: '2026-08-09',
+      scheduledTime: '18:30',
+    });
+    const completeTask = mock(async () => ({ value: { id: 'task-1' } }));
+    const actionCore = {
+      services: {
+        reminders: { getReminder: mock(async () => storedReminder) },
+        repos,
+      },
+      commands: { completeTask, rescheduleReminder: mock(async () => ({ value: storedReminder })) },
+    } as unknown as AetherCore;
+
+    await handleNotificationActionResponse(response(NOTIFICATION_ACTION_COMPLETE), actionCore);
+    await handleNotificationActionResponse(response(NOTIFICATION_ACTION_COMPLETE), actionCore);
+
+    expect(completeTask).toHaveBeenCalledTimes(1);
+    await db.closeAsync?.();
   });
 });

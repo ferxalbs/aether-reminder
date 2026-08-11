@@ -1,14 +1,21 @@
 import type { AetherCore } from '@/core/aetherCore';
-import { getLocalDateString, getLocalTimeString } from '@/temporal/localCalendar';
-import { resolveTomorrow } from '@/temporal/resolve';
+import type { Reminder } from '@/domain/entities';
+import {
+  addLocalCalendarDays,
+  getLocalDateString,
+  getLocalTimeString,
+  getZonedDateTimeStrings,
+} from '@/temporal/localCalendar';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import type { NotificationActionReceipt } from '@/db/repositories/notificationActionReceiptsRepository';
+import { NotificationError } from './errors';
 
 export const AETHER_NOTIFICATION_CATEGORY = 'aether_reminder_actions';
 export const NOTIFICATION_ACTION_COMPLETE = 'AETHER_COMPLETE';
 export const NOTIFICATION_ACTION_SNOOZE = 'AETHER_SNOOZE_10M';
 export const NOTIFICATION_ACTION_TOMORROW = 'AETHER_TOMORROW';
 
-type NotificationResponseLike = {
+export type NotificationResponseLike = {
   actionIdentifier: string;
   notification: {
     request: {
@@ -17,6 +24,15 @@ type NotificationResponseLike = {
     };
   };
 };
+
+type ActionTarget = {
+  scheduledDate: string;
+  scheduledTime: string;
+  timezone: string | null;
+  semantics: Reminder['semantics'];
+};
+
+type ActionProcessingResult = 'completed' | 'ignored' | 'failed';
 
 export async function configureNotificationActionCategory(): Promise<void> {
   const Notifications = await import('expo-notifications');
@@ -54,6 +70,72 @@ export async function configureNotificationActionCategory(): Promise<void> {
   );
 }
 
+function actionCalendarValues(reminder: Reminder, instant: Date): { date: string; time: string } {
+  if (reminder.semantics === 'fixed' && reminder.timezone) {
+    try {
+      return getZonedDateTimeStrings(instant, reminder.timezone);
+    } catch (error) {
+      throw new NotificationError(
+        'INVALID_TRIGGER',
+        'Reminder timezone is invalid for this notification action.',
+        false,
+        error,
+      );
+    }
+  }
+  return {
+    date: getLocalDateString(instant),
+    time: getLocalTimeString(instant),
+  };
+}
+
+function calculateActionTarget(
+  actionIdentifier: string,
+  reminder: Reminder,
+  now: Date,
+): ActionTarget | null {
+  switch (actionIdentifier) {
+    case NOTIFICATION_ACTION_SNOOZE: {
+      const values = actionCalendarValues(reminder, new Date(now.getTime() + 10 * 60_000));
+      return {
+        scheduledDate: values.date,
+        scheduledTime: values.time,
+        timezone: reminder.timezone,
+        semantics: reminder.semantics,
+      };
+    }
+    case NOTIFICATION_ACTION_TOMORROW: {
+      const values = actionCalendarValues(reminder, now);
+      return {
+        scheduledDate: addLocalCalendarDays(values.date, 1),
+        scheduledTime: reminder.scheduledTime ?? values.time,
+        timezone: reminder.timezone,
+        semantics: reminder.semantics,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function getActionReceiptsRepository(core: AetherCore) {
+  return core.services.repos?.notificationActions;
+}
+
+function responseKey(response: NotificationResponseLike): string {
+  return `${response.notification.request.identifier}:${response.actionIdentifier}`;
+}
+
+function targetFromReceipt(receipt: NotificationActionReceipt): ActionTarget | null {
+  if (!receipt.targetDate || !receipt.targetTime || !receipt.targetSemantics) return null;
+  return {
+    scheduledDate: receipt.targetDate,
+    scheduledTime: receipt.targetTime,
+    timezone: receipt.targetTimezone,
+    semantics: receipt.targetSemantics,
+  };
+}
+
 export async function handleNotificationActionResponse(
   response: NotificationResponseLike,
   core: AetherCore,
@@ -61,36 +143,58 @@ export async function handleNotificationActionResponse(
 ): Promise<boolean> {
   const reminderId = response.notification.request.content.data?.reminderId;
   if (typeof reminderId !== 'string' || !reminderId) return false;
+  if (![NOTIFICATION_ACTION_COMPLETE, NOTIFICATION_ACTION_SNOOZE, NOTIFICATION_ACTION_TOMORROW]
+    .includes(response.actionIdentifier)) return false;
+
   const reminder = await core.services.reminders.getReminder(reminderId);
   if (!reminder) return false;
 
-  switch (response.actionIdentifier) {
-    case NOTIFICATION_ACTION_COMPLETE:
-      await core.commands.completeTask(reminder.taskId, 'notification_action');
-      return true;
-
-    case NOTIFICATION_ACTION_SNOOZE: {
-      const target = new Date(now.getTime() + 10 * 60_000);
-      await core.commands.rescheduleReminder(reminder.id, {
-        scheduledDate: getLocalDateString(target),
-        scheduledTime: getLocalTimeString(target),
-        timezone: reminder.timezone,
-        semantics: reminder.semantics,
+  const target = calculateActionTarget(response.actionIdentifier, reminder, now);
+  const repository = getActionReceiptsRepository(core);
+  let receipt: NotificationActionReceipt | null = null;
+  if (repository) {
+    try {
+      receipt = await repository.claim({
+        responseKey: responseKey(response),
+        nativeNotificationId: response.notification.request.identifier,
+        actionIdentifier: response.actionIdentifier,
+        reminderId: reminder.id,
+        targetDate: target?.scheduledDate ?? null,
+        targetTime: target?.scheduledTime ?? null,
+        targetTimezone: target?.timezone ?? null,
+        targetSemantics: target?.semantics ?? null,
       });
-      return true;
+    } catch (error) {
+      throw new NotificationError(
+        'PERSISTENCE_FAILED',
+        'Notification action could not be recorded locally.',
+        true,
+        error,
+      );
     }
+    if (receipt.status === 'completed') return false;
+  }
 
-    case NOTIFICATION_ACTION_TOMORROW:
-      await core.commands.rescheduleReminder(reminder.id, {
-        scheduledDate: resolveTomorrow(now).date,
-        scheduledTime: reminder.scheduledTime ?? getLocalTimeString(now),
-        timezone: reminder.timezone,
-        semantics: reminder.semantics,
-      });
-      return true;
-
-    default:
-      return false;
+  const persistedTarget = receipt ? targetFromReceipt(receipt) : null;
+  const effectiveTarget = persistedTarget ?? target;
+  try {
+    switch (response.actionIdentifier) {
+      case NOTIFICATION_ACTION_COMPLETE:
+        await core.commands.completeTask(reminder.taskId, 'notification_action');
+        break;
+      case NOTIFICATION_ACTION_SNOOZE:
+      case NOTIFICATION_ACTION_TOMORROW:
+        if (!effectiveTarget) return false;
+        await core.commands.rescheduleReminder(reminder.id, effectiveTarget);
+        break;
+      default:
+        return false;
+    }
+    if (repository && receipt) await repository.markCompleted(receipt.responseKey);
+    return true;
+  } catch (error) {
+    // Leave claimed receipt open so next delivery/restart can retry same target.
+    throw error;
   }
 }
 
@@ -103,27 +207,42 @@ export async function registerNotificationActionListener(
   onMutation?: () => void | Promise<void>,
 ): Promise<() => void> {
   const Notifications = await import('expo-notifications');
-  const seen = new Set<string>();
+  const processing = new Set<string>();
+  const completed = new Set<string>();
 
-  const process = async (response: NotificationResponseLike) => {
-    const key = `${response.notification.request.identifier}:${response.actionIdentifier}`;
-    if (seen.has(key)) return;
-    seen.add(key);
+  const process = async (response: NotificationResponseLike): Promise<ActionProcessingResult> => {
+    const key = responseKey(response);
+    if (processing.has(key) || completed.has(key)) return 'ignored';
+    processing.add(key);
     try {
       const mutated = await handleNotificationActionResponse(response, core);
-      if (mutated) {
-        await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch(() => undefined);
-        await onMutation?.();
+      if (!mutated) return 'ignored';
+      completed.add(key);
+      try {
+        await Notifications.dismissNotificationAsync(response.notification.request.identifier);
+      } catch (error) {
+        reportNonFatalError('notification-action-dismiss', error);
       }
+      await onMutation?.();
+      return 'completed';
     } catch (error) {
       reportNonFatalError('notification-action', error);
+      return 'failed';
+    } finally {
+      processing.delete(key);
     }
   };
 
   const lastResponse = await Notifications.getLastNotificationResponseAsync();
   if (lastResponse) {
-    await process(lastResponse);
-    Notifications.clearLastNotificationResponse();
+    const outcome = await process(lastResponse);
+    if (outcome !== 'failed') {
+      try {
+        await Notifications.clearLastNotificationResponseAsync();
+      } catch (error) {
+        reportNonFatalError('notification-action-clear', error);
+      }
+    }
   }
 
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
