@@ -1,205 +1,115 @@
-# 🧠 Aether Agent Guidelines
+# Repository Guidelines
+
+Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> before writing any code.
+
+## Project Structure & Module Organization
+
+This is an Expo SDK 57 / React Native app using Expo Router and strict TypeScript. Route screens live in `src/app/` (`index.tsx`, `ai.tsx`, `transcribe.tsx`, and `settings.tsx`). Reusable UI primitives are in `src/components/ui/`; domain entities and services are in `src/domain/`; SQLite clients, migrations, repositories, and tests are in `src/db/`. AI and transcription integrations are under `src/services/`, while UI/session state lives in `src/stores/`. Shared date logic, theme tokens, utilities, and types are in `src/temporal/`, `src/theme/`, `src/lib/`, and `src/types/`. Product and architecture notes belong in `docs/`; images and app icons belong in `assets/`.
+
+## Build, Test, and Development Commands
+
+Use Bun for all package and development tasks:
+
+```bash
+bun install              # Install dependencies from bun.lock
+bun start                # Start the Expo development server
+bun run ios              # Build and run the iOS development app
+bun run android          # Build and run Android
+bun test                 # Run the Bun test suite
+bun run lint             # Run Expo ESLint checks
+bun run typecheck        # Run strict TypeScript checking
+```
+
+Read the versioned Expo 57 documentation before changing Expo or native-platform code.
+
+Whenever a change adds or updates a dependency, plugin, permission, configuration, or
+other functionality that requires native code (for example, Expo SQLite), run the
+Android development EAS build before considering the change validated:
+
+```bash
+eas build --platform android --profile development
+```
+
+## Cross-Platform UI Design Rules
+
+Every UI feature must maintain product and interaction parity on iOS and Android; do
+not require pixel-perfect visual equivalence, since each platform has different native
+capabilities. Use the iOS 26+ / 27 design direction as the shared product reference:
+Liquid Glass on iOS where supported, using `expo-glass-effect`'s `GlassView` or
+`GlassContainer`, and account for its documented fallback to a regular `View` on
+unsupported platforms. On Android, translate that same direction into a practical
+Android version rather than copying iOS code or omitting the pattern. This includes
+floating buttons, floating tab bars, segmented controls, rounded surfaces, and floating
+composers or input bars; their Android implementations may use flatter surfaces,
+native Android spacing and interaction conventions, and different exact geometry.
+Use `expo-blur` only when blur is needed, following its Android API requirements
+(`BlurTargetView` and an appropriate `blurMethod`) and its documented performance
+limitations on older Android versions.
+
+## Android Runtime & Native-View Safety
+
+- A `BlurTargetView` must never contain a `BlurView` or `GlassSurface` that targets
+  that same `BlurTargetView`. Dimezis BlurView forbids this recursive capture
+  hierarchy and it can terminate the Android process during mounts, navigation, or
+  overlay creation.
+- Never distribute a root blur target through context or another implicit global
+  mechanism. Pass a blur target explicitly only to bounded floating chrome that is
+  a sibling of, and rendered outside, the target it captures.
+- Never wrap the navigator, route tree, or an entire screen in a live `BlurView`.
+  A full-screen `BlurTargetView` may capture route content only when every blur view
+  using it is outside that target. Route-local Android glass without such a safe
+  sibling target must render the approved translucent Tier C material without a
+  native blur view.
+- Treat mounting a menu, sheet, portal, modal, animated overlay, or newly focused
+  route as a native-view lifecycle event. Audit its complete rendered hierarchy,
+  explicit target/ref ownership, cleanup, and Android back behavior before assuming
+  navigation itself is at fault.
+- Keep one Expo Router navigator and derive custom-navigation selection from Router
+  state. Global overlays may be siblings of the navigator, but route-derived state
+  must be published only by the focused route so inactive mounted tabs cannot
+  overwrite it.
+- Android back handlers must be scoped to visible state and removed on cleanup. The
+  handling order is context menu, modal/sheet/assistant, nested route, then system
+  behavior; a handler must return `true` only when it actually owns the dismissal.
+- For Android process exits, collect `adb logcat` around `AndroidRuntime`, React
+  Native, Hermes, Reanimated, and the app process whenever device tooling exists.
+  Do not call an interaction fixed solely because typecheck, lint, unit tests, or a
+  bundle succeeds. If no device or `adb` is available, state that limitation and
+  distinguish a statically corrected path from a runtime-confirmed fix.
+- After changes to navigation, global overlays, blur/glass, gestures, Reanimated, or
+  modal state, exercise launch, every tab transition, ten repeated tab loops, every
+  quick-action path, assistant open/close followed by navigation, keyboard input,
+  and Android back on a real Android runtime before declaring runtime validation.
+
+## Coding Style & Naming Conventions
+
+Use 2-space indentation, strict TypeScript, and the existing ESLint configuration. Use `PascalCase` for React components and classes, `camelCase` for functions, variables, and hooks (`useResolvedTheme`), and descriptive `*.test.ts` names. Prefer the `@/*` path alias for `src` imports. Keep styling in React Native `StyleSheet`s and reuse tokens from `src/theme/tokens.ts` rather than introducing ad hoc values.
+
+## Testing Guidelines
+
+Tests use Bun’s test runner and are colocated with the implementation, for example `src/db/migrator.test.ts`. Add focused regression coverage for database migrations, repositories, date handling, providers, and parsing changes. There is no configured coverage threshold; run `bun test`, `bun run lint`, and `bun run typecheck` before opening a PR.
+
+## Architecture & Configuration Rules
+
+Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
+NEVER use, invoke, install, reference, depend on, or run GStack/gstack for this repository.
+
+## Changelog Guidelines
+
+Before editing `CHANGELOG.md`, read `RULES.md` and follow its required entry format.
+Keep entries in reverse chronological order, with the newest entry at the top. Use
+the exact `## Unreleased - YYYY.MM.DD (N) [Entry Name]` heading format, and keep
+the sequence number correct when multiple entries share a date. Use expressive,
+feature-specific `###` headings rather than repeating generic labels such as
+"Added", "Changed", or "Removed". Keep heading levels consecutive and
+MD001-compliant. Include useful implementation, documentation, or test
+references, and report native-device, live-provider, and other validation limits
+honestly.
 
-## 🚀 Mission
+## Commit & Pull Request Guidelines
 
-Build a cross-platform mobile app using **Expo** (React Native) that serves as a "Task AI Copilot." The app should help users manage daily tasks with context-aware assistance, smart scheduling, and seamless voice interaction. The goal is to create an app that feels like having a personal assistant in your pocket — proactive, intelligent, and incredibly easy to use.
+Use concise Conventional Commit-style subjects matching history, such as `feat: ...`, `fix: ...`, or `chore: ...`. PRs should explain the behavior change, list validation commands, link relevant issues, and include screenshots or recordings for UI changes. Call out schema migrations, native permission changes, and configuration changes explicitly.
 
----
+## Never Invoque Sub Agents
 
-## 🏗️ Technical Foundation
-
-### 1. **Framework: Expo + React Native**
-
-- **Why**: Provides a unified development environment for both iOS and Android with native-like performance and access to device features.
-- **Key Packages**:
-  - `expo-router`: For navigation and routing.
-  - `expo-speech`: For text-to-speech (TTS) functionality.
-  - `expo-camera`, `expo-image-picker`: For image capture and uploads.
-  - `expo-secure-store`: For secure local storage of sensitive data (API keys, tokens).
-  - `expo-file-system`: For local file operations.
-  - `@react-native-voice/voice` (or similar): For speech-to-text (STT).
-
-### 2. **State Management**
-
-- **Option A (Recommended)**: **Zustand** or **Redux Toolkit** for global state (user profile, AI preferences, current task context).
-- **Option B**: **React Context** for simpler state management.
-- **Local State**: Component-level state using React hooks.
-
-### 3. **Styling**
-
-- **Tailwind CSS for React Native**: Use `@tailwindcss/native` for rapid UI development with a utility-first approach.
-- **Dark Mode**: Support both light and dark modes using `useColorScheme` hook.
-
-### 4. **Offline Support**
-
-- **PWA Capabilities**: Use Expo's offline support to allow users to view cached tasks and information without an internet connection.
-- **Local Database**: Consider using **Realm** or **WatermelonDB** for offline-first data storage, synchronization when online, and conflict resolution.
-
----
-
-## 🧩 Core Features to Implement
-
-### 1. **User Onboarding & Authentication**
-
-- **Email/Password Login**: Standard authentication flow.
-- **SSO**: Google, Apple, Microsoft OAuth integration.
-- **Voice Profile Setup**: Guide users through a short voice recording to capture their voice characteristics for future voice commands.
-
-### 2. **Dashboard & Home Screen**
-
-- **Today's Focus**: AI-curated list of top 3-5 tasks based on priority and context.
-- **Quick Actions**: Voice input button, "Add Task" quick action.
-- **Calendar View**: Visual representation of scheduled tasks.
-
-### 3. **Voice Input Interface**
-
-- **Real-time Transcription**: Display transcribed text as user speaks.
-- **Natural Language Understanding (NLU)**: Parse commands like "Remind me to call John at 3 PM" or "What's my schedule for tomorrow?"
-- **Voice Commands**:
-  - Add/Edit/Delete tasks
-  - Set reminders
-  - Ask for schedule
-  - Query AI Assistant
-
-### 4. **AI Assistant (LLM Integration)**
-
-- **Text Input**: Standard chat interface.
-- **Voice Input**: Speak directly to the AI assistant.
-- **Context-Aware Responses**: Provide intelligent suggestions based on user's schedule, location, and preferences.
-- **Example Interactions**:
-  - User: "I have a meeting in 30 minutes, what should I prepare?"
-  - AI: "Your meeting with John is about the Q3 budget. You should bring the financial report. Would you like me to pull it up?"
-
-### 5. **Task Management**
-
-- **Task Creation**: Title, description, due date/time, priority, category.
-- **Smart Scheduling**: AI suggests optimal times for tasks based on availability and energy levels.
-- **Reminders**: Push notifications, SMS, or in-app alerts.
-- **Subtasks**: Break down large tasks into manageable steps.
-
-### 6. **Context-Aware Features**
-
-- **Location-Based Reminders**: Remind user of tasks when they arrive at specific locations (e.g., "Remind me to buy milk when I leave work").
-- **Time-Based Suggestions**: Proactive suggestions based on time of day (e.g., "It's 5 PM, time to review today's accomplishments").
-
----
-
-## 📝 Development Phases
-
-### Phase 1: Project Setup & Foundation
-
-- Initialize Expo project with TypeScript.
-- Set up routing with Expo Router.
-- Configure Tailwind CSS for React Native.
-- Create basic UI theme (light/dark mode).
-
-### Phase 2: Core Features
-
-- Implement authentication flow.
-- Create task management CRUD operations.
-- Set up local database for offline support.
-
-### Phase 3: Voice & AI Integration
-
-- Add speech-to-text and text-to-speech.
-- Integrate LLM API for AI assistant.
-- Implement voice command parsing.
-- Create voice profile setup.
-
-### Phase 4: Context-Aware Features
-
-- Add location-based reminders.
-- Implement smart scheduling algorithm.
-- Create proactive notifications.
-
-### Phase 5: Polishing & Deployment
-
-- Implement analytics and user feedback.
-- Optimize performance and bundle size.
-- Prepare for App Store and Google Play Store submission.
-- Set up CI/CD pipeline with EAS.
-
----
-
-## 🛠️ API Integrations
-
-### Required Services
-
-- **LLM Provider**: OpenAI, Google Gemini, or Anthropic for AI assistant features.
-- **Speech-to-Text**: Native device APIs or cloud-based services (e.g., Google Cloud Speech-to-Text).
-- **Text-to-Speech**: Native device APIs for voice output.
-- **Notifications**: Expo Push Notifications.
-- **Authentication**: Firebase Authentication or custom backend.
-
-### Backend Options
-
-- **Option A (Recommended)**: **Firebase** - Provides auth, database (Firestore), and cloud functions out of the box.
-- **Option B**: **Supabase** - Open-source alternative with PostgreSQL, auth, and real-time features.
-- **Option C**: **Custom Backend** (Node.js/Python) with **MongoDB** or **PostgreSQL**.
-
----
-
-## 📋 Quality Assurance
-
-### Testing Requirements
-
-- **Unit Tests**: Use **Jest** or **React Testing Library** for component testing.
-- **E2E Tests**: Use **Detox** or **Appium** for end-to-end testing.
-- **Manual Testing**: Test on both iOS and Android devices.
-- **Voice Testing**: Test voice commands in various environments (quiet, noisy) and with different accents.
-
-### Performance Metrics
-
-- **App Launch Time**: Should be under 2 seconds.
-- **Voice Command Latency**: Should be under 500ms for simple commands.
-- **Offline Mode**: Should function seamlessly without internet connection.
-
----
-
-## 📝 Best Practices
-
-### Code Quality
-
-- Use TypeScript with strict type checking.
-- Follow **SOLID** design principles.
-- Implement proper error handling and fallback mechanisms.
-- Use environment variables for API keys and configuration.
-
-### Security
-
-- Store sensitive data in `expo-secure-store`.
-- Use HTTPS for all API communication.
-- Implement rate limiting on backend APIs.
-- Sanitize all user inputs to prevent injection attacks.
-
-### UX/UI
-
-- Follow platform-specific design guidelines (Human Interface Guidelines for iOS, Material Design for Android).
-- Provide haptic feedback for key interactions.
-- Ensure accessibility with proper labels and ARIA roles.
-- Use skeleton loaders and optimistic UI for better perceived performance.
-
----
-
-## 📚 Recommended Learning Resources
-
-- [Expo Documentation](https://docs.expo.dev/)
-- [Expo Router Documentation](https://docs.expo.dev/router/)
-- [Tailwind CSS for React Native](https://tailwindcss.com/docs/guides/react-native)
-- [Zustand Documentation](https://zustand-demo.pmnd.rs/)
-- [Realm Documentation](https://docs.realm.io/)
-
----
-
-## 🤝 Agent Instructions
-
-When implementing features, always:
-
-1. **Consider both platforms** (iOS and Android) from the start.
-2. **Prioritize user experience** - the app should feel intuitive and magical.
-3. **Follow the design system** consistently across all screens.
-4. **Implement offline-first** capabilities for better reliability.
-5. **Add comprehensive error handling** with user-friendly messages.
-6. **Document your code** with JSDoc comments.
-
-Good luck building Aether! 🚀
+You never invoke sub-agents if not provide to you a explicit confirmation of the user.
