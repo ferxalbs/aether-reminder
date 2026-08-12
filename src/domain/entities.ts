@@ -13,6 +13,8 @@ export type ReminderProjectionState =
   | 'not_required'
   | 'blocked';
 export type ReminderTimingPrecision = 'exact' | 'normal' | 'flexible';
+export type ReminderKind = 'primary' | 'adaptive_followup';
+export type ReminderGenerationSource = 'manual' | 'adaptive_nudge_engine' | 'recurrence' | string;
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type RecurrenceMode = 'fixed' | 'after_completion';
 
@@ -90,8 +92,24 @@ export interface Reminder {
   projectionErrorCode: string | null;
   projectionError: string | null;
   timingPrecision: ReminderTimingPrecision;
+  /** Primary reminders are user intent; adaptive follow-ups are derived opportunities. */
+  kind?: ReminderKind;
+  reason?: string | null;
+  generationSource?: ReminderGenerationSource | null;
+  policyVersion?: string | null;
+  idempotencyKey?: string | null;
+  cancelledAt?: string | null;
+  consumedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdaptiveNudge extends Reminder {
+  kind: 'adaptive_followup';
+  reason: string;
+  generationSource: 'adaptive_nudge_engine';
+  policyVersion: string;
+  idempotencyKey: string;
 }
 
 export interface RecurrenceRule {

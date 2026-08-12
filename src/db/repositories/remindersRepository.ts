@@ -1,5 +1,11 @@
 import { createId } from '@/lib/id';
-import type { Reminder, ReminderProjectionState, ReminderTimingPrecision, TemporalSemantics} from '@/domain/entities';
+import type {
+  Reminder,
+  ReminderKind,
+  ReminderProjectionState,
+  ReminderTimingPrecision,
+  TemporalSemantics,
+} from '@/domain/entities';
 import { DatabaseError } from '../errors';
 import { mapReminderRow, type ReminderRow } from '../mappers';
 import type { SqlDatabase } from '../types';
@@ -13,6 +19,11 @@ export interface CreateReminderInput {
   semantics?: TemporalSemantics;
   enabled?: boolean;
   timingPrecision?: ReminderTimingPrecision;
+  kind?: ReminderKind;
+  reason?: string | null;
+  generationSource?: string | null;
+  policyVersion?: string | null;
+  idempotencyKey?: string | null;
 }
 
 export interface ProjectionFailureInput {
@@ -42,10 +53,12 @@ export class RemindersRepository {
     return row ? mapReminderRow(row) : null;
   }
 
-  async listForTask(taskId: string): Promise<Reminder[]> {
+  async listForTask(taskId: string, options?: { kind?: ReminderKind }): Promise<Reminder[]> {
+    const kindClause = options?.kind ? ' AND kind = ?' : '';
     const rows = await this.db.getAllAsync<ReminderRow>(
-      `SELECT * FROM reminders WHERE task_id = ? ORDER BY scheduled_date ASC, scheduled_time ASC`,
-      [taskId]
+      `SELECT * FROM reminders WHERE task_id = ?${kindClause}
+       ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC`,
+      options?.kind ? [taskId, options.kind] : [taskId],
     );
     return rows.map(mapReminderRow);
   }
@@ -89,8 +102,9 @@ export class RemindersRepository {
     await this.db.runAsync(
       `INSERT INTO reminders (
         id, task_id, scheduled_date, scheduled_time, timezone, semantics, enabled,
-        timing_precision, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        timing_precision, kind, reason, generation_source, policy_version,
+        idempotency_key, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.taskId,
@@ -100,6 +114,11 @@ export class RemindersRepository {
         input.semantics ?? 'floating',
         input.enabled === false ? 0 : 1,
         input.timingPrecision ?? 'normal',
+        input.kind ?? 'primary',
+        input.reason ?? null,
+        input.generationSource ?? (input.kind === 'adaptive_followup' ? 'adaptive_nudge_engine' : 'manual'),
+        input.policyVersion ?? (input.kind === 'adaptive_followup' ? 'adaptive-v1' : 'baseline-v1'),
+        input.idempotencyKey ?? null,
         now,
         now,
       ]
@@ -159,6 +178,142 @@ export class RemindersRepository {
     const reminder = await this.getById(id);
     if (!reminder) throw new DatabaseError('QUERY_FAILED', 'Reminder update verification failed.');
     return reminder;
+  }
+
+  async listAdaptiveNudgesForTask(taskId: string): Promise<Reminder[]> {
+    return this.listForTask(taskId, { kind: 'adaptive_followup' });
+  }
+
+  async listAdaptiveNudges(limit?: number): Promise<Reminder[]> {
+    const rows = limit === undefined
+      ? await this.db.getAllAsync<ReminderRow>(
+        `SELECT * FROM reminders
+         WHERE kind = 'adaptive_followup'
+         ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC`,
+      )
+      : await this.db.getAllAsync<ReminderRow>(
+        `SELECT * FROM reminders
+         WHERE kind = 'adaptive_followup'
+         ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC
+         LIMIT ?`,
+        [Math.max(1, Math.floor(limit))],
+      );
+    return rows.map(mapReminderRow);
+  }
+
+  /** Count generated intents, including cancelled/consumed rows, for pressure budgets. */
+  async countAdaptiveNudgesForDate(localDate: string, taskId?: string): Promise<number> {
+    const row = await this.db.getFirstAsync<{ c: number }>(
+      `SELECT COUNT(*) AS c
+       FROM reminders
+       WHERE kind = 'adaptive_followup'
+         AND scheduled_date = ?${taskId ? ' AND task_id = ?' : ''}`,
+      taskId ? [localDate, taskId] : [localDate],
+    );
+    return row?.c ?? 0;
+  }
+
+  /** Idempotent desired-state write for one adaptive policy slot. */
+  async upsertAdaptiveNudge(input: CreateReminderInput & {
+    kind: 'adaptive_followup';
+    idempotencyKey: string;
+    reason: string;
+    generationSource?: string | null;
+    policyVersion?: string | null;
+  }): Promise<Reminder> {
+    const existingRow = await this.db.getFirstAsync<ReminderRow>(
+      `SELECT * FROM reminders WHERE idempotency_key = ?`,
+      [input.idempotencyKey],
+    );
+    if (existingRow) {
+      const existing = mapReminderRow(existingRow);
+      const now = new Date().toISOString();
+      await this.db.runAsync(
+        `UPDATE reminders SET
+           task_id = ?, scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?,
+           enabled = 1, reason = ?, generation_source = ?, policy_version = ?,
+           cancelled_at = NULL, consumed_at = NULL,
+           projection_dirty = 1,
+           projection_state = CASE WHEN projection_state = 'scheduled' THEN 'stale' ELSE projection_state END,
+           projection_revision = projection_revision + 1,
+           updated_at = ?
+         WHERE id = ?`,
+        [
+          input.taskId,
+          input.scheduledDate ?? null,
+          input.scheduledTime ?? null,
+          input.timezone ?? null,
+          input.semantics ?? existing.semantics,
+          input.reason,
+          input.generationSource ?? 'adaptive_nudge_engine',
+          input.policyVersion ?? 'adaptive-v1',
+          now,
+          existing.id,
+        ],
+      );
+      const refreshed = await this.getById(existing.id);
+      if (!refreshed) throw new DatabaseError('QUERY_FAILED', 'Adaptive nudge update verification failed.');
+      return refreshed;
+    }
+
+    return this.create({
+      ...input,
+      kind: 'adaptive_followup',
+      generationSource: input.generationSource ?? 'adaptive_nudge_engine',
+      policyVersion: input.policyVersion ?? 'adaptive-v1',
+    });
+  }
+
+  async cancelAdaptiveNudgesForTask(taskId: string): Promise<number> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET enabled = 0, cancelled_at = ?,
+           projection_dirty = 1, projection_state = 'stale',
+           projection_revision = projection_revision + 1, updated_at = ?
+       WHERE task_id = ? AND kind = 'adaptive_followup' AND enabled = 1`,
+      [now, now, taskId],
+    );
+    return result.changes;
+  }
+
+  async cancelAllAdaptiveNudges(): Promise<number> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET enabled = 0, cancelled_at = ?,
+           projection_dirty = 1, projection_state = 'stale',
+           projection_revision = projection_revision + 1, updated_at = ?
+       WHERE kind = 'adaptive_followup' AND enabled = 1`,
+      [now, now],
+    );
+    return result.changes;
+  }
+
+  async cancelAdaptiveNudge(id: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET enabled = 0, cancelled_at = ?,
+           projection_dirty = 1, projection_state = 'stale',
+           projection_revision = projection_revision + 1, updated_at = ?
+       WHERE id = ? AND kind = 'adaptive_followup' AND enabled = 1`,
+      [now, now, id],
+    );
+    return result.changes > 0;
+  }
+
+  async markAdaptiveNudgeConsumed(id: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE reminders
+       SET enabled = 0, consumed_at = ?,
+           projection_dirty = 1, projection_state = 'stale',
+           projection_revision = projection_revision + 1, updated_at = ?
+       WHERE id = ? AND kind = 'adaptive_followup'`,
+      [now, now, id],
+    );
+    return result.changes > 0;
   }
 
   async markDirty(id: string): Promise<boolean> {

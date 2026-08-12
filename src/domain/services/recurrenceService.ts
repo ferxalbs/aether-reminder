@@ -190,7 +190,7 @@ export class RecurrenceService {
         taskId: completedTask.id,
         enabledOnly: true,
       });
-      for (const reminder of existingReminders) {
+      for (const reminder of existingReminders.filter((item) => item.kind !== 'adaptive_followup')) {
         const dayOffset = completedTask.dueDate && reminder.scheduledDate
           ? differenceInLocalCalendarDays(completedTask.dueDate, reminder.scheduledDate)
           : 0;

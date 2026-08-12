@@ -77,6 +77,24 @@ export class AetherCommandExecutor {
     }
   }
 
+  private async replanAdaptiveNudges(taskId: string, reason: string): Promise<void> {
+    try {
+      await this.services.nudges.replanTask(taskId);
+    } catch (error) {
+      // Nudge learning is best-effort; task and primary reminder mutations do
+      // not roll back because a derived plan or native projection is unhealthy.
+      reportNonFatalError(`adaptive-nudge-${reason}`, error);
+    }
+  }
+
+  private async recordTaskCompleted(task: Task, source: string): Promise<void> {
+    try {
+      await this.services.nudges.recordTaskCompleted(task, source);
+    } catch (error) {
+      reportNonFatalError('adaptive-nudge-completion', error);
+    }
+  }
+
   private async findDueReminder(task: Task): Promise<Reminder | null> {
     if (!task.dueDate || !task.dueTime) return null;
     const reminders = await this.services.reminders.listReminders({
@@ -84,6 +102,7 @@ export class AetherCommandExecutor {
       enabledOnly: true,
     });
     return reminders.find((reminder) =>
+      reminder.kind !== 'adaptive_followup' &&
       reminder.scheduledDate === task.dueDate &&
       reminder.scheduledTime === task.dueTime &&
       reminder.semantics === task.dueSemantics
@@ -132,6 +151,7 @@ export class AetherCommandExecutor {
       enabledOnly: true,
     });
     const matching = existing.find((reminder) =>
+      reminder.kind !== 'adaptive_followup' &&
       reminder.scheduledDate === scheduledDate &&
       reminder.scheduledTime === scheduledTime &&
       reminder.semantics === afterTask.dueSemantics
@@ -202,6 +222,13 @@ export class AetherCommandExecutor {
     const uniqueSelections = [...new Map(selections.map((selection) => [selection.proposal.taskId, selection])).values()];
     const selected = uniqueSelections.filter((selection) => selection.schedule !== null);
     result.excluded.push(...uniqueSelections.filter((selection) => selection.schedule === null).map((selection) => selection.proposal.taskId));
+    for (const taskId of result.excluded) {
+      try {
+        await this.services.nudges.recordSmartRecovery(taskId, false);
+      } catch (error) {
+        reportNonFatalError('adaptive-nudge-recovery-rejected', error);
+      }
+    }
 
     let outcomes;
     try {
@@ -250,6 +277,11 @@ export class AetherCommandExecutor {
 
     for (const item of applied) {
       try {
+        await this.services.nudges.recordSmartRecovery(item.after.id, true);
+      } catch (error) {
+        reportNonFatalError('adaptive-nudge-recovery-accepted', error);
+      }
+      try {
         await this.syncDueReminder(item.before, item.after, 'recovery', { project: false });
       } catch (error) {
         result.projectionFailures.push({
@@ -266,6 +298,7 @@ export class AetherCommandExecutor {
           message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
         });
       }
+      await this.replanAdaptiveNudges(item.after.id, 'recovery');
     }
 
     if (applied.length > 0) {
@@ -334,6 +367,7 @@ export class AetherCommandExecutor {
             message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
           });
         }
+        await this.replanAdaptiveNudges(outcome.taskId, 'recovery-undo');
       } else if (
         outcome.current &&
         !outcome.current.completed &&
@@ -384,6 +418,7 @@ export class AetherCommandExecutor {
     const result = await this.services.tasks.createTask(input, source);
     try {
       await this.syncDueReminder(null, result.value, source);
+      await this.replanAdaptiveNudges(result.value.id, 'create');
       return result;
     } catch (error) {
       await this.services.tasks.deleteTask(result.value.id, 'command_rollback').catch(() => undefined);
@@ -400,6 +435,18 @@ export class AetherCommandExecutor {
       await this.services.repos.reminders.markTaskDirty(id);
       reminderChange = await this.syncDueReminder(before, result.value, source);
       await this.syncTaskProjections(id, 'task-update');
+      const scheduleChanged = before.dueDate !== result.value.dueDate
+        || before.dueTime !== result.value.dueTime
+        || before.dueTimezone !== result.value.dueTimezone
+        || before.dueSemantics !== result.value.dueSemantics;
+      if (scheduleChanged) {
+        try {
+          await this.services.nudges.recordTaskRescheduled(result.value, source);
+        } catch (error) {
+          reportNonFatalError('adaptive-nudge-reschedule', error);
+        }
+      }
+      await this.replanAdaptiveNudges(id, 'task-update');
       return result;
     } catch (error) {
       await this.rollbackDueReminder(reminderChange).catch(() => undefined);
@@ -465,6 +512,18 @@ export class AetherCommandExecutor {
       await this.services.repos.reminders.markTaskDirty(id);
       reminderChange = await this.syncDueReminder(beforeTask, taskResult.value, source);
       await this.syncTaskProjections(id, 'editor-update');
+      const scheduleChanged = beforeTask.dueDate !== taskResult.value.dueDate
+        || beforeTask.dueTime !== taskResult.value.dueTime
+        || beforeTask.dueTimezone !== taskResult.value.dueTimezone
+        || beforeTask.dueSemantics !== taskResult.value.dueSemantics;
+      if (scheduleChanged) {
+        try {
+          await this.services.nudges.recordTaskRescheduled(taskResult.value, source);
+        } catch (error) {
+          reportNonFatalError('adaptive-nudge-editor-reschedule', error);
+        }
+      }
+      await this.replanAdaptiveNudges(id, 'editor-update');
 
       let recurrenceResult = null;
       if (input.recurrence && targetDate) {
@@ -506,9 +565,12 @@ export class AetherCommandExecutor {
 
   async completeTask(id: string, source = 'manual') {
     const result = await this.services.tasks.completeTask(id, source);
+    await this.recordTaskCompleted(result.value, source);
     await this.syncTaskProjections(id, 'task-complete');
     const recurrence = await this.services.recurrence.advanceAfterCompletion(result.value, source);
     if (!recurrence) return result;
+
+    await this.replanAdaptiveNudges(recurrence.nextTask.id, 'recurrence-next');
 
     return {
       ...result,
@@ -531,11 +593,13 @@ export class AetherCommandExecutor {
       const recurringUndo = await this.services.recurrence.undoLatestCompletionForTask(id);
       if (recurringUndo) {
         await this.syncTaskProjections(id, 'task-reopen');
+        await this.replanAdaptiveNudges(id, 'recurring-undo');
         return recurringUndo;
       }
     }
     const result = await this.services.tasks.reopenTask(id, source);
     await this.syncTaskProjections(id, 'task-reopen');
+    await this.replanAdaptiveNudges(id, 'reopen');
     return result;
   }
 
@@ -551,12 +615,14 @@ export class AetherCommandExecutor {
   async deleteTask(id: string, source = 'manual') {
     const result = await this.services.tasks.deleteTask(id, source);
     await this.syncTaskProjections(id, 'task-delete');
+    await this.replanAdaptiveNudges(id, 'delete');
     return result;
   }
 
   async restoreTask(id: string, source = 'undo') {
     const result = await this.services.tasks.restoreTask(id, source);
     await this.syncTaskProjections(id, 'task-restore');
+    await this.replanAdaptiveNudges(id, 'restore');
     return result;
   }
 
@@ -568,6 +634,7 @@ export class AetherCommandExecutor {
     const result = await this.services.recurrence.createRecurringTask(input, source);
     try {
       await this.syncDueReminder(null, result.task, source);
+      await this.replanAdaptiveNudges(result.task.id, 'recurring-create');
       return result;
     } catch (error) {
       await this.services.tasks.deleteTask(result.task.id, 'command_rollback').catch(() => undefined);
@@ -583,15 +650,37 @@ export class AetherCommandExecutor {
     return this.services.recurrence.stopRule(id);
   }
 
-  scheduleReminder(input: ScheduleReminderInput, source = 'manual') {
-    return this.services.reminders.scheduleReminder(input, source);
+  async scheduleReminder(input: ScheduleReminderInput, source = 'manual') {
+    const result = await this.services.reminders.scheduleReminder(input, source);
+    if (result.value.kind !== 'adaptive_followup') {
+      await this.replanAdaptiveNudges(input.taskId, 'reminder-schedule');
+    }
+    return result;
   }
 
-  rescheduleReminder(id: string, input: RescheduleReminderInput) {
-    return this.services.reminders.rescheduleReminder(id, input);
+  async rescheduleReminder(id: string, input: RescheduleReminderInput, source = 'manual') {
+    const before = await this.services.reminders.getReminder(id);
+    const result = await this.services.reminders.rescheduleReminder(id, input);
+    if (source !== 'notification_action' && result.value.kind !== 'adaptive_followup' && before) {
+      await this.replanAdaptiveNudges(before.taskId, 'reminder-reschedule');
+    }
+    return result;
   }
 
-  cancelReminder(id: string) {
-    return this.services.reminders.cancelReminder(id);
+  async setAdaptiveNudgesEnabled(enabled: boolean): Promise<void> {
+    await this.services.nudges.setEnabled(enabled);
+  }
+
+  async resetAdaptiveNudgeLearning(): Promise<void> {
+    await this.services.nudges.resetLearning();
+  }
+
+  async cancelReminder(id: string) {
+    const before = await this.services.reminders.getReminder(id);
+    const result = await this.services.reminders.cancelReminder(id);
+    if (result.value.kind !== 'adaptive_followup' && before) {
+      await this.replanAdaptiveNudges(before.taskId, 'reminder-cancel');
+    }
+    return result;
   }
 }

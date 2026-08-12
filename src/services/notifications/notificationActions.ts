@@ -185,7 +185,25 @@ export async function handleNotificationActionResponse(
       case NOTIFICATION_ACTION_SNOOZE:
       case NOTIFICATION_ACTION_TOMORROW:
         if (!effectiveTarget) return false;
-        await core.commands.rescheduleReminder(reminder.id, effectiveTarget);
+        await core.commands.rescheduleReminder(reminder.id, effectiveTarget, 'notification_action');
+        try {
+          await core.services.nudges?.recordNotificationAction({
+            reminder,
+            action: response.actionIdentifier === NOTIFICATION_ACTION_SNOOZE ? 'snooze' : 'tomorrow',
+            responseKey: responseKey(response),
+            now,
+            target: effectiveTarget,
+          });
+        } catch (learningError) {
+          // The action has already been applied idempotently. Learning is
+          // local best-effort and must not turn a successful action into a retry.
+          reportNonFatalError('adaptive-nudge-action-learning', learningError);
+        }
+        try {
+          await core.services.nudges?.replanTask(reminder.taskId, now);
+        } catch (replanError) {
+          reportNonFatalError('adaptive-nudge-action-replan', replanError);
+        }
         break;
       default:
         return false;
@@ -215,6 +233,22 @@ export async function registerNotificationActionListener(
     if (processing.has(key) || completed.has(key)) return 'ignored';
     processing.add(key);
     try {
+      if (response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        const reminderId = response.notification.request.content.data?.reminderId;
+        if (typeof reminderId === 'string' && reminderId) {
+          const reminder = await core.services.reminders.getReminder(reminderId);
+          if (reminder) {
+            await core.services.nudges?.recordNotificationOpened({
+              reminder,
+              responseKey: key,
+              now: new Date(),
+            });
+            completed.add(key);
+            return 'completed';
+          }
+        }
+        return 'ignored';
+      }
       const mutated = await handleNotificationActionResponse(response, core);
       if (!mutated) return 'ignored';
       completed.add(key);

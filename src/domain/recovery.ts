@@ -84,6 +84,8 @@ export interface RecoveryUndoItem {
 }
 
 export const RECOVERY_UNDO_KIND = 'recovery.batch';
+/** Shared handoff boundary used by Smart Recovery and Adaptive Nudge. */
+export const RECOVERY_MISSED_GRACE_MINUTES = 30;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

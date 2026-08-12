@@ -68,7 +68,7 @@ describe('handleNotificationActionResponse', () => {
       scheduledTime: getLocalTimeString(target),
       timezone: 'America/Lima',
       semantics: 'floating',
-    });
+    }, 'notification_action');
   });
 
   test('moves the reminder to tomorrow while preserving its time', async () => {
@@ -80,7 +80,7 @@ describe('handleNotificationActionResponse', () => {
       scheduledTime: '18:30',
       timezone: 'America/Lima',
       semantics: 'floating',
-    });
+    }, 'notification_action');
   });
 
   test('uses fixed reminder timezone and persists one snooze target across retries', async () => {
@@ -96,7 +96,7 @@ describe('handleNotificationActionResponse', () => {
       scheduledTime: '23:55',
       timezone: 'America/New_York',
       semantics: 'fixed',
-    });
+    }, 'notification_action');
     let attempts = 0;
     const rescheduleReminder = mock(async () => {
       attempts += 1;
@@ -134,13 +134,13 @@ describe('handleNotificationActionResponse', () => {
       scheduledTime: '00:05',
       timezone: 'America/New_York',
       semantics: 'fixed',
-    });
+    }, 'notification_action');
     expect(rescheduleReminder).toHaveBeenNthCalledWith(2, 'reminder-1', {
       scheduledDate: '2026-08-10',
       scheduledTime: '00:05',
       timezone: 'America/New_York',
       semantics: 'fixed',
-    });
+    }, 'notification_action');
     expect(rescheduleReminder).toHaveBeenCalledTimes(2);
     await db.closeAsync?.();
   });

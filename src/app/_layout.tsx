@@ -45,6 +45,7 @@ type NotificationSyncState = {
 
 export default function RootLayout() {
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+  const setAdaptiveNudgesPreference = useSettingsStore((s) => s.setAdaptiveNudgesEnabled);
   const refreshAllSurfaces = useTasksUiStore((s) => s.refreshAllSurfaces);
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const isDark = useIsDark();
@@ -65,6 +66,16 @@ export default function RootLayout() {
       }));
       try {
         const core = getAetherCore(getDatabase());
+        try {
+          await core.services.nudges.replanBoundedHorizon(new Date());
+        } catch (error) {
+          reportNonFatalError('adaptive-nudge-replan', error);
+        }
+        try {
+          setAdaptiveNudgesPreference(await core.services.nudges.isEnabled());
+        } catch (error) {
+          reportNonFatalError('adaptive-nudge-setting-sync', error);
+        }
         await syncLocalNotifications({
           configure: configureLocalNotifications,
           reconcile: (reconcileOptions) => core.reconcileNotifications(reconcileOptions),
@@ -95,7 +106,7 @@ export default function RootLayout() {
 
     notificationSyncRef.current = operation;
     return operation;
-  }, []);
+  }, [setAdaptiveNudgesPreference]);
 
   const syncForegroundNotifications = useCallback(async () => {
     try {

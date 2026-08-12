@@ -2,6 +2,96 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.11 (2) [Adaptive Nudge Engine v1]
+
+### First-class local nudge intents
+
+- Added explicit `adaptive_followup` reminder intents with task ownership,
+  generation source, policy version, reason, idempotency key, and
+  cancellation/consumption state. Adaptive nudges remain derived opportunities
+  to surface unfinished work; they never modify the task due date, due time,
+  recurrence cadence, or deadline and never duplicate the primary reminder.
+- Added append-only migration `0008_adaptive_nudges` with indexed reminder
+  metadata, local `nudge_events`, and the aggregated `nudge_profiles` row.
+  SQLite remains authoritative, while native notifications remain disposable
+  projections through the existing reliability layer.
+- Added a seven-day bounded planning horizon and indexed candidate reads so
+  replanning remains local, bounded, and independent of network, LLM, or
+  periodic background execution.
+
+### Explainable local behavioral learning
+
+- Added compact local `NudgeEvent` signals for completion timing, notification
+  opens, Complete/Snooze/Tomorrow actions, Smart Recovery decisions, manual
+  reschedules, and adaptive-nudge actions. Notification silence or dismissal is
+  intentionally not treated as proof of user attention, and task content is not
+  stored in behavioral tables.
+- Added deterministic `NudgeProfile` aggregation with weekday/time buckets,
+  completion and deferral counts, bounded EWMA Snooze-delay learning, timing
+  deltas, and neutral explainability reasons. Confidence is `insufficient` below
+  five samples, `emerging` at five through nine, and `confident` at ten or more;
+  preferred time windows require confident evidence, while learned Snooze delay
+  requires five explicit Snooze samples and remains clamped to sane bounds.
+- Added visible, conservative opt-in `Adaptive Nudges` settings with the
+  explanation “AETHER can learn from completion and snooze patterns to choose
+  better follow-up times.” Added a local reset action that clears learned
+  events/aggregates without deleting tasks, recurrence rules, or ordinary
+  reminders.
+
+### Pure planning and anti-annoyance policy
+
+- Added the platform-independent `NudgePlanner` and `NudgeService`. The planner
+  checks completion/deletion, schedule validity, temporal semantics, existing
+  nudges, explicit deferral state, learned timing, and Smart Recovery state
+  before returning no nudge, one proposal, or normal `suppressed_by_budget`.
+- Added conservative defaults: one adaptive nudge per task per scheduled day,
+  three globally per day, a 120-minute adaptive cooldown, no immediate
+  follow-up after Snooze/Tomorrow, no duplicate pending policy slot, and
+  cancellation on completion. Same-day candidates are priority ordered so
+  overdue work cannot create a notification storm.
+- Added date-only flexible evening opportunities without inventing a task due
+  time; fixed and floating temporal semantics remain distinct. Explicit action
+  handling is idempotent, safe across cold launch, and records effective Snooze
+  durations while preserving Tomorrow as a distinct deferral.
+
+### Recovery and recurrence boundaries
+
+- Integrated Adaptive Nudge with Smart Recovery’s shared 30-minute handoff:
+  recent misses may receive one bounded follow-up, while meaningfully overdue
+  work is delegated to Recovery instead of being nudged repeatedly. Applying a
+  Recovery plan invalidates stale adaptive intents and regenerates the current
+  plan without counting the recovery mutation as notification success.
+- Added lifecycle replanning on authoritative task/reminder mutations, task
+  completion/reopen, notification actions, Recovery apply, cold start,
+  foreground transition, timezone change, and settings changes. Native
+  projection failures preserve desired SQLite nudge state for repair.
+- Kept adaptive intents tied to the current recurring occurrence. Recurrence
+  advancement filters engine-generated nudges so stale adaptive reminders are
+  never copied as user-defined offsets into the next occurrence.
+
+### Cross-platform presentation and validation
+
+- Added shared semantic presentation policies (`gentle`, `standard`, and
+  `attention_required`). Adaptive follow-ups use a gentle policy; Android maps
+  them to the stable low-importance `aether-adaptive-reminders` channel, while
+  primary reminders retain `aether-reminders`. iOS and iPadOS map the same
+  policy through supported passive/active presentation behavior without
+  Critical Alerts or automatic Time Sensitive escalation.
+- Added the [Adaptive Nudge Engine architecture documentation](docs/ADAPTIVE_NUDGE_ENGINE.md)
+  and [physical-device validation checklist](docs/VALIDATION_ADAPTIVE_NUDGES.md).
+- `bun test`: 210 passed, 2 intentional manual/provider tests skipped, 0
+  failed across 212 tests in 49 files. `bun run typecheck`, `bun run lint`,
+  `git diff --check`, Expo public configuration validation, and Android+iOS
+  Expo exports all passed.
+- Real-device validation was reported by the user as completed on a physical
+  device. The device model, OS build, app build, platform, and exact scenarios
+  were not supplied, so this entry records user-reported validation only and
+  makes no Android OEM, iPhone, or iPadOS matrix claim.
+- The required Android development EAS build was attempted and uploaded but
+  was rejected because the configured Expo account had exhausted its monthly
+  free-plan Android build quota. No deployment, publishing, submission, or
+  production credentials were added.
+
 ## Unreleased - 2026.08.11 (1) [Smart Recovery v1]
 
 ### Deterministic local recovery planning

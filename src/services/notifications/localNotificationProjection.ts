@@ -16,6 +16,12 @@ import {
   NotificationError,
   toNotificationError,
 } from './errors';
+import {
+  mapPresentationPolicyToAndroid,
+  mapPresentationPolicyToApple,
+  presentationPolicyForReminder,
+  type NotificationPresentationPolicy,
+} from './presentationPolicy';
 
 export interface LocalNotificationAdapter {
   list(): Promise<{ identifier: string; reminderId?: string }[]>;
@@ -25,21 +31,27 @@ export interface LocalNotificationAdapter {
     title: string;
     date: Date;
     timingPrecision: ReminderTimingPrecision;
+    presentationPolicy?: NotificationPresentationPolicy;
   }): Promise<string>;
   cancel(identifier: string): Promise<void>;
   getCapabilities?: () => Promise<NotificationCapabilities>;
 }
 
-const ANDROID_REMINDER_CHANNEL_ID = 'aether-reminders';
-
-async function ensureAndroidReminderChannel(): Promise<void> {
+async function ensureAndroidReminderChannel(
+  policy: NotificationPresentationPolicy = 'standard',
+): Promise<void> {
   const Notifications = await import('expo-notifications');
   const { Platform } = await import('react-native');
   if (Platform.OS !== 'android') return;
+  const mapping = mapPresentationPolicyToAndroid(policy);
   try {
-    await Notifications.setNotificationChannelAsync(ANDROID_REMINDER_CHANNEL_ID, {
-      name: 'AETHER Reminders',
-      importance: Notifications.AndroidImportance.HIGH,
+    await Notifications.setNotificationChannelAsync(mapping.channelId, {
+      name: mapping.channelName,
+      importance: mapping.importance === 'low'
+        ? Notifications.AndroidImportance.LOW
+        : mapping.importance === 'default'
+          ? Notifications.AndroidImportance.DEFAULT
+          : Notifications.AndroidImportance.HIGH,
     });
   } catch (error) {
     throw new NotificationError(
@@ -51,10 +63,12 @@ async function ensureAndroidReminderChannel(): Promise<void> {
   }
 }
 
-async function getExpoNotificationCapabilities(): Promise<NotificationCapabilities> {
+async function getExpoNotificationCapabilities(
+  policy: NotificationPresentationPolicy = 'standard',
+): Promise<NotificationCapabilities> {
   const Notifications = await import('expo-notifications');
   const { Platform } = await import('react-native');
-  await ensureAndroidReminderChannel();
+  await ensureAndroidReminderChannel(policy);
 
   const permissions = await Notifications.getPermissionsAsync();
   const permission = permissions.granted
@@ -89,8 +103,11 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
   },
   async schedule(input) {
     const Notifications = await import('expo-notifications');
-    await ensureAndroidReminderChannel();
-    const capabilities = await getExpoNotificationCapabilities();
+    const policy = input.presentationPolicy ?? 'standard';
+    const androidChannel = mapPresentationPolicyToAndroid(policy);
+    const applePresentation = mapPresentationPolicyToApple(policy);
+    await ensureAndroidReminderChannel(policy);
+    const capabilities = await getExpoNotificationCapabilities(policy);
     assertTimingCapability(input.timingPrecision, capabilities);
 
     const permissions = capabilities.permission === 'granted'
@@ -108,13 +125,20 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
         content: {
           title: 'AETHER Reminder',
           body: input.title,
+          sound: policy === 'gentle' ? false : 'default',
+          priority: policy === 'gentle' ? 'low' : 'default',
+          interruptionLevel: applePresentation.interruptionLevel,
           categoryIdentifier: AETHER_NOTIFICATION_CATEGORY,
-          data: { reminderId: input.reminderId, taskId: input.taskId },
+          data: {
+            reminderId: input.reminderId,
+            taskId: input.taskId,
+            presentationPolicy: policy,
+          },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: input.date,
-          channelId: ANDROID_REMINDER_CHANNEL_ID,
+          channelId: androidChannel.channelId,
         },
       });
     } catch (error) {
@@ -267,6 +291,7 @@ export class LocalNotificationProjection {
         title: task.title,
         date: resolveReminderNotificationDate(reminder),
         timingPrecision: reminder.timingPrecision,
+        presentationPolicy: presentationPolicyForReminder(reminder),
       });
       const saved = await this.reminders.recordProjectionSuccess(
         reminder.id,
@@ -310,10 +335,10 @@ export async function configureLocalNotifications(): Promise<void> {
   try {
     const Notifications = await import('expo-notifications');
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
+      handleNotification: async (notification) => ({
         shouldShowBanner: true,
         shouldShowList: true,
-        shouldPlaySound: true,
+        shouldPlaySound: notification.request.content.data?.presentationPolicy !== 'gentle',
         shouldSetBadge: false,
       }),
     });

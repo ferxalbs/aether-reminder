@@ -38,6 +38,7 @@ export interface SettingsState extends UserSettings {
   setTheme: (theme: UserSettings['theme']) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setAutoSummarize: (enabled: boolean) => void;
+  setAdaptiveNudgesEnabled: (enabled: boolean) => void;
   resetSettings: () => Promise<void>;
 }
 
@@ -46,6 +47,7 @@ export const initialSettings: UserSettings = {
   theme: 'system',
   hapticsEnabled: true,
   autoSummarize: true,
+  adaptiveNudgesEnabled: false,
 };
 
 const secureStoreAdapter: SecureStoreAdapter = {
@@ -147,6 +149,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (theme) => set({ theme }),
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
       setAutoSummarize: (enabled) => set({ autoSummarize: enabled }),
+      setAdaptiveNudgesEnabled: (enabled) => set({ adaptiveNudgesEnabled: enabled }),
       resetSettings: async () => {
         await Promise.all([
           deleteProviderCredential(secureStoreAdapter, 'OpenRouter'),
@@ -178,6 +181,7 @@ export const useSettingsStore = create<SettingsState>()(
           theme: stored?.theme ?? current.theme,
           hapticsEnabled: stored?.hapticsEnabled ?? current.hapticsEnabled,
           autoSummarize: stored?.autoSummarize ?? current.autoSummarize,
+          adaptiveNudgesEnabled: stored?.adaptiveNudgesEnabled ?? current.adaptiveNudgesEnabled,
         };
       },
     }

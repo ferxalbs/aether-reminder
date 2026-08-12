@@ -17,9 +17,10 @@ import type {
   RecoverySchedule,
   RecoveryRecurrenceMetadata,
 } from '@/domain/recovery';
+import { RECOVERY_MISSED_GRACE_MINUTES as SHARED_RECOVERY_MISSED_GRACE_MINUTES } from '@/domain/recovery';
 
 /** Initial grace period before a timed task due today becomes a candidate. */
-export const RECOVERY_MISSED_GRACE_MINUTES = 30;
+export const RECOVERY_MISSED_GRACE_MINUTES = SHARED_RECOVERY_MISSED_GRACE_MINUTES;
 
 /** Minimum future room required before reusing the original time today. */
 export const RECOVERY_MINIMUM_FUTURE_MINUTES = 30;

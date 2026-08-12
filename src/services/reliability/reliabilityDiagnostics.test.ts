@@ -61,7 +61,7 @@ describe('reliability diagnostics', () => {
     ).collect();
 
     expect(diagnostics.databaseReady).toBe(true);
-    expect(diagnostics.schemaVersion).toBe(7);
+    expect(diagnostics.schemaVersion).toBe(8);
     expect(diagnostics.quickCheck).toBe('ok');
     expect(diagnostics.foreignKeyCheck).toBe('ok');
     expect(diagnostics.reminderCounts.active).toBe(1);

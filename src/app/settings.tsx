@@ -18,6 +18,7 @@ import {
 import { getAIErrorMessage } from "@/services/ai/providers";
 import { testOpenAIRealtimeConnection } from "@/services/transcription";
 import { useSettingsStore } from "@/stores/settings.store";
+import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import { useIsDark } from "@/theme/useResolvedTheme";
@@ -98,6 +99,7 @@ export default function SettingsScreen() {
   const selectedModel = useSettingsStore((s) => s.selectedModel);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const autoSummarize = useSettingsStore((s) => s.autoSummarize);
+  const adaptiveNudgesEnabled = useSettingsStore((s) => s.adaptiveNudgesEnabled);
 
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const setOpenRouterApiKey = useSettingsStore((s) => s.setOpenRouterApiKey);
@@ -110,6 +112,9 @@ export default function SettingsScreen() {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
   const setAutoSummarize = useSettingsStore((s) => s.setAutoSummarize);
+  const setAdaptiveNudgesPreference = useSettingsStore((s) => s.setAdaptiveNudgesEnabled);
+  const persistAdaptiveNudges = useTasksUiStore((s) => s.setAdaptiveNudgesEnabled);
+  const resetAdaptiveNudgeLearning = useTasksUiStore((s) => s.resetAdaptiveNudgeLearning);
 
   const [openRouterInput, setOpenRouterInput] = useState("");
   const [openAiInput, setOpenAiInput] = useState("");
@@ -326,6 +331,34 @@ export default function SettingsScreen() {
                   getAIErrorMessage(error),
                 ),
               );
+          },
+        },
+      ],
+    );
+  };
+
+  const setAdaptiveNudges = async (enabled: boolean) => {
+    try {
+      await persistAdaptiveNudges(enabled);
+      setAdaptiveNudgesPreference(enabled);
+    } catch (error) {
+      Alert.alert("Adaptive Nudges Not Updated", getAIErrorMessage(error));
+    }
+  };
+
+  const confirmResetAdaptiveLearning = () => {
+    Alert.alert(
+      "Reset learned nudge behavior?",
+      "This clears local completion and snooze learning. Tasks, recurrence rules, and ordinary reminders stay unchanged.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset learning",
+          style: "destructive",
+          onPress: () => {
+            void resetAdaptiveNudgeLearning()
+              .then(() => Alert.alert("Learning reset", "AETHER will use its conservative baseline again."))
+              .catch((error: unknown) => Alert.alert("Learning Not Reset", getAIErrorMessage(error)));
           },
         },
       ],
@@ -1159,6 +1192,60 @@ export default function SettingsScreen() {
                 accessibilityLabel="Auto Task Summarize"
               />
             </View>
+
+            <View
+              style={[
+                styles.divider,
+                {
+                  backgroundColor: isDark
+                    ? Colors.borderDark
+                    : Colors.borderLight,
+                },
+              ]}
+            />
+
+            {/* Adaptive Nudge Switch */}
+            <View style={styles.rowBetween}>
+              <View style={styles.rowLeftGroup}>
+                <View
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
+                      borderColor: isDark
+                        ? Colors.borderDark
+                        : Colors.borderLight,
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <RefreshCw size={18} color={isDark ? Colors.white : Colors.black} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Typography variant="bodyBold">Adaptive Nudges</Typography>
+                  <Typography
+                    variant="tiny"
+                    color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                  >
+                    AETHER can learn from completion and snooze patterns to choose better follow-up times.
+                  </Typography>
+                </View>
+              </View>
+              <ToggleSwitch
+                value={adaptiveNudgesEnabled}
+                onValueChange={(enabled) => void setAdaptiveNudges(enabled)}
+                accessibilityLabel="Adaptive Nudges"
+              />
+            </View>
+
+            <Button
+              label="Reset learned nudge behavior"
+              onPress={confirmResetAdaptiveLearning}
+              variant="secondary"
+              fullWidth
+            />
           </Card>
         </Animated.View>
 

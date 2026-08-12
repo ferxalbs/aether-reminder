@@ -9,6 +9,8 @@ import type {
   TemporalSemantics,
   ReminderProjectionState,
   ReminderTimingPrecision,
+  ReminderKind,
+  ReminderGenerationSource,
 } from '@/domain/entities';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
@@ -49,6 +51,13 @@ export interface ReminderRow {
   projection_error_code: string | null;
   projection_error: string | null;
   timing_precision: string;
+  kind?: string;
+  reason?: string | null;
+  generation_source?: string | null;
+  policy_version?: string | null;
+  idempotency_key?: string | null;
+  cancelled_at?: string | null;
+  consumed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -111,6 +120,13 @@ export function mapReminderRow(row: ReminderRow): Reminder {
     projectionErrorCode: row.projection_error_code,
     projectionError: row.projection_error,
     timingPrecision: row.timing_precision as ReminderTimingPrecision,
+    kind: (row.kind ?? 'primary') as ReminderKind,
+    reason: row.reason ?? null,
+    generationSource: (row.generation_source ?? 'manual') as ReminderGenerationSource,
+    policyVersion: row.policy_version ?? 'baseline-v1',
+    idempotencyKey: row.idempotency_key ?? null,
+    cancelledAt: row.cancelled_at ?? null,
+    consumedAt: row.consumed_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

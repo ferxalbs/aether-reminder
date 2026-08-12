@@ -106,6 +106,30 @@ export class TasksRepository {
     return rows.map(mapTaskRow);
   }
 
+  /** Indexed bounded read for Adaptive Nudge planning. The optional lower
+   * bound keeps meaningfully overdue work in Smart Recovery's lane; the pure
+   * planner still applies timezone-aware timing and handoff rules. */
+  async listNudgeCandidates(throughDate: string, limit = 100, fromDate?: string): Promise<Task[]> {
+    const lowerBound = fromDate ? ' AND due_date >= ?' : '';
+    const rows = await this.db.getAllAsync<TaskRow>(
+      `SELECT * FROM tasks
+       WHERE ${ACTIVE}
+         AND completed = 0
+         AND due_date IS NOT NULL
+         ${lowerBound}
+         AND due_date <= ?
+       ORDER BY due_date ASC,
+         CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+         due_time ASC,
+         id ASC
+       LIMIT ?`,
+      fromDate
+        ? [fromDate, throughDate, Math.max(1, Math.floor(limit))]
+        : [throughDate, Math.max(1, Math.floor(limit))],
+    );
+    return rows.map(mapTaskRow);
+  }
+
   async listUpcoming(localDate: string = getLocalDateString(), limit = 100): Promise<Task[]> {
     const rows = await this.db.getAllAsync<TaskRow>(
       `SELECT * FROM tasks

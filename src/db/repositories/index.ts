@@ -7,6 +7,7 @@ import { RecurrenceRulesRepository } from './recurrenceRulesRepository';
 import { RemindersRepository } from './remindersRepository';
 import { TaskEventsRepository } from './taskEventsRepository';
 import { TasksRepository } from './tasksRepository';
+import { NudgeEventsRepository } from './nudgeEventsRepository';
 
 export { AppMetaRepository } from './appMetaRepository';
 export { NotificationActionReceiptsRepository } from './notificationActionReceiptsRepository';
@@ -15,6 +16,7 @@ export { RecurrenceRulesRepository } from './recurrenceRulesRepository';
 export { RemindersRepository } from './remindersRepository';
 export { TaskEventsRepository } from './taskEventsRepository';
 export { TasksRepository } from './tasksRepository';
+export { NudgeEventsRepository } from './nudgeEventsRepository';
 export {
   AgentRuntimeRepository,
   hashArgs,
@@ -37,6 +39,7 @@ export function createRepositories(db: SqlDatabase) {
     projects: new ProjectsRepository(db),
     taskEvents: new TaskEventsRepository(db),
     agentRuntime: new AgentRuntimeRepository(db),
+    nudgeEvents: new NudgeEventsRepository(db),
   };
 }
 

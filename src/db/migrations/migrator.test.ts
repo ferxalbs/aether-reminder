@@ -21,6 +21,7 @@ describe('schema migrations', () => {
       '0005_notification_query_indexes',
       '0006_recurrence_rules',
       '0007_notification_reliability',
+      '0008_adaptive_nudges',
     ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
@@ -41,6 +42,8 @@ describe('schema migrations', () => {
     expect(names).toContain('agent_events');
     expect(names).toContain('tool_executions');
     expect(names).toContain('notification_action_receipts');
+    expect(names).toContain('nudge_events');
+    expect(names).toContain('nudge_profiles');
 
     const indexes = await db.getAllAsync<{ name: string }>(
       `SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name`
@@ -57,6 +60,12 @@ describe('schema migrations', () => {
       'idx_reminders_projection_dirty',
       'idx_reminders_projection_error',
       'notification_action_receipts_reminder_idx',
+      'idx_reminders_idempotency_key',
+      'idx_reminders_task_kind_schedule',
+      'idx_reminders_nudge_day',
+      'idx_nudge_events_task_time',
+      'idx_nudge_events_type_time',
+      'idx_nudge_events_nudge_time',
     ]));
     await db.closeAsync?.();
   });
@@ -77,6 +86,7 @@ describe('schema migrations', () => {
       '0005_notification_query_indexes',
       '0006_recurrence_rules',
       '0007_notification_reliability',
+      '0008_adaptive_nudges',
     ]);
     await db.closeAsync?.();
   });

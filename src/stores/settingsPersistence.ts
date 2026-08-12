@@ -9,6 +9,7 @@ export interface PersistedSettings {
   theme: 'system' | 'dark' | 'light';
   hapticsEnabled: boolean;
   autoSummarize: boolean;
+  adaptiveNudgesEnabled?: boolean;
 }
 
 export interface SettingsPersistenceInput extends PersistedSettings {
@@ -23,5 +24,6 @@ export function persistedSettingsSnapshot(state: SettingsPersistenceInput): Pers
     theme: state.theme,
     hapticsEnabled: state.hapticsEnabled,
     autoSummarize: state.autoSummarize,
+    adaptiveNudgesEnabled: state.adaptiveNudgesEnabled ?? false,
   };
 }

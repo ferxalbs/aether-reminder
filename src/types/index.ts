@@ -34,6 +34,8 @@ export interface UserSettings {
   theme: ThemePreference;
   hapticsEnabled: boolean;
   autoSummarize: boolean;
+  /** Conservative opt-in for local adaptive follow-up notifications. */
+  adaptiveNudgesEnabled: boolean;
 }
 
 export interface OpenRouterModel {

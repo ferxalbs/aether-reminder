@@ -5,6 +5,7 @@ import { RecurrenceService } from './recurrenceService';
 import { ReminderService } from './reminderService';
 import { TaskService } from './taskService';
 import { RecoveryService } from './recoveryService';
+import { NudgeService } from './nudgeService';
 import {
   expoLocalNotificationAdapter,
   LocalNotificationProjection,
@@ -44,10 +45,18 @@ export { RecoveryService } from './recoveryService';
 export type {
   RecoveryBuildContext,
 } from './recoveryService';
+export { NudgeService } from './nudgeService';
+export type {
+  NudgeDiagnostics,
+  NotificationNudgeAction,
+  NotificationNudgeActionInput,
+  NotificationNudgeOpenedInput,
+} from './nudgeService';
 
 export interface DomainServices {
   tasks: TaskService;
   recovery: RecoveryService;
+  nudges: NudgeService;
   recurrence: RecurrenceService;
   reminders: ReminderService;
   analytics: AnalyticsService;
@@ -77,6 +86,13 @@ export function createDomainServicesFromRepos(repos: Repositories): DomainServic
     repos.appMeta,
   );
   const reminders = new ReminderService(repos.reminders, notificationProjection);
+  const nudges = new NudgeService(
+    repos.tasks,
+    repos.reminders,
+    repos.nudgeEvents,
+    repos.appMeta,
+    notificationProjection,
+  );
   const reliability = new ReliabilityDiagnosticsService(
     repos.db,
     repos.reminders,
@@ -87,6 +103,7 @@ export function createDomainServicesFromRepos(repos: Repositories): DomainServic
   return {
     tasks,
     recovery: new RecoveryService(repos.tasks, repos.recurrenceRules),
+    nudges,
     recurrence: new RecurrenceService(repos.recurrenceRules, tasks, reminders),
     reminders,
     analytics: new AnalyticsService(repos.tasks),

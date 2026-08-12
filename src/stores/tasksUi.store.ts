@@ -94,6 +94,8 @@ export interface TasksUiState {
   ) => Promise<void>;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
   applyRecovery: (selections: readonly RecoveryApplySelection[]) => Promise<RecoveryApplyResult>;
+  setAdaptiveNudgesEnabled: (enabled: boolean) => Promise<void>;
+  resetAdaptiveNudgeLearning: () => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
   setUndoReceipt: (receipt: ActionReceipt) => void;
@@ -341,6 +343,26 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         recoveryStatus: 'error',
         recoveryError: getDatabaseErrorMessage(error),
       });
+      throw error;
+    }
+  },
+
+  setAdaptiveNudgesEnabled: async (enabled) => {
+    try {
+      await (await core()).commands.setAdaptiveNudgesEnabled(enabled);
+    } catch (error) {
+      reportNonFatalError('adaptive-nudges-setting', error);
+      set({ error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  resetAdaptiveNudgeLearning: async () => {
+    try {
+      await (await core()).commands.resetAdaptiveNudgeLearning();
+    } catch (error) {
+      reportNonFatalError('adaptive-nudges-reset', error);
+      set({ error: getDatabaseErrorMessage(error) });
       throw error;
     }
   },
