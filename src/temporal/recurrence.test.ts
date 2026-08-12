@@ -4,6 +4,7 @@ import {
   addLocalCalendarDays,
   differenceInLocalCalendarDays,
   getNextRecurrenceDate,
+  getRecurrenceOccurrenceDate,
 } from './recurrence';
 
 function rule(overrides: Partial<RecurrenceRule> = {}): RecurrenceRule {
@@ -66,5 +67,11 @@ describe('getNextRecurrenceDate', () => {
     expect(addLocalCalendarDays('2026-08-10', -1)).toBe('2026-08-09');
     expect(differenceInLocalCalendarDays('2026-12-31', '2027-01-02')).toBe(2);
     expect(addLocalCalendarDays('2026-12-31', 2)).toBe('2027-01-02');
+  });
+
+  test('resolves fixed occurrences from the series anchor after a current occurrence moved', () => {
+    const fixed = rule({ startDate: '2026-08-09', occurrenceCount: 1 });
+    expect(getRecurrenceOccurrenceDate(fixed, 1)).toBe('2026-08-09');
+    expect(getNextRecurrenceDate(fixed, getRecurrenceOccurrenceDate(fixed, 1)!)).toBe('2026-08-10');
   });
 });

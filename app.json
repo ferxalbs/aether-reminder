@@ -11,6 +11,7 @@
     "ios": {
       "icon": "./assets/images/aether-reminder.png",
       "bundleIdentifier": "com.ferxalbs.aetherreminder",
+      "supportsTablet": true,
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {

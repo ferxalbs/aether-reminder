@@ -144,3 +144,30 @@ export function getNextRecurrenceDate(rule: RecurrenceRule, fromDate: string): s
   if (rule.maxOccurrences !== null && rule.occurrenceCount >= rule.maxOccurrences) return null;
   return candidate;
 }
+
+/**
+ * Resolve a fixed-series occurrence from its immutable start-date anchor.
+ * This is deliberately separate from the mutable current task date: recovering
+ * one occurrence must not move the cadence of all future occurrences.
+ */
+export function getRecurrenceOccurrenceDate(
+  rule: RecurrenceRule,
+  occurrenceNumber: number,
+): string | null {
+  if (!Number.isInteger(occurrenceNumber) || occurrenceNumber < 1) return null;
+  if (occurrenceNumber === 1) return rule.startDate;
+
+  let current = rule.startDate;
+  const unboundedRule: RecurrenceRule = {
+    ...rule,
+    endDate: null,
+    maxOccurrences: null,
+    occurrenceCount: 0,
+  };
+  for (let occurrence = 2; occurrence <= occurrenceNumber; occurrence += 1) {
+    const next = getNextRecurrenceDate(unboundedRule, current);
+    if (!next) return null;
+    current = next;
+  }
+  return current;
+}

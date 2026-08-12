@@ -16,6 +16,7 @@ import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
+import { RecoverySheet, RecoverySummary } from '@/components/ui/RecoverySurface';
 import { AetherComposer } from '@/components/ui/AetherComposer';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
@@ -42,11 +43,15 @@ export default function TodayScreen() {
   const [quickError, setQuickError] = useState<string | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const todayTasks = useTasksUiStore((s) => s.todayTasks);
   const status = useTasksUiStore((s) => s.status);
   const error = useTasksUiStore((s) => s.error);
   const refreshToday = useTasksUiStore((s) => s.refreshToday);
+  const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
+  const recoveryPlan = useTasksUiStore((s) => s.recoveryPlan);
+  const applyRecovery = useTasksUiStore((s) => s.applyRecovery);
   const createTask = useTasksUiStore((s) => s.createTask);
   const toggleTask = useTasksUiStore((s) => s.toggleTask);
   const softDeleteTask = useTasksUiStore((s) => s.softDeleteTask);
@@ -58,8 +63,8 @@ export default function TodayScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refreshToday();
-    }, [refreshToday]),
+      void Promise.all([refreshToday(), refreshRecovery()]);
+    }, [refreshRecovery, refreshToday]),
   );
 
   const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
@@ -128,6 +133,11 @@ export default function TodayScreen() {
     setEditingTask(null);
   }, []);
 
+  const openRecovery = useCallback(async () => {
+    await refreshRecovery();
+    if (useTasksUiStore.getState().recoveryPlan) setRecoveryVisible(true);
+  }, [refreshRecovery]);
+
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -174,6 +184,13 @@ export default function TodayScreen() {
               >
                 <Typography variant="display">Today</Typography>
               </Animated.View>
+
+              {recoveryPlan ? (
+                <RecoverySummary
+                  count={recoveryPlan.proposals.length}
+                  onPress={() => void openRecovery()}
+                />
+              ) : null}
 
               {error || quickError ? (
                 <Typography
@@ -235,6 +252,15 @@ export default function TodayScreen() {
         mode={editingTask ? 'edit' : 'create'}
         task={editingTask}
       />
+      {recoveryPlan ? (
+        <RecoverySheet
+          key={recoveryPlan.id}
+          visible={recoveryVisible}
+          plan={recoveryPlan}
+          onClose={() => setRecoveryVisible(false)}
+          onApply={applyRecovery}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

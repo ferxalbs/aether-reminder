@@ -2,6 +2,77 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.11 (1) [Smart Recovery v1]
+
+### Deterministic local recovery planning
+
+- Added a derived `RecoveryService` and `RecoveryPlan` that detect active,
+  incomplete, non-deleted overdue work and timed tasks missed beyond the named
+  30-minute grace period. Date-only tasks due today remain eligible only after
+  the local day ends, and fixed/floating temporal semantics use their effective
+  calendars without depending on notification delivery or an LLM.
+- Added predictable recommendations: recover date-only tasks to today, retain a
+  timed task's original time when it remains sufficiently available, otherwise
+  use tomorrow, and expose deterministic Later today, Tomorrow, Keep current,
+  and exclusion alternatives. Candidate ordering is deterministic and priority
+  aware, while malformed schedules fail closed.
+- Kept plans ephemeral and versioned by the authoritative task `updatedAt`
+  snapshot. Plans are regenerated from SQLite on Home focus, foreground repair,
+  relevant task mutations, and explicit Recovery opening.
+
+### Atomic Apply Recovery and reversible task changes
+
+- Added command/domain/repository support for one-tap `Apply Recovery`. Valid
+  schedule selections and `rescheduled` task events commit in one SQLite
+  transaction; stale, completed, deleted, or already-applied entries are
+  classified without overwriting newer user changes.
+- Added batch-level `BULK_MUTATION` receipts with version-protected Undo for
+  every successfully recovered task. Reapplying the same plan is idempotent and
+  does not create duplicate task events, reminders, or recurrence advancement.
+- Added repository rollback coverage proving that an event failure restores the
+  entire recovery batch. Native notification or reliability bookkeeping
+  failures are reported as projection failures after the domain mutation has
+  succeeded.
+
+### Recurrence-safe notification repair
+
+- Corrected fixed recurrence advancement to derive future occurrences from the
+  immutable recurrence anchor, so recovering the current occurrence cannot
+  shift the series cadence. Existing `after_completion` behavior remains
+  completion-based and recurrence rules are not rewritten by Recovery.
+- Routed recovered primary reminder updates through the existing reminder and
+  Production Reliability boundaries with incremental projection repair; Smart
+  Recovery does not schedule OS notifications directly.
+
+### Responsive cross-platform Recovery review
+
+- Added a compact Home recovery summary and an adaptive review sheet showing
+  affected tasks, previous/proposed schedules, reasons, per-task alternatives,
+  exclusion, Apply Recovery, and the existing Undo affordance.
+- Used window dimensions rather than phone-platform assumptions. Compact windows
+  use the existing mobile sheet presentation; large windows use a bounded panel
+  suitable for iPad portrait, landscape, Split View, and Stage Manager resizing.
+- Enabled `ios.supportsTablet` without forcing fullscreen or introducing
+  tablet-only behavior. Android and iOS continue to share the domain, command,
+  data, and reliability architecture behind their existing native UI adapters.
+
+### Documentation, tests, and validation limits
+
+- Added [Smart Recovery architecture documentation](docs/SMART_RECOVERY.md)
+  and the [manual Android, iPhone, and iPadOS validation checklist](docs/SMART_RECOVERY_VALIDATION.md).
+- Added deterministic coverage for candidate rules, grace periods, local
+  midnight, timezone changes, fixed/floating semantics, malformed schedules,
+  priority ordering, stale and duplicate Apply, partial stale batches, batch
+  Undo, projection failure, app-restart regeneration, and both recurrence modes.
+- `bun test`: 189 passed, 2 intentional manual/provider tests skipped, 0
+  failed. `bun run typecheck`, `bun run lint`, `bunx expo config --type public`,
+  and Android+iOS Expo export all passed.
+- The required Android development EAS build was attempted and uploaded but
+  was rejected because the configured Expo account had exhausted its monthly
+  free-plan Android build quota. No physical Android, iPhone, or iPadOS
+  validation was performed; no deployment, publishing, submission, or
+  production credentials were added.
+
 ## Unreleased - 2026.08.09 (5) [Voice Failure Forensics and Error Surface Ownership]
 
 ### Actionable realtime transcription failures

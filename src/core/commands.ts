@@ -14,6 +14,14 @@ import type {
   RescheduleReminderInput,
   ScheduleReminderInput,
 } from '@/domain/services/reminderService';
+import {
+  getRecoveryUndoItems,
+  RECOVERY_UNDO_KIND,
+  type RecoveryApplyResult,
+  type RecoveryApplySelection,
+  type RecoverySchedule,
+} from '@/domain/recovery';
+import type { NotificationReconciliationResult } from '@/services/notifications/notificationReconciliation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 
 export type TaskEditorRecurrenceDraft = Omit<
@@ -45,7 +53,10 @@ type DueReminderChange =
 export class AetherCommandExecutor {
   constructor(private readonly services: DomainServices) {}
 
-  private async syncTaskProjections(taskId: string, reason: string): Promise<void> {
+  private async syncTaskProjections(
+    taskId: string,
+    reason: string,
+  ): Promise<NotificationReconciliationResult | null> {
     await this.services.repos.reminders.markTaskDirty(taskId);
     try {
       const result = await this.services.notifications.reconcile({
@@ -59,8 +70,10 @@ export class AetherCommandExecutor {
           result.failures.map((failure) => failure.error.message).join('; '),
         );
       }
+      return result;
     } catch (error) {
       reportNonFatalError(`notification-${reason}`, error);
+      return null;
     }
   }
 
@@ -85,25 +98,30 @@ export class AetherCommandExecutor {
     beforeTask: Task | null,
     afterTask: Task,
     source: string,
+    options: { project?: boolean } = {},
   ): Promise<DueReminderChange> {
     const beforeReminder = beforeTask ? await this.findDueReminder(beforeTask) : null;
     const targetHasTime = Boolean(afterTask.dueDate && afterTask.dueTime);
 
     if (!targetHasTime) {
       if (!beforeReminder) return { kind: 'none' };
-      await this.services.reminders.cancelReminder(beforeReminder.id);
+      await this.services.reminders.cancelReminder(beforeReminder.id, options);
       return { kind: 'cancelled', before: beforeReminder };
     }
 
     const scheduledDate = afterTask.dueDate!;
     const scheduledTime = afterTask.dueTime!;
     if (beforeReminder) {
-      await this.services.reminders.rescheduleReminder(beforeReminder.id, {
-        scheduledDate,
-        scheduledTime,
-        timezone: afterTask.dueTimezone,
-        semantics: afterTask.dueSemantics,
-      });
+      await this.services.reminders.rescheduleReminder(
+        beforeReminder.id,
+        {
+          scheduledDate,
+          scheduledTime,
+          timezone: afterTask.dueTimezone,
+          semantics: afterTask.dueSemantics,
+        },
+        options,
+      );
       return { kind: 'rescheduled', reminderId: beforeReminder.id, before: beforeReminder };
     }
 
@@ -120,15 +138,217 @@ export class AetherCommandExecutor {
     );
     if (matching) return { kind: 'none' };
 
-    const created = await this.services.reminders.scheduleReminder({
-      taskId: afterTask.id,
-      scheduledDate,
-      scheduledTime,
-      timezone: afterTask.dueTimezone,
-      semantics: afterTask.dueSemantics,
-      enabled: true,
-    }, source);
+    const created = await this.services.reminders.scheduleReminder(
+      {
+        taskId: afterTask.id,
+        scheduledDate,
+        scheduledTime,
+        timezone: afterTask.dueTimezone,
+        semantics: afterTask.dueSemantics,
+        enabled: true,
+      },
+      source,
+      options,
+    );
     return { kind: 'created', reminderId: created.value.id };
+  }
+
+  private scheduleFromTask(task: Task): RecoverySchedule {
+    return {
+      dueDate: task.dueDate,
+      dueTime: task.dueTime,
+      dueTimezone: task.dueTimezone,
+      dueSemantics: task.dueSemantics,
+    };
+  }
+
+  private recoveryResult(planId: string): RecoveryApplyResult {
+    return {
+      planId,
+      applied: [],
+      skippedStale: [],
+      alreadyApplied: [],
+      excluded: [],
+      failed: [],
+      projectionFailures: [],
+      receipt: null,
+    };
+  }
+
+  private addProjectionFailures(
+    result: RecoveryApplyResult,
+    taskId: string,
+    reconciliation: NotificationReconciliationResult | null,
+  ): void {
+    if (!reconciliation || reconciliation.failed === 0) return;
+    for (const failure of reconciliation.failures) {
+      result.projectionFailures.push({
+        taskId,
+        message: failure.error.message,
+      });
+    }
+  }
+
+  /**
+   * Apply only the selected schedule fields. Task version checks and task
+   * events are committed in one repository transaction; native notification
+   * work is intentionally deferred to incremental reliability reconciliation.
+   */
+  async applyRecovery(
+    planId: string,
+    selections: readonly RecoveryApplySelection[],
+  ): Promise<RecoveryApplyResult> {
+    const result = this.recoveryResult(planId);
+    const uniqueSelections = [...new Map(selections.map((selection) => [selection.proposal.taskId, selection])).values()];
+    const selected = uniqueSelections.filter((selection) => selection.schedule !== null);
+    result.excluded.push(...uniqueSelections.filter((selection) => selection.schedule === null).map((selection) => selection.proposal.taskId));
+
+    let outcomes;
+    try {
+      outcomes = await this.services.tasks.applyRecoverySchedules(
+        selected.map((selection) => ({
+          taskId: selection.proposal.taskId,
+          expectedUpdatedAt: selection.proposal.taskUpdatedAt,
+          schedule: selection.schedule!,
+        })),
+        'recovery',
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Recovery could not be applied.';
+      result.failed.push(...selected.map((selection) => ({ taskId: selection.proposal.taskId, message })));
+      return result;
+    }
+
+    const applied = [] as {
+      selection: RecoveryApplySelection;
+      before: Task;
+      after: Task;
+    }[];
+    for (const outcome of outcomes) {
+      const selection = selected.find((item) => item.proposal.taskId === outcome.taskId);
+      if (!selection || !selection.schedule) continue;
+      if (outcome.applied && outcome.before && outcome.after) {
+        result.applied.push(outcome.taskId);
+        applied.push({ selection, before: outcome.before, after: outcome.after });
+        continue;
+      }
+      const current = outcome.current;
+      if (
+        current &&
+        !current.completed &&
+        !current.deletedAt &&
+        current.dueDate === selection.schedule.dueDate &&
+        current.dueTime === selection.schedule.dueTime &&
+        current.dueTimezone === selection.schedule.dueTimezone &&
+        current.dueSemantics === selection.schedule.dueSemantics
+      ) {
+        result.alreadyApplied.push(outcome.taskId);
+      } else {
+        result.skippedStale.push(outcome.taskId);
+      }
+    }
+
+    for (const item of applied) {
+      try {
+        await this.syncDueReminder(item.before, item.after, 'recovery', { project: false });
+      } catch (error) {
+        result.projectionFailures.push({
+          taskId: item.after.id,
+          message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
+        });
+      }
+      try {
+        const reconciliation = await this.syncTaskProjections(item.after.id, 'recovery');
+        this.addProjectionFailures(result, item.after.id, reconciliation);
+      } catch (error) {
+        result.projectionFailures.push({
+          taskId: item.after.id,
+          message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
+        });
+      }
+    }
+
+    if (applied.length > 0) {
+      result.receipt = createReceipt({
+        risk: 'BULK_MUTATION',
+        action: 'recovery.apply',
+        entityType: 'task',
+        entityId: planId,
+        summary: `Recovered ${applied.length} ${applied.length === 1 ? 'task' : 'tasks'}`,
+        undo: {
+          kind: RECOVERY_UNDO_KIND,
+          payload: {
+            items: applied.map(({ selection, after }) => ({
+              taskId: after.id,
+              appliedUpdatedAt: after.updatedAt,
+              applied: this.scheduleFromTask(after),
+              previous: selection.proposal.previous,
+            })),
+          },
+        },
+      });
+    }
+    return result;
+  }
+
+  /** Explicit, version-protected Undo for a Recovery batch receipt. */
+  async undoRecovery(receipt: import('@/domain/receipts').ActionReceipt): Promise<RecoveryApplyResult> {
+    const items = getRecoveryUndoItems(receipt);
+    if (!items) throw new Error('Recovery undo payload is invalid or no longer available.');
+    const result = this.recoveryResult(receipt.entityId);
+    let outcomes;
+    try {
+      outcomes = await this.services.tasks.applyRecoverySchedules(
+        items.map((item) => ({
+          taskId: item.taskId,
+          expectedUpdatedAt: item.appliedUpdatedAt,
+          schedule: item.previous,
+        })),
+        'recovery_undo',
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Recovery Undo failed.';
+      result.failed.push(...items.map((item) => ({ taskId: item.taskId, message })));
+      return result;
+    }
+
+    for (const outcome of outcomes) {
+      const item = items.find((candidate) => candidate.taskId === outcome.taskId);
+      if (!item) continue;
+      if (outcome.applied && outcome.before && outcome.after) {
+        result.applied.push(outcome.taskId);
+        try {
+          await this.syncDueReminder(outcome.before, outcome.after, 'recovery_undo', { project: false });
+        } catch (error) {
+          result.projectionFailures.push({
+            taskId: outcome.taskId,
+            message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
+          });
+        }
+        try {
+          const reconciliation = await this.syncTaskProjections(outcome.taskId, 'recovery-undo');
+          this.addProjectionFailures(result, outcome.taskId, reconciliation);
+        } catch (error) {
+          result.projectionFailures.push({
+            taskId: outcome.taskId,
+            message: error instanceof Error ? error.message : 'Reminder projection repair failed.',
+          });
+        }
+      } else if (
+        outcome.current &&
+        !outcome.current.completed &&
+        !outcome.current.deletedAt &&
+        outcome.current.dueDate === item.previous.dueDate &&
+        outcome.current.dueTime === item.previous.dueTime &&
+        outcome.current.dueTimezone === item.previous.dueTimezone &&
+        outcome.current.dueSemantics === item.previous.dueSemantics
+      ) {
+        result.alreadyApplied.push(outcome.taskId);
+      } else {
+        result.skippedStale.push(outcome.taskId);
+      }
+    }
+    return result;
   }
 
   private async rollbackDueReminder(change: DueReminderChange): Promise<void> {

@@ -180,4 +180,49 @@ describe('TasksRepository', () => {
     expect(eventCount?.c).toBe(0);
     await base.closeAsync?.();
   });
+
+  test('conditional recovery batch rolls back every schedule when an event fails', async () => {
+    const base = await readyDb();
+    const tasks = new TasksRepository(base);
+    const first = await tasks.create({ title: 'Recovery one', dueDate: '2026-08-10' });
+    const second = await tasks.create({ title: 'Recovery two', dueDate: '2026-08-10' });
+    let failEvents = true;
+    const wrapped: SqlDatabase = {
+      execAsync: (s) => base.execAsync(s),
+      getFirstAsync: (s, p) => base.getFirstAsync(s, p),
+      getAllAsync: (s, p) => base.getAllAsync(s, p),
+      closeAsync: () => base.closeAsync?.(),
+      runAsync: async (source: string, params?: SqlBindParams) => {
+        if (failEvents && source.includes('INSERT INTO task_events')) {
+          throw new Error('forced recovery event failure');
+        }
+        return base.runAsync(source, params);
+      },
+      withTransactionAsync: (task) => base.withTransactionAsync(task),
+    };
+
+    await expect(new TasksRepository(wrapped).applyConditionalScheduleChanges([
+      {
+        taskId: first.id,
+        expectedUpdatedAt: first.updatedAt,
+        dueDate: '2026-08-11',
+        dueTime: null,
+        dueTimezone: first.dueTimezone,
+        dueSemantics: first.dueSemantics,
+      },
+      {
+        taskId: second.id,
+        expectedUpdatedAt: second.updatedAt,
+        dueDate: '2026-08-11',
+        dueTime: null,
+        dueTimezone: second.dueTimezone,
+        dueSemantics: second.dueSemantics,
+      },
+    ])).rejects.toThrow('forced recovery event failure');
+
+    failEvents = false;
+    expect((await tasks.getById(first.id))?.dueDate).toBe('2026-08-10');
+    expect((await tasks.getById(second.id))?.dueDate).toBe('2026-08-10');
+    await base.closeAsync?.();
+  });
 });

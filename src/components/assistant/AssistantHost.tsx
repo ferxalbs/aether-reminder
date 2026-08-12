@@ -113,6 +113,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshAllSurfaces = useTasksUiStore((state) => state.refreshAllSurfaces);
+  const refreshRecovery = useTasksUiStore((state) => state.refreshRecovery);
   const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
 
   useEffect(() => {
@@ -169,11 +170,11 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         'tasks.delete',
       ];
       if (!taskSurfaceMutations.includes(toolId)) return;
-      void refreshAllSurfaces().catch((error: unknown) => {
+      void Promise.all([refreshAllSurfaces(), refreshRecovery()]).catch((error: unknown) => {
         reportNonFatalError('assistant-refresh-task-surfaces', error);
       });
     },
-    [refreshAllSurfaces]
+    [refreshAllSurfaces, refreshRecovery]
   );
 
   const onReceipt = useCallback((receipt: ActionReceipt) => {

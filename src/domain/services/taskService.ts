@@ -1,8 +1,15 @@
 import type { CreateTaskInput, Task, UpdateTaskInput } from '@/domain/entities';
+import {
+  assertRecoverySchedule,
+  type RecoverySchedule,
+} from '@/domain/recovery';
 import { createReceipt, type ActionReceipt } from '@/domain/receipts';
 import { TasksRepository } from '@/db/repositories/tasksRepository';
 import { assertResolvedDateTime } from '@/temporal/resolve';
 import type { TemporalSemantics } from '@/temporal/types';
+import type {
+  ConditionalTaskScheduleOutcome,
+} from '@/db/repositories/tasksRepository';
 
 export type TaskListScope = 'today' | 'overdue' | 'upcoming' | 'all' | 'active' | 'all_active';
 
@@ -25,6 +32,12 @@ export interface RescheduleTaskInput {
 export interface MutationResult<T> {
   value: T;
   receipt: ActionReceipt;
+}
+
+export interface ConditionalRecoveryScheduleChange {
+  taskId: string;
+  expectedUpdatedAt: string;
+  schedule: RecoverySchedule;
 }
 
 /**
@@ -194,6 +207,25 @@ export class TaskService {
           : undefined,
       }),
     };
+  }
+
+  /** Apply schedule-only recovery entries through the repository transaction. */
+  async applyRecoverySchedules(
+    changes: readonly ConditionalRecoveryScheduleChange[],
+    eventSource = 'recovery',
+  ): Promise<ConditionalTaskScheduleOutcome[]> {
+    for (const change of changes) assertRecoverySchedule(change.schedule);
+    return this.tasks.applyConditionalScheduleChanges(
+      changes.map((change) => ({
+        taskId: change.taskId,
+        expectedUpdatedAt: change.expectedUpdatedAt,
+        dueDate: change.schedule.dueDate!,
+        dueTime: change.schedule.dueTime,
+        dueTimezone: change.schedule.dueTimezone,
+        dueSemantics: change.schedule.dueSemantics,
+        eventSource,
+      })),
+    );
   }
 
   /** Soft-delete (current product semantics). Returns a receipt suitable for Undo. */

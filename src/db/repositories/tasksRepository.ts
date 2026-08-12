@@ -1,12 +1,45 @@
 import { createId } from '@/lib/id';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import type { CreateTaskInput, Task, UpdateTaskInput } from '@/domain/entities';
+import type {
+  CreateTaskInput,
+  Task,
+  TemporalSemantics,
+  UpdateTaskInput,
+} from '@/domain/entities';
 import { DatabaseError } from '../errors';
 import { mapTaskRow, type TaskRow } from '../mappers';
 import type { SqlDatabase } from '../types';
 import { TaskEventsRepository } from './taskEventsRepository';
 
 const ACTIVE = `deleted_at IS NULL`;
+
+export interface ConditionalTaskScheduleChange {
+  taskId: string;
+  expectedUpdatedAt: string;
+  dueDate: string;
+  dueTime: string | null;
+  dueTimezone: string | null;
+  dueSemantics: TemporalSemantics;
+  eventSource?: string;
+}
+
+export interface ConditionalTaskScheduleOutcome {
+  taskId: string;
+  applied: boolean;
+  before: Task | null;
+  after: Task | null;
+  current: Task | null;
+}
+
+function sameSchedule(
+  task: Task,
+  change: ConditionalTaskScheduleChange,
+): boolean {
+  return task.dueDate === change.dueDate
+    && task.dueTime === change.dueTime
+    && task.dueTimezone === change.dueTimezone
+    && task.dueSemantics === change.dueSemantics;
+}
 
 export class TasksRepository {
   private readonly events: TaskEventsRepository;
@@ -48,6 +81,27 @@ export class TasksRepository {
        ORDER BY due_date ASC,
          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`,
       [localDate]
+    );
+    return rows.map(mapTaskRow);
+  }
+
+  /**
+   * Candidate read for Smart Recovery. The due-date index bounds this to
+   * overdue work plus a one-day timezone window; pure domain code filters the
+   * result for the exact fixed/floating wall-clock eligibility.
+   */
+  async listRecoveryCandidates(throughDate: string): Promise<Task[]> {
+    const rows = await this.db.getAllAsync<TaskRow>(
+      `SELECT * FROM tasks
+       WHERE ${ACTIVE}
+         AND completed = 0
+         AND due_date IS NOT NULL
+         AND due_date <= ?
+       ORDER BY due_date ASC,
+         CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+         due_time ASC,
+         id ASC`,
+      [throughDate]
     );
     return rows.map(mapTaskRow);
   }
@@ -262,6 +316,100 @@ export class TasksRepository {
     const task = await this.getById(id);
     if (!task) throw new DatabaseError('QUERY_FAILED', 'Task update verification failed.');
     return task;
+  }
+
+  /**
+   * Atomically applies conditional schedule-only mutations. Entries whose
+   * task version no longer matches are returned without mutation, allowing a
+   * batch command to skip stale proposals safely while valid entries commit
+   * together with their task events.
+   */
+  async applyConditionalScheduleChanges(
+    changes: readonly ConditionalTaskScheduleChange[],
+  ): Promise<ConditionalTaskScheduleOutcome[]> {
+    const outcomes: ConditionalTaskScheduleOutcome[] = [];
+    await this.db.withTransactionAsync(async () => {
+      for (const change of changes) {
+        const currentRow = await this.db.getFirstAsync<TaskRow>(
+          `SELECT * FROM tasks WHERE id = ?`,
+          [change.taskId],
+        );
+        const current = currentRow ? mapTaskRow(currentRow) : null;
+        if (
+          !current ||
+          current.deletedAt !== null ||
+          current.completed ||
+          current.updatedAt !== change.expectedUpdatedAt ||
+          sameSchedule(current, change)
+        ) {
+          outcomes.push({
+            taskId: change.taskId,
+            applied: false,
+            before: null,
+            after: null,
+            current,
+          });
+          continue;
+        }
+
+        const now = new Date().toISOString();
+        const result = await this.db.runAsync(
+          `UPDATE tasks SET
+             due_date = ?, due_time = ?, due_timezone = ?, due_semantics = ?, updated_at = ?
+           WHERE id = ? AND ${ACTIVE} AND completed = 0 AND updated_at = ?`,
+          [
+            change.dueDate,
+            change.dueTime,
+            change.dueTimezone,
+            change.dueSemantics,
+            now,
+            change.taskId,
+            change.expectedUpdatedAt,
+          ],
+        );
+        if (result.changes !== 1) {
+          const refreshedRow = await this.db.getFirstAsync<TaskRow>(
+            `SELECT * FROM tasks WHERE id = ?`,
+            [change.taskId],
+          );
+          outcomes.push({
+            taskId: change.taskId,
+            applied: false,
+            before: null,
+            after: null,
+            current: refreshedRow ? mapTaskRow(refreshedRow) : null,
+          });
+          continue;
+        }
+
+        await this.events.append({
+          taskId: change.taskId,
+          type: 'rescheduled',
+          source: change.eventSource ?? 'recovery',
+          payload: {
+            fields: ['dueDate', 'dueTime', 'dueTimezone', 'dueSemantics'],
+            dueDate: change.dueDate,
+            dueTime: change.dueTime,
+          },
+          createdAt: now,
+        });
+
+        const updatedRow = await this.db.getFirstAsync<TaskRow>(
+          `SELECT * FROM tasks WHERE id = ?`,
+          [change.taskId],
+        );
+        const after = updatedRow ? mapTaskRow(updatedRow) : null;
+        if (!after) throw new DatabaseError('QUERY_FAILED', 'Recovery update verification failed.');
+        outcomes.push({
+          taskId: change.taskId,
+          applied: true,
+          before: current,
+          after,
+          current: after,
+        });
+      }
+    });
+    return outcomes;
   }
 
   async complete(id: string, eventSource = 'manual'): Promise<Task> {

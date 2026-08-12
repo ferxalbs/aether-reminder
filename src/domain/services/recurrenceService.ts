@@ -12,6 +12,7 @@ import {
   addLocalCalendarDays,
   differenceInLocalCalendarDays,
   getNextRecurrenceDate,
+  getRecurrenceOccurrenceDate,
 } from '@/temporal/recurrence';
 import { ReminderService } from './reminderService';
 import { TaskService, type MutationResult } from './taskService';
@@ -134,7 +135,7 @@ export class RecurrenceService {
 
     const fromDate = rule.mode === 'after_completion'
       ? getLocalDateString(completedTask.completedAt ? new Date(completedTask.completedAt) : new Date())
-      : (completedTask.dueDate ?? rule.startDate);
+      : (getRecurrenceOccurrenceDate(rule, rule.occurrenceCount) ?? rule.startDate);
     const nextDate = getNextRecurrenceDate(rule, fromDate);
     if (!nextDate) {
       await this.rules.stop(rule.id);

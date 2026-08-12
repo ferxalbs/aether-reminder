@@ -1,12 +1,14 @@
 import type { ActionReceipt } from '@/domain/receipts';
 import type { TaskPriority, TemporalSemantics, UpdateTaskInput } from '@/domain/entities';
+import { getRecoveryUndoItems, RECOVERY_UNDO_KIND } from '@/domain/recovery';
 
 export type TaskUndoAction =
   | 'task.soft_delete'
   | 'task.reopen'
   | 'task.complete'
   | 'task.restore_soft_deleted'
-  | 'task.restore_fields';
+  | 'task.restore_fields'
+  | 'recovery.batch';
 
 function isTaskUndoAction(value: unknown): value is TaskUndoAction {
   return (
@@ -14,13 +16,17 @@ function isTaskUndoAction(value: unknown): value is TaskUndoAction {
     value === 'task.reopen' ||
     value === 'task.complete' ||
     value === 'task.restore_soft_deleted' ||
-    value === 'task.restore_fields'
+    value === 'task.restore_fields' ||
+    value === RECOVERY_UNDO_KIND
   );
 }
 
 export function getTaskUndoAction(receipt: ActionReceipt | null): TaskUndoAction | null {
   if (receipt?.entityType !== 'task' || !receipt.undo) return null;
   if (!isTaskUndoAction(receipt.undo.kind)) return null;
+  if (receipt.undo.kind === RECOVERY_UNDO_KIND) {
+    return getRecoveryUndoItems(receipt) ? receipt.undo.kind : null;
+  }
   return typeof receipt.undo.payload.taskId === 'string' && receipt.undo.payload.taskId.length > 0
     ? receipt.undo.kind
     : null;
@@ -35,6 +41,7 @@ export function getTaskUndoTaskId(receipt: ActionReceipt | null): string | null 
 export function canUndoTaskReceipt(receipt: ActionReceipt | null): boolean {
   const action = getTaskUndoAction(receipt);
   if (action === null) return false;
+  if (action === RECOVERY_UNDO_KIND) return true;
   return action === 'task.restore_fields' ? getTaskUndoRestoreFields(receipt) !== null : true;
 }
 

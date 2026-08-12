@@ -46,6 +46,7 @@ type NotificationSyncState = {
 export default function RootLayout() {
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const refreshAllSurfaces = useTasksUiStore((s) => s.refreshAllSurfaces);
+  const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
@@ -111,10 +112,11 @@ export default function RootLayout() {
           ? previousTimezone !== timezone ? 'timezone-change' : 'foreground-repair'
           : 'foreground-dirty',
       });
+      await refreshRecovery();
     } catch (error) {
       reportNonFatalError('notifications-foreground-select', error);
     }
-  }, [syncNotifications]);
+  }, [refreshRecovery, syncNotifications]);
 
   const runDatabaseRecovery = useCallback(async (mode: Exclude<DatabaseRecoveryMode, 'check'>) => {
     setBoot({ phase: 'loading' });
@@ -134,16 +136,20 @@ export default function RootLayout() {
           undoReceipt: null,
           undoError: null,
           undoing: false,
+          recoveryStatus: 'idle',
+          recoveryPlan: null,
+          recoveryError: null,
         });
       }
       setBoot({ phase: 'ready' });
       await refreshAllSurfaces();
+      await refreshRecovery();
       void syncNotifications({ mode: 'full', reason: `database-recovery-${mode}` });
     } catch (error) {
       reportNonFatalError(`database-recovery-${mode}`, error);
       setBoot({ phase: 'error', message: getDatabaseErrorMessage(error) });
     }
-  }, [refreshAllSurfaces, syncNotifications]);
+  }, [refreshAllSurfaces, refreshRecovery, syncNotifications]);
 
   const confirmDatabaseRecreation = useCallback(() => {
     Alert.alert(
@@ -217,6 +223,7 @@ export default function RootLayout() {
 
     void registerNotificationActionListener(core, async () => {
       await refreshAllSurfaces();
+      await refreshRecovery();
       await syncNotifications({ mode: 'incremental', reason: 'notification-action' });
     })
       .then((cleanup) => {
@@ -231,7 +238,7 @@ export default function RootLayout() {
       disposed = true;
       unsubscribe?.();
     };
-  }, [boot.phase, refreshAllSurfaces, syncNotifications]);
+  }, [boot.phase, refreshAllSurfaces, refreshRecovery, syncNotifications]);
 
   const bgColor = isDark ? Colors.backgroundDark : Colors.backgroundLight;
 

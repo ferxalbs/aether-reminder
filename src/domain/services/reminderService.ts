@@ -37,6 +37,11 @@ export interface ReminderMutationResult {
   projectionError?: string;
 }
 
+export interface ReminderMutationOptions {
+  /** Keep the SQLite mutation dirty for a later reliability reconciliation. */
+  project?: boolean;
+}
+
 /** Domain service for reminders; SQLite mutation remains authoritative over native projection. */
 export class ReminderService {
   constructor(
@@ -71,7 +76,11 @@ export class ReminderService {
     return this.reminders.getById(id);
   }
 
-  async scheduleReminder(input: ScheduleReminderInput, source = 'manual'): Promise<ReminderMutationResult> {
+  async scheduleReminder(
+    input: ScheduleReminderInput,
+    source = 'manual',
+    options: ReminderMutationOptions = {},
+  ): Promise<ReminderMutationResult> {
     const resolved = assertResolvedDateTime({
       date: input.scheduledDate,
       time: input.scheduledTime,
@@ -90,7 +99,9 @@ export class ReminderService {
     };
 
     const reminder = await this.reminders.create(createInput);
-    const projection = await this.project(reminder);
+    const projection = options.project === false
+      ? { osNotificationProjection: 'pending' as const }
+      : await this.project(reminder);
     const value = await this.reminders.getById(reminder.id) ?? reminder;
     return {
       value,
@@ -110,7 +121,8 @@ export class ReminderService {
 
   async rescheduleReminder(
     id: string,
-    input: RescheduleReminderInput
+    input: RescheduleReminderInput,
+    options: ReminderMutationOptions = {},
   ): Promise<ReminderMutationResult> {
     const resolved = assertResolvedDateTime({
       date: input.scheduledDate,
@@ -126,7 +138,9 @@ export class ReminderService {
       semantics: resolved.semantics,
       timingPrecision: input.timingPrecision,
     });
-    const projection = await this.project(reminder);
+    const projection = options.project === false
+      ? { osNotificationProjection: 'pending' as const }
+      : await this.project(reminder);
     const value = await this.reminders.getById(reminder.id) ?? reminder;
     return {
       value,
@@ -156,9 +170,11 @@ export class ReminderService {
   }
 
   /** Disable reminder in domain DB, then cancel its disposable native projection. */
-  async cancelReminder(id: string): Promise<ReminderMutationResult> {
+  async cancelReminder(id: string, options: ReminderMutationOptions = {}): Promise<ReminderMutationResult> {
     const reminder = await this.reminders.setEnabled(id, false);
-    const projection = await this.project(reminder);
+    const projection = options.project === false
+      ? { osNotificationProjection: 'pending' as const }
+      : await this.project(reminder);
     const value = await this.reminders.getById(reminder.id) ?? reminder;
     return {
       value,

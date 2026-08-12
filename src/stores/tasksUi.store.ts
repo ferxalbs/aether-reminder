@@ -19,9 +19,16 @@ import type { TaskEditorRecurrenceDraft } from '@/core/commands';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import type { ActionReceipt } from '@/domain/receipts';
+import {
+  RECOVERY_UNDO_KIND,
+  type RecoveryApplyResult,
+  type RecoveryApplySelection,
+  type RecoveryPlan,
+} from '@/domain/recovery';
 import { getTaskUndoAction, getTaskUndoRestoreFields, getTaskUndoTaskId } from './taskUndo';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
+type RecoveryUiStatus = 'idle' | 'loading' | 'ready' | 'applying' | 'error';
 
 export interface TaskEditorCreateInput {
   title: string;
@@ -50,10 +57,14 @@ export interface TasksUiState {
   undoReceipt: ActionReceipt | null;
   undoError: string | null;
   undoing: boolean;
+  recoveryStatus: RecoveryUiStatus;
+  recoveryPlan: RecoveryPlan | null;
+  recoveryError: string | null;
 
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
   refreshAll: () => Promise<void>;
+  refreshRecovery: () => Promise<void>;
   /** Refresh all task projections concurrently and publish one coherent snapshot. */
   refreshAllSurfaces: () => Promise<void>;
   getRecurrenceRule: (taskId: string) => Promise<RecurrenceRule | null>;
@@ -82,6 +93,7 @@ export interface TasksUiState {
     }[]
   ) => Promise<void>;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
+  applyRecovery: (selections: readonly RecoveryApplySelection[]) => Promise<RecoveryApplyResult>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
   setUndoReceipt: (receipt: ActionReceipt) => void;
@@ -104,6 +116,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   undoReceipt: null,
   undoError: null,
   undoing: false,
+  recoveryStatus: 'idle',
+  recoveryPlan: null,
+  recoveryError: null,
 
   refreshToday: async () => {
     set({ status: 'loading', error: null });
@@ -166,6 +181,24 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  refreshRecovery: async () => {
+    set({ recoveryStatus: 'loading', recoveryError: null });
+    try {
+      const plan = await (await core()).services.recovery.generatePlan();
+      set({
+        recoveryPlan: plan.proposals.length > 0 ? plan : null,
+        recoveryStatus: 'ready',
+        recoveryError: null,
+      });
+    } catch (error) {
+      reportNonFatalError('recovery-refresh', error);
+      set({
+        recoveryStatus: 'error',
+        recoveryError: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
   refreshAllSurfaces: async () => {
     set({ status: 'loading', error: null });
     try {
@@ -224,6 +257,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     set({ undoReceipt: receipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshAllSurfaces();
+    await get().refreshRecovery();
     return value;
   },
 
@@ -249,6 +283,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
       await get().refreshAllSurfaces();
+      await get().refreshRecovery();
       return result.task;
     } catch (error) {
       reportNonFatalError('task-create-recurring', error);
@@ -263,6 +298,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
       await get().refreshAllSurfaces();
+      await get().refreshRecovery();
       return result.value;
     } catch (error) {
       reportNonFatalError('task-editor-save', error);
@@ -284,7 +320,29 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     set({ undoReceipt: receipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshAllSurfaces();
+    await get().refreshRecovery();
     return value;
+  },
+
+  applyRecovery: async (selections) => {
+    const plan = get().recoveryPlan;
+    if (!plan) throw new Error('Recovery plan is no longer available.');
+    set({ recoveryStatus: 'applying', recoveryError: null });
+    try {
+      const result = await (await core()).commands.applyRecovery(plan.id, selections);
+      if (result.receipt) set({ undoReceipt: result.receipt, undoError: null });
+      set((s) => ({ revision: s.revision + 1 }));
+      await get().refreshAllSurfaces();
+      await get().refreshRecovery();
+      return result;
+    } catch (error) {
+      reportNonFatalError('recovery-apply', error);
+      set({
+        recoveryStatus: 'error',
+        recoveryError: getDatabaseErrorMessage(error),
+      });
+      throw error;
+    }
   },
 
   createTasksBatch: async (inputs) => {
@@ -314,6 +372,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     if (lastReceipt) set({ undoReceipt: lastReceipt, undoError: null });
     set((s) => ({ revision: s.revision + 1 }));
     await get().refreshAllSurfaces();
+    await get().refreshRecovery();
   },
 
   toggleTask: async (id) => {
@@ -357,6 +416,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       return;
     }
     await get().refreshAllSurfaces();
+    await get().refreshRecovery();
   },
 
   softDeleteTask: async (id) => {
@@ -385,6 +445,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       return;
     }
     await get().refreshAllSurfaces();
+    await get().refreshRecovery();
   },
 
   setUndoReceipt: (receipt) => {
@@ -397,6 +458,29 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   undoLastMutation: async () => {
     const receipt = get().undoReceipt;
     const action = getTaskUndoAction(receipt);
+    if (action === RECOVERY_UNDO_KIND && receipt) {
+      set({ undoing: true, undoError: null });
+      try {
+        await (await core()).commands.undoRecovery(receipt);
+        set((s) => ({
+          undoReceipt: null,
+          undoError: null,
+          undoing: false,
+          revision: s.revision + 1,
+        }));
+        await get().refreshAllSurfaces();
+        await get().refreshRecovery();
+      } catch (error) {
+        reportNonFatalError('recovery-undo', error);
+        set({
+          status: 'error',
+          undoing: false,
+          undoError: getDatabaseErrorMessage(error),
+          error: getDatabaseErrorMessage(error),
+        });
+      }
+      return;
+    }
     const taskId = getTaskUndoTaskId(receipt);
     if (!action || !taskId) {
       set({ undoReceipt: null, undoError: null, undoing: false });
@@ -434,6 +518,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         revision: s.revision + 1,
       }));
       await get().refreshAllSurfaces();
+      await get().refreshRecovery();
     } catch (error) {
       reportNonFatalError('task-undo', error);
       set({
