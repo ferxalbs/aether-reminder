@@ -4,6 +4,7 @@ import { applyPragmas, runMigrations } from '../migrator';
 import type { SqlBindParams, SqlDatabase } from '../types';
 import { TaskEventsRepository } from './taskEventsRepository';
 import { TasksRepository } from './tasksRepository';
+import { RemindersRepository } from './remindersRepository';
 import { getLocalDateString } from '@/temporal/localCalendar';
 
 async function readyDb() {
@@ -107,6 +108,50 @@ describe('TasksRepository', () => {
     const upcoming = await tasks.listUpcoming(today, 2);
     expect(upcoming).toHaveLength(2);
     expect(upcoming.map((task) => task.title)).toEqual(['Later high', 'Later medium']);
+    await db.closeAsync?.();
+  });
+
+  test('attention candidate query stays bounded and includes active nudge work', async () => {
+    const db = await readyDb();
+    const tasks = new TasksRepository(db);
+    const reminders = new RemindersRepository(db);
+
+    for (let index = 0; index < 500; index += 1) {
+      await tasks.create({
+        id: `attention-${String(index).padStart(3, '0')}`,
+        title: `Today ${index}`,
+        priority: index % 2 === 0 ? 'medium' : 'low',
+        dueDate: '2030-01-02',
+        createdAt: `2030-01-01T00:${String(index % 60).padStart(2, '0')}:00.000Z`,
+      });
+    }
+    const nudgeTask = await tasks.create({
+      id: 'attention-nudge',
+      title: 'Nudge outside window',
+      dueDate: '2030-01-10',
+    });
+    await reminders.create({
+      taskId: nudgeTask.id,
+      scheduledDate: '2030-01-02',
+      scheduledTime: '09:00',
+      kind: 'adaptive_followup',
+      generationSource: 'adaptive_nudge_engine',
+      policyVersion: 'adaptive-v1',
+      idempotencyKey: 'attention-nudge-slot',
+    });
+
+    const startedAt = performance.now();
+    const result = await tasks.listAttentionCandidates({
+      fromDate: '2030-01-01',
+      throughDate: '2030-01-04',
+      explicitTaskIds: ['attention-nudge'],
+      limit: 32,
+    });
+    const durationMs = performance.now() - startedAt;
+
+    expect(result).toHaveLength(32);
+    expect(result.some((task) => task.id === nudgeTask.id)).toBe(true);
+    expect(durationMs).toBeLessThan(1_000);
     await db.closeAsync?.();
   });
 

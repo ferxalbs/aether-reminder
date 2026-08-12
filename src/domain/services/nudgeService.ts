@@ -8,6 +8,7 @@ import type { NudgeEventsRepository } from '@/db/repositories/nudgeEventsReposit
 import type { RemindersRepository } from '@/db/repositories/remindersRepository';
 import type { TasksRepository } from '@/db/repositories/tasksRepository';
 import type { LocalNotificationProjection } from '@/services/notifications/localNotificationProjection';
+import { ATTENTION_POLICY, type AttentionNudgeState } from '@/domain/attentionPlanner';
 import {
   DEFAULT_NUDGE_PLANNER_SETTINGS,
   NudgePlanner,
@@ -117,6 +118,16 @@ function targetInstant(target: NotificationNudgeActionInput['target']): Date | n
   }
 }
 
+function adaptiveNudgeDueAt(reminder: Reminder): Date | null {
+  if (!reminder.scheduledDate) return null;
+  return targetInstant({
+    scheduledDate: reminder.scheduledDate,
+    scheduledTime: reminder.scheduledTime ?? '00:00',
+    timezone: reminder.timezone,
+    semantics: reminder.semantics,
+  });
+}
+
 function completionDelayMinutes(task: Task): number | null {
   if (!task.completedAt || !task.dueDate || !task.dueTime) return null;
   try {
@@ -165,6 +176,24 @@ export class NudgeService {
 
   async isEnabled(): Promise<boolean> {
     return (await this.appMeta.get(ADAPTIVE_NUDGES_ENABLED_KEY)) === '1';
+  }
+
+  /**
+   * Exposes only the semantic nudge result needed by attention selection.
+   * Profile/history interpretation stays inside the Adaptive Nudge service.
+   */
+  async getAttentionSignals(
+    now = new Date(),
+    limit = ATTENTION_POLICY.candidateLimit,
+  ): Promise<ReadonlyMap<string, AttentionNudgeState>> {
+    if (!(await this.isEnabled())) return new Map();
+    const signals = new Map<string, AttentionNudgeState>();
+    const nudges = await this.reminders.listActiveAdaptiveNudges(limit);
+    for (const reminder of nudges) {
+      const dueAt = adaptiveNudgeDueAt(reminder);
+      if (dueAt && dueAt.getTime() <= now.getTime()) signals.set(reminder.taskId, 'nudge_due');
+    }
+    return signals;
   }
 
   private plannerSettings(enabled: boolean): NudgePlannerSettings {

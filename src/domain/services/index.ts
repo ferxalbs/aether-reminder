@@ -6,6 +6,7 @@ import { ReminderService } from './reminderService';
 import { TaskService } from './taskService';
 import { RecoveryService } from './recoveryService';
 import { NudgeService } from './nudgeService';
+import { AttentionService } from './attentionService';
 import {
   expoLocalNotificationAdapter,
   LocalNotificationProjection,
@@ -52,11 +53,15 @@ export type {
   NotificationNudgeActionInput,
   NotificationNudgeOpenedInput,
 } from './nudgeService';
+export { AttentionService } from './attentionService';
+export type { AttentionPlanOptions } from './attentionService';
+export type { ReliabilityAttentionState } from '@/services/reliability/reliabilityDiagnostics';
 
 export interface DomainServices {
   tasks: TaskService;
   recovery: RecoveryService;
   nudges: NudgeService;
+  attention: AttentionService;
   recurrence: RecurrenceService;
   reminders: ReminderService;
   analytics: AnalyticsService;
@@ -100,10 +105,17 @@ export function createDomainServicesFromRepos(repos: Repositories): DomainServic
     notificationProjection,
     expoLocalNotificationAdapter,
   );
+  const attention = new AttentionService(
+    repos.tasks,
+    nudges,
+    reliability,
+    repos.appMeta,
+  );
   return {
     tasks,
     recovery: new RecoveryService(repos.tasks, repos.recurrenceRules),
     nudges,
+    attention,
     recurrence: new RecurrenceService(repos.recurrenceRules, tasks, reminders),
     reminders,
     analytics: new AnalyticsService(repos.tasks),

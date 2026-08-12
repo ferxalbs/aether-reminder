@@ -201,6 +201,21 @@ export class RemindersRepository {
     return rows.map(mapReminderRow);
   }
 
+  /** Active, unconsumed adaptive intents used as a bounded attention signal. */
+  async listActiveAdaptiveNudges(limit = 32): Promise<Reminder[]> {
+    const rows = await this.db.getAllAsync<ReminderRow>(
+      `SELECT * FROM reminders
+       WHERE kind = 'adaptive_followup'
+         AND enabled = 1
+         AND cancelled_at IS NULL
+         AND consumed_at IS NULL
+       ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC
+       LIMIT ?`,
+      [Math.max(1, Math.floor(limit))],
+    );
+    return rows.map(mapReminderRow);
+  }
+
   /** Count generated intents, including cancelled/consumed rows, for pressure budgets. */
   async countAdaptiveNudgesForDate(localDate: string, taskId?: string): Promise<number> {
     const row = await this.db.getFirstAsync<{ c: number }>(
@@ -456,6 +471,40 @@ export class RemindersRepository {
          SUM(CASE WHEN projection_state = 'scheduled' THEN 1 ELSE 0 END) AS scheduled,
          SUM(CASE WHEN projection_state = 'not_required' THEN 1 ELSE 0 END) AS not_required
        FROM reminders`
+    );
+    return {
+      dirty: row?.dirty ?? 0,
+      failed: row?.failed ?? 0,
+      stale: row?.stale ?? 0,
+      missing: row?.missing ?? 0,
+      blocked: row?.blocked ?? 0,
+      scheduled: row?.scheduled ?? 0,
+      notRequired: row?.not_required ?? 0,
+    };
+  }
+
+  /** Projection counts limited to reminders that can affect active work. */
+  async countActiveProjectionStates(): Promise<ProjectionCounts> {
+    const row = await this.db.getFirstAsync<{
+      dirty: number;
+      failed: number;
+      stale: number;
+      missing: number;
+      blocked: number;
+      scheduled: number;
+      not_required: number;
+    }>(
+      `SELECT
+         SUM(CASE WHEN r.projection_dirty = 1 THEN 1 ELSE 0 END) AS dirty,
+         SUM(CASE WHEN r.projection_state = 'failed' THEN 1 ELSE 0 END) AS failed,
+         SUM(CASE WHEN r.projection_state = 'stale' THEN 1 ELSE 0 END) AS stale,
+         SUM(CASE WHEN r.projection_state = 'missing' THEN 1 ELSE 0 END) AS missing,
+         SUM(CASE WHEN r.projection_state = 'blocked' THEN 1 ELSE 0 END) AS blocked,
+         SUM(CASE WHEN r.projection_state = 'scheduled' THEN 1 ELSE 0 END) AS scheduled,
+         SUM(CASE WHEN r.projection_state = 'not_required' THEN 1 ELSE 0 END) AS not_required
+       FROM reminders r
+       INNER JOIN tasks t ON t.id = r.task_id
+       WHERE r.enabled = 1 AND t.completed = 0 AND t.deleted_at IS NULL`,
     );
     return {
       dirty: row?.dirty ?? 0,

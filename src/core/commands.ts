@@ -675,6 +675,16 @@ export class AetherCommandExecutor {
     await this.services.nudges.resetLearning();
   }
 
+  /** Explicit attention intent. This does not modify task scheduling fields. */
+  async focusNow(taskId: string): Promise<void> {
+    await this.services.attention.focusNow(taskId);
+  }
+
+  /** Clear explicit attention intent without changing the task itself. */
+  async clearFocus(): Promise<void> {
+    await this.services.attention.clearFocus();
+  }
+
   async cancelReminder(id: string) {
     const before = await this.services.reminders.getReminder(id);
     const result = await this.services.reminders.cancelReminder(id);

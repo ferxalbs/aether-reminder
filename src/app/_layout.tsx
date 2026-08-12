@@ -150,6 +150,10 @@ export default function RootLayout() {
           recoveryStatus: 'idle',
           recoveryPlan: null,
           recoveryError: null,
+          attentionPlan: null,
+          attentionStatus: 'idle',
+          attentionError: null,
+          attentionSuppressedTaskIds: [],
         });
       }
       setBoot({ phase: 'ready' });

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,14 +9,15 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
 import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
 import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { RecoverySheet, RecoverySummary } from '@/components/ui/RecoverySurface';
+import { RecoverySheet } from '@/components/ui/RecoverySurface';
+import { AttentionSurface } from '@/components/ui/AttentionSurface';
 import { AetherComposer } from '@/components/ui/AetherComposer';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
@@ -37,6 +38,7 @@ export default function TodayScreen() {
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
   const assistantActive = useAssistantActive();
+  const router = useRouter();
 
   const [quickTitle, setQuickTitle] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -48,12 +50,17 @@ export default function TodayScreen() {
   const todayTasks = useTasksUiStore((s) => s.todayTasks);
   const status = useTasksUiStore((s) => s.status);
   const error = useTasksUiStore((s) => s.error);
+  const attentionPlan = useTasksUiStore((s) => s.attentionPlan);
+  const attentionError = useTasksUiStore((s) => s.attentionError);
   const refreshToday = useTasksUiStore((s) => s.refreshToday);
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const recoveryPlan = useTasksUiStore((s) => s.recoveryPlan);
   const applyRecovery = useTasksUiStore((s) => s.applyRecovery);
   const createTask = useTasksUiStore((s) => s.createTask);
   const toggleTask = useTasksUiStore((s) => s.toggleTask);
+  const focusNow = useTasksUiStore((s) => s.focusNow);
+  const clearFocus = useTasksUiStore((s) => s.clearFocus);
+  const rejectAttention = useTasksUiStore((s) => s.rejectAttention);
   const softDeleteTask = useTasksUiStore((s) => s.softDeleteTask);
   const undoReceipt = useTasksUiStore((s) => s.undoReceipt);
   const undoError = useTasksUiStore((s) => s.undoError);
@@ -67,7 +74,26 @@ export default function TodayScreen() {
     }, [refreshRecovery, refreshToday]),
   );
 
+  useEffect(() => {
+    if (!attentionPlan?.nextRefreshAt) return undefined;
+    const delay = Math.max(250, new Date(attentionPlan.nextRefreshAt).getTime() - Date.now());
+    const timer = setTimeout(() => {
+      void useTasksUiStore.getState().refreshAttention();
+    }, Math.min(delay, 24 * 60 * 60 * 1000));
+    return () => clearTimeout(timer);
+  }, [attentionPlan?.nextRefreshAt]);
+
   const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
+
+  const secondaryTodayTasks = useMemo(() => {
+    const surfacedIds = new Set([
+      attentionPlan?.now?.taskId,
+      ...(attentionPlan?.next ?? []).map((item) => item.taskId),
+      ...(attentionPlan?.choices ?? []).map((item) => item.taskId),
+      ...(recoveryPlan?.proposals ?? []).map((proposal) => proposal.taskId),
+    ]);
+    return todayTasks.filter((task) => !surfacedIds.has(task.id));
+  }, [attentionPlan, recoveryPlan, todayTasks]);
 
   const assistantContext = useMemo(
     () => ({
@@ -123,6 +149,24 @@ export default function TodayScreen() {
     [softDeleteTask],
   );
 
+  const handleAttentionFocus = useCallback(
+    (taskId: string) => {
+      void focusNow(taskId).catch((errorValue: unknown) => {
+        reportNonFatalError('home-attention-focus', errorValue);
+      });
+    },
+    [focusNow],
+  );
+
+  const handleAttentionNotNow = useCallback(
+    (taskId: string) => {
+      void rejectAttention(taskId).catch((errorValue: unknown) => {
+        reportNonFatalError('home-attention-not-now', errorValue);
+      });
+    },
+    [rejectAttention],
+  );
+
   const openEditor = useCallback((task?: TaskListItem) => {
     setEditingTask(task ?? null);
     setEditorVisible(true);
@@ -164,7 +208,7 @@ export default function TodayScreen() {
       >
         <TaskList
           style={styles.flex}
-          tasks={todayTasks}
+          tasks={secondaryTodayTasks}
           onToggle={handleToggle}
           onDelete={handleDelete}
           onPress={openEditor}
@@ -185,27 +229,31 @@ export default function TodayScreen() {
                 <Typography variant="display">Today</Typography>
               </Animated.View>
 
-              {recoveryPlan ? (
-                <RecoverySummary
-                  count={recoveryPlan.proposals.length}
-                  onPress={() => void openRecovery()}
-                />
-              ) : null}
+              <AttentionSurface
+                plan={attentionPlan}
+                onComplete={handleToggle}
+                onFocus={handleAttentionFocus}
+                onClearFocus={() => void clearFocus()}
+                onNotNow={handleAttentionNotNow}
+                onReviewRecovery={() => void openRecovery()}
+                onSwitchFocus={handleAttentionFocus}
+                onOpenSettings={() => router.push('/settings')}
+              />
 
-              {error || quickError ? (
+              {error || quickError || attentionError ? (
                 <Typography
                   variant="caption"
                   color={isDark ? Colors.white : Colors.black}
                   style={styles.listError}
                   accessibilityRole="alert"
                 >
-                  {error || quickError}
+                  {error || quickError || attentionError}
                 </Typography>
               ) : null}
             </View>
           }
           empty={
-            status === 'ready' ? (
+            status === 'ready' && !attentionPlan ? (
               <Animated.View
                 entering={reduceMotion ? undefined : FadeIn.duration(180).delay(80)}
                 style={styles.emptyState}

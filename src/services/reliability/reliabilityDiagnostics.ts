@@ -42,6 +42,11 @@ export interface ReliabilityDiagnostics {
   lastErrorCategory: string | null;
 }
 
+export interface ReliabilityAttentionState {
+  degraded: boolean;
+  activeReminderCount: number;
+}
+
 const EMPTY_COUNTS: ProjectionCounts = {
   dirty: 0,
   failed: 0,
@@ -110,6 +115,32 @@ export class ReliabilityDiagnosticsService {
     private readonly projection: LocalNotificationProjection,
     private readonly adapter: LocalNotificationAdapter,
   ) {}
+
+  /**
+   * Small read for NOW/NEXT. It intentionally avoids native notification
+   * enumeration and full database integrity diagnostics on every Home refresh.
+   */
+  async collectAttentionState(): Promise<ReliabilityAttentionState> {
+    const [activeReminderCount, projectionCounts, lastErrorCategory, capabilities] = await Promise.all([
+      this.reminders.countActive().catch(() => 0),
+      this.reminders.countActiveProjectionStates().catch(() => EMPTY_COUNTS),
+      this.appMeta.get('reliability.last_error_category').catch(() => null),
+      this.projection.getCapabilities().catch(() => ({
+        permission: 'unknown' as const,
+        channel: 'unknown' as const,
+        exactTiming: 'unknown' as const,
+      })),
+    ]);
+    const degraded = activeReminderCount > 0 && (
+      projectionCounts.failed > 0
+      || projectionCounts.blocked > 0
+      || projectionCounts.missing > 0
+      || capabilities.permission === 'denied'
+      || capabilities.channel === 'unavailable'
+      || Boolean(lastErrorCategory && lastErrorCategory !== 'NONE')
+    );
+    return { degraded, activeReminderCount };
+  }
 
   async collect(): Promise<ReliabilityDiagnostics> {
     const [schemaVersion, quickCheck, foreignKeyCheck, reminderCounts, capabilities, nativeScheduledCount] =

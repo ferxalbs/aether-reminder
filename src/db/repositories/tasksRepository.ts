@@ -130,6 +130,53 @@ export class TasksRepository {
     return rows.map(mapTaskRow);
   }
 
+  /**
+   * Bounded read for the NOW/NEXT attention planner. The query gathers only
+   * the current temporal window, active adaptive-nudge tasks, and any
+   * explicitly focused task. Ranking remains pure domain logic.
+   */
+  async listAttentionCandidates(options: {
+    fromDate: string;
+    throughDate: string;
+    explicitTaskIds?: readonly string[];
+    limit?: number;
+  }): Promise<Task[]> {
+    const explicitTaskIds = [...new Set(options.explicitTaskIds ?? [])].filter(Boolean);
+    const explicitClause = explicitTaskIds.length > 0
+      ? ` OR t.id IN (${explicitTaskIds.map(() => '?').join(', ')})`
+      : '';
+    const rows = await this.db.getAllAsync<TaskRow>(
+      `SELECT DISTINCT t.* FROM tasks t
+       LEFT JOIN reminders r
+         ON r.task_id = t.id
+        AND r.kind = 'adaptive_followup'
+        AND r.enabled = 1
+        AND r.cancelled_at IS NULL
+        AND r.consumed_at IS NULL
+       WHERE t.${ACTIVE}
+         AND t.completed = 0
+         AND (
+           (t.due_date IS NOT NULL AND t.due_date >= ? AND t.due_date <= ?)
+           OR r.id IS NOT NULL${explicitClause}
+         )
+       ORDER BY
+         CASE WHEN r.id IS NULL THEN 1 ELSE 0 END,
+         CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
+         t.due_date ASC,
+         CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+         t.due_time ASC,
+         t.id ASC
+       LIMIT ?`,
+      [
+        options.fromDate,
+        options.throughDate,
+        ...explicitTaskIds,
+        Math.max(1, Math.floor(options.limit ?? 32)),
+      ],
+    );
+    return rows.map(mapTaskRow);
+  }
+
   async listUpcoming(localDate: string = getLocalDateString(), limit = 100): Promise<Task[]> {
     const rows = await this.db.getAllAsync<TaskRow>(
       `SELECT * FROM tasks

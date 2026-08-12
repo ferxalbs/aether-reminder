@@ -19,6 +19,7 @@ import type { TaskEditorRecurrenceDraft } from '@/core/commands';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import type { ActionReceipt } from '@/domain/receipts';
+import type { AttentionPlan } from '@/domain/attentionPlanner';
 import {
   RECOVERY_UNDO_KIND,
   type RecoveryApplyResult,
@@ -60,11 +61,16 @@ export interface TasksUiState {
   recoveryStatus: RecoveryUiStatus;
   recoveryPlan: RecoveryPlan | null;
   recoveryError: string | null;
+  attentionPlan: AttentionPlan | null;
+  attentionStatus: TasksUiStatus;
+  attentionError: string | null;
+  attentionSuppressedTaskIds: string[];
 
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
   refreshAll: () => Promise<void>;
   refreshRecovery: () => Promise<void>;
+  refreshAttention: () => Promise<void>;
   /** Refresh all task projections concurrently and publish one coherent snapshot. */
   refreshAllSurfaces: () => Promise<void>;
   getRecurrenceRule: (taskId: string) => Promise<RecurrenceRule | null>;
@@ -96,6 +102,9 @@ export interface TasksUiState {
   applyRecovery: (selections: readonly RecoveryApplySelection[]) => Promise<RecoveryApplyResult>;
   setAdaptiveNudgesEnabled: (enabled: boolean) => Promise<void>;
   resetAdaptiveNudgeLearning: () => Promise<void>;
+  focusNow: (taskId: string) => Promise<void>;
+  clearFocus: () => Promise<void>;
+  rejectAttention: (taskId: string) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   softDeleteTask: (id: string) => Promise<void>;
   setUndoReceipt: (receipt: ActionReceipt) => void;
@@ -121,6 +130,10 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   recoveryStatus: 'idle',
   recoveryPlan: null,
   recoveryError: null,
+  attentionPlan: null,
+  attentionStatus: 'idle',
+  attentionError: null,
+  attentionSuppressedTaskIds: [],
 
   refreshToday: async () => {
     set({ status: 'loading', error: null });
@@ -192,11 +205,34 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         recoveryStatus: 'ready',
         recoveryError: null,
       });
+      await get().refreshAttention();
     } catch (error) {
       reportNonFatalError('recovery-refresh', error);
       set({
         recoveryStatus: 'error',
         recoveryError: getDatabaseErrorMessage(error),
+      });
+    }
+  },
+
+  refreshAttention: async () => {
+    set({ attentionStatus: 'loading', attentionError: null });
+    try {
+      const plan = await (await core()).services.attention.plan({
+        recoveryPlan: get().recoveryPlan,
+        previousPlan: get().attentionPlan,
+        suppressedTaskIds: get().attentionSuppressedTaskIds,
+      });
+      set({
+        attentionPlan: plan,
+        attentionStatus: 'ready',
+        attentionError: null,
+      });
+    } catch (error) {
+      reportNonFatalError('attention-refresh', error);
+      set({
+        attentionStatus: 'error',
+        attentionError: getDatabaseErrorMessage(error),
       });
     }
   },
@@ -350,6 +386,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   setAdaptiveNudgesEnabled: async (enabled) => {
     try {
       await (await core()).commands.setAdaptiveNudgesEnabled(enabled);
+      await get().refreshAttention();
     } catch (error) {
       reportNonFatalError('adaptive-nudges-setting', error);
       set({ error: getDatabaseErrorMessage(error) });
@@ -360,11 +397,47 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   resetAdaptiveNudgeLearning: async () => {
     try {
       await (await core()).commands.resetAdaptiveNudgeLearning();
+      await get().refreshAttention();
     } catch (error) {
       reportNonFatalError('adaptive-nudges-reset', error);
       set({ error: getDatabaseErrorMessage(error) });
       throw error;
     }
+  },
+
+  focusNow: async (taskId) => {
+    try {
+      await (await core()).commands.focusNow(taskId);
+      set((s) => ({
+        attentionSuppressedTaskIds: s.attentionSuppressedTaskIds.filter((id) => id !== taskId),
+      }));
+      await get().refreshAttention();
+    } catch (error) {
+      reportNonFatalError('attention-focus-now', error);
+      set({ attentionStatus: 'error', attentionError: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  clearFocus: async () => {
+    try {
+      await (await core()).commands.clearFocus();
+      await get().refreshAttention();
+    } catch (error) {
+      reportNonFatalError('attention-clear-focus', error);
+      set({ attentionStatus: 'error', attentionError: getDatabaseErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  rejectAttention: async (taskId) => {
+    set((s) => ({
+      attentionSuppressedTaskIds: [
+        ...s.attentionSuppressedTaskIds.filter((id) => id !== taskId),
+        taskId,
+      ].slice(-8),
+    }));
+    await get().refreshAttention();
   },
 
   createTasksBatch: async (inputs) => {
@@ -401,10 +474,19 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     const previousTodayTasks = get().todayTasks;
     const previousUpcomingTasks = get().upcomingTasks;
     const previousAllTasks = get().allTasks;
-    const target = [...previousTodayTasks, ...previousUpcomingTasks, ...previousAllTasks].find(
+    let target = [...previousTodayTasks, ...previousUpcomingTasks, ...previousAllTasks].find(
       (t) => t.id === id,
     );
-    if (!target) return;
+    if (!target) {
+      try {
+        const task = await (await core()).services.tasks.getTask(id);
+        if (!task) return;
+        target = toTaskListItem(task);
+      } catch (error) {
+        reportNonFatalError('task-toggle-read', error);
+        return;
+      }
+    }
 
     const nextCompleted = !target.completed;
     set((s) => ({

@@ -2,6 +2,84 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.12 (1) [NOW/NEXT Attention Engine v1]
+
+### Smaller Home decision surface
+
+- Added the local-first `AttentionPlan` read model and pure deterministic
+  `AttentionPlanner` for Home. NOW contains at most one recommendation, NEXT
+  is capped at four bounded candidates, and ambiguous evidence returns a small
+  `choose` state instead of an arbitrary recommendation.
+- Added versioned rank tiers for explicit focus, imminent timed work, active
+  Adaptive Nudge opportunities, scheduled-today work, and near-future work.
+  Temporal urgency remains distinct from static priority, and undated work is
+  not selected without an explicit signal.
+- Added structured reason codes, high/medium/low confidence, factual “Why now?”
+  explanations, deterministic tie-breaking, and 15-minute focus hysteresis.
+  The planner remains free of React, Expo, SQLite, native notification, network,
+  and LLM dependencies.
+
+### Bounded local candidate and integration path
+
+- Added `TasksRepository.listAttentionCandidates()` with a bounded local date
+  window, explicit-focus inclusion, active Adaptive Nudge inclusion, stable
+  ordering, and a 32-item limit. Existing task due-date and adaptive-nudge
+  indexes were reused; no SQLite migration or new index was required.
+- Added `AttentionService` and registered it in `DomainServices`. It gathers
+  normalized temporal facts, Recovery state, semantic nudge signals, and the
+  lightweight reliability state before invoking the pure planner.
+- Added `NudgeService.getAttentionSignals()` and an active adaptive-nudge
+  repository query that expose only derived `nudge_due` semantics; raw nudge
+  history, profile calculations, budgets, and timing policy remain owned by
+  Adaptive Nudge.
+- Added lightweight active-reminder reliability checks for degraded projection,
+  permission, channel, and recorded delivery-error state. Reliability alerts
+  remain separate from task ranking.
+
+### Explicit focus, recovery, recurrence, and execution flow
+
+- Added command/store support for `Focus now`, clear focus, and session-level
+  `Not now` suppression. Focus is stored as minimal local intent in `app_meta`
+  and never changes task priority, due date/time, recurrence, or reminders.
+- Preserved explicit focus during imminent conflicts and added a user-controlled
+  “Switch focus?” alert. Smart Recovery-owned overdue tasks produce one Recovery
+  intervention instead of flooding NOW/NEXT.
+- Kept completion, notification projection, Recovery Apply, recurrence
+  advancement, and Adaptive Nudge replanning on their existing ownership paths.
+  Recurrence successors are independently evaluated and never inherit focus.
+- Added time-boundary refresh scheduling from the next meaningful planner
+  boundary without high-frequency polling or background-worker requirements.
+
+### Responsive Home presentation
+
+- Integrated NOW/NEXT into the existing Home/Today route through the new
+  `AttentionSurface`; the remaining Today list stays secondary rather than
+  duplicating surfaced tasks.
+- Added compact vertical phone presentation and bounded width-based NOW/NEXT
+  columns for iPad and large windows. Android uses route-local elevated
+  surfaces without recursive blur targeting; iOS and iPadOS share the same
+  decision logic and adapt through window size rather than platform checks.
+- Added accessible labels, factual explanations, touch-sized actions, clear/
+  choose/recommended states, Recovery and reliability alerts, and reduced-motion
+  compatible presentation.
+
+### Documentation, tests, and validation limits
+
+- Added the [NOW/NEXT architecture documentation](docs/NOW_NEXT_ATTENTION_ENGINE.md)
+  and [manual Android, iPhone, and iPadOS validation checklist](docs/VALIDATION_NOW_NEXT.md).
+- Added deterministic planner coverage for ranking, urgency versus priority,
+  date-only and undated work, confidence, focus persistence and conflict,
+  Recovery, Adaptive Nudge, reliability alerts, hysteresis, recurrence safety,
+  determinism, and bounded NEXT. Added service coverage proving focus does not
+  mutate schedules and repository coverage with 500 local tasks proving the
+  candidate result remains capped at 32.
+- `bun test`: 227 passed, 2 existing manual/provider tests skipped, 0 failed
+  across 229 tests in 51 files. `bun run typecheck`, `bun run lint`,
+  `bunx expo config --type public`, and `git diff --check` passed.
+- No Android phone, iPhone, or iPadOS physical-device validation was performed;
+  the feature remains `READY FOR DEVICE VALIDATION`. No deployment, publishing,
+  submission, or production credentials were added.
+
 ## Unreleased - 2026.08.11 (2) [Adaptive Nudge Engine v1]
 
 ### First-class local nudge intents
