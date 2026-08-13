@@ -60,6 +60,7 @@ export default function RootLayout() {
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
+  const [nativeCaptureRevision, setNativeCaptureRevision] = useState(0);
   const [notificationSync, setNotificationSync] = useState<NotificationSyncState>({ phase: 'idle' });
   const notificationSyncRef = useRef<Promise<void> | null>(null);
 
@@ -256,8 +257,14 @@ export default function RootLayout() {
   }, [refreshAllSurfaces, refreshAttention, router, syncNotifications]);
 
   useEffect(() => addNativeCaptureListener(() => {
-    if (boot.phase === 'ready') router.push('/capture' as never);
-  }), [boot.phase, router]);
+    setNativeCaptureRevision((value) => value + 1);
+  }), []);
+
+  useEffect(() => {
+    if (boot.phase === 'ready' && getPendingNativeCaptureId()) {
+      router.push('/capture' as never);
+    }
+  }, [boot.phase, nativeCaptureRevision, router]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {

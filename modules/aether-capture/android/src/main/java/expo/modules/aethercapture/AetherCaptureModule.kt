@@ -67,6 +67,7 @@ class AetherCaptureModule : Module() {
       return
     }
     if (intent.action != Intent.ACTION_SEND) return
+    if ((intent.clipData?.itemCount ?: 0) > 1) return
     val context = appContext.reactContext ?: return
     val captureId = intent.getStringExtra(CAPTURE_ID_EXTRA) ?: UUID.randomUUID().toString().also {
       intent.putExtra(CAPTURE_ID_EXTRA, it)
@@ -76,7 +77,7 @@ class AetherCaptureModule : Module() {
     executor.execute {
       runCatching {
         val parts = when {
-          declaredMime.startsWith("text/") -> receiveText(intent)
+          declaredMime.startsWith("text/") && !intent.hasExtra(Intent.EXTRA_STREAM) -> receiveText(intent)
           declaredMime in supportedImageMimes -> receiveImage(context, intent, captureId, declaredMime)
           else -> null
         } ?: return@runCatching
@@ -127,6 +128,10 @@ class AetherCaptureModule : Module() {
         while (true) {
           val count = input.read(buffer)
           if (count < 0) break
+          if (copied == 0L && !hasExpectedImageSignature(resolvedMime, buffer, count)) {
+            destination.delete()
+            return null
+          }
           copied += count
           if (copied > MAX_IMAGE_BYTES) {
             destination.delete()
@@ -136,7 +141,18 @@ class AetherCaptureModule : Module() {
         }
       }
     } ?: return null
-    return JSONArray().put(
+    val parts = JSONArray()
+    intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.trim()?.let { text ->
+      if (text.isNotEmpty() && text.length <= MAX_TEXT_LENGTH) {
+        val uri = runCatching { Uri.parse(text) }.getOrNull()
+        parts.put(if (uri?.scheme == "http" || uri?.scheme == "https") {
+          CaptureInboxWriter.urlPart(text)
+        } else {
+          CaptureInboxWriter.textPart(text)
+        })
+      }
+    }
+    return parts.put(
       CaptureInboxWriter.imagePart(
         destination.toURI().toString(),
         resolvedMime,
@@ -190,6 +206,7 @@ class AetherCaptureModule : Module() {
   private fun discardCaptureAssets(captureId: String) {
     val context = appContext.reactContext ?: return
     File(context.filesDir, "capture-assets/pending/$captureId").deleteRecursively()
+    File(context.filesDir, "capture-assets/committed/$captureId").deleteRecursively()
   }
 
   private fun extensionFor(mime: String): String = when (mime) {
@@ -199,6 +216,22 @@ class AetherCaptureModule : Module() {
     "image/heic" -> "heic"
     "image/heif" -> "heif"
     else -> error("Unsupported image MIME type")
+  }
+
+  private fun hasExpectedImageSignature(mime: String, bytes: ByteArray, count: Int): Boolean {
+    fun ascii(offset: Int, value: String): Boolean = count >= offset + value.length &&
+      value.indices.all { bytes[offset + it].toInt().and(0xff) == value[it].code }
+    return when (mime) {
+      "image/jpeg" -> count >= 3 && bytes[0].toInt().and(0xff) == 0xff &&
+        bytes[1].toInt().and(0xff) == 0xd8 && bytes[2].toInt().and(0xff) == 0xff
+      "image/png" -> count >= 8 && bytes.sliceArray(0 until 8).contentEquals(
+        byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+      )
+      "image/webp" -> ascii(0, "RIFF") && ascii(8, "WEBP")
+      "image/heic", "image/heif" -> ascii(4, "ftyp") && count >= 12 &&
+        String(bytes, 8, 4, Charsets.US_ASCII) in setOf("heic", "heix", "hevc", "hevx", "mif1", "msf1")
+      else -> false
+    }
   }
 
   companion object {

@@ -45,5 +45,8 @@ export async function drainCaptureInbox(options: {
     persistEvents: true,
     invalidations: options.invalidations,
   });
-  return new CaptureInboxDrainer(inbox, orchestrator, { batchSize: options.batchSize }).drain();
+  return new CaptureInboxDrainer(inbox, orchestrator, {
+    batchSize: options.batchSize,
+    onTerminalFailure: discardNativeCaptureAssets,
+  }).drain();
 }

@@ -190,6 +190,10 @@ private final class ShareCaptureModel: ObservableObject {
             try FileManager.default.removeItem(at: destination)
           }
           try FileManager.default.copyItem(at: temporaryURL, to: destination)
+          guard Self.hasExpectedImageSignature(at: destination, mimeType: mimeType) else {
+            try? FileManager.default.removeItem(at: destination)
+            throw CaptureIngressWriterError.invalidPayload
+          }
           continuation.resume(returning: (
             destination,
             mimeType,
@@ -200,6 +204,29 @@ private final class ShareCaptureModel: ObservableObject {
           continuation.resume(throwing: error)
         }
       }
+    }
+  }
+
+  private static func hasExpectedImageSignature(at url: URL, mimeType: String) -> Bool {
+    guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+    defer { try? handle.close() }
+    guard let data = try? handle.read(upToCount: 16), let data, data.count >= 3 else { return false }
+    let bytes = [UInt8](data)
+    func ascii(_ offset: Int, _ value: String) -> Bool {
+      let expected = [UInt8](value.utf8)
+      return bytes.count >= offset + expected.count &&
+        Array(bytes[offset..<(offset + expected.count)]) == expected
+    }
+    switch mimeType {
+    case "image/jpeg": return bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
+    case "image/png":
+      return bytes.count >= 8 && Array(bytes[0..<8]) == [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+    case "image/webp": return ascii(0, "RIFF") && ascii(8, "WEBP")
+    case "image/heic", "image/heif":
+      guard ascii(4, "ftyp"), bytes.count >= 12 else { return false }
+      let brand = String(bytes: bytes[8..<12], encoding: .ascii) ?? ""
+      return ["heic", "heix", "hevc", "hevx", "mif1", "msf1"].contains(brand)
+    default: return false
     }
   }
 }

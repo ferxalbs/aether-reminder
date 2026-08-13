@@ -37,6 +37,11 @@ public final class AetherCaptureModule: Module {
         .appendingPathComponent("pending", isDirectory: true)
         .appendingPathComponent(captureId, isDirectory: true)
       try? FileManager.default.removeItem(at: pending)
+      let committed = container
+        .appendingPathComponent("capture-assets", isDirectory: true)
+        .appendingPathComponent("committed", isDirectory: true)
+        .appendingPathComponent(captureId, isDirectory: true)
+      try? FileManager.default.removeItem(at: committed)
     }
   }
 

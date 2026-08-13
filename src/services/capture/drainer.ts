@@ -22,7 +22,11 @@ export class CaptureInboxDrainer {
   constructor(
     private readonly inbox: CaptureInboxRepository,
     private readonly orchestrator: CaptureOrchestrator,
-    private readonly options: { batchSize?: number; staleAfterMs?: number } = {},
+    private readonly options: {
+      batchSize?: number;
+      staleAfterMs?: number;
+      onTerminalFailure?: (captureId: string) => Promise<void>;
+    } = {},
   ) {}
 
   async drain(now = new Date()): Promise<CaptureDrainResult> {
@@ -50,7 +54,10 @@ export class CaptureInboxDrainer {
         await this.inbox.markFailure(id, claimed.claimToken, failure.category, failure.retryable, now);
         await this.inbox.recordEvent('capture_failed', claimed.envelope, { category: failure.category });
         if (failure.retryable) result.failedRetryable += 1;
-        else result.failedTerminal += 1;
+        else {
+          await this.options.onTerminalFailure?.(id);
+          result.failedTerminal += 1;
+        }
       }
     }
     return result;
