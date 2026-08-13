@@ -23,3 +23,191 @@ The proper resolution is device profiling with a realistic reminder count,
 including approximately 200–500 reminders, on a low- and mid-end Android
 device before general availability. The result should inform a measured batch
 size and whether a total-time safeguard is also required.
+
+## Universal Capture native validation and GA gaps
+
+Phase 5 has different evidence levels by platform. Android is **READY FOR DEVICE
+VALIDATION** based on the previously completed local native compilation recorded
+by the Phase 5 work. iOS/iPadOS is **READY FOR NATIVE BUILD VALIDATION** because
+generation and syntax-level checks do not prove an Xcode build. Global Phase 5 is
+therefore **READY FOR NATIVE BUILD VALIDATION**, the least-validated supported
+platform level. This section is the durable source of truth for the remaining
+gates; previous agent reports are supporting history, not closure evidence.
+
+### Gate 1 — Full iOS/Xcode build and signing
+
+**Status:** PARTIALLY VERIFIED
+
+**Current evidence:** A prior clean Expo prebuild generated the main application,
+`AetherShareExtension`, extension embedding configuration, bundle identifiers,
+and matching App Group entitlements. Swift syntax parsing also passed. The Expo
+configuration now declares `AetherShareExtension` under
+`extra.eas.build.experimental.ios.appExtensions`, including its bundle identifier
+and App Group entitlement. This is required because Expo CNG support for iOS App
+Extensions is experimental. None of this is evidence of a full Xcode build.
+
+**Risk:** Compilation, linking, embedding, App Intents discovery, signing,
+provisioning, and archive behavior may still fail or differ under the actual
+Apple toolchain and credentials.
+
+**Closure evidence required:** A real Xcode compile/link of the main application
+and Share Extension targets; inspection of extension embedding; verification of
+both bundle identifiers and App Group entitlements; valid provisioning profiles
+and extension signing; App Intents compilation/discovery; and a successful local
+or EAS archive using the intended distribution configuration.
+
+**Can be addressed during unrelated work:** Yes, when work already reaches an
+iOS native build, signing, EAS, TestFlight, beta, or release validation point and
+the required Xcode toolchain and Apple credentials are available.
+
+### Gate 2 — Physical iPhone validation
+
+**Status:** OPEN
+
+**Current evidence:** No physical-iPhone execution evidence is recorded for
+Universal Capture.
+
+**Risk:** Share-provider behavior, extension lifecycle, App Group persistence,
+deferred drain, App Intent discovery, Siri/Spotlight exposure, and warm/cold app
+transitions cannot be established by source inspection or generated projects.
+
+**Closure evidence required:** On a physical iPhone, validate Share Extension
+capture from Safari, Photos, Files where supported, and Notes or another text
+source for text, URL, and image; cancellation; offline operation; warm,
+backgrounded, and terminated host app; extension termination; duplicate delivery;
+App Group persistence; and deferred inbox drain. Validate the App Intent and App
+Shortcut through Shortcuts, Siri where supported, and Spotlight for repeated
+invocation, app running/terminated, and offline operation. Record device model,
+OS version, app build, exact cases, and results.
+
+**Can be addressed during unrelated work:** Yes, at a natural iPhone native QA,
+beta, or release checkpoint. Do not interrupt unrelated work solely to request a
+device.
+
+### Gate 3 — Physical iPadOS validation
+
+**Status:** OPEN
+
+**Current evidence:** The Share Extension uses an adaptive, bounded-width layout
+and the host app declares tablet support, but no physical-iPad execution evidence
+is recorded. iPhone evidence would not close this gate.
+
+**Risk:** Extension width adaptation, keyboard/focus behavior, Dynamic Type,
+host-app `/capture` state, and state preservation across iPad window changes may
+fail despite phone correctness.
+
+**Closure evidence required:** On a physical iPad, validate Share Extension, App
+Intent, and App Shortcut in portrait, landscape, Split View, and Stage Manager or
+another resizable-window mode where available. Include Dynamic Type, hardware or
+software keyboard navigation, extension width adaptation, the host-app `/capture`
+route, and state preservation across resizing. Record device, OS, build, cases,
+and results.
+
+**Can be addressed during unrelated work:** Yes, when an iPad is naturally
+available for native QA, beta, or release validation. Do not infer closure from an
+iPhone or simulator alone.
+
+### Gate 4 — Physical Android OEM validation
+
+**Status:** OPEN
+
+**Current evidence:** The Phase 5 baseline records a successful local Android
+native compilation, but no physical Pixel, Samsung, or additional-OEM matrix is
+recorded.
+
+**Risk:** OEM sharesheets, temporary URI grants, process restoration, locked-device
+tile behavior, launcher shortcuts, Android Back, and capture-route replay may vary
+by device and OS skin.
+
+**Closure evidence required:** Validate at minimum a Pixel/stock Android device and
+a Samsung/One UI device, preferably one additional OEM. Cover text, URL, and
+image/screenshot share; cancellation; duplicate intents; dead, warm, and
+background processes; Quick Settings tile add/remove and locked-device behavior;
+launcher shortcut; offline operation; Android Back; and repeated capture
+navigation loops. Collect `adb logcat` around every process exit or native
+exception and record devices, OS versions, build, cases, and results.
+
+**Can be addressed during unrelated work:** Yes, at a related Android native QA,
+beta, or release checkpoint with physical devices. Emulator, unit, and build-only
+evidence do not close it.
+
+### Gate 5 — Android 16 / API 36 behavior
+
+**Status:** PARTIALLY VERIFIED
+
+**Current evidence:** AETHER targets API 36 and retains
+`predictiveBackGestureEnabled: true`; generated configuration inspected during the
+Phase 5 work did not introduce a permanent edge-to-edge, Predictive Back,
+orientation, or resizability opt-out. No API 36 runtime matrix is recorded.
+
+**Risk:** Android 16 removes the effective edge-to-edge opt-out for API 36 apps,
+enables Predictive Back by default, and changes orientation/resizability behavior
+on displays with smallest width at least 600dp. Insets, IME movement, back
+ownership, and large-window layouts can therefore regress only at runtime. API 36
+is also required for new Google Play applications and application updates starting
+August 31, 2026; lowering the target is not an acceptable workaround.
+
+**Closure evidence required:** On Android 16/API 36, audit status/navigation bars,
+bottom navigation, capture review, keyboard/IME, sheets, all system-ingress routes,
+and safe-area/inset behavior. Exercise Predictive Back for `/capture`, composer,
+modal/sheet dismissal, context menus, Quick Settings, launcher shortcut,
+Sharesheet, and route-to-home behavior. Validate tablet and foldable/large-window
+behavior in portrait, landscape, split/multi-window, and resizing. Fix actual
+issues rather than permanently opting out.
+
+**Can be addressed during unrelated work:** Yes, whenever work touches Android 16,
+navigation, insets, large screens, native ingress, beta, or Play preparation and a
+representative runtime is available.
+
+### Gate 6 — iOS App Group asset authority
+
+**Status:** PARTIALLY VERIFIED
+
+**Current evidence:** Repository inspection found that committed image sources had
+previously remained under App Group `capture-assets/committed`. The implementation
+now copies a pending image to host-private Application Support
+`AetherCapture/task-sources/<capture-id>`, makes that copy authoritative before
+removing shared state, and returns the private reference for transactional source
+commit. A bounded foreground migration adopts legacy shared committed assets and
+updates their database references only after a private copy exists. Regression
+tests cover adoption failure and replay after a simulated crash before reference
+acknowledgement. These tests passed during the hardening work before native-build
+execution was explicitly stopped; no physical iOS runtime evidence exists.
+
+**Risk:** Real App Group/file-provider semantics, data-protection behavior, legacy
+asset migration timing, and interruption windows still require Apple runtime
+evidence. The Share Extension must never gain access to the authoritative task
+database, and a migration must never delete the only valid image copy.
+
+**Closure evidence required:** A full Xcode build followed by physical-device tests
+proving pending capture in the App Group, adoption into the host sandbox, correct
+`task_capture_sources` reference, deletion of shared temporary state only after the
+private copy exists, restart/replay convergence at each interruption point, safe
+legacy migration, and discard cleanup. Confirm the extension cannot access host
+private committed assets or `aether.db`.
+
+**Can be addressed during unrelated work:** Yes, during Gate 1–3 Apple native
+validation. Until then, keep the narrow correction and migration rather than
+expanding the storage design.
+
+### Gate 7 — Android production delivery size
+
+**Status:** OPEN
+
+**Current evidence:** The previously observed approximately 407 MB development APK
+is a multi-ABI development artifact and is not a production download-size measure.
+No release AAB or bundletool/Play delivery estimate was produced in this closure
+pass; native build execution was stopped at the user's direction.
+
+**Risk:** Production delivery size and its major native-library or asset
+contributors remain unknown, so optimization decisions would be speculative.
+
+**Closure evidence required:** Generate a non-published release AAB, record its
+size and bundle composition, use bundletool or supported Play tooling to estimate
+a representative ARM64 device-specific compressed/download size, and identify
+large native libraries/assets contributing materially. Store-side evidence may be
+added later, but publication is not required to perform the local measurement.
+
+**Can be addressed during unrelated work:** Yes, at a release/build-size, beta, or
+Play preparation checkpoint when native builds are authorized. Do not publish or
+optimize blindly merely to close this record.

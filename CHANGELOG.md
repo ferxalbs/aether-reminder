@@ -2,6 +2,70 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.12 (2) [Universal Capture Closure and GA Validation Gates]
+
+### Persistent native and GA validation debt
+
+- Added seven evidence-based Universal Capture gates to
+  [`docs/KNOWN_TRADEOFFS.md`](docs/KNOWN_TRADEOFFS.md): full iOS/Xcode build and
+  signing, physical iPhone, physical iPadOS, physical Android OEMs, Android
+  16/API 36 behavior, iOS App Group asset authority, and Android production
+  delivery size. Every gate records status, current evidence, risk, closure
+  evidence, and when related future work can address it.
+- Preserved the readiness split: Android is `READY FOR DEVICE VALIDATION` from
+  the previously completed local native compilation; iOS/iPadOS is
+  `READY FOR NATIVE BUILD VALIDATION`; global Phase 5 remains
+  `READY FOR NATIVE BUILD VALIDATION`. No physical-device, Xcode signing,
+  provisioning, Siri/Spotlight, store, or release-delivery evidence was inferred.
+
+### Narrow ingress hardening
+
+- Declared `AetherShareExtension` in Expo's experimental EAS iOS app-extension
+  configuration with its stable bundle identifier and App Group entitlement.
+  This supports target credential discovery without treating generated config as
+  Xcode compilation or signing evidence.
+- Changed committed iOS image ownership from the shared App Group to host-private
+  Application Support. Adoption creates the private copy before removing shared
+  temporary state, remains replay-safe across interruption, and leaves the
+  authoritative task database outside the extension container.
+- Added a bounded legacy asset-authority migrator and repository query. Existing
+  App Group committed source references are replaced only after host-private
+  adoption succeeds; failures remain retryable. Added regression coverage for
+  adoption failure and replay after interruption before database acknowledgement,
+  plus rejection of traversal-like capture IDs.
+- Updated Universal Capture documentation to distinguish App Group pending ingress
+  from host-private committed task sources and to point validation status to the
+  durable tradeoff register.
+
+### Agent continuity
+
+- Added an `AGENTS.md` checkpoint requiring relevant future work to inspect and
+  update unresolved tradeoffs when real evidence becomes available. The rule
+  surfaces gates contextually at native validation, beta, release, signing, or
+  store-preparation points without nagging unrelated work or treating Android-first
+  distribution as Android-only architecture.
+
+### Validation performed and limits
+
+- Before native execution was stopped, 12 focused Universal Capture tests passed,
+  strict TypeScript checking passed, lint exited successfully with one style
+  warning that was then corrected, Expo configuration introspection passed, an
+  isolated clean prebuild generated both platform projects, and Swift syntax
+  parsing passed. Generated
+  configuration was inspected for the Share Extension target and embedding,
+  matching App Group entitlements, App Intent sources, Android share filters,
+  Quick Settings service, launcher shortcut, API 36 targeting, Predictive Back,
+  and absence of permanent orientation/resizability opt-outs.
+- A subsequent Android debug Gradle build was explicitly terminated at the user's
+  direction with exit code 130 before completion. It is not recorded as build
+  evidence. No release AAB or bundletool delivery-size estimate was produced.
+- No full Xcode compile/link/embed/sign/archive, Apple provisioning, EAS build,
+  physical Android/iPhone/iPadOS run, Siri/Spotlight discovery, Play Console
+  inspection, deployment, publishing, or store submission was performed.
+  At the user's direction, no compiler, build, prebuild, test, typecheck, lint, or
+  Expo command was rerun after the final documentation edits; `git diff --check`
+  passed.
+
 ## Unreleased - 2026.08.12 (1) [NOW/NEXT Attention Engine v1]
 
 ### Smaller Home decision surface

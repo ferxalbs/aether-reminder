@@ -98,11 +98,14 @@ The main app and Share Extension share only:
 ```text
 group.com.ferxalbs.aetherreminder.capture
   ├── aether_capture_ingress.sqlite
-  ├── capture-pending/<capture-id>/…
-  └── task-sources/<capture-id>/…
+  └── capture-assets/pending/<capture-id>/…
 ```
 
-The production task database stays in the host app sandbox. Cross-process writes are short transactions against the narrow ingress journal.
+After import, committed image sources move to host-private Application Support at
+`AetherCapture/task-sources/<capture-id>`. The Share Extension has no need or
+authority to read committed task assets. The production task database also stays
+in the host app sandbox. Cross-process writes are short transactions against the
+narrow ingress journal.
 
 `CaptureWithAetherIntent` exposes one text parameter to Shortcuts, Siri, Spotlight-compatible surfaces, and one generic App Shortcut. It writes the same App Group inbox and returns “Saved to AETHER.” It does not use `openAppWhenRun`, deprecated host-launch behavior, private APIs, or a separate task path. On current compiler/platform combinations it explicitly declares background execution support using the modern App Intents mode API.
 
@@ -126,12 +129,17 @@ foreign temporary handle
 → App Group/app pending asset
 → durable envelope
 → transactional task/source commit
-→ adopt into task-sources
+→ copy into host-private task-sources
 → update source reference
-→ remove pending directory
+→ remove App Group pending directory only after the private copy exists
 ```
 
 Discard removes pending assets. Failed commits retain the only valid pending copy. Binary image bytes are never base64-encoded into SQLite or held wholesale in JavaScript. Native asset methods canonicalize paths beneath controlled roots before moving or deleting files.
+
+Legacy iOS sources under App Group `capture-assets/committed` are adopted in a
+bounded foreground pass. The database reference changes only after the
+host-private copy exists, so interruption converges on retry without exposing the
+authoritative task database to the extension.
 
 ## Security and privacy
 
@@ -142,6 +150,11 @@ Local events are limited to `capture_received`, `capture_reviewed`, `capture_com
 ## CNG and build architecture
 
 All native work is reproducible from committed sources. The local Expo Module owns native ingress, capabilities, and asset operations. Its config plugin uses structured Android manifest and iOS entitlement mods. The Xcode project mod creates and embeds the extension target, copies known committed source files, sets explicit build properties, and fails loudly when target structures are unavailable. It does not regex-patch generated native source.
+
+Because Expo CNG support for iOS App Extensions is experimental, `app.json` also
+declares `AetherShareExtension` under
+`extra.eas.build.experimental.ios.appExtensions` for EAS target credential
+discovery. This declaration does not replace a full Xcode/signing validation.
 
 Run native validation in a clean isolated prebuild:
 
@@ -160,6 +173,10 @@ Then compile a development build. Expo Go cannot load the module, TileService, S
 Before beta, complete the full Android matrix on representative Pixel, Samsung, and another available OEM: shares from browser/gallery/text apps, cancel/malformed/duplicate/cold/warm/background/dead-process/rotation/offline cases, tile add/remove/locked/cold/warm cases, launcher shortcut, Android back, and repeated navigation loops. Capture `adb logcat` for crashes.
 
 Complete iPhone/iPad physical validation from Safari, Photos, Files, and Notes; cancellation, extension termination, duplicate delivery, offline/App Group/drain behavior; App Intent/App Shortcut through Shortcuts, Siri, and Spotlight; portrait, landscape, Split View, and Stage Manager/resizable layouts.
+
+The authoritative status and closure evidence for every native, device, API 36,
+asset-authority, and release-size gate is maintained in
+[`KNOWN_TRADEOFFS.md`](KNOWN_TRADEOFFS.md).
 
 ## Known limitations and future ingress
 

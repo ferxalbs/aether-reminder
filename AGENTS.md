@@ -94,6 +94,37 @@ Tests use Bun’s test runner and are colocated with the implementation, for exa
 Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
 NEVER use, invoke, install, reference, depend on, or run GStack/gstack for this repository.
 
+Android-first distribution does not permit Android-only domain architecture.
+AETHER targets Android, iOS, and iPadOS; keep domain and service behavior portable
+and place inherently native details behind platform adapters. Do not treat
+`Platform.OS === 'ios'` as equivalent to iPhone when UI or native behavior can run
+on iPadOS or at resizable widths.
+
+## Known Tradeoff & Validation Debt Checkpoint
+
+Before and near the end of work that intersects Universal Capture, native Android,
+native iOS/iPadOS, Share Extensions, App Intents, App Groups, Quick Settings,
+system sharing, native builds, release/build size, Android 16/API 36, or
+public-beta/GA readiness, inspect `docs/KNOWN_TRADEOFFS.md` and ask internally:
+
+> Does this task touch an unresolved tradeoff or provide an opportunity to close
+> one with real evidence?
+
+If yes, close the gap when it is safely within the task and available environment,
+add or update tests/evidence, update the tradeoff status, and update related
+documentation or the changelog when materially resolved. Never leave stale text
+claiming a gap is open after real evidence closes it.
+
+If closure requires a physical Android device, physical iPhone/iPad, Xcode, Apple
+signing/provisioning, unavailable EAS quota, store-side artifact inspection, or
+credentials unavailable to the environment, state that limitation explicitly.
+Surface the relevant gate at the natural native-validation, beta, release, GA,
+build/signing, or store-preparation point, and ask the user only when their action
+is then required. Do not repeatedly request the same unavailable resource during
+unrelated tasks, and do not block unrelated feature work solely because a
+documented device gate remains open. This rule is persistent engineering memory,
+not a recurring prompt.
+
 ## Changelog Guidelines
 
 Before editing `CHANGELOG.md`, read `RULES.md` and follow its required entry format.
