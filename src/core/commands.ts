@@ -23,6 +23,7 @@ import {
 } from '@/domain/recovery';
 import type { NotificationReconciliationResult } from '@/services/notifications/notificationReconciliation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import type { CaptureCommitContext } from '@/db/repositories/tasksRepository';
 
 export type TaskEditorRecurrenceDraft = Omit<
   CreateRecurrenceRuleInput,
@@ -52,6 +53,10 @@ type DueReminderChange =
  */
 export class AetherCommandExecutor {
   constructor(private readonly services: DomainServices) {}
+
+  getTask(taskId: string): Promise<Task | null> {
+    return this.services.tasks.getTask(taskId);
+  }
 
   private async syncTaskProjections(
     taskId: string,
@@ -424,6 +429,15 @@ export class AetherCommandExecutor {
       await this.services.tasks.deleteTask(result.value.id, 'command_rollback').catch(() => undefined);
       throw error;
     }
+  }
+
+  async createCapturedTask(input: CreateTaskInput, capture: CaptureCommitContext) {
+    const result = await this.services.tasks.createCapturedTask(input, capture);
+    // Native projection is disposable. ReminderService persists dirty state and
+    // classifies native projection failure without rolling the task back.
+    await this.syncDueReminder(null, result.value, capture.ingress);
+    await this.replanAdaptiveNudges(result.value.id, 'capture-create');
+    return result;
   }
 
   async updateTask(id: string, input: UpdateTaskInput, source = 'manual') {

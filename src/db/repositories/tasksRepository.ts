@@ -1,6 +1,7 @@
 import { createId } from '@/lib/id';
 import { getLocalDateString } from '@/temporal/localCalendar';
 import type {
+  CaptureSource,
   CreateTaskInput,
   Task,
   TemporalSemantics,
@@ -29,6 +30,12 @@ export interface ConditionalTaskScheduleOutcome {
   before: Task | null;
   after: Task | null;
   current: Task | null;
+}
+
+export interface CaptureCommitContext {
+  captureId: string;
+  ingress: string;
+  sources: readonly CaptureSource[];
 }
 
 function sameSchedule(
@@ -262,7 +269,11 @@ export class TasksRepository {
     return rows.map(mapTaskRow);
   }
 
-  async create(input: CreateTaskInput, eventSource = 'manual'): Promise<Task> {
+  async create(
+    input: CreateTaskInput,
+    eventSource = 'manual',
+    capture?: CaptureCommitContext,
+  ): Promise<Task> {
     const title = input.title?.trim();
     if (!title) {
       throw new DatabaseError('VALIDATION_FAILED', 'Task title is required.');
@@ -278,8 +289,9 @@ export class TasksRepository {
     const source = input.source ?? 'manual';
     const creationOrigin = input.creationOrigin ?? source;
 
-    await this.db.withTransactionAsync(async () => {
-      await this.db.runAsync(
+    try {
+      await this.db.withTransactionAsync(async () => {
+        await this.db.runAsync(
         `INSERT INTO tasks (
           id, title, notes, completed, priority, project_id,
           due_date, due_time, due_timezone, due_semantics,
@@ -304,20 +316,63 @@ export class TasksRepository {
         ]
       );
 
-      await this.events.append({
-        taskId: id,
-        type: 'created',
-        source: eventSource,
-        payload: {
-          title,
-          priority,
-          dueDate,
-          source,
-          creationOrigin,
-        },
-        createdAt: now,
+        await this.events.append({
+          taskId: id,
+          type: 'created',
+          source: eventSource,
+          payload: {
+            title,
+            priority,
+            dueDate,
+            source,
+            creationOrigin,
+            ...(capture ? { captureId: capture.captureId } : {}),
+          },
+          createdAt: now,
+        });
+
+        if (capture) {
+          for (const [position, captureSource] of capture.sources.entries()) {
+            await this.db.runAsync(
+              `INSERT INTO task_capture_sources (
+                id, task_id, position, kind, url, asset_ref, mime_type,
+                size_bytes, display_name, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                createId(),
+                id,
+                position,
+                captureSource.kind,
+                captureSource.kind === 'url' ? captureSource.url : null,
+                captureSource.kind === 'image' ? captureSource.assetRef : null,
+                captureSource.kind === 'image' ? captureSource.mimeType : null,
+                captureSource.kind === 'image' ? captureSource.sizeBytes ?? null : null,
+                captureSource.kind === 'image' ? captureSource.displayName ?? null : null,
+                now,
+              ],
+            );
+          }
+          await this.db.runAsync(
+            `INSERT INTO capture_commits (capture_id, task_id, ingress, committed_at)
+             VALUES (?, ?, ?, ?)`,
+            [capture.captureId, id, capture.ingress, now],
+          );
+        }
       });
-    });
+    } catch (cause) {
+      // Competing/replayed callbacks converge on the unique capture marker.
+      if (capture) {
+        const existing = await this.db.getFirstAsync<{ task_id: string }>(
+          'SELECT task_id FROM capture_commits WHERE capture_id = ?',
+          [capture.captureId],
+        );
+        if (existing) {
+          const task = await this.getById(existing.task_id);
+          if (task) return task;
+        }
+      }
+      throw cause;
+    }
 
     const task = await this.getById(id);
     if (!task) throw new DatabaseError('QUERY_FAILED', 'Task insert verification failed.');

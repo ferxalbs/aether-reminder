@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Flag, Mic, Minus, Plus, Repeat2, X } from 'lucide-react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { ExternalLink, Flag, ImageIcon, Mic, Minus, Plus, Repeat2, X } from 'lucide-react-native';
 import type {
   RecurrenceFrequency,
   RecurrenceMode,
   TaskListItem,
   TaskPriority,
+  TaskCaptureSource,
   UpdateTaskInput,
 } from '@/domain/entities';
 import { Colors, ControlTokens, Radius, Spacing } from '@/theme/tokens';
@@ -162,6 +164,7 @@ function TaskEditorForm({
   const createTaskWithRecurrence = useTasksUiStore((state) => state.createTaskWithRecurrence);
   const saveTaskEditor = useTasksUiStore((state) => state.saveTaskEditor);
   const getRecurrenceRule = useTasksUiStore((state) => state.getRecurrenceRule);
+  const getCaptureSources = useTasksUiStore((state) => state.getCaptureSources);
 
   const initialDate = task?.dueDate ?? today;
   const [title, setTitle] = useState(() => task?.title ?? initialTitle);
@@ -179,6 +182,7 @@ function TaskEditorForm({
   const [recurrenceLoading, setRecurrenceLoading] = useState(mode === 'edit' && task != null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [captureSources, setCaptureSources] = useState<TaskCaptureSource[]>([]);
 
   useEffect(() => {
     if (mode !== 'edit' || !task) return;
@@ -198,6 +202,17 @@ function TaskEditorForm({
       cancelled = true;
     };
   }, [getRecurrenceRule, mode, task, today]);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !task) return;
+    let cancelled = false;
+    void getCaptureSources(task.id).then((sources) => {
+      if (!cancelled) setCaptureSources(sources);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [getCaptureSources, mode, task]);
 
   const setDueDate = (nextDate: string) => {
     setDateText(nextDate);
@@ -413,6 +428,52 @@ function TaskEditorForm({
             numberOfLines={3}
             leading={<Flag size={16} color={secondaryTextColor} />}
           />
+
+          {captureSources.length > 0 ? (
+            <View style={styles.section} accessibilityLabel="Captured source context">
+              <Typography variant="caption" color={textColor} style={styles.sectionLabel}>
+                Source
+              </Typography>
+              {captureSources.map((source) => source.kind === 'url' ? (
+                <Pressable
+                  key={source.id}
+                  accessibilityRole="link"
+                  accessibilityLabel="Open captured web source"
+                  onPress={() => void Linking.openURL(source.url)}
+                  style={({ pressed }) => [
+                    styles.sourceLink,
+                    { borderColor: isDark ? Colors.borderDark : Colors.borderLight },
+                    pressed && styles.sourcePressed,
+                  ]}
+                >
+                  <ExternalLink size={18} color={secondaryTextColor} />
+                  <Typography variant="caption" color={textColor} numberOfLines={2} style={styles.sourceText}>
+                    {source.url}
+                  </Typography>
+                </Pressable>
+              ) : (
+                <View
+                  key={source.id}
+                  accessible
+                  accessibilityLabel={`Captured image${source.displayName ? `, ${source.displayName}` : ''}`}
+                  style={[styles.imageSource, { borderColor: isDark ? Colors.borderDark : Colors.borderLight }]}
+                >
+                  <Image
+                    source={{ uri: source.assetRef }}
+                    contentFit="cover"
+                    style={styles.sourceImage}
+                    accessibilityLabel="Captured source image"
+                  />
+                  <View style={styles.imageSourceLabel}>
+                    <ImageIcon size={16} color={secondaryTextColor} />
+                    <Typography variant="caption" color={secondaryTextColor} numberOfLines={1} style={styles.sourceText}>
+                      {source.displayName ?? 'Captured image'}
+                    </Typography>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -654,6 +715,31 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   section: { gap: Spacing.sm },
+  sourceLink: {
+    minHeight: 48,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sourcePressed: { opacity: 0.7 },
+  sourceText: { flex: 1 },
+  imageSource: {
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.md,
+  },
+  sourceImage: { width: '100%', aspectRatio: 16 / 9 },
+  imageSourceLabel: {
+    minHeight: 44,
+    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -115,6 +115,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const refreshAllSurfaces = useTasksUiStore((state) => state.refreshAllSurfaces);
   const refreshRecovery = useTasksUiStore((state) => state.refreshRecovery);
   const setUndoReceipt = useTasksUiStore((state) => state.setUndoReceipt);
+  const captureText = useTasksUiStore((state) => state.captureText);
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled()
@@ -196,12 +197,9 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
 
   const onVoiceTranscript = useCallback(async (text: string) => {
     setComposerValue('');
-    setSurface('medium');
-    const accepted = await controller.submit(text, { invocationSource: 'voice' });
-    if (!accepted) {
-      throw new Error('AETHER could not receive the final transcript.');
-    }
-  }, [controller]);
+    await captureText(text, 'voice');
+    setSurface('closed');
+  }, [captureText]);
   const voice = useVoiceController({ onTranscript: onVoiceTranscript });
 
   const openTextAssistant = useCallback(() => {

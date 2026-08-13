@@ -9,6 +9,7 @@ import type {
   CreateTaskInput,
   RecurrenceRule,
   Task,
+  TaskCaptureSource,
   TaskListItem,
   TaskPriority,
   UpdateTaskInput,
@@ -27,6 +28,12 @@ import {
   type RecoveryPlan,
 } from '@/domain/recovery';
 import { getTaskUndoAction, getTaskUndoRestoreFields, getTaskUndoTaskId } from './taskUndo';
+import {
+  createCaptureEnvelope,
+  createCaptureOrchestrator,
+  parseLocalReminderInput,
+  type CaptureIngress,
+} from '@/services/capture';
 
 type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
 type RecoveryUiStatus = 'idle' | 'loading' | 'ready' | 'applying' | 'error';
@@ -74,6 +81,7 @@ export interface TasksUiState {
   /** Refresh all task projections concurrently and publish one coherent snapshot. */
   refreshAllSurfaces: () => Promise<void>;
   getRecurrenceRule: (taskId: string) => Promise<RecurrenceRule | null>;
+  getCaptureSources: (taskId: string) => Promise<TaskCaptureSource[]>;
   createTask: (input: {
     title: string;
     notes?: string;
@@ -84,6 +92,11 @@ export interface TasksUiState {
     dueSemantics?: CreateTaskInput['dueSemantics'];
     source?: CreateTaskInput['source'];
   }) => Promise<Task>;
+  captureText: (
+    text: string,
+    ingress?: Extract<CaptureIngress, 'in_app' | 'voice'>,
+    options?: { defaultDueDate?: string },
+  ) => Promise<Task>;
   createTaskWithRecurrence: (input: TaskEditorCreateInput) => Promise<Task>;
   saveTaskEditor: (
     id: string,
@@ -272,6 +285,15 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
+  getCaptureSources: async (taskId) => {
+    try {
+      return await (await core()).services.tasks.listCaptureSources(taskId);
+    } catch (error) {
+      reportNonFatalError('capture-sources-load', error);
+      return [];
+    }
+  },
+
   createTask: async (input) => {
     let value: Task;
     let receipt: ActionReceipt;
@@ -297,6 +319,35 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     await get().refreshAllSurfaces();
     await get().refreshRecovery();
     return value;
+  },
+
+  captureText: async (text, ingress = 'in_app', options) => {
+    const envelope = createCaptureEnvelope({
+      ingress,
+      parts: [{ kind: 'text', text }],
+    });
+    try {
+      const orchestrator = await createCaptureOrchestrator({
+        invalidations: {
+          async taskCommitted() {
+            set((state) => ({ revision: state.revision + 1 }));
+            await Promise.all([get().refreshAllSurfaces(), get().refreshAttention()]);
+          },
+        },
+      });
+      const draft = orchestrator.prepare(envelope);
+      if (options?.defaultDueDate
+        && !parseLocalReminderInput(text).signals.includes('date')) {
+        draft.dueDate = options.defaultDueDate;
+      }
+      const result = await orchestrator.commit(envelope, draft);
+      if (result.receipt) set({ undoReceipt: result.receipt, undoError: null });
+      return result.task;
+    } catch (error) {
+      reportNonFatalError('capture-text', error);
+      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      throw error;
+    }
   },
 
   createTaskWithRecurrence: async (input) => {

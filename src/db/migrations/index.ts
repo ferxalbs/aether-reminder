@@ -6,6 +6,7 @@ import { migration0005NotificationQueryIndexes } from './0005_notification_query
 import { migration0006RecurrenceRules } from './0006_recurrence_rules';
 import { migration0007NotificationReliability } from './0007_notification_reliability';
 import { migration0008AdaptiveNudges } from './0008_adaptive_nudges';
+import { migration0009UniversalCapture } from './0009_universal_capture';
 import type { Migration } from './types';
 
 /** Ordered, immutable migration list. Never edit applied migrations — append. */
@@ -18,6 +19,7 @@ export const MIGRATIONS: readonly Migration[] = [
   migration0006RecurrenceRules,
   migration0007NotificationReliability,
   migration0008AdaptiveNudges,
+  migration0009UniversalCapture,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

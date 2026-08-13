@@ -26,6 +26,13 @@ export type TaskSource =
   | 'notification_candidate'
   | 'widget'
   | 'shortcut'
+  | 'android_share'
+  | 'android_quick_settings'
+  | 'android_shortcut'
+  | 'ios_share_extension'
+  | 'ios_app_intent'
+  | 'ios_app_shortcut'
+  | 'deep_link'
   | 'import';
 
 export type TaskCreationOrigin = TaskSource;
@@ -168,6 +175,23 @@ export interface TaskEvent {
   source: string;
   createdAt: string;
 }
+
+/** Minimal source context retained from Universal Capture. */
+export type CaptureSource =
+  | { kind: 'url'; url: string }
+  | {
+      kind: 'image';
+      assetRef: string;
+      mimeType: string;
+      sizeBytes?: number;
+      displayName?: string;
+    };
+
+export type TaskCaptureSource = CaptureSource & {
+  id: string;
+  taskId: string;
+  createdAt: string;
+};
 
 /** Input for creating a task (id/timestamps optional — generated if omitted). */
 export interface CreateTaskInput {

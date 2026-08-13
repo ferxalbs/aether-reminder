@@ -1,4 +1,4 @@
-import type { CreateTaskInput, Task, UpdateTaskInput } from '@/domain/entities';
+import type { CreateTaskInput, Task, TaskCaptureSource, UpdateTaskInput } from '@/domain/entities';
 import {
   assertRecoverySchedule,
   type RecoverySchedule,
@@ -9,7 +9,9 @@ import { assertResolvedDateTime } from '@/temporal/resolve';
 import type { TemporalSemantics } from '@/temporal/types';
 import type {
   ConditionalTaskScheduleOutcome,
+  CaptureCommitContext,
 } from '@/db/repositories/tasksRepository';
+import type { CaptureCommitsRepository } from '@/db/repositories/captureCommitsRepository';
 
 export type TaskListScope = 'today' | 'overdue' | 'upcoming' | 'all' | 'active' | 'all_active';
 
@@ -46,7 +48,14 @@ export interface ConditionalRecoveryScheduleChange {
  * (repositories still own SQL).
  */
 export class TaskService {
-  constructor(private readonly tasks: TasksRepository) {}
+  constructor(
+    private readonly tasks: TasksRepository,
+    private readonly captureCommits?: CaptureCommitsRepository,
+  ) {}
+
+  async listCaptureSources(taskId: string): Promise<TaskCaptureSource[]> {
+    return this.captureCommits?.listSources(taskId) ?? [];
+  }
 
   async createTask(
     input: CreateTaskInput,
@@ -69,6 +78,39 @@ export class TaskService {
     }
 
     const task = await this.tasks.create(input, eventSource);
+    return {
+      value: task,
+      receipt: createReceipt({
+        risk: 'REVERSIBLE_WRITE',
+        action: 'tasks.create',
+        entityType: 'task',
+        entityId: task.id,
+        summary: `Created task “${task.title}”`,
+        undo: { kind: 'task.soft_delete', payload: { taskId: task.id } },
+      }),
+    };
+  }
+
+  async createCapturedTask(
+    input: CreateTaskInput,
+    capture: CaptureCommitContext,
+  ): Promise<MutationResult<Task>> {
+    if (input.dueDate != null) {
+      const resolved = assertResolvedDateTime({
+        date: input.dueDate,
+        time: input.dueTime,
+        timezone: input.dueTimezone,
+        semantics: input.dueSemantics,
+      });
+      input = {
+        ...input,
+        dueDate: resolved.date,
+        dueTime: resolved.time,
+        dueTimezone: resolved.timezone,
+        dueSemantics: resolved.semantics,
+      };
+    }
+    const task = await this.tasks.create(input, capture.ingress, capture);
     return {
       value: task,
       receipt: createReceipt({

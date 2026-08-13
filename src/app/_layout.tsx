@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, StyleSheet, View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { BlurTargetView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,6 +32,12 @@ import { NotificationSyncBanner } from '@/components/ui/NotificationSyncBanner';
 import { AssistantHost, AssistantSurfaceProvider } from '@/components/assistant/AssistantHost';
 import { AppBottomNavigation } from '@/components/assistant/AppBottomNavigation';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import {
+  addNativeCaptureListener,
+  drainCaptureInbox,
+  getPendingNativeCaptureId,
+  initializeCaptureInbox,
+} from '@/services/capture';
 
 type BootState =
   | { phase: 'loading' }
@@ -44,10 +50,13 @@ type NotificationSyncState = {
 };
 
 export default function RootLayout() {
+  const router = useRouter();
+  const pathname = usePathname();
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const setAdaptiveNudgesPreference = useSettingsStore((s) => s.setAdaptiveNudgesEnabled);
   const refreshAllSurfaces = useTasksUiStore((s) => s.refreshAllSurfaces);
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
+  const refreshAttention = useTasksUiStore((s) => s.refreshAttention);
   const isDark = useIsDark();
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
@@ -128,6 +137,21 @@ export default function RootLayout() {
       reportNonFatalError('notifications-foreground-select', error);
     }
   }, [refreshRecovery, syncNotifications]);
+
+  const syncForegroundCaptures = useCallback(async () => {
+    try {
+      if (getPendingNativeCaptureId()) router.push('/capture' as never);
+      await drainCaptureInbox({
+        invalidations: {
+          async taskCommitted() {
+            await Promise.all([refreshAllSurfaces(), refreshAttention()]);
+          },
+        },
+      });
+    } catch (error) {
+      reportNonFatalError('capture-foreground-drain', error);
+    }
+  }, [refreshAllSurfaces, refreshAttention, router]);
 
   const runDatabaseRecovery = useCallback(async (mode: Exclude<DatabaseRecoveryMode, 'check'>) => {
     setBoot({ phase: 'loading' });
@@ -210,6 +234,15 @@ export default function RootLayout() {
         // Task projections are loaded by the focused route. Keeping boot limited
         // to database readiness avoids querying Today twice on cold start.
         setBoot({ phase: 'ready' });
+        await initializeCaptureInbox();
+        await drainCaptureInbox({
+          invalidations: {
+            async taskCommitted() {
+              await Promise.all([refreshAllSurfaces(), refreshAttention()]);
+            },
+          },
+        });
+        if (getPendingNativeCaptureId()) router.replace('/capture' as never);
         void syncNotifications();
       } catch (error) {
         if (cancelled) return;
@@ -220,15 +253,20 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, [syncNotifications]);
+  }, [refreshAllSurfaces, refreshAttention, router, syncNotifications]);
+
+  useEffect(() => addNativeCaptureListener(() => {
+    if (boot.phase === 'ready') router.push('/capture' as never);
+  }), [boot.phase, router]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || boot.phase !== 'ready') return;
       void syncForegroundNotifications();
+      void syncForegroundCaptures();
     });
     return () => subscription.remove();
-  }, [boot.phase, syncForegroundNotifications]);
+  }, [boot.phase, syncForegroundCaptures, syncForegroundNotifications]);
 
   useEffect(() => {
     if (boot.phase !== 'ready') return;
@@ -287,9 +325,10 @@ export default function RootLayout() {
                 <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
                 <Tabs.Screen name="ai" options={{ href: null }} />
                 <Tabs.Screen name="transcribe" options={{ href: null }} />
+                <Tabs.Screen name="capture" options={{ href: null }} />
               </Tabs>
             </BlurTargetView>
-            {boot.phase === 'ready' && (
+            {boot.phase === 'ready' && pathname !== '/capture' && (
               <>
                 <AppBottomNavigation blurTarget={blurTarget} />
                 <AssistantHost blurTarget={blurTarget} />

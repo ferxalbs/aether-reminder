@@ -22,6 +22,7 @@ describe('schema migrations', () => {
       '0006_recurrence_rules',
       '0007_notification_reliability',
       '0008_adaptive_nudges',
+      '0009_universal_capture',
     ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
@@ -87,6 +88,7 @@ describe('schema migrations', () => {
       '0006_recurrence_rules',
       '0007_notification_reliability',
       '0008_adaptive_nudges',
+      '0009_universal_capture',
     ]);
     await db.closeAsync?.();
   });

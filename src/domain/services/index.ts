@@ -77,7 +77,7 @@ export function createDomainServices(db: SqlDatabase): DomainServices {
 }
 
 export function createDomainServicesFromRepos(repos: Repositories): DomainServices {
-  const tasks = new TaskService(repos.tasks);
+  const tasks = new TaskService(repos.tasks, repos.captureCommits);
   const notificationProjection = new LocalNotificationProjection(
     repos.reminders,
     repos.tasks,

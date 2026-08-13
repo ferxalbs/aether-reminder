@@ -21,7 +21,6 @@ import { AttentionSurface } from '@/components/ui/AttentionSurface';
 import { AetherComposer } from '@/components/ui/AetherComposer';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
 import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
 import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
@@ -56,7 +55,7 @@ export default function TodayScreen() {
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const recoveryPlan = useTasksUiStore((s) => s.recoveryPlan);
   const applyRecovery = useTasksUiStore((s) => s.applyRecovery);
-  const createTask = useTasksUiStore((s) => s.createTask);
+  const captureText = useTasksUiStore((s) => s.captureText);
   const toggleTask = useTasksUiStore((s) => s.toggleTask);
   const focusNow = useTasksUiStore((s) => s.focusNow);
   const clearFocus = useTasksUiStore((s) => s.clearFocus);
@@ -82,8 +81,6 @@ export default function TodayScreen() {
     }, Math.min(delay, 24 * 60 * 60 * 1000));
     return () => clearTimeout(timer);
   }, [attentionPlan?.nextRefreshAt]);
-
-  const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
 
   const secondaryTodayTasks = useMemo(() => {
     const surfacedIds = new Set([
@@ -115,21 +112,14 @@ export default function TodayScreen() {
     setQuickSaving(true);
     setQuickError(null);
     try {
-      await createTask({
-        title: quickIntent.title || rawTitle,
-        dueDate: quickIntent.dueDate,
-        dueTime: quickIntent.dueTime,
-        dueTimezone: quickIntent.dueTimezone,
-        priority: quickIntent.priority,
-        source: 'manual',
-      });
+      await captureText(rawTitle);
       setQuickTitle('');
     } catch (errorValue) {
       setQuickError(getDatabaseErrorMessage(errorValue));
     } finally {
       setQuickSaving(false);
     }
-  }, [createTask, quickIntent, quickSaving, quickTitle]);
+  }, [captureText, quickSaving, quickTitle]);
 
   const handleToggle = useCallback(
     (id: string) => {

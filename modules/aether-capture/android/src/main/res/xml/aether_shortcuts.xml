@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut
+    android:shortcutId="aether_add_reminder"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="Add reminder"
+    android:shortcutLongLabel="Add reminder to AETHER">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="aether://capture?ingress=android_shortcut"
+      android:targetPackage="com.ferxalbs.aetherreminder"
+      android:targetClass="com.ferxalbs.aetherreminder.MainActivity" />
+  </shortcut>
+</shortcuts>

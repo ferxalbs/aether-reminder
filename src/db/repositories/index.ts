@@ -8,6 +8,7 @@ import { RemindersRepository } from './remindersRepository';
 import { TaskEventsRepository } from './taskEventsRepository';
 import { TasksRepository } from './tasksRepository';
 import { NudgeEventsRepository } from './nudgeEventsRepository';
+import { CaptureCommitsRepository } from './captureCommitsRepository';
 
 export { AppMetaRepository } from './appMetaRepository';
 export { NotificationActionReceiptsRepository } from './notificationActionReceiptsRepository';
@@ -17,6 +18,7 @@ export { RemindersRepository } from './remindersRepository';
 export { TaskEventsRepository } from './taskEventsRepository';
 export { TasksRepository } from './tasksRepository';
 export { NudgeEventsRepository } from './nudgeEventsRepository';
+export { CaptureCommitsRepository } from './captureCommitsRepository';
 export {
   AgentRuntimeRepository,
   hashArgs,
@@ -40,6 +42,7 @@ export function createRepositories(db: SqlDatabase) {
     taskEvents: new TaskEventsRepository(db),
     agentRuntime: new AgentRuntimeRepository(db),
     nudgeEvents: new NudgeEventsRepository(db),
+    captureCommits: new CaptureCommitsRepository(db),
   };
 }
 

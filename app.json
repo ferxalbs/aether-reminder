@@ -5,13 +5,18 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/aether-reminder.png",
-    "scheme": "taskflowai",
+    "scheme": ["aether", "taskflowai"],
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
     "ios": {
       "icon": "./assets/images/aether-reminder.png",
       "bundleIdentifier": "com.ferxalbs.aetherreminder",
       "supportsTablet": true,
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.ferxalbs.aetherreminder.capture"
+        ]
+      },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
@@ -32,6 +37,10 @@
       }
     },
     "android": {
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/aether-reminder-android-foreground.png",
@@ -63,7 +72,8 @@
       ],
       "expo-asset",
       "expo-sqlite",
-      "expo-notifications"
+      "expo-notifications",
+      "./modules/aether-capture/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true,

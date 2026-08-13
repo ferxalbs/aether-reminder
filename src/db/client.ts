@@ -33,7 +33,7 @@ let initPromise: Promise<DatabaseHandle> | null = null;
 let lastError: DatabaseError | null = null;
 let recoveryInProgress = false;
 
-function wrapExpoDatabase(native: SQLiteDatabase): SqlDatabase {
+export function wrapExpoDatabase(native: SQLiteDatabase): SqlDatabase {
   return {
     execAsync: (source) => native.execAsync(source),
     runAsync: async (source, params?: SqlBindParams): Promise<SqlRunResult> => {

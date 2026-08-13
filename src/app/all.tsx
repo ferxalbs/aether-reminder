@@ -13,7 +13,6 @@ import { AetherComposer } from '@/components/ui/AetherComposer';
 import type { TaskListItem } from '@/domain/entities';
 import { useTasksUiStore } from '@/stores/tasksUi.store';
 import { getLocalDateString } from '@/temporal/localCalendar';
-import { parseLocalReminderInput } from '@/services/capture/localIntentParser';
 import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
 import { getDatabaseErrorMessage } from '@/db';
 import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
@@ -41,7 +40,7 @@ export default function RemindersScreen() {
   const status = useTasksUiStore((state) => state.status);
   const error = useTasksUiStore((state) => state.error);
   const refreshAll = useTasksUiStore((state) => state.refreshAll);
-  const createTask = useTasksUiStore((state) => state.createTask);
+  const captureText = useTasksUiStore((state) => state.captureText);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
   const undoReceipt = useTasksUiStore((state) => state.undoReceipt);
@@ -50,29 +49,20 @@ export default function RemindersScreen() {
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
 
-  const quickIntent = useMemo(() => parseLocalReminderInput(quickTitle), [quickTitle]);
-
   const handleQuickCapture = useCallback(async (titleToSave?: string) => {
     const rawTitle = (titleToSave ?? quickTitle).trim();
     if (!rawTitle || quickSaving) return;
 
     setQuickSaving(true);
     try {
-      await createTask({
-        title: quickIntent.title || rawTitle,
-        dueDate: quickIntent.dueDate,
-        dueTime: quickIntent.dueTime,
-        dueTimezone: quickIntent.dueTimezone,
-        priority: quickIntent.priority,
-        source: 'manual',
-      });
+      await captureText(rawTitle);
       setQuickTitle('');
     } catch (errorValue) {
       reportNonFatalError('reminders-quick-capture', getDatabaseErrorMessage(errorValue));
     } finally {
       setQuickSaving(false);
     }
-  }, [createTask, quickIntent, quickSaving, quickTitle]);
+  }, [captureText, quickSaving, quickTitle]);
 
   const visibleTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
