@@ -72,7 +72,7 @@ describe('CaptureInboxDrainer', () => {
     const fakeOrchestrator = {
       async commit(envelope: { id: string }) {
         if (envelope.id === 'terminal') {
-          throw new CaptureError('Unsupported payload.', 'unsupported_part', false);
+          throw new CaptureError('unsupported_part', 'Unsupported payload.', false);
         }
         if (envelope.id === 'retryable') throw new Error('database is temporarily busy');
         committed.push(envelope.id);
@@ -80,7 +80,10 @@ describe('CaptureInboxDrainer', () => {
       },
     } as unknown as CaptureOrchestrator;
 
-    const result = await new CaptureInboxDrainer(inbox, fakeOrchestrator).drain();
+    const cleaned: string[] = [];
+    const result = await new CaptureInboxDrainer(inbox, fakeOrchestrator, {
+      onTerminalFailure: async (captureId) => { cleaned.push(captureId); },
+    }).drain();
     expect(result).toEqual({
       processed: 3,
       committed: 1,
@@ -88,6 +91,7 @@ describe('CaptureInboxDrainer', () => {
       failedTerminal: 1,
     });
     expect(committed).toEqual(['valid']);
+    expect(cleaned).toEqual(['terminal']);
     expect((await inbox.get('terminal'))?.state).toBe('failed_terminal');
     expect((await inbox.get('retryable'))?.state).toBe('failed_retryable');
   });

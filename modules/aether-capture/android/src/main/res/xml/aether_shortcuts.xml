@@ -4,8 +4,8 @@
     android:shortcutId="aether_add_reminder"
     android:enabled="true"
     android:icon="@mipmap/ic_launcher"
-    android:shortcutShortLabel="Add reminder"
-    android:shortcutLongLabel="Add reminder to AETHER">
+    android:shortcutShortLabel="@string/aether_shortcut_short_label"
+    android:shortcutLongLabel="@string/aether_shortcut_long_label">
     <intent
       android:action="android.intent.action.VIEW"
       android:data="aether://capture?ingress=android_shortcut"

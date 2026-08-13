@@ -55,7 +55,11 @@ export class CaptureInboxDrainer {
         await this.inbox.recordEvent('capture_failed', claimed.envelope, { category: failure.category });
         if (failure.retryable) result.failedRetryable += 1;
         else {
-          await this.options.onTerminalFailure?.(id);
+          try {
+            await this.options.onTerminalFailure?.(id);
+          } catch {
+            // Asset cleanup is recoverable and must not block later inbox entries.
+          }
           result.failedTerminal += 1;
         }
       }

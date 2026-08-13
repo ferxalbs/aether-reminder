@@ -100,6 +100,10 @@ export class CaptureOrchestrator {
     if (existing) {
       const result = await this.commands.getTask(existing.taskId);
       if (!result) throw new CaptureError('domain_validation', 'Committed capture task is unavailable.');
+      await this.invalidations.taskCommitted(result, {
+        reliability: Boolean(result.dueDate && result.dueTime),
+        attention: !result.completed,
+      });
       return { task: result, duplicate: true };
     }
     const title = draft.title.trim();

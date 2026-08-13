@@ -41,7 +41,8 @@ describe('CaptureOrchestrator', () => {
     expect(replay.duplicate).toBe(true);
     expect((await repos.tasks.listAll())).toHaveLength(1);
     expect((await repos.captureCommits.get(envelope.id))?.taskId).toBe(first.task.id);
-    expect(invalidated).toBe(1);
+    // Replay repairs post-commit invalidation while the commit marker prevents a second task.
+    expect(invalidated).toBe(2);
   });
 
   test('preserves URL and adopts image sources without putting them in notes', async () => {
