@@ -82,7 +82,24 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2edaaed9-ef66-4c65-bdfe-334f11a1ddc5"
+        "projectId": "2edaaed9-ef66-4c65-bdfe-334f11a1ddc5",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "AetherShareExtension",
+                  "bundleIdentifier": "com.ferxalbs.aetherreminder.capture-share",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.ferxalbs.aetherreminder.capture"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     },
     "owner": "enosislabs"

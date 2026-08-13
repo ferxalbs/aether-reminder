@@ -3,7 +3,12 @@ import { getDatabase } from '@/db/client';
 import type { CaptureSource } from '@/domain/entities';
 import { initializeCaptureInbox } from './client';
 import { CaptureInboxDrainer } from './drainer';
-import { adoptNativeImageAsset, discardNativeCaptureAssets } from './nativeCapture';
+import { CaptureAssetAuthorityMigrator } from './assetAuthorityMigrator';
+import {
+  adoptNativeImageAsset,
+  discardNativeCaptureAssets,
+  getCaptureCapabilities,
+} from './nativeCapture';
 import {
   CaptureOrchestrator,
   type CaptureEventSink,
@@ -40,6 +45,17 @@ export async function drainCaptureInbox(options: {
   invalidations?: CaptureInvalidationSink;
   batchSize?: number;
 } = {}) {
+  const core = getAetherCore(getDatabase());
+  if (getCaptureCapabilities().shareExtension) {
+    try {
+      await new CaptureAssetAuthorityMigrator(
+        core.services.repos.captureCommits,
+        adoptNativeImageAsset,
+      ).migrateBatch();
+    } catch {
+      // Legacy asset repair is retried later and must not block new inbox work.
+    }
+  }
   const inbox = await initializeCaptureInbox();
   const orchestrator = await createCaptureOrchestrator({
     persistEvents: true,

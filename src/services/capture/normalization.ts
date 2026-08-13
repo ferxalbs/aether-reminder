@@ -25,7 +25,7 @@ const INGRESS = new Set<CaptureIngress>([
 ]);
 
 function assertStableToken(value: string, field: string): string {
-  if (!value || value.length > 160 || !/^[A-Za-z0-9._:-]+$/.test(value)) {
+  if (!value || value === '.' || value === '..' || value.length > 160 || !/^[A-Za-z0-9._:-]+$/.test(value)) {
     throw new CaptureError('invalid_envelope', `${field} is invalid.`);
   }
   return value;

@@ -74,4 +74,12 @@ describe('Universal Capture normalization', () => {
     ];
     for (const failure of failures) expect(failure).toThrow(CaptureError);
   });
+
+  test('rejects traversal-like stable tokens before native asset paths are built', () => {
+    expect(() => normalizeCaptureEnvelope({
+      ...base,
+      id: '..',
+      parts: [{ kind: 'text', text: 'Remember this' }],
+    })).toThrow(CaptureError);
+  });
 });

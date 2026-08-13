@@ -28,6 +28,12 @@ export interface CaptureCommit {
   committedAt: string;
 }
 
+export interface LegacySharedCaptureAsset {
+  captureId: string;
+  taskId: string;
+  assetRef: string;
+}
+
 function mapSource(row: CaptureSourceRow): TaskCaptureSource {
   const common = { id: row.id, taskId: row.task_id, createdAt: row.created_at };
   if (row.kind === 'url') return { ...common, kind: 'url', url: row.url! };
@@ -72,6 +78,28 @@ export class CaptureCommitsRepository {
        WHERE task_id = ? AND kind = 'image' AND asset_ref = ?`,
       [to, taskId, from],
     );
+  }
+
+  async listLegacySharedImageAssets(limit = 16): Promise<LegacySharedCaptureAsset[]> {
+    const rows = await this.db.getAllAsync<{
+      capture_id: string;
+      task_id: string;
+      asset_ref: string;
+    }>(
+      `SELECT c.capture_id, s.task_id, s.asset_ref
+       FROM task_capture_sources s
+       JOIN capture_commits c ON c.task_id = s.task_id
+       WHERE s.kind = 'image'
+         AND s.asset_ref LIKE '%/capture-assets/committed/%'
+       ORDER BY c.committed_at ASC
+       LIMIT ?`,
+      [Math.max(1, Math.min(limit, 32))],
+    );
+    return rows.map((row) => ({
+      captureId: row.capture_id,
+      taskId: row.task_id,
+      assetRef: row.asset_ref,
+    }));
   }
 }
 

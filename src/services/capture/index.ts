@@ -4,6 +4,7 @@ export * from './localIntentParser';
 export * from './orchestrator';
 export * from './inbox';
 export * from './drainer';
+export * from './assetAuthorityMigrator';
 export * from './client';
 export * from './nativeCapture';
 export * from './runtime';

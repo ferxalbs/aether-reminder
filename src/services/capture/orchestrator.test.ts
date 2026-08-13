@@ -91,4 +91,33 @@ describe('CaptureOrchestrator', () => {
     expect(reminders).toHaveLength(1);
     expect(reminders[0]?.projectionDirty).toBe(true);
   });
+
+  test('finds legacy App Group image references for bounded host-private migration', async () => {
+    const { repos, commands } = await ready();
+    const assets: CaptureAssetManager = {
+      async adopt(source, captureId) {
+        return {
+          ...source,
+          assetRef: `file:///app-group/capture-assets/committed/${captureId}/source.png`,
+        };
+      },
+      async discardCapture() {},
+    };
+    const orchestrator = new CaptureOrchestrator(commands, repos.captureCommits, assets);
+    const envelope = createCaptureEnvelope({
+      id: 'legacy-shared-source',
+      ingress: 'ios_share_extension',
+      parts: [
+        { kind: 'text', text: 'Review screenshot' },
+        { kind: 'image', assetRef: 'file:///pending/source.png', mimeType: 'image/png' },
+      ],
+    });
+    const { task } = await orchestrator.commit(envelope);
+
+    expect(await repos.captureCommits.listLegacySharedImageAssets(1)).toEqual([{
+      captureId: envelope.id,
+      taskId: task.id,
+      assetRef: `file:///app-group/capture-assets/committed/${envelope.id}/source.png`,
+    }]);
+  });
 });
