@@ -137,6 +137,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
                 <Button
                   label="Complete"
                   size="sm"
+                  pill
                   onPress={() => onComplete(plan.now!.taskId)}
                   accessibilityLabel={`Complete ${plan.now.title}`}
                   style={styles.actionButton}
@@ -146,6 +147,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
                     label="Focus now"
                     size="sm"
                     variant="secondary"
+                    pill
                     onPress={() => onFocus(plan.now!.taskId)}
                     accessibilityLabel={`Keep ${plan.now.title} as focus`}
                     style={styles.actionButton}
@@ -155,6 +157,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
                   label={isFocused ? 'Clear focus' : 'Not now'}
                   size="sm"
                   variant="ghost"
+                  pill
                   onPress={isFocused ? onClearFocus : () => onNotNow(plan.now!.taskId)}
                   accessibilityLabel={isFocused ? 'Clear focus' : `Not now for ${plan.now.title}`}
                   style={styles.actionButton}

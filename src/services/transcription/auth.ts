@@ -1,4 +1,5 @@
 import { VoiceError, type VoiceErrorCode } from './errors';
+import { buildRealtimeSessionPayload } from './protocol';
 import type {
   RealtimeClientSecret,
   RealtimeClientSecretProvider,
@@ -7,25 +8,6 @@ import type {
 import { defaultRealtimeTranscriptionConfig } from './types';
 
 const OPENAI_CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
-
-function sessionPayload(config: RealtimeTranscriptionConfig): Record<string, unknown> {
-  const transcription: Record<string, unknown> = {
-    model: config.model,
-    prompt: config.context.prompt,
-  };
-  if (config.context.languages?.length) transcription.languages = config.context.languages;
-  if (config.context.keywords?.length) transcription.keywords = config.context.keywords;
-  return {
-    type: 'transcription',
-    audio: {
-      input: {
-        format: { type: 'audio/pcm', rate: config.sampleRate },
-        transcription,
-        turn_detection: config.turnDetection,
-      },
-    },
-  };
-}
 
 function parseSecret(value: unknown, requestId?: string): RealtimeClientSecret {
   if (!value || typeof value !== 'object') {
@@ -95,7 +77,7 @@ export class OpenAIByokClientSecretProvider implements RealtimeClientSecretProvi
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ session: sessionPayload(config) }),
+        body: JSON.stringify({ session: buildRealtimeSessionPayload(config) }),
         signal,
       });
     } catch (error) {
@@ -146,4 +128,4 @@ export async function testOpenAIRealtimeConnection(
   return { provider: 'OpenAI', connected: true, modelAccess: secret.modelAccess };
 }
 
-export { accessErrorCode as classifyOpenAIModelAccessError, sessionPayload as buildRealtimeSessionPayload };
+export { accessErrorCode as classifyOpenAIModelAccessError, buildRealtimeSessionPayload };

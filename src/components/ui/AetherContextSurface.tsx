@@ -17,26 +17,26 @@ export const AetherContextSurface: React.FC<AetherContextSurfaceProps> = ({
   children,
   style,
   contentStyle,
-  borderRadius = Radius.xl,
-  width = 220,
+  borderRadius = Radius.lg,
+  width = 210,
 }) => {
   const isDark = useIsDark();
 
   return (
     <Animated.View
-      entering={FadeIn.duration(150)}
-      exiting={FadeOut.duration(100)}
+      entering={FadeIn.duration(140)}
+      exiting={FadeOut.duration(90)}
       style={[styles.animatedWrapper, { width }, style]}
     >
       <GlassSurface
         borderRadius={borderRadius}
-        intensity={60}
+        intensity={65}
         tier="A"
         style={styles.surface}
         contentStyle={[
           styles.content,
           {
-            backgroundColor: isDark ? 'rgba(22, 22, 26, 0.88)' : 'rgba(250, 250, 252, 0.92)',
+            backgroundColor: isDark ? 'rgba(24, 24, 28, 0.92)' : 'rgba(252, 252, 254, 0.94)',
           },
           contentStyle,
         ]}
@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
   animatedWrapper: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
     zIndex: 1000,
   },
   surface: {
@@ -66,3 +66,4 @@ const styles = StyleSheet.create({
     borderWidth: Hairline.width,
   },
 });
+

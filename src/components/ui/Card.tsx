@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
 import { GlassSurface } from './GlassSurface';
-import { Colors, Motion, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Hairline, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
 interface CardBaseProps {
@@ -26,7 +26,7 @@ export const Card: React.FC<CardProps> = ({
   variant = 'elevated',
   style,
   padding = Spacing.lg,
-  borderRadius = Radius.lg,
+  borderRadius = Radius.xl,
   accessibilityLabel,
   accessibilityHint,
 }) => {
@@ -38,20 +38,20 @@ export const Card: React.FC<CardProps> = ({
         return {
           backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          borderWidth: 1,
+          borderWidth: Hairline.width,
         };
       case 'glass':
         return {
           backgroundColor: 'transparent',
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          borderWidth: 1,
+          borderWidth: Hairline.width,
         };
       case 'outline':
       default:
         return {
           backgroundColor: 'transparent',
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          borderWidth: 1,
+          borderWidth: Hairline.width,
         };
     }
   };

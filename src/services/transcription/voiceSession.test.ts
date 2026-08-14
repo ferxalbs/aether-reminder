@@ -122,6 +122,29 @@ describe('VoiceSession orchestration', () => {
     expect(h.session.snapshot.state).toBe('finalizing');
   });
 
+  test('fails instead of dropping audio when the pre-connect buffer is full', async () => {
+    let releaseSecret = () => undefined;
+    const secretGate = new Promise<void>((resolve) => { releaseSecret = resolve; });
+    const h = harness({
+      maxPreconnectBytes: 2,
+      clientSecrets: {
+        create: async () => {
+          await secretGate;
+          return { value: 'ephemeral', expiresAt: Date.now() / 1000 + 60, modelAccess: 'MODEL_EXISTS' };
+        },
+      },
+    });
+    const starting = h.session.start();
+    await tick();
+    h.capture.emit(pcm([1, 2, 3, 4]));
+    await tick();
+    expect(h.session.snapshot.state).toBe('connection_failed');
+    expect(h.session.snapshot.error?.code).toBe('REALTIME_BACKPRESSURE');
+    expect(h.capture.stops).toBe(1);
+    releaseSecret();
+    await starting;
+  });
+
   test('uses only the exact completed transcript for the parser handoff', async () => {
     const h = harness();
     await h.session.start();
@@ -131,6 +154,11 @@ describe('VoiceSession orchestration', () => {
       type: 'completed',
       itemId: 'final-item',
       transcript: ' Remind me tomorrow at nine to review the report ',
+    });
+    h.transports[0].emit({
+      type: 'completed',
+      itemId: 'final-item',
+      transcript: 'duplicate completion must not be handed off',
     });
     await tick();
     expect(h.transcripts).toEqual([' Remind me tomorrow at nine to review the report ']);

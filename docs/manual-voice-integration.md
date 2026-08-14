@@ -1,8 +1,10 @@
 # Manual GPT Live Transcribe integration test
 
-This test is intentionally gated and must not run in CI. It requires a current
-Expo development build, a physical iOS or Android device, network access, and a
-user-provided OpenAI API key saved through AETHER Settings.
+This test is intentionally gated and must not run in CI. It exercises the real
+OpenAI endpoint from the Bun test process; it requires network access and an
+explicitly supplied OpenAI API key. It does not use SecureStore and does not
+claim native-device evidence. The separate checklist below covers physical
+Expo development builds.
 
 ## Development diagnostic output
 
@@ -61,7 +63,7 @@ file or an `EXPO_PUBLIC_` variable.
     `cleanupCompleted: true`.
 13. Cancel and immediately reopen voice capture. Repeat ten open/stop/cancel loops,
     background the app once, exercise Android Back, and verify the microphone,
-    WebRTC data channel, peer connection, and audio session are released after each path.
+    WebSocket, and audio session are released after each path.
 
 For a failure, preserve the full set of lines for one `sessionId`, plus the visible UI
 error. The last successful stage identifies the boundary:
@@ -70,18 +72,18 @@ error. The last successful stage identifies the boundary:
 - No `microphone_stream_started`: Expo native PCM stream failed to start.
 - No `audio_format_detected` or `pcm_progress`: the stream started but delivered no buffer.
 - `credential_request_failed`: use its safe `errorCode` and `requestId` for OpenAI support.
-- No `webrtc_call_succeeded`: the authenticated `/v1/realtime/calls` SDP exchange failed.
-- `webrtc_call_succeeded` but no `data_channel_open`: WebRTC negotiation completed but
-  the ordered `oai-events` channel did not open.
-- A terminal `peer_connection_state` of `disconnected`, `failed`, or `closed` before
-  completion identifies a network or native WebRTC failure.
+- No `websocket_open`: the ephemeral-key WebSocket connection failed.
+- `websocket_open` but no `session_configuration_accepted`: OpenAI rejected or did
+  not acknowledge the current transcription session configuration.
+- `websocket_closed` before completion with `expected: false` identifies a network
+  or provider connection failure.
 - `session_configuration_rejected`: OpenAI rejected the session configuration.
-- No `audio_append_progress`: normalized PCM did not reach the data-channel queue.
+- No `audio_append_progress`: normalized PCM did not reach the WebSocket queue.
 - No `commit_sent`: manual stop did not flush/commit.
 - Deltas but no `transcription_completed`: finalization failed or timed out.
 - `transcription_completed` but no `parser_handoff`: final transcript reconciliation failed.
 - `parserHandoffCount` other than `1`: do not commit; report the complete diagnostic session.
-- No `cleanup_completed`: microphone/WebRTC/audio-session cleanup did not finish.
+- No `cleanup_completed`: microphone/WebSocket/audio-session cleanup did not finish.
 
 Record the device, OS, development-build identifier, OpenAI project tier, exact
 provider error (if any), and observed final transcript in the validation report.

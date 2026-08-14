@@ -29,6 +29,7 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  pill?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -43,6 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   disabled = false,
   fullWidth = false,
+  pill = false,
   style,
   accessibilityLabel,
   accessibilityHint,
@@ -99,20 +101,21 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getSizeStyle = () => {
+    const baseRadius = pill ? Radius.pill : size === "sm" ? Radius.md : size === "lg" ? Radius.xl : Radius.lg;
     switch (size) {
       case "sm":
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
-          borderRadius: Radius.sm,
+          borderRadius: baseRadius,
         };
       case "lg":
         return {
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: Spacing.md,
           paddingHorizontal: Spacing.xl,
-          borderRadius: Radius.lg,
+          borderRadius: baseRadius,
         };
       case "md":
       default:
@@ -120,7 +123,7 @@ export const Button: React.FC<ButtonProps> = ({
           minHeight: getMinimumTouchTarget(Platform.OS),
           paddingVertical: Spacing.sm,
           paddingHorizontal: Spacing.lg,
-          borderRadius: Radius.md,
+          borderRadius: baseRadius,
         };
     }
   };

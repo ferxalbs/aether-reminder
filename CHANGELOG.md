@@ -2,6 +2,41 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.13 (1) [Realtime WebSocket Transcription]
+
+### Native PCM transport rebuilt around the current OpenAI protocol
+
+- Replaced the invalid WebRTC/DataChannel transcription path with the single
+  `OpenAIRealtimeWebSocketTransport` path. The prior SDP offer had no audio
+  media section while manually captured PCM was sent through a DataChannel, so
+  OpenAI correctly rejected it as `invalid_offer`.
+- Preserved Expo/native PCM capture and `Pcm16StreamNormalizer` ownership:
+  mono, little-endian PCM16 at 24 kHz now enters bounded WebSocket append
+  packets and explicit manual commit for `gpt-live-transcribe`.
+- Kept the BYOK standard key limited to the HTTPS
+  `/v1/realtime/client_secrets` request. The transport receives only the
+  short-lived secret and sends it through the documented WebSocket
+  subprotocol.
+- Added explicit WebSocket lifecycle states, configuration/connection/final
+  transcript timeouts, bounded pre-connect and send buffering, typed
+  backpressure/protocol failures, deterministic cancellation, stale-socket
+  rejection, and safe counter-only diagnostics.
+
+### Protocol-contract coverage and validation boundaries
+
+- Replaced arbitrary SDP mocks with WebSocket contract tests that assert the
+  exact session payload, current event names, Base64 bytes, packet ordering,
+  commit lifecycle, delta/completion authority, provider failures, malformed
+  events, cancellation, timeouts, backpressure, cleanup, and diagnostics
+  privacy.
+- Added a gated live test that requests the same client secret as the app,
+  opens the real Realtime WebSocket, sends deterministic PCM, commits, and
+  waits for a real completion or provider response. It is skipped unless
+  `RUN_AETHER_VOICE_INTEGRATION=1` and `OPENAI_API_KEY` are explicitly set.
+- Updated [`docs/voice-subsystem.md`](docs/voice-subsystem.md), architecture
+  notes, and the manual validation checklist. Unit/static validation does not
+  claim live OpenAI or physical Android/iOS/iPadOS evidence.
+
 ## Unreleased - 2026.08.12 (2) [Universal Capture Closure and GA Validation Gates]
 
 ### Persistent native and GA validation debt

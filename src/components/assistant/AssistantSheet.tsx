@@ -7,10 +7,10 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Check, ChevronDown, ChevronUp, X } from 'lucide-react-native';
+import { AlertCircle, Check, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Hairline, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '@/components/ui/Typography';
@@ -172,7 +172,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   const voiceFailed = isVoiceFailureState(voiceState) && Boolean(voiceError);
   const targetHeight =
     surface === 'opening' || surface === 'compact'
-        ? voiceActive ? 260 : voiceError ? 220 : 128
+        ? voiceActive ? (voiceTranscript ? 220 : 175) : voiceError ? 175 : 128
       : surface === 'medium'
         ? Math.min(windowWidth >= 760 ? 520 : 480, windowHeight * 0.62)
         : surface === 'full'
@@ -181,12 +181,12 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 
   useEffect(() => {
     height.value = reduceMotion
-      ? withTiming(targetHeight, { duration: 140 })
-      : withSpring(targetHeight, { damping: 24, stiffness: 240, mass: 0.8 });
+      ? withTiming(targetHeight, { duration: 120 })
+      : withSpring(targetHeight, { damping: 28, stiffness: 300, mass: 0.7 });
   }, [height, reduceMotion, targetHeight]);
 
   useEffect(() => {
-    keyboardShift.value = withTiming(keyboardOffset, { duration: reduceMotion ? 120 : 220 });
+    keyboardShift.value = withTiming(keyboardOffset, { duration: reduceMotion ? 100 : 180 });
   }, [keyboardOffset, keyboardShift, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
@@ -200,12 +200,12 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
       style={[styles.wrapper, animatedBottomStyle, animatedStyle]}
       pointerEvents="box-none"
     >
-      <AssistantMaterial style={styles.sheet} borderRadius={Radius.xl} blurTarget={blurTarget}>
+      <AssistantMaterial style={styles.sheet} borderRadius={24} blurTarget={blurTarget}>
         <View style={styles.keyboardView}>
           {showHeader ? (
             <View style={styles.header}>
               <View style={styles.headerTitle}>
-                <View style={[styles.statusMark, { backgroundColor: semanticState === 'error' ? (isDark ? Colors.white : Colors.black) : isDark ? Colors.white : Colors.black }]} />
+                <View style={[styles.statusMark, { backgroundColor: isDark ? Colors.white : Colors.black }]} />
                 <View>
                   <Typography variant="bodyBold">{voiceActive || voiceFailed ? 'Voice reminder' : 'AETHER'}</Typography>
                   <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessibilityLiveRegion="polite">
@@ -220,10 +220,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   accessibilityLabel={surface === 'full' ? 'Collapse assistant conversation' : 'Expand assistant conversation'}
                   style={styles.headerButton}
                 >
-                  {surface === 'full' ? <ChevronDown size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} /> : <ChevronUp size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />}
+                  {surface === 'full' ? <ChevronDown size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} strokeWidth={2.2} /> : <ChevronUp size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} strokeWidth={2.2} />}
                 </Pressable>
                 <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close assistant" style={styles.headerButton}>
-                  <X size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} />
+                  <X size={19} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} strokeWidth={2.2} />
                 </Pressable>
               </View>
             </View>
@@ -275,8 +275,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                         {pendingConfirmation.reason}
                       </Typography>
                       <View style={styles.confirmationActions}>
-                        <Button label="Cancel" variant="secondary" size="sm" onPress={onCancelConfirmation} style={styles.confirmationButton} />
-                        <Button label="Confirm" variant="primary" size="sm" onPress={onConfirm} loading={isRunning} style={styles.confirmationButton} />
+                        <Button label="Cancel" variant="secondary" pill size="sm" onPress={onCancelConfirmation} style={styles.confirmationButton} />
+                        <Button label="Confirm" variant="primary" pill size="sm" onPress={onConfirm} loading={isRunning} style={styles.confirmationButton} />
                       </View>
                     </View>
                   ) : null}
@@ -284,7 +284,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   {error ? (
                     <View accessibilityLiveRegion="assertive" style={styles.errorMessage}>
                       <Text style={[styles.errorText, { color: isDark ? Colors.white : Colors.black }]}>{error}</Text>
-                      {canRetry ? <Button label="Retry" variant="secondary" size="sm" onPress={onRetry} loading={isRunning} style={styles.retryButton} /> : null}
+                      {canRetry ? <Button label="Retry" variant="secondary" pill size="sm" onPress={onRetry} loading={isRunning} style={styles.retryButton} /> : null}
                     </View>
                   ) : null}
                   </View>
@@ -294,7 +294,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 
           <View style={styles.composerContainer}>
             {voiceActive ? (
-              <View style={[styles.voiceControls, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight, borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: 1 }]}>
+              <View style={[styles.voiceControls, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)', borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: Hairline.width }]}>
                 <View style={styles.voiceStatusRow}>
                   <View style={styles.voiceStatusCopy}>
                     <Typography variant="bodyBold">{
@@ -304,7 +304,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                             : voiceState === 'parsing' ? 'Understanding reminder…'
                               : 'Finalizing…'
                     }</Typography>
-                    <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                    <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
                       Say the reminder, date, and time in one sentence.
                     </Typography>
                   </View>
@@ -313,9 +313,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 {voiceTranscript ? <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} numberOfLines={3}>{voiceTranscript}</Typography> : null}
                 {voiceLocked || voiceState === 'connecting' || voiceState === 'checking_permission' ? (
                   <View style={styles.voiceActions}>
-                    <Button label="Cancel" variant="secondary" size="sm" onPress={onVoiceCancel} />
+                    <Button label="Cancel" variant="secondary" pill size="sm" onPress={onVoiceCancel} />
                     {voiceState === 'listening' ? (
-                      <Button label="Stop & Send" variant="primary" size="sm" onPress={onVoiceStop} />
+                      <Button label="Stop & Send" variant="primary" pill size="sm" onPress={onVoiceStop} />
                     ) : null}
                   </View>
                 ) : null}
@@ -323,13 +323,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
             ) : null}
             {voiceError ? (
               <View accessibilityLiveRegion="assertive" style={styles.voiceError}>
-                <Typography variant="bodyBold">{voiceErrorTitle}</Typography>
-                <Text style={[styles.errorText, { color: isDark ? Colors.white : Colors.black }]}>{voiceError}</Text>
+                <View style={styles.voiceErrorHeader}>
+                  <AlertCircle size={17} color={isDark ? Colors.white : Colors.black} strokeWidth={2.2} />
+                  <Typography variant="bodyBold">{voiceErrorTitle}</Typography>
+                </View>
+                <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} style={styles.errorText}>
+                  {voiceError}
+                </Typography>
                 <View style={styles.voiceErrorActions}>
-                  {voiceCanRetry ? <Button label="Retry" variant="secondary" size="sm" onPress={onVoiceRetry} /> : null}
-                  {voiceNeedsSystemSettings ? <Button label="Settings" variant="secondary" size="sm" onPress={onVoiceOpenSettings} /> : null}
-                  {voiceNeedsAppSettings ? <Button label="Settings" variant="secondary" size="sm" onPress={onVoiceOpenAppSettings} /> : null}
-                  <Button label="Dismiss" variant="secondary" size="sm" onPress={onVoiceDismiss} />
+                  {voiceCanRetry ? <Button label="Retry" variant="primary" pill size="sm" onPress={onVoiceRetry} /> : null}
+                  {voiceNeedsSystemSettings ? <Button label="Settings" variant="secondary" pill size="sm" onPress={onVoiceOpenSettings} /> : null}
+                  {voiceNeedsAppSettings ? <Button label="Settings" variant="secondary" pill size="sm" onPress={onVoiceOpenAppSettings} /> : null}
+                  <Button label="Dismiss" variant="ghost" pill size="sm" onPress={onVoiceDismiss} />
                 </View>
               </View>
             ) : null}
@@ -439,29 +444,29 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '88%',
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    borderRadius: Radius.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
   userBubble: {
-    borderBottomRightRadius: Radius.sm,
+    borderBottomRightRadius: Radius.xs,
   },
   assistantBubble: {
-    borderBottomLeftRadius: Radius.sm,
+    borderBottomLeftRadius: Radius.xs,
   },
   receipt: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
+    borderWidth: Hairline.width,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
   },
   receiptIcon: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     borderRadius: Radius.pill,
-    borderWidth: 1,
+    borderWidth: Hairline.width,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -500,23 +505,31 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xs,
   },
   voiceControls: {
-    borderRadius: Radius.lg,
-    padding: Spacing.sm,
+    borderRadius: Radius.xl,
+    padding: Spacing.md,
     marginBottom: Spacing.xs,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   voiceActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   voiceError: {
-    paddingVertical: Spacing.xs,
-    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  voiceErrorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   voiceErrorActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
 });

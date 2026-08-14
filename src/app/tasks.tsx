@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { KeyboardAvoidingView, Platform, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
@@ -128,69 +128,75 @@ export default function ScheduleScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <TaskList
-        tasks={upcomingTasks}
-        onToggle={handleToggle}
-        onDelete={handleDelete}
-        onPress={openEditor}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingHorizontal: horizontalPadding,
-            maxWidth: LayoutTokens.contentMaxWidth,
-            paddingBottom: geometry.contentBottomInset,
-          },
-        ]}
-        header={
-          <View style={styles.headerContent}>
-            <View style={styles.header}>
-              <Typography variant="display">Schedule</Typography>
-            </View>
-
-            {error ? (
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.white : Colors.black}
-                style={styles.error}
-              >
-                {error}
-              </Typography>
-            ) : null}
-          </View>
-        }
-        empty={
-          status !== 'loading' ? (
-            <View style={styles.emptyState}>
-              <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                Nothing scheduled ahead.
-              </Typography>
-            </View>
-          ) : null
-        }
-      />
-
-      {!assistantActive && (
-      <View
-        style={[
-          styles.composerWrap,
-          { 
-            paddingHorizontal: horizontalPadding,
-            bottom: geometry.composerBottom,
-          },
-        ]}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
-        <AetherComposer
-          value={quickTitle}
-          onChangeText={setQuickTitle}
-          onSubmit={(text) => void handleQuickCapture(text)}
-          onVoicePress={startVoiceAssistant}
-          onAddDate={() => openEditor()}
-          onSetPriority={() => openEditor()}
-          onAddLocation={() => openEditor()}
-          onAttachFile={() => openEditor()}
+        <TaskList
+          tasks={upcomingTasks}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+          onPress={openEditor}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingHorizontal: horizontalPadding,
+              maxWidth: LayoutTokens.contentMaxWidth,
+              paddingBottom: geometry.contentBottomInset,
+            },
+          ]}
+          header={
+            <View style={styles.headerContent}>
+              <View style={styles.header}>
+                <Typography variant="display">Schedule</Typography>
+              </View>
+
+              {error ? (
+                <Typography
+                  variant="caption"
+                  color={isDark ? Colors.white : Colors.black}
+                  style={styles.error}
+                >
+                  {error}
+                </Typography>
+              ) : null}
+            </View>
+          }
+          empty={
+            status !== 'loading' ? (
+              <View style={styles.emptyState}>
+                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                  Nothing scheduled ahead.
+                </Typography>
+              </View>
+            ) : null
+          }
         />
-      </View>
-      )}
+
+        {!assistantActive && (
+          <View
+            style={[
+              styles.composerWrap,
+              {
+                paddingHorizontal: horizontalPadding,
+                bottom: geometry.composerBottom,
+              },
+            ]}
+          >
+            <AetherComposer
+              value={quickTitle}
+              onChangeText={setQuickTitle}
+              onSubmit={(text) => void handleQuickCapture(text)}
+              onVoicePress={startVoiceAssistant}
+              onAddDate={() => openEditor()}
+              onSetPriority={() => openEditor()}
+              onAddLocation={() => openEditor()}
+              onAttachFile={() => openEditor()}
+            />
+          </View>
+        )}
+      </KeyboardAvoidingView>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -203,6 +209,9 @@ export default function ScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },

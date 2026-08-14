@@ -1,14 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  Pressable,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
 import { ArrowUp } from 'lucide-react-native';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Hairline, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from '@/components/ui/Typography';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { AssistantVoiceButton } from './AssistantVoiceButton';
 import type { VoiceState } from './VoiceController';
 
@@ -64,7 +63,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}
-        placeholder="Ask anything…"
+        placeholder="Ask anything, or tap mic…"
         placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
         multiline
         maxLength={2000}
@@ -80,26 +79,21 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         style={[styles.input, { color: foreground }]}
       />
       {hasText ? (
-        <Pressable
+        <AnimatedPressable
           onPress={onSubmit}
           disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel="Send message"
           accessibilityState={{ disabled }}
-          style={({ pressed }) => [
+          scaleTo={Motion.iconPressScale}
+          style={[
             styles.sendButton,
             { backgroundColor: isDark ? Colors.white : Colors.black },
-            pressed && styles.pressed,
             disabled && styles.disabled,
           ]}
         >
           <ArrowUp size={18} color={isDark ? Colors.black : Colors.white} strokeWidth={2.8} />
-        </Pressable>
-      ) : null}
-      {!hasText ? (
-        <Typography variant="tiny" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.hint}>
-          Tap microphone to speak
-        </Typography>
+        </AnimatedPressable>
       ) : null}
     </View>
   );
@@ -107,13 +101,13 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
 
 const styles = StyleSheet.create({
   composer: {
-    minHeight: 54,
-    maxHeight: 132,
+    minHeight: 52,
+    maxHeight: 128,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: Hairline.width,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingLeft: Spacing.md,
+    paddingLeft: Spacing.sm,
     paddingRight: Spacing.xs,
     paddingVertical: Spacing.xs,
     gap: Spacing.xs,
@@ -121,28 +115,23 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: 40,
-    maxHeight: 112,
+    maxHeight: 110,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 21,
     paddingTop: 9,
     paddingBottom: 9,
+    paddingHorizontal: Spacing.xs,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
+    width: 38,
+    height: 38,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  hint: {
-    position: 'absolute',
-    right: 50,
-    bottom: 14,
-  },
-  pressed: {
-    transform: [{ scale: 0.94 }],
+    marginBottom: 1,
   },
   disabled: {
     opacity: 0.5,
   },
 });
+

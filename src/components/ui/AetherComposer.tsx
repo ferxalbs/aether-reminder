@@ -8,12 +8,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Mic, Plus, Send } from 'lucide-react-native';
+import { Mic, Plus, ArrowUp } from 'lucide-react-native';
 import { GlassSurface } from './GlassSurface';
+import { AnimatedPressable } from './AnimatedPressable';
 import { AetherQuickActionsMenu } from './AetherQuickActionsMenu';
-import { LayoutTokens, Radius, Spacing } from '@/theme/tokens';
+import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useSemanticColors } from '@/theme/useSemanticColors';
-import { useIsDark } from '@/theme/useResolvedTheme';
 
 export interface AetherComposerProps {
   value?: string;
@@ -40,7 +40,6 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 }) => {
   const [internalValue, setInternalValue] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
-  const isDark = useIsDark();
   const colors = useSemanticColors();
 
   useEffect(() => {
@@ -70,16 +69,24 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
   return (
     <View style={styles.host} pointerEvents="box-none">
+      {/* Background dismiss for quick actions menu */}
       {menuOpen ? (
-        <View style={styles.menuAnchor}>
-          <AetherQuickActionsMenu
-            onAddDate={onAddDate}
-            onSetPriority={onSetPriority}
-            onAddLocation={onAddLocation}
-            onAttachFile={onAttachFile}
-            onClose={() => setMenuOpen(false)}
+        <>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setMenuOpen(false)}
+            accessibilityLabel="Close menu"
           />
-        </View>
+          <View style={styles.menuAnchor}>
+            <AetherQuickActionsMenu
+              onAddDate={onAddDate}
+              onSetPriority={onSetPriority}
+              onAddLocation={onAddLocation}
+              onAttachFile={onAttachFile}
+              onClose={() => setMenuOpen(false)}
+            />
+          </View>
+        </>
       ) : null}
 
       <GlassSurface
@@ -90,17 +97,15 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
         contentStyle={styles.content}
       >
         {/* Plus quick actions button */}
-        <Pressable
+        <AnimatedPressable
           onPress={() => setMenuOpen((current) => !current)}
           accessibilityRole="button"
           accessibilityLabel="Quick actions"
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' },
-          ]}
+          scaleTo={Motion.iconPressScale}
+          style={styles.iconButton}
         >
           <Plus size={20} color={colors.textPrimary} strokeWidth={2.2} />
-        </Pressable>
+        </AnimatedPressable>
 
         {/* Text Input */}
         <TextInput
@@ -119,30 +124,28 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
         {/* Voice or Send Action */}
         {hasText ? (
-          <Pressable
+          <AnimatedPressable
             onPress={handleSubmit}
             accessibilityRole="button"
             accessibilityLabel="Create reminder"
-            style={({ pressed }) => [
+            scaleTo={Motion.iconPressScale}
+            style={[
               styles.sendButton,
               { backgroundColor: colors.interactive },
-              pressed && { opacity: 0.8 },
             ]}
           >
-            <Send size={16} color={colors.interactiveForeground} strokeWidth={2.4} />
-          </Pressable>
+            <ArrowUp size={18} color={colors.interactiveForeground} strokeWidth={2.8} />
+          </AnimatedPressable>
         ) : (
-          <Pressable
+          <AnimatedPressable
             onPress={onVoicePress}
             accessibilityRole="button"
             accessibilityLabel="Speak reminder"
-            style={({ pressed }) => [
-              styles.iconButton,
-              pressed && { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' },
-            ]}
+            scaleTo={Motion.iconPressScale}
+            style={styles.iconButton}
           >
             <Mic size={20} color={colors.textPrimary} strokeWidth={2} />
-          </Pressable>
+          </AnimatedPressable>
         )}
       </GlassSurface>
     </View>
@@ -195,8 +198,9 @@ const styles = StyleSheet.create({
   },
   menuAnchor: {
     position: 'absolute',
-    bottom: LayoutTokens.composerHeight + 8,
-    left: 8,
+    bottom: LayoutTokens.composerHeight + 10,
+    left: 4,
     zIndex: 1000,
   },
 });
+

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { KeyboardAvoidingView, Platform, StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search } from 'lucide-react-native';
@@ -140,97 +140,99 @@ export default function RemindersScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <TaskList
-        tasks={visibleTasks}
-        onToggle={handleToggle}
-        onDelete={handleDelete}
-        onPress={openEditor}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingHorizontal: horizontalPadding,
-            maxWidth: LayoutTokens.contentMaxWidth,
-            paddingBottom: geometry.contentBottomInset,
-          },
-        ]}
-        header={
-          <View style={styles.headerContent}>
-            <View style={styles.header}>
-              <Typography variant="display">Reminders</Typography>
-            </View>
-
-            {allTasks.length > 3 ? (
-              <View
-                style={[
-                  styles.searchField,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                  },
-                ]}
-              >
-                <Search
-                  size={17}
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-                  strokeWidth={2}
-                />
-                <TextInput
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Search reminders…"
-                  placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
-                  returnKeyType="search"
-                  clearButtonMode="while-editing"
-                  accessibilityLabel="Search all reminders"
-                  style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
-                />
-              </View>
-            ) : null}
-
-            {error ? (
-              <Typography
-                variant="caption"
-                color={isDark ? Colors.white : Colors.black}
-                style={styles.error}
-              >
-                {error}
-              </Typography>
-            ) : null}
-          </View>
-        }
-        empty={
-          status !== 'loading' ? (
-            <View style={styles.emptyState}>
-              <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                {query.trim() ? 'No reminders found.' : 'Your library is empty.'}
-              </Typography>
-            </View>
-          ) : null
-        }
-      />
-
-      {!assistantActive && (
-      <View
-        style={[
-          styles.composerWrap,
-          { 
-            paddingHorizontal: horizontalPadding,
-            bottom: geometry.composerBottom,
-          },
-        ]}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
-        <AetherComposer
-          value={quickTitle}
-          onChangeText={setQuickTitle}
-          onSubmit={(text) => void handleQuickCapture(text)}
-          onVoicePress={startVoiceAssistant}
-          onAddDate={() => openEditor()}
-          onSetPriority={() => openEditor()}
-          onAddLocation={() => openEditor()}
-          onAttachFile={() => openEditor()}
+        <TaskList
+          tasks={visibleTasks}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+          onPress={openEditor}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingHorizontal: horizontalPadding,
+              maxWidth: LayoutTokens.contentMaxWidth,
+              paddingBottom: geometry.contentBottomInset,
+            },
+          ]}
+          header={
+            <View style={styles.headerContent}>
+              <View style={styles.header}>
+                <Typography variant="display">Reminders</Typography>
+              </View>
+
+              {allTasks.length > 0 ? (
+                <View
+                  style={[
+                    styles.searchField,
+                    {
+                      borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                      backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                    },
+                  ]}
+                >
+                  <Search size={17} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} strokeWidth={2} />
+                  <TextInput
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Search reminders…"
+                    placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+                    returnKeyType="search"
+                    clearButtonMode="while-editing"
+                    accessibilityLabel="Search all reminders"
+                    style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
+                  />
+                </View>
+              ) : null}
+
+              {error ? (
+                <Typography
+                  variant="caption"
+                  color={isDark ? Colors.white : Colors.black}
+                  style={styles.error}
+                >
+                  {error}
+                </Typography>
+              ) : null}
+            </View>
+          }
+          empty={
+            status !== 'loading' ? (
+              <View style={styles.emptyState}>
+                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                  {query.trim() ? 'No reminders found.' : 'Your library is empty.'}
+                </Typography>
+              </View>
+            ) : null
+          }
         />
-      </View>
-      )}
+
+        {!assistantActive && (
+          <View
+            style={[
+              styles.composerWrap,
+              {
+                paddingHorizontal: horizontalPadding,
+                bottom: geometry.composerBottom,
+              },
+            ]}
+          >
+            <AetherComposer
+              value={quickTitle}
+              onChangeText={setQuickTitle}
+              onSubmit={(text) => void handleQuickCapture(text)}
+              onVoicePress={startVoiceAssistant}
+              onAddDate={() => openEditor()}
+              onSetPriority={() => openEditor()}
+              onAddLocation={() => openEditor()}
+              onAttachFile={() => openEditor()}
+            />
+          </View>
+        )}
+      </KeyboardAvoidingView>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -243,6 +245,9 @@ export default function RemindersScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },

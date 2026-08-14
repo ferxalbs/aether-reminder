@@ -211,7 +211,7 @@ export class VoiceSession {
       }
       const limit = this.dependencies.maxPreconnectBytes ?? 384_000;
       if (this.preconnectBytes + normalized.byteLength > limit) {
-        throw new VoiceError('REALTIME_CONNECT_FAILED', 'Connection could not keep up with microphone startup.');
+        throw new VoiceError('REALTIME_BACKPRESSURE', 'Connection could not keep up with microphone startup.');
       }
       this.preconnectAudio.push(normalized);
       this.preconnectBytes += normalized.byteLength;

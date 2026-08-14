@@ -26,6 +26,7 @@ describe('Realtime client-secret authentication', () => {
       requestId: 'req_success',
     });
     expect(authorization).toBe('Bearer user-standard-key');
+    expect(body).not.toContain('user-standard-key');
     expect(JSON.parse(body).session).toEqual(buildRealtimeSessionPayload(defaultRealtimeTranscriptionConfig));
   });
 

@@ -10,7 +10,7 @@ import { usePathname } from 'expo-router';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import {
   OpenAIByokClientSecretProvider,
-  OpenAIRealtimeWebRtcTransport,
+  OpenAIRealtimeWebSocketTransport,
   VoiceSession,
   defaultRealtimeTranscriptionConfig,
   expoAudioSession,
@@ -101,7 +101,7 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     audioSession: expoAudioSession,
     capture,
     clientSecrets: new OpenAIByokClientSecretProvider(openAiKeyLoaded ? openAiApiKey : ''),
-    createTransport: (diagnostics) => new OpenAIRealtimeWebRtcTransport({
+    createTransport: (diagnostics) => new OpenAIRealtimeWebSocketTransport({
       diagnostics,
     }),
     config: defaultRealtimeTranscriptionConfig,

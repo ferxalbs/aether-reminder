@@ -27,7 +27,7 @@ streaming, tools, tool-choice, and structured-output metadata are checked.
 There is no catalog-order fallback and no fabricated model suffix.
 
 OpenAI is used only for realtime transcription with
-`gpt-realtime-whisper`. It emits transcript deltas and a committed final
+`gpt-live-transcribe`. It emits transcript deltas and a committed final
 transcript; only that final text is passed to the OpenRouter `AgentRuntime`.
 OpenAI never receives agent prompts, task tools, or conversational reasoning
 requests.
@@ -63,8 +63,8 @@ tasks.
 
 Expo SDK 57 `expo-audio` `useAudioStream()` supplies little-endian PCM16. The
 normalizer uses the actual native sample rate and channel count to produce mono
-24 kHz PCM16. The mobile transport negotiates OpenAI Realtime through
-`/v1/realtime/calls` using a short-lived client secret, then sends bounded PCM
-append and manual commit events over an ordered WebRTC data channel. The
-application-owned or BYOK standard key never enters that transport. Native
-WebRTC behavior still requires user-driven validation in a new development build.
+24 kHz PCM16. The transport opens `wss://api.openai.com/v1/realtime?model=gpt-live-transcribe`
+with a short-lived client secret in the documented WebSocket subprotocol, then
+sends bounded PCM append and manual commit events. The application-owned or
+BYOK standard key never enters that transport. Native capture and WebSocket
+behavior still require user-driven validation in a new development build.

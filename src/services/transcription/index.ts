@@ -25,10 +25,16 @@ export {
 } from './errors';
 export { ensureMicrophonePermission, type MicrophonePermissionGateway } from './permissions';
 export {
-  OpenAIRealtimeWebRtcTransport,
-  type OpenAIRealtimeWebRtcTransportOptions,
-  type RealtimePeerConnectionFactory,
-} from './openaiRealtimeWebRtcTransport';
+  OpenAIRealtimeWebSocketTransport,
+  type OpenAIRealtimeWebSocketTransportOptions,
+  type RealtimeWebSocketFactory,
+  type RealtimeWebSocketLike,
+  type RealtimeWebSocketState,
+} from './openaiRealtimeWebSocketTransport';
+export {
+  OPENAI_REALTIME_WEBSOCKET_URL,
+  buildRealtimeWebSocketUrl,
+} from './protocol';
 export { TranscriptReconciler } from './reconciler';
 export {
   VoiceStateMachine,

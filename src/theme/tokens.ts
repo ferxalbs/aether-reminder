@@ -147,6 +147,7 @@ export const LayoutTokens = {
 } as const;
 
 export const Radius = {
+  xs: 4,
   sm: 6,
   md: 10,
   lg: 14,
@@ -191,23 +192,28 @@ export const Motion = {
   },
   toggleSpring: {
     damping: 30,
-    stiffness: 220,
-    mass: 1,
+    stiffness: 240,
+    mass: 0.8,
     overshootClamping: true,
   },
   cardSpring: {
-    damping: 35,
-    stiffness: 320,
-    mass: 1,
+    damping: 32,
+    stiffness: 300,
+    mass: 0.8,
+  },
+  sheetSpring: {
+    damping: 28,
+    stiffness: 300,
+    mass: 0.7,
   },
   buttonPressScale: 0.97,
   cardPressScale: 0.98,
-  iconPressScale: 0.93,
+  iconPressScale: 0.94,
   pressScale: 0.96,
   reducedMotionDuration: 120,
   screenSpring: {
     damping: 26,
-    stiffness: 200,
+    stiffness: 220,
     mass: 0.8,
   },
 } as const;
@@ -216,13 +222,13 @@ export const TypographyTokens = {
   display: {
     fontSize: 32,
     lineHeight: 38,
-    letterSpacing: -1.0,
+    letterSpacing: -0.8,
     fontWeight: '700' as const,
   },
   headline: {
     fontSize: 24,
     lineHeight: 30,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     fontWeight: '600' as const,
   },
   title: {
@@ -234,13 +240,13 @@ export const TypographyTokens = {
   body: {
     fontSize: 15,
     lineHeight: 22,
-    letterSpacing: 0,
+    letterSpacing: -0.05,
     fontWeight: '400' as const,
   },
   bodyBold: {
     fontSize: 15,
     lineHeight: 22,
-    letterSpacing: 0,
+    letterSpacing: -0.05,
     fontWeight: '600' as const,
   },
   caption: {

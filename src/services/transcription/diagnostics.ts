@@ -14,13 +14,10 @@ export type VoiceDiagnosticStage =
   | 'credential_request_started'
   | 'credential_request_succeeded'
   | 'credential_request_failed'
-  | 'webrtc_call_connecting'
-  | 'webrtc_call_succeeded'
-  | 'webrtc_call_failed'
-  | 'peer_connection_state'
-  | 'data_channel_open'
-  | 'data_channel_error'
-  | 'data_channel_closed'
+  | 'websocket_connecting'
+  | 'websocket_open'
+  | 'websocket_closed'
+  | 'session_created'
   | 'session_configuration_sent'
   | 'session_configuration_accepted'
   | 'session_configuration_rejected'
@@ -43,11 +40,10 @@ export interface VoiceDiagnosticFields {
   pcmChunksReceived?: number;
   pcmBytesProduced?: number;
   credentialRequest?: 'not_started' | 'pending' | 'succeeded' | 'failed';
-  webRtcCallState?: 'not_started' | 'connecting' | 'succeeded' | 'failed';
-  peerConnectionState?: 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
-  dataChannelState?: 'not_started' | 'connecting' | 'open' | 'error' | 'closed';
+  webSocketState?: 'not_started' | 'connecting' | 'open' | 'closing' | 'closed' | 'failed';
   sessionConfiguration?: 'not_started' | 'pending' | 'accepted' | 'rejected';
   audioAppendCount?: number;
+  audioBytesSubmitted?: number;
   commitSent?: boolean;
   transcriptionDeltaCount?: number;
   transcriptionCompleted?: boolean;
@@ -101,13 +97,12 @@ export class DevelopmentVoiceDiagnostics implements VoiceDiagnosticReporter {
     permissionState: 'unknown',
     microphoneStreamStarted: false,
     credentialRequest: 'not_started',
-    webRtcCallState: 'not_started',
-    peerConnectionState: 'new',
-    dataChannelState: 'not_started',
+    webSocketState: 'not_started',
     sessionConfiguration: 'not_started',
     pcmChunksReceived: 0,
     pcmBytesProduced: 0,
     audioAppendCount: 0,
+    audioBytesSubmitted: 0,
     commitSent: false,
     transcriptionDeltaCount: 0,
     transcriptionCompleted: false,

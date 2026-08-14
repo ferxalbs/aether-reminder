@@ -12,6 +12,9 @@ export type VoiceErrorCode =
   | 'MODEL_TEMPORARILY_UNAVAILABLE'
   | 'REALTIME_CONNECT_FAILED'
   | 'REALTIME_CONNECTION_LOST'
+  | 'REALTIME_TIMEOUT'
+  | 'REALTIME_BACKPRESSURE'
+  | 'REALTIME_PROTOCOL_ERROR'
   | 'TRANSCRIPTION_FAILED'
   | 'TRANSCRIPTION_TIMEOUT'
   | 'EMPTY_TRANSCRIPT'
@@ -68,6 +71,7 @@ export function isRetryableVoiceErrorCode(code: VoiceErrorCode): boolean {
     || code === 'MODEL_TEMPORARILY_UNAVAILABLE'
     || code === 'REALTIME_CONNECT_FAILED'
     || code === 'REALTIME_CONNECTION_LOST'
+    || code === 'REALTIME_TIMEOUT'
     || code === 'TRANSCRIPTION_FAILED'
     || code === 'TRANSCRIPTION_TIMEOUT';
 }
@@ -108,6 +112,12 @@ export function getVoiceErrorMessage(error: VoiceError): string {
       return 'Could not connect to OpenAI realtime transcription. Check your connection.';
     case 'REALTIME_CONNECTION_LOST':
       return 'The realtime transcription connection was interrupted.';
+    case 'REALTIME_TIMEOUT':
+      return 'OpenAI realtime transcription did not respond in time. Try again.';
+    case 'REALTIME_BACKPRESSURE':
+      return 'Realtime transcription could not keep up with microphone audio. Try again.';
+    case 'REALTIME_PROTOCOL_ERROR':
+      return 'OpenAI returned an unexpected realtime protocol response.';
     case 'TRANSCRIPTION_FAILED':
       return 'OpenAI could not transcribe this voice turn.';
     case 'TRANSCRIPTION_TIMEOUT':
