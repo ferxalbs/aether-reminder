@@ -15,6 +15,7 @@ import { useIsDark } from '@/theme/useResolvedTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '@/components/ui/Typography';
 import { Button } from '@/components/ui/Button';
+import { SimpleMarkdown } from '@/components/ui/SimpleMarkdown';
 import { AssistantMaterial } from './AssistantMaterial';
 import { AssistantComposer } from './AssistantComposer';
 import type {
@@ -239,13 +240,20 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               keyExtractor={(message) => message.id}
               renderItem={({ item: message }) => {
                 if (!message.text && !(isRunning && message.role === 'assistant')) return null;
-                return (
-                  <View style={[styles.messageRow, message.role === 'user' && styles.userMessageRow]}>
-                    <View style={[styles.messageBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble, { backgroundColor: message.role === 'user' ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight), borderColor: isDark ? Colors.borderDark : Colors.borderLight, borderWidth: message.role === 'user' ? 0 : 1 }]}>
-                      <Typography variant="body" color={message.role === 'user' ? (isDark ? Colors.black : Colors.white) : undefined}>
-                        {message.text || ' '}
-                      </Typography>
+                
+                if (message.role === 'assistant') {
+                  return (
+                    <View style={styles.assistantMessageBlock}>
+                      <SimpleMarkdown content={message.text || ' '} />
                     </View>
+                  );
+                }
+
+                return (
+                  <View style={styles.userMessageRow}>
+                    <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                      {message.text}
+                    </Typography>
                   </View>
                 );
               }}
@@ -436,23 +444,15 @@ const styles = StyleSheet.create({
   welcome: {
     paddingVertical: Spacing.xl,
   },
-  messageRow: {
-    alignItems: 'flex-start',
-  },
   userMessageRow: {
     alignItems: 'flex-end',
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
-  messageBubble: {
-    maxWidth: '88%',
-    borderRadius: Radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  userBubble: {
-    borderBottomRightRadius: Radius.xs,
-  },
-  assistantBubble: {
-    borderBottomLeftRadius: Radius.xs,
+  assistantMessageBlock: {
+    width: '100%',
+    paddingHorizontal: Spacing.xs,
+    marginBottom: Spacing.lg,
   },
   receipt: {
     flexDirection: 'row',

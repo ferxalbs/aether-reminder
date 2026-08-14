@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
+import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
@@ -128,11 +128,7 @@ export default function ScheduleScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.flex}>
         <TaskList
           tasks={upcomingTasks}
           onToggle={handleToggle}
@@ -153,13 +149,15 @@ export default function ScheduleScreen() {
               </View>
 
               {error ? (
-                <Typography
-                  variant="caption"
-                  color={isDark ? Colors.white : Colors.black}
-                  style={styles.error}
-                >
-                  {error}
-                </Typography>
+                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                  <Typography
+                    variant="caption"
+                    color={isDark ? Colors.white : Colors.black}
+                    accessibilityRole="alert"
+                  >
+                    {error}
+                  </Typography>
+                </View>
               ) : null}
             </View>
           }
@@ -196,7 +194,7 @@ export default function ScheduleScreen() {
             />
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -227,8 +225,12 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
-  error: {
-    marginBottom: Spacing.sm,
+  errorToast: {
+    marginVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.pill,
+    alignSelf: 'flex-start',
   },
   emptyState: {
     paddingTop: Spacing.sm,

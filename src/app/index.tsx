@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
   StyleSheet,
   View,
@@ -10,7 +8,7 @@ import {
 import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Colors, LayoutTokens, Spacing } from '@/theme/tokens';
+import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from '@/components/ui/Typography';
 import { TaskList } from '@/components/ui/TaskList';
@@ -191,11 +189,7 @@ export default function TodayScreen() {
         />
       ) : null}
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.flex}>
         <TaskList
           style={styles.flex}
           tasks={secondaryTodayTasks}
@@ -231,14 +225,15 @@ export default function TodayScreen() {
               />
 
               {error || quickError || attentionError ? (
-                <Typography
-                  variant="caption"
-                  color={isDark ? Colors.white : Colors.black}
-                  style={styles.listError}
-                  accessibilityRole="alert"
-                >
-                  {error || quickError || attentionError}
-                </Typography>
+                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                  <Typography
+                    variant="caption"
+                    color={isDark ? Colors.white : Colors.black}
+                    accessibilityRole="alert"
+                  >
+                    {error || quickError || attentionError}
+                  </Typography>
+                </View>
               ) : null}
             </View>
           }
@@ -282,7 +277,7 @@ export default function TodayScreen() {
           />
         </Animated.View>
         )}
-      </KeyboardAvoidingView>
+      </View>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -320,8 +315,12 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
-  listError: {
-    marginBottom: Spacing.sm,
+  errorToast: {
+    marginVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.pill,
+    alignSelf: 'flex-start',
   },
   emptyState: {
     paddingTop: Spacing.sm,

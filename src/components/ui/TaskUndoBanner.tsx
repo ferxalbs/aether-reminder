@@ -35,40 +35,23 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
         styles.container,
         {
           backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
         },
       ]}
     >
-      <View style={styles.copyRow}>
-        <AlertTriangle size={18} color={textColor} />
-        <View style={styles.copy}>
-          <Typography variant="caption" color={textColor}>
-            {receipt.summary}
-          </Typography>
-          {error ? (
-            <Typography variant="tiny" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-              Undo failed: {error}
-            </Typography>
-          ) : null}
-        </View>
+      <View style={styles.copy}>
+        <Typography variant="caption" color={textColor} numberOfLines={1}>
+          {error ? `Undo failed: ${error}` : receipt.summary}
+        </Typography>
       </View>
-      <View style={styles.actions}>
-        <Button
-          label="Undo"
-          variant="secondary"
-          size="sm"
-          loading={undoing}
-          disabled={undoing}
-          onPress={onUndo}
-        />
-        <Button
-          label="Dismiss"
-          variant="ghost"
-          size="sm"
-          disabled={undoing}
-          onPress={onDismiss}
-        />
-      </View>
+      <Button
+        label="Undo"
+        variant="ghost"
+        size="sm"
+        loading={undoing}
+        disabled={undoing}
+        onPress={onUndo}
+        style={styles.undoButton}
+      />
     </View>
   );
 };
@@ -77,24 +60,18 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: Spacing.md,
     marginTop: Spacing.sm,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderRadius: Radius.lg,
-    gap: Spacing.sm,
-  },
-  copyRow: {
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.xs,
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   copy: {
     flex: 1,
-    gap: 2,
   },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.xs,
+  undoButton: {
+    paddingHorizontal: Spacing.sm,
   },
 });

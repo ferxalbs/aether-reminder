@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  BackHandler,
   Keyboard,
   Platform,
-  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -11,7 +9,6 @@ import {
 import { Mic, Plus, ArrowUp } from 'lucide-react-native';
 import { GlassSurface } from './GlassSurface';
 import { AnimatedPressable } from './AnimatedPressable';
-import { AetherQuickActionsMenu } from './AetherQuickActionsMenu';
 import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useSemanticColors } from '@/theme/useSemanticColors';
 
@@ -39,17 +36,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   disabled = false,
 }) => {
   const [internalValue, setInternalValue] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
   const colors = useSemanticColors();
-
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !menuOpen) return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      setMenuOpen(false);
-      return true;
-    });
-    return () => subscription.remove();
-  }, [menuOpen]);
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
@@ -69,25 +56,6 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
   return (
     <View style={styles.host} pointerEvents="box-none">
-      {/* Background dismiss for quick actions menu */}
-      {menuOpen ? (
-        <>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setMenuOpen(false)}
-            accessibilityLabel="Close menu"
-          />
-          <View style={styles.menuAnchor}>
-            <AetherQuickActionsMenu
-              onAddDate={onAddDate}
-              onSetPriority={onSetPriority}
-              onAddLocation={onAddLocation}
-              onAttachFile={onAttachFile}
-              onClose={() => setMenuOpen(false)}
-            />
-          </View>
-        </>
-      ) : null}
 
       <GlassSurface
         borderRadius={Radius.pill}
@@ -98,9 +66,9 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
       >
         {/* Plus quick actions button */}
         <AnimatedPressable
-          onPress={() => setMenuOpen((current) => !current)}
+          onPress={onAddDate}
           accessibilityRole="button"
-          accessibilityLabel="Quick actions"
+          accessibilityLabel="Open editor"
           scaleTo={Motion.iconPressScale}
           style={styles.iconButton}
         >
@@ -195,12 +163,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,
-  },
-  menuAnchor: {
-    position: 'absolute',
-    bottom: LayoutTokens.composerHeight + 10,
-    left: 4,
-    zIndex: 1000,
   },
 });
 

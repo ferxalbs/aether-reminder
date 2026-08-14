@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search } from 'lucide-react-native';
@@ -140,11 +140,7 @@ export default function RemindersScreen() {
           onDismiss={dismissUndo}
         />
       ) : null}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.flex}>
         <TaskList
           tasks={visibleTasks}
           onToggle={handleToggle}
@@ -189,13 +185,15 @@ export default function RemindersScreen() {
               ) : null}
 
               {error ? (
-                <Typography
-                  variant="caption"
-                  color={isDark ? Colors.white : Colors.black}
-                  style={styles.error}
-                >
-                  {error}
-                </Typography>
+                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                  <Typography
+                    variant="caption"
+                    color={isDark ? Colors.white : Colors.black}
+                    accessibilityRole="alert"
+                  >
+                    {error}
+                  </Typography>
+                </View>
               ) : null}
             </View>
           }
@@ -232,7 +230,7 @@ export default function RemindersScreen() {
             />
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
 
       <TaskEditorSheet
         visible={editorVisible}
@@ -278,8 +276,12 @@ const styles = StyleSheet.create({
     height: 42,
     fontSize: 15,
   },
-  error: {
-    marginBottom: Spacing.md,
+  errorToast: {
+    marginVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.pill,
+    alignSelf: 'flex-start',
   },
   emptyState: {
     paddingTop: Spacing.sm,

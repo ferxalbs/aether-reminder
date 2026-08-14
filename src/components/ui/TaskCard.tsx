@@ -102,8 +102,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   const cardStyle = [
     styles.card,
     {
-      backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
-      borderBottomColor: isDark ? Colors.borderDark : Colors.borderLight,
+      backgroundColor: 'transparent',
     },
   ];
 
@@ -136,7 +135,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
       <View style={styles.metaRow}>
         {task.aiSuggested && (
-          <View style={[styles.badge, { borderColor: isDark ? Colors.borderDark : Colors.borderLight, backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+          <View style={[styles.badge, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
             <Sparkles size={11} color={isDark ? Colors.white : Colors.black} />
             <Typography variant="tiny" color={isDark ? Colors.textDark : Colors.textLight} style={styles.badgeText}>
               AI Suggested
@@ -153,17 +152,16 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
           </View>
         )}
 
-        <View
-          style={[
-            styles.priorityBadge,
-            {
-              backgroundColor: isDark
-                ? Colors.surfaceRaisedDark
-                : Colors.surfaceRaisedLight,
-              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-            },
-          ]}
-        >
+          <View
+            style={[
+              styles.priorityBadge,
+              {
+                backgroundColor: isDark
+                  ? Colors.surfaceRaisedDark
+                  : Colors.surfaceRaisedLight,
+              },
+            ]}
+          >
           <Typography
             variant="tiny"
             color={priorityTag.color}
@@ -247,7 +245,6 @@ const styles = StyleSheet.create({
   card: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
   },
   row: {
     flexDirection: 'row',
@@ -301,7 +298,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs + 2,
     paddingVertical: 2,
     borderRadius: Radius.sm,
-    borderWidth: 1,
     gap: 4,
   },
   badgeText: {
@@ -319,6 +315,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs + 2,
     paddingVertical: 2,
     borderRadius: Radius.sm,
-    borderWidth: 1,
   },
 });
