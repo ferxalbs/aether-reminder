@@ -2,6 +2,34 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.13 (2) [Transcription WebSocket Bootstrap]
+
+### Dedicated transcription session no longer uses a conversational model query
+
+- Stopped opening `wss://api.openai.com/v1/realtime?model=gpt-live-transcribe`.
+  That query is the conversational Realtime session selector. Official
+  documentation places `gpt-live-transcribe` only at
+  `session.audio.input.transcription.model` for `session.type = "transcription"`.
+  The dedicated bootstrap is now `?intent=transcription`.
+- The previous physical Android `invalid_model` rejection
+  (`Model "gpt-live-transcribe" is not supported in transcription mode`)
+  happened after `websocket_open` during `session.update`, before any audio
+  append. Capture, PCM, client-secret minting, and WebSocket auth were already
+  healthy.
+- Kept `gpt-live-transcribe` as the only transcription model. Live deltas are
+  accepted while the session is ready. Pre-connect PCM is flushed in order
+  before live packets that arrive during the handoff.
+
+### Protocol regression and live provider staging
+
+- Added a regression that fails if the production URL contains `?model=` or
+  treats `gpt-live-transcribe` as a top-level Realtime model.
+- The gated live test now skips only when `OPENAI_API_KEY` is absent and
+  reports `CLIENT_SECRET` / `WEBSOCKET` / `SESSION_CONFIGURATION` /
+  `AUDIO_APPEND` / `COMMIT` / `TRANSCRIPTION` on failure. It uses the minimum
+  transcription payload first: PCM 24000, `gpt-live-transcribe`,
+  `turn_detection: null`.
+
 ## Unreleased - 2026.08.13 (1) [Realtime WebSocket Transcription]
 
 ### Native PCM transport rebuilt around the current OpenAI protocol

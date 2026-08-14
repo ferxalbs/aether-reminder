@@ -122,6 +122,41 @@ describe('VoiceSession orchestration', () => {
     expect(h.session.snapshot.state).toBe('finalizing');
   });
 
+  test('flushes preconnect PCM in order before live packets that arrive during the handoff', async () => {
+    const first = pcm([1]);
+    const duringFlush = pcm([2]);
+    let releaseSecret = () => undefined;
+    const secretGate = new Promise<void>((resolve) => { releaseSecret = resolve; });
+    const h = harness({
+      clientSecrets: {
+        create: async () => {
+          await secretGate;
+          return { value: 'ephemeral', expiresAt: Date.now() / 1000 + 60, modelAccess: 'MODEL_EXISTS' };
+        },
+      },
+      createTransport: () => {
+        const transport = new FakeTransport();
+        const original = transport.appendPcm.bind(transport);
+        transport.appendPcm = (data: ArrayBuffer) => {
+          original(data);
+          if (transport.appends.length === 1) h.capture.emit(duringFlush);
+        };
+        h.transports.push(transport);
+        return transport;
+      },
+    });
+    const starting = h.session.start();
+    await tick();
+    h.capture.emit(first);
+    releaseSecret();
+    await starting;
+    expect(h.session.snapshot.state).toBe('listening');
+    expect(h.transports[0].appends.map((buffer) => [...new Uint8Array(buffer)])).toEqual([
+      [...new Uint8Array(first)],
+      [...new Uint8Array(duringFlush)],
+    ]);
+  });
+
   test('fails instead of dropping audio when the pre-connect buffer is full', async () => {
     let releaseSecret = () => undefined;
     const secretGate = new Promise<void>((resolve) => { releaseSecret = resolve; });

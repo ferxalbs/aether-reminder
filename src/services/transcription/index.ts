@@ -32,8 +32,13 @@ export {
   type RealtimeWebSocketState,
 } from './openaiRealtimeWebSocketTransport';
 export {
+  OPENAI_REALTIME_TRANSCRIPTION_INTENT,
   OPENAI_REALTIME_WEBSOCKET_URL,
+  buildRealtimeSessionUpdateEvent,
+  buildRealtimeTranscriptionWebSocketUrl,
   buildRealtimeWebSocketUrl,
+  isTranscriptionWebSocketUrl,
+  nestedTranscriptionModel,
 } from './protocol';
 export { TranscriptReconciler } from './reconciler';
 export {
@@ -50,6 +55,7 @@ export {
   REALTIME_PCM_SAMPLE_RATE,
   REALTIME_TRANSCRIPTION_MODEL,
   defaultRealtimeTranscriptionConfig,
+  minimalRealtimeTranscriptionConfig,
   type NativeAudioCapture,
   type RealtimeClientSecret,
   type RealtimeClientSecretProvider,

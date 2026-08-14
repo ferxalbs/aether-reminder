@@ -33,12 +33,17 @@ headers, SecureStore values, PCM/audio bytes, item ids, or transcript text.
 Run only when intentionally testing the configured OpenAI account:
 
 ```bash
-RUN_AETHER_VOICE_INTEGRATION=1 OPENAI_API_KEY=... bun test src/services/transcription/voiceAccess.manual.test.ts
+OPENAI_API_KEY=... bun test src/services/transcription/voiceAccess.manual.test.ts
 ```
 
-The gate creates a short-lived Realtime client secret for the exact production
-session configuration. It does not record audio. Never put the key in a committed
-file or an `EXPO_PUBLIC_` variable.
+The test is skipped when `OPENAI_API_KEY` is absent. When present, it mints a
+transcription client secret, connects with `?intent=transcription` (never
+`?model=gpt-live-transcribe`), sends the minimum `gpt-live-transcribe`
+`session.update`, streams deterministic PCM, commits, and waits for a real
+completion. Failures name the stage: `CLIENT_SECRET`, `WEBSOCKET`,
+`SESSION_CONFIGURATION`, `AUDIO_APPEND`, `COMMIT`, or `TRANSCRIPTION`. It does
+not record microphone audio. Never put the key in a committed file or an
+`EXPO_PUBLIC_` variable.
 
 ## Physical-device microphone flow
 

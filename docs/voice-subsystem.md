@@ -67,11 +67,30 @@ and [client-secret reference](https://developers.openai.com/api/reference/resour
 
 ## Provider session and audio contract
 
-The transport connects to:
+The transport connects to the dedicated transcription WebSocket:
 
 ```text
-wss://api.openai.com/v1/realtime?model=gpt-live-transcribe
+wss://api.openai.com/v1/realtime?intent=transcription
 ```
+
+`gpt-live-transcribe` is the nested transcription model. Official OpenAI
+documentation defines it as the low-latency streaming speech-to-text model
+for dedicated Realtime transcription sessions. AETHER needs live audio to
+text, not speech-to-speech or a voice agent. The model is therefore locked
+and is not a conversational Realtime session model. It must not appear as
+`?model=gpt-live-transcribe`. Official conversational Realtime sessions use
+`?model=<realtime-model>` (for example `gpt-realtime-2.1`). The client secret
+already requests `session.type = "transcription"`; the WebSocket query must
+not override that into a voice-agent session.
+
+Historical failures:
+
+1. WebRTC `invalid_offer` because the SDP offer had no audio media section
+   while PCM was forced through a DataChannel.
+2. WebSocket `invalid_model` because the transcription bootstrap used
+   `?model=gpt-live-transcribe`. OpenAI treated that as a top-level Realtime
+   session model, then rejected `session.update` with
+   `Model "gpt-live-transcribe" is not supported in transcription mode.`
 
 It sends the exact current transcription session shape through
 `session.update`:
@@ -250,8 +269,8 @@ Current evidence is separated by gate:
 - **UNIT VERIFIED**: protocol-contract tests, Base64/packet boundaries,
   backpressure, errors, cancellation, stale events, diagnostics privacy, and
   parser handoff;
-- **LIVE PROVIDER VERIFIED**: only after the explicit gated integration command
-  runs with `RUN_AETHER_VOICE_INTEGRATION=1 OPENAI_API_KEY=...`;
+- **LIVE PROVIDER VERIFIED**: only after the gated integration command runs
+  with `OPENAI_API_KEY=...`;
 - **PHYSICAL ANDROID VERIFIED**: not claimed until a real Android development
   build and device exercise the native PCM stream, WebSocket, stop/commit,
   navigation, cancellation, and Android Back paths;

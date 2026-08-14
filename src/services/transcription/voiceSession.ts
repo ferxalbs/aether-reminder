@@ -47,6 +47,8 @@ export class VoiceSession {
   private normalizer = new Pcm16StreamNormalizer();
   private preconnectAudio: ArrayBuffer[] = [];
   private preconnectBytes = 0;
+  private drainTail: ArrayBuffer[] = [];
+  private audioRouting: 'preconnect' | 'draining' | 'live' = 'preconnect';
   private audioBytes = 0;
   private pcmChunksReceived = 0;
   private parserHandoffCount = 0;
@@ -95,6 +97,8 @@ export class VoiceSession {
     this.normalizer = new Pcm16StreamNormalizer(this.dependencies.config.sampleRate);
     this.preconnectAudio = [];
     this.preconnectBytes = 0;
+    this.drainTail = [];
+    this.audioRouting = 'preconnect';
     this.audioBytes = 0;
     this.pcmChunksReceived = 0;
     this.parserHandoffCount = 0;
@@ -172,9 +176,17 @@ export class VoiceSession {
       await transport.configure(this.dependencies.config);
       if (runId !== this.runId) return;
 
-      for (const packet of this.preconnectAudio) transport.appendPcm(packet);
+      this.audioRouting = 'draining';
+      const startup = this.preconnectAudio;
       this.preconnectAudio = [];
       this.preconnectBytes = 0;
+      for (const packet of startup) transport.appendPcm(packet);
+      while (this.drainTail.length > 0) {
+        const next = this.drainTail;
+        this.drainTail = [];
+        for (const packet of next) transport.appendPcm(packet);
+      }
+      this.audioRouting = 'live';
       this.transition('listening');
     } catch (error) {
       if (runId !== this.runId) return;
@@ -205,8 +217,12 @@ export class VoiceSession {
         });
       }
       this.dependencies.onAudioLevel?.(pcm16AudioLevel(normalized));
-      if (this.transport && this.snapshot.state === 'listening') {
+      if (this.audioRouting === 'live' && this.transport) {
         this.transport.appendPcm(normalized);
+        return;
+      }
+      if (this.audioRouting === 'draining') {
+        this.drainTail.push(normalized);
         return;
       }
       const limit = this.dependencies.maxPreconnectBytes ?? 384_000;
@@ -375,6 +391,8 @@ export class VoiceSession {
       }
       this.preconnectAudio = [];
       this.preconnectBytes = 0;
+      this.drainTail = [];
+      this.audioRouting = 'preconnect';
       this.stopping = false;
       this.diagnostics?.record('cleanup_completed', {
         pcmChunksReceived: this.pcmChunksReceived,

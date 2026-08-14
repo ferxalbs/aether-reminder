@@ -2,8 +2,8 @@ import { pcm16ToBase64 } from './audio';
 import type { VoiceDiagnosticReporter } from './diagnostics';
 import { VoiceError, type VoiceErrorCode } from './errors';
 import {
-  buildRealtimeSessionPayload,
-  buildRealtimeWebSocketUrl,
+  buildRealtimeSessionUpdateEvent,
+  buildRealtimeTranscriptionWebSocketUrl,
 } from './protocol';
 import {
   REALTIME_PCM_SAMPLE_RATE,
@@ -309,7 +309,7 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
 
       try {
         const url = this.options.webSocketUrl
-          ?? buildRealtimeWebSocketUrl(REALTIME_TRANSCRIPTION_MODEL);
+          ?? buildRealtimeTranscriptionWebSocketUrl();
         const socket = this.createWebSocket(url, ['realtime', `openai-insecure-api-key.${secret}`]);
         this.socket = socket;
         socket.onopen = () => {
@@ -384,7 +384,7 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
       sessionConfiguration: 'pending',
       requestedSampleRate: config.sampleRate,
     });
-    const event = { type: 'session.update', session: buildRealtimeSessionPayload(config) };
+    const event = buildRealtimeSessionUpdateEvent(config);
     return new Promise<void>((resolve, reject) => {
       this.resolveConfigure = resolve;
       this.rejectConfigure = reject;
@@ -461,7 +461,9 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
           return;
         }
         case 'conversation.item.input_audio_transcription.delta': {
-          if (this.state !== 'finalizing') throw protocolError('Transcript delta arrived before commit.');
+          if (this.state !== 'ready' && this.state !== 'committing' && this.state !== 'finalizing') {
+            throw protocolError('Transcript delta arrived before the transcription session was ready.');
+          }
           if (typeof event.item_id !== 'string' || !event.item_id
             || typeof event.content_index !== 'number' || !Number.isInteger(event.content_index)
             || typeof event.delta !== 'string') {
@@ -477,7 +479,9 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
           return;
         }
         case 'conversation.item.input_audio_transcription.completed': {
-          if (this.state !== 'finalizing') throw protocolError('Transcript completion arrived before commit.');
+          if (this.state !== 'committing' && this.state !== 'finalizing') {
+            throw protocolError('Transcript completion arrived before commit.');
+          }
           if (typeof event.item_id !== 'string' || !event.item_id
             || typeof event.content_index !== 'number' || !Number.isInteger(event.content_index)
             || typeof event.transcript !== 'string') {

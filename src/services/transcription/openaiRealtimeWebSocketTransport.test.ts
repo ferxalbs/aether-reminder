@@ -117,7 +117,9 @@ describe('OpenAI Realtime WebSocket transport', () => {
     h.socket.open();
     await connecting;
 
-    expect(h.url).toBe('wss://api.openai.com/v1/realtime?model=gpt-live-transcribe');
+    expect(h.url).toBe('wss://api.openai.com/v1/realtime?intent=transcription');
+    expect(h.url).not.toContain('model=');
+    expect(h.url).not.toContain('gpt-live-transcribe');
     expect(h.protocols).toEqual(['realtime', 'openai-insecure-api-key.ephemeral-secret']);
     expect(h.events).toContainEqual({ type: 'connected' });
     expect(h.records).toContainEqual(expect.objectContaining({
@@ -238,11 +240,10 @@ describe('OpenAI Realtime WebSocket transport', () => {
     }));
   });
 
-  test('reconciles official delta and completed events, using completion as authority', async () => {
+  test('accepts live transcript deltas before commit and treats completion as authority', async () => {
     const h = harness();
     await connectedAndConfigured(h);
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
-    h.transport.commit();
     await tick();
     h.socket.receive({
       type: 'conversation.item.input_audio_transcription.delta',
@@ -250,6 +251,14 @@ describe('OpenAI Realtime WebSocket transport', () => {
       content_index: 0,
       delta: 'Remind ',
     });
+    expect(h.transport.currentState).toBe('ready');
+    expect(h.events).toContainEqual({
+      type: 'speechDelta',
+      itemId: 'item-1',
+      delta: 'Remind ',
+    });
+    h.transport.commit();
+    await tick();
     h.socket.receive({
       type: 'conversation.item.input_audio_transcription.delta',
       item_id: 'item-1',
@@ -297,20 +306,44 @@ describe('OpenAI Realtime WebSocket transport', () => {
     }));
 
     const configuration = harness();
-    await connectedAndConfigured(configuration);
+    const opened = configuration.transport.connect('ephemeral-secret');
+    configuration.socket.open();
+    await opened;
+    const configuring = configuration.transport.configure(defaultRealtimeTranscriptionConfig);
     configuration.socket.receive({
       type: 'error',
       event_id: 'evt-1',
       error: {
         type: 'invalid_request_error',
-        code: 'invalid_request_error',
-        message: 'Invalid session configuration.',
-        param: 'session.audio.input',
+        code: 'invalid_model',
+        message: 'Model "gpt-live-transcribe" is not supported in transcription mode.',
+        param: 'session',
+        request_id: 'req_model',
       },
     });
-    expect(configuration.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'SESSION_CONFIGURATION_INVALID' }),
+    await expect(configuring).rejects.toMatchObject({
+      code: 'SESSION_CONFIGURATION_INVALID',
+      providerError: { code: 'invalid_model' },
+    });
+    const failed = configuration.events.find((event) => event.type === 'failed') as {
+      error: {
+        code: string;
+        message: string;
+        providerError?: { code?: string; message?: string; requestId?: string };
+      };
+    };
+    expect(failed.error.code).toBe('SESSION_CONFIGURATION_INVALID');
+    expect(failed.error.message).toBe('Model "gpt-live-transcribe" is not supported in transcription mode.');
+    expect(failed.error.message).not.toBe('gpt-live-transcribe is not supported');
+    expect(failed.error.providerError).toMatchObject({
+      code: 'invalid_model',
+      message: 'Model "gpt-live-transcribe" is not supported in transcription mode.',
+      requestId: 'req_model',
+    });
+    expect(configuration.records).toContainEqual(expect.objectContaining({
+      stage: 'session_configuration_rejected',
+      errorCode: 'invalid_model',
+      requestId: 'req_model',
     }));
   });
 

@@ -2,16 +2,34 @@ import { expect, test } from 'bun:test';
 import { OpenAIByokClientSecretProvider } from './auth';
 import { OpenAIRealtimeWebSocketTransport } from './openaiRealtimeWebSocketTransport';
 import {
-  defaultRealtimeTranscriptionConfig,
+  buildRealtimeSessionPayload,
+  buildRealtimeTranscriptionWebSocketUrl,
+  isTranscriptionWebSocketUrl,
+  nestedTranscriptionModel,
+} from './protocol';
+import {
+  REALTIME_TRANSCRIPTION_MODEL,
+  minimalRealtimeTranscriptionConfig,
   type RealtimeTransportEvent,
 } from './types';
 
-const enabled = process.env.RUN_AETHER_VOICE_INTEGRATION === '1';
 const apiKey = process.env.OPENAI_API_KEY ?? '';
+
+type LiveStage =
+  | 'CLIENT_SECRET'
+  | 'WEBSOCKET'
+  | 'SESSION_CONFIGURATION'
+  | 'AUDIO_APPEND'
+  | 'COMMIT'
+  | 'TRANSCRIPTION';
+
+function failAt(stage: LiveStage, detail: string): never {
+  throw new Error(`LIVE OPENAI FAILED at ${stage}: ${detail}`);
+}
 
 function deterministicPcmFixture(): ArrayBuffer {
   const sampleRate = 24_000;
-  const durationMs = 500;
+  const durationMs = 1_000;
   const samples = Math.floor(sampleRate * durationMs / 1_000);
   const data = new ArrayBuffer(samples * 2);
   const view = new DataView(data);
@@ -22,43 +40,94 @@ function deterministicPcmFixture(): ArrayBuffer {
   return data;
 }
 
-test.skipIf(!enabled || !apiKey)('live: client secret and Realtime WebSocket complete a transcription turn', async () => {
-  const secret = await new OpenAIByokClientSecretProvider(apiKey)
-    .create(defaultRealtimeTranscriptionConfig);
-  expect(secret.modelAccess).toBe('MODEL_EXISTS');
-  expect(secret.expiresAt).toBeGreaterThan(Date.now() / 1000);
+test.skipIf(!apiKey)('live: gpt-live-transcribe transcription session accepts PCM and completes', async () => {
+  const session = buildRealtimeSessionPayload(minimalRealtimeTranscriptionConfig);
+  expect(session.type).toBe('transcription');
+  expect(session).not.toHaveProperty('model');
+  expect(nestedTranscriptionModel(session)).toBe(REALTIME_TRANSCRIPTION_MODEL);
+  expect(isTranscriptionWebSocketUrl(buildRealtimeTranscriptionWebSocketUrl())).toBe(true);
 
+  let stage: LiveStage = 'CLIENT_SECRET';
   const transport = new OpenAIRealtimeWebSocketTransport({
+    configurationTimeoutMs: 20_000,
+    connectionTimeoutMs: 20_000,
     finalTranscriptTimeoutMs: 30_000,
   });
-  let outcome: RealtimeTransportEvent | null = null;
   let outcomeTimeout: ReturnType<typeof setTimeout> | null = null;
   const outcomePromise = new Promise<RealtimeTransportEvent>((resolve, reject) => {
-    outcomeTimeout = setTimeout(() => reject(new Error('Live transcription integration timed out.')), 45_000);
+    outcomeTimeout = setTimeout(() => reject(new Error('timed out waiting for provider completion')), 45_000);
     transport.subscribe((event) => {
       if (event.type !== 'completed' && event.type !== 'failed') return;
       if (outcomeTimeout) clearTimeout(outcomeTimeout);
       outcomeTimeout = null;
-      outcome = event;
       resolve(event);
     });
   });
 
   try {
-    await transport.connect(secret.value);
-    await transport.configure(defaultRealtimeTranscriptionConfig);
-    transport.appendPcm(deterministicPcmFixture());
-    transport.commit();
-    const result = await outcomePromise;
-    expect(['completed', 'failed']).toContain(result.type);
-    if (result.type === 'failed') {
-      // A provider rejection is still an explicit live protocol response; it
-      // must not be turned into a fake success or a skipped transport path.
-      expect(result.error.code).not.toBe('REALTIME_TIMEOUT');
+    let secret;
+    try {
+      secret = await new OpenAIByokClientSecretProvider(apiKey)
+        .create(minimalRealtimeTranscriptionConfig);
+    } catch (error) {
+      failAt('CLIENT_SECRET', error instanceof Error ? error.message : String(error));
     }
-    expect(outcome).toBe(result);
+    expect(secret.modelAccess).toBe('MODEL_EXISTS');
+
+    stage = 'WEBSOCKET';
+    try {
+      await transport.connect(secret.value);
+    } catch (error) {
+      failAt('WEBSOCKET', error instanceof Error ? error.message : String(error));
+    }
+
+    stage = 'SESSION_CONFIGURATION';
+    try {
+      await transport.configure(minimalRealtimeTranscriptionConfig);
+    } catch (error) {
+      failAt('SESSION_CONFIGURATION', error instanceof Error ? error.message : String(error));
+    }
+    expect(transport.currentState).toBe('ready');
+
+    stage = 'AUDIO_APPEND';
+    try {
+      transport.appendPcm(deterministicPcmFixture());
+    } catch (error) {
+      failAt('AUDIO_APPEND', error instanceof Error ? error.message : String(error));
+    }
+
+    stage = 'COMMIT';
+    try {
+      transport.commit();
+    } catch (error) {
+      failAt('COMMIT', error instanceof Error ? error.message : String(error));
+    }
+
+    stage = 'TRANSCRIPTION';
+    let result: RealtimeTransportEvent;
+    try {
+      result = await outcomePromise;
+    } catch (error) {
+      failAt(stage, error instanceof Error ? error.message : String(error));
+    }
+    if (result.type === 'failed') {
+      const provider = result.error.providerError;
+      failAt('TRANSCRIPTION', [
+        result.error.code,
+        provider?.code,
+        provider?.type,
+        provider?.message,
+        provider?.requestId,
+      ].filter(Boolean).join(' '));
+    }
+    expect(result.type).toBe('completed');
+    if (result.type === 'completed') {
+      expect(result.itemId.length).toBeGreaterThan(0);
+      expect(typeof result.transcript).toBe('string');
+    }
   } finally {
     if (outcomeTimeout) clearTimeout(outcomeTimeout);
     transport.close();
   }
 });
+

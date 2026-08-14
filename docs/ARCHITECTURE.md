@@ -63,8 +63,10 @@ tasks.
 
 Expo SDK 57 `expo-audio` `useAudioStream()` supplies little-endian PCM16. The
 normalizer uses the actual native sample rate and channel count to produce mono
-24 kHz PCM16. The transport opens `wss://api.openai.com/v1/realtime?model=gpt-live-transcribe`
-with a short-lived client secret in the documented WebSocket subprotocol, then
-sends bounded PCM append and manual commit events. The application-owned or
-BYOK standard key never enters that transport. Native capture and WebSocket
+24 kHz PCM16. The transport opens
+`wss://api.openai.com/v1/realtime?intent=transcription` with a short-lived
+client secret in the documented WebSocket subprotocol, then sends bounded PCM
+append and manual commit events. `gpt-live-transcribe` is configured only at
+`session.audio.input.transcription.model`. The application-owned or BYOK
+standard key never enters that transport. Native capture and WebSocket
 behavior still require user-driven validation in a new development build.

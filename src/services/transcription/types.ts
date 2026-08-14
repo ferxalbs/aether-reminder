@@ -28,6 +28,14 @@ export const defaultRealtimeTranscriptionConfig: RealtimeTranscriptionConfig = {
   },
 };
 
+/** Smallest valid gpt-live-transcribe session. Used to prove bootstrap first. */
+export const minimalRealtimeTranscriptionConfig: RealtimeTranscriptionConfig = {
+  model: REALTIME_TRANSCRIPTION_MODEL,
+  sampleRate: REALTIME_PCM_SAMPLE_RATE,
+  turnDetection: null,
+  context: {},
+};
+
 export type RealtimeTransportEvent =
   | { type: 'connected' }
   | { type: 'speechDelta'; itemId: string; delta: string }

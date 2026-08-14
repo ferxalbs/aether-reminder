@@ -27,7 +27,10 @@ describe('Realtime client-secret authentication', () => {
     });
     expect(authorization).toBe('Bearer user-standard-key');
     expect(body).not.toContain('user-standard-key');
-    expect(JSON.parse(body).session).toEqual(buildRealtimeSessionPayload(defaultRealtimeTranscriptionConfig));
+    const session = JSON.parse(body).session as Record<string, unknown>;
+    expect(session).toEqual(buildRealtimeSessionPayload(defaultRealtimeTranscriptionConfig));
+    expect(session).not.toHaveProperty('model');
+    expect(session.type).toBe('transcription');
   });
 
   test('preserves invalid-credential status and provider details without exposing the key', async () => {
