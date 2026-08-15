@@ -18,7 +18,7 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -53,7 +53,8 @@ function rubberband(overshoot: number, dimension: number, constant = 0.55) {
   return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
 }
 
-const SPRING_CONFIG = { damping: 1, stiffness: 300, mass: 0.8 };
+// Apple-like spring: stiffness 300, damping 35 (critically damped)
+const SPRING_CONFIG = { damping: 35, stiffness: 300 };
 
 export const Sheet: React.FC<SheetProps> = ({
   visible,
@@ -93,7 +94,7 @@ export const Sheet: React.FC<SheetProps> = ({
         opacity.value = withTiming(1, { duration: 250 });
         translateY.value = withSpring(0, SPRING_CONFIG);
       }
-    } else if (mounted) {
+    } else {
       if (reduceMotion || sheetPreset.mode === 'none') {
         opacity.value = withTiming(0, { duration: 150 }, () => {
           runOnJS(setMounted)(false);
@@ -105,14 +106,14 @@ export const Sheet: React.FC<SheetProps> = ({
         });
       }
     }
-  }, [visible, mounted, reduceMotion, sheetPreset.mode, height]);
+  }, [visible]);
 
   const handleRequestClose = () => {
     if (dismissible) onRequestClose();
   };
 
   const panGesture = Gesture.Pan()
-    .onChange((e) => {
+    .onUpdate((e) => {
       if (!dismissible) return;
       if (e.translationY > 0) {
         translateY.value = e.translationY;
@@ -138,9 +139,20 @@ export const Sheet: React.FC<SheetProps> = ({
     transform: [{ translateY: translateY.value }],
   }));
 
-  const animatedScrimStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
+  const animatedScrimStyle = useAnimatedStyle(() => {
+    // Fade out the scrim proportionally as the sheet is dragged down
+    const progress = interpolate(
+      translateY.value,
+      [0, height],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      opacity: opacity.value * progress,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    };
+  });
 
   if (!mounted) return null;
 
@@ -152,7 +164,7 @@ export const Sheet: React.FC<SheetProps> = ({
       onRequestClose={handleRequestClose}
       testID={testID}
     >
-      <View style={styles.modalRoot}>
+      <GestureHandlerRootView style={styles.modalRoot}>
         <Animated.View style={[StyleSheet.absoluteFill, animatedScrimStyle]}>
           <Pressable
             accessibilityRole="button"
@@ -232,7 +244,7 @@ export const Sheet: React.FC<SheetProps> = ({
           <View style={[styles.content, contentStyle]}>{children}</View>
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Animated.View>
-      </View>
+      </GestureHandlerRootView>
     </NativeModal>
   );
 };
@@ -243,6 +255,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   surface: {
+    flex: 1,
     maxHeight: ControlTokens.sheetMaxHeight,
     borderTopLeftRadius: ControlTokens.sheetTopRadius,
     borderTopRightRadius: ControlTokens.sheetTopRadius,
