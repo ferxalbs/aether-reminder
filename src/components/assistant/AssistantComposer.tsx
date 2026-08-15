@@ -7,6 +7,7 @@ import {
 import { ArrowUp } from 'lucide-react-native';
 import { Colors, Hairline, Motion, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { Platform } from 'react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { AssistantVoiceButton } from './AssistantVoiceButton';
 import type { VoiceState } from './VoiceController';
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   composer: {
     minHeight: 52,
     maxHeight: 128,
-    borderRadius: Radius.xl,
+    borderRadius: 26,
     borderWidth: Hairline.width,
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -114,13 +115,15 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 44,
     maxHeight: 110,
-    fontSize: 15,
-    lineHeight: 21,
-    paddingTop: 9,
-    paddingBottom: 9,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: -0.4,
+    paddingTop: Platform.OS === 'ios' ? 11 : 0,
+    paddingBottom: Platform.OS === 'ios' ? 11 : 0,
     paddingHorizontal: Spacing.xs,
+    textAlignVertical: 'center',
   },
   sendButton: {
     width: 38,
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 1,
+    marginBottom: 3,
   },
   disabled: {
     opacity: 0.5,

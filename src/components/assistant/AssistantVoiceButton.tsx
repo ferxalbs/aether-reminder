@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderCurve: 'continuous',
-    marginBottom: Spacing.xs,
+    marginBottom: 1,
   },
   disabled: {
     opacity: 0.5,

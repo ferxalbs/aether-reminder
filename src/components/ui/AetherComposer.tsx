@@ -146,7 +146,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 44,
-    fontSize: 15,
+    fontSize: 17,
+    letterSpacing: -0.4,
     paddingHorizontal: Spacing.sm,
   },
   iconButton: {
