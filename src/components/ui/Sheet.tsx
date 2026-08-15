@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal as NativeModal,
   Platform,
@@ -7,7 +7,18 @@ import {
   StyleSheet,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -31,6 +42,19 @@ export interface SheetProps {
   testID?: string;
 }
 
+// Apple design physics projection and rubberbanding
+function project(initialVelocity: number, decelerationRate = 0.998) {
+  'worklet';
+  return (initialVelocity / 1000) * decelerationRate / (1 - decelerationRate);
+}
+
+function rubberband(overshoot: number, dimension: number, constant = 0.55) {
+  'worklet';
+  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+}
+
+const SPRING_CONFIG = { damping: 1, stiffness: 300, mass: 0.8 };
+
 export const Sheet: React.FC<SheetProps> = ({
   visible,
   onRequestClose,
@@ -49,35 +73,87 @@ export const Sheet: React.FC<SheetProps> = ({
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
   const sheetPreset = useMotionPreset('sheet.present');
-  const isIOS = Platform.OS === 'ios';
-  const isAndroid = Platform.OS === 'android';
+  const { height } = useWindowDimensions();
+  
+  const [mounted, setMounted] = useState(visible);
+  
+  const translateY = useSharedValue(height);
+  const opacity = useSharedValue(0);
+
   const surfaceBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight;
   const dialogLabel = accessibilityLabel ?? title ?? 'Sheet';
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      if (reduceMotion || sheetPreset.mode === 'none') {
+        translateY.value = 0;
+        opacity.value = withTiming(1, { duration: 150 });
+      } else {
+        opacity.value = withTiming(1, { duration: 250 });
+        translateY.value = withSpring(0, SPRING_CONFIG);
+      }
+    } else if (mounted) {
+      if (reduceMotion || sheetPreset.mode === 'none') {
+        opacity.value = withTiming(0, { duration: 150 }, () => {
+          runOnJS(setMounted)(false);
+        });
+      } else {
+        opacity.value = withTiming(0, { duration: 200 });
+        translateY.value = withSpring(height, SPRING_CONFIG, () => {
+          runOnJS(setMounted)(false);
+        });
+      }
+    }
+  }, [visible, mounted, reduceMotion, sheetPreset.mode, height]);
 
   const handleRequestClose = () => {
     if (dismissible) onRequestClose();
   };
 
+  const panGesture = Gesture.Pan()
+    .onChange((e) => {
+      if (!dismissible) return;
+      if (e.translationY > 0) {
+        translateY.value = e.translationY;
+      } else {
+        translateY.value = -rubberband(-e.translationY, height);
+      }
+    })
+    .onEnd((e) => {
+      if (!dismissible) return;
+      const projectedEndpoint = e.translationY + project(e.velocityY);
+      const threshold = height * 0.15; 
+      
+      if (projectedEndpoint > threshold || e.velocityY > 600) {
+        translateY.value = withSpring(height, { ...SPRING_CONFIG, velocity: e.velocityY }, () => {
+          runOnJS(handleRequestClose)();
+        });
+      } else {
+        translateY.value = withSpring(0, { ...SPRING_CONFIG, velocity: e.velocityY });
+      }
+    });
+
+  const animatedSurfaceStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const animatedScrimStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  if (!mounted) return null;
+
   return (
     <NativeModal
-      visible={visible}
-      transparent={isAndroid}
-      animationType={reduceMotion || sheetPreset.mode === 'none' ? 'none' : 'slide'}
-      presentationStyle={isIOS ? 'pageSheet' : undefined}
-      allowSwipeDismissal={isIOS && dismissible}
-      statusBarTranslucent={isAndroid}
-      navigationBarTranslucent={isAndroid}
+      visible={true}
+      transparent={true}
+      animationType="none"
       onRequestClose={handleRequestClose}
       testID={testID}
     >
-      <View
-        style={[
-          styles.modalRoot,
-          isAndroid && styles.androidRoot,
-          { backgroundColor: isAndroid ? 'transparent' : surfaceBackgroundColor },
-        ]}
-      >
-        {isAndroid ? (
+      <View style={styles.modalRoot}>
+        <Animated.View style={[StyleSheet.absoluteFill, animatedScrimStyle]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Dismiss ${title ?? 'sheet'}`}
@@ -85,77 +161,77 @@ export const Sheet: React.FC<SheetProps> = ({
             accessibilityState={{ disabled: !dismissible }}
             disabled={!dismissible}
             onPress={handleRequestClose}
-            android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
             style={[
               StyleSheet.absoluteFill,
               { backgroundColor: isDark ? Colors.scrimDark : Colors.scrimLight },
             ]}
           />
-        ) : null}
-        <View
+        </Animated.View>
+
+        <Animated.View
           accessible
           role="dialog"
           accessibilityLabel={dialogLabel}
           accessibilityHint={accessibilityHint}
-          accessibilityViewIsModal={isIOS}
           style={[
             styles.surface,
-            isIOS && styles.iosSurface,
-            isAndroid && [
-              styles.androidSurface,
-              {
-                backgroundColor: surfaceBackgroundColor,
-                borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              },
-            ],
+            {
+              backgroundColor: surfaceBackgroundColor,
+              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+            },
+            animatedSurfaceStyle,
             surfaceStyle,
           ]}
         >
-          {isIOS ? (
+          {Platform.OS === 'ios' ? (
             <GlassSurface
               pointerEvents="none"
-              borderRadius={Radius.xl}
+              borderRadius={ControlTokens.sheetTopRadius}
               borderWidth={0}
               style={StyleSheet.absoluteFill}
             />
           ) : null}
-          {isAndroid ? (
-            <View
-              style={[
-                styles.androidHandle,
-                { backgroundColor: isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight },
-              ]}
-              accessible={false}
-            />
-          ) : null}
-          {title || subtitle || headerAction ? (
-            <View style={styles.header}>
-              <View style={styles.headerCopy}>
-                {title ? <Typography variant="title">{title}</Typography> : null}
-                {subtitle ? (
-                  <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                    {subtitle}
-                  </Typography>
-                ) : null}
-              </View>
-              {headerAction ? (
-                <View
-                  style={[
-                    styles.headerAction,
-                    {
-                      minWidth: getMinimumTouchTarget(Platform.OS),
-                      minHeight: getMinimumTouchTarget(Platform.OS),
-                    },
-                  ]}
-                >
-                  {headerAction}
+
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.gestureHeader}>
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight },
+                ]}
+                accessible={false}
+              />
+              {title || subtitle || headerAction ? (
+                <View style={styles.header}>
+                  <View style={styles.headerCopy}>
+                    {title ? <Typography variant="title">{title}</Typography> : null}
+                    {subtitle ? (
+                      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                        {subtitle}
+                      </Typography>
+                    ) : null}
+                  </View>
+                  {headerAction ? (
+                    <View
+                      style={[
+                        styles.headerAction,
+                        {
+                          minWidth: getMinimumTouchTarget(Platform.OS),
+                          minHeight: getMinimumTouchTarget(Platform.OS),
+                        },
+                      ]}
+                    >
+                      {headerAction}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>
-          ) : null}
+          </GestureDetector>
+
           <View style={[styles.content, contentStyle]}>{children}</View>
           {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </View>
+        </Animated.View>
       </View>
     </NativeModal>
   );
@@ -164,28 +240,22 @@ export const Sheet: React.FC<SheetProps> = ({
 const styles = StyleSheet.create({
   modalRoot: {
     flex: 1,
-  },
-  androidRoot: {
     justifyContent: 'flex-end',
   },
   surface: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  iosSurface: {
-    paddingTop: Spacing.md,
-  },
-  androidSurface: {
     maxHeight: ControlTokens.sheetMaxHeight,
-    paddingTop: ControlTokens.sheetContentGap,
-    paddingHorizontal: ControlTokens.sheetHorizontalPadding,
-    paddingBottom: Spacing.lg,
     borderTopLeftRadius: ControlTokens.sheetTopRadius,
     borderTopRightRadius: ControlTokens.sheetTopRadius,
     borderWidth: 1,
     borderBottomWidth: 0,
+    overflow: 'hidden',
+    paddingBottom: Spacing.lg,
   },
-  androidHandle: {
+  gestureHeader: {
+    paddingTop: ControlTokens.sheetContentGap,
+    paddingHorizontal: ControlTokens.sheetHorizontalPadding,
+  },
+  handle: {
     alignSelf: 'center',
     width: ControlTokens.sheetHandleWidth,
     height: ControlTokens.sheetHandleHeight,
@@ -196,7 +266,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ControlTokens.sheetContentGap,
-    paddingHorizontal: ControlTokens.sheetHorizontalPadding,
     paddingBottom: ControlTokens.sheetContentGap,
   },
   headerCopy: {
@@ -210,8 +279,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     gap: ControlTokens.sheetContentGap,
+    paddingHorizontal: ControlTokens.sheetHorizontalPadding,
   },
   footer: {
     paddingTop: ControlTokens.sheetContentGap,
+    paddingHorizontal: ControlTokens.sheetHorizontalPadding,
   },
 });
