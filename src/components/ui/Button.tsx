@@ -19,6 +19,7 @@ import {
   Spacing,
 } from "@/theme/tokens";
 import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface ButtonProps {
   label: string;
@@ -50,26 +51,25 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityHint,
 }) => {
   const isDark = useIsDark();
+  const colors = useSemanticColors();
   const isDisabled = disabled || loading;
 
   const getContainerStyle = () => {
     switch (variant) {
       case "primary":
         return {
-          backgroundColor: isDark ? Colors.white : Colors.black,
-          borderColor: isDark ? Colors.white : Colors.black,
+          backgroundColor: colors.accent,
+          borderColor: colors.accent,
         };
       case "secondary":
         return {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: colors.elevatedSurface,
+          borderColor: colors.border,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.border,
         };
       case "destructive":
         return {
@@ -92,8 +92,8 @@ export const Button: React.FC<ButtonProps> = ({
   const getTextColor = () => {
     if (isDisabled)
       return isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
-    if (variant === "primary") return isDark ? Colors.black : Colors.white;
-    if (variant === "secondary") return isDark ? Colors.white : Colors.black;
+    if (variant === "primary") return colors.onAccent;
+    if (variant === "secondary") return colors.textPrimary;
     if (variant === "destructive") return isDark ? Colors.white : Colors.black;
     if (variant === "ghost")
       return isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
@@ -139,7 +139,7 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       android_ripple={{
-        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+        color: colors.accent,
       }}
       scaleTo={Motion.buttonPressScale}
       style={[

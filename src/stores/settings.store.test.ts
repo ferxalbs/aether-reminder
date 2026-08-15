@@ -31,6 +31,22 @@ describe('independent provider credentials', () => {
     expect(snapshot.selectedModel).toBe(DEFAULT_OPENROUTER_MODEL_ID);
   });
 
+  test('material colors remain opt-in and persist when enabled', () => {
+    const defaults = persistedSettingsSnapshot({
+      selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
+      theme: 'system',
+      hapticsEnabled: true,
+      autoSummarize: true,
+    });
+    expect(defaults.materialColorsEnabled).toBe(false);
+
+    const enabled = persistedSettingsSnapshot({
+      ...defaults,
+      materialColorsEnabled: true,
+    });
+    expect(enabled.materialColorsEnabled).toBe(true);
+  });
+
   test('blank persisted model data resolves to the deterministic default', () => {
     const snapshot = persistedSettingsSnapshot({
       theme: 'dark',

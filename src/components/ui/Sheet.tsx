@@ -213,8 +213,7 @@ export const Sheet: React.FC<SheetProps> = ({
             {
               backgroundColor: 'transparent',
               borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              marginHorizontal: Spacing.md,
-              marginBottom: Math.max(insets.bottom, Spacing.md),
+              paddingBottom: Math.max(insets.bottom + 16, 40),
             },
             animatedSurfaceStyle,
             surfaceStyle,
@@ -224,7 +223,7 @@ export const Sheet: React.FC<SheetProps> = ({
             pointerEvents="none"
             borderRadius={36}
             borderWidth={0}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
           />
 
           <GestureDetector gesture={panGesture}>
@@ -280,8 +279,10 @@ const styles = StyleSheet.create({
   surface: {
     flex: 1,
     maxHeight: ControlTokens.sheetMaxHeight,
-    borderRadius: 36,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
     borderWidth: 1,
+    borderBottomWidth: 0,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },

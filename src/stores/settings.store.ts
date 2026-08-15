@@ -36,6 +36,7 @@ export interface SettingsState extends UserSettings {
   deleteOpenAiApiKey: () => Promise<void>;
   setModel: (model: string) => void;
   setTheme: (theme: UserSettings['theme']) => void;
+  setMaterialColorsEnabled: (enabled: boolean) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setAutoSummarize: (enabled: boolean) => void;
   setAdaptiveNudgesEnabled: (enabled: boolean) => void;
@@ -45,6 +46,7 @@ export interface SettingsState extends UserSettings {
 export const initialSettings: UserSettings = {
   selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
   theme: 'system',
+  materialColorsEnabled: false,
   hapticsEnabled: true,
   autoSummarize: true,
   adaptiveNudgesEnabled: false,
@@ -147,6 +149,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       setModel: (model) => set({ selectedModel: model.trim() || DEFAULT_OPENROUTER_MODEL_ID }),
       setTheme: (theme) => set({ theme }),
+      setMaterialColorsEnabled: (enabled) => set({ materialColorsEnabled: enabled }),
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
       setAutoSummarize: (enabled) => set({ autoSummarize: enabled }),
       setAdaptiveNudgesEnabled: (enabled) => set({ adaptiveNudgesEnabled: enabled }),
@@ -179,6 +182,7 @@ export const useSettingsStore = create<SettingsState>()(
           ...current,
           selectedModel: stored?.selectedModel?.trim() || DEFAULT_OPENROUTER_MODEL_ID,
           theme: stored?.theme ?? current.theme,
+          materialColorsEnabled: stored?.materialColorsEnabled ?? current.materialColorsEnabled,
           hapticsEnabled: stored?.hapticsEnabled ?? current.hapticsEnabled,
           autoSummarize: stored?.autoSummarize ?? current.autoSummarize,
           adaptiveNudgesEnabled: stored?.adaptiveNudgesEnabled ?? current.adaptiveNudgesEnabled,

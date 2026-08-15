@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { selectionAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSemanticColors } from '@/theme/useSemanticColors';
 import { AnimatedPressable } from './AnimatedPressable';
 import { GlassSurface } from './GlassSurface';
 import { Typography } from './Typography';
@@ -42,6 +43,7 @@ export function Picker<Value extends string | number>({
   containerStyle,
 }: PickerProps<Value>): React.ReactElement {
   const isDark = useIsDark();
+  const colors = useSemanticColors();
   const [open, setOpen] = useState(false);
   const isIOS = Platform.OS === 'ios';
   const isDisabled = disabled || options.length === 0;
@@ -57,9 +59,9 @@ export function Picker<Value extends string | number>({
       ? Colors.borderDark
       : Colors.borderLight;
 
-  const controlBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
-  const selectedBackgroundColor = isDark ? Colors.white : Colors.black;
-  const selectedTextColor = isDark ? Colors.black : Colors.white;
+  const controlBackgroundColor = colors.elevatedSurface;
+  const selectedBackgroundColor = colors.accent;
+  const selectedTextColor = colors.onAccent;
 
   const selectValue = (nextValue: Value) => {
     if (isDisabled) return;
@@ -105,7 +107,7 @@ export function Picker<Value extends string | number>({
       >
         <Typography
           variant="caption"
-          color={isSelected ? selectedTextColor : isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+          color={isSelected ? selectedTextColor : colors.textSecondary}
           style={styles.optionLabel}
         >
           {option.label}

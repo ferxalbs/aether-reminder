@@ -4,6 +4,7 @@ import ExpoDateTimePicker from '@expo/ui/community/datetime-picker';
 import { CalendarDays, Clock3 } from 'lucide-react-native';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSemanticColors } from '@/theme/useSemanticColors';
 import { Typography } from './Typography';
 import { AnimatedPressable } from './AnimatedPressable';
 
@@ -48,10 +49,11 @@ export function NativeDateTimeControl({
   testID,
 }: NativeDateTimeControlProps): React.ReactElement {
   const isDark = useIsDark();
+  const colors = useSemanticColors();
   const [dialogOpen, setDialogOpen] = useState(false);
   const formatted = useMemo(() => formatValue(value, mode), [mode, value]);
-  const accentColor = isDark ? Colors.white : Colors.black;
-  const secondary = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+  const accentColor = colors.accent;
+  const secondary = colors.textSecondary;
   const Icon = mode === 'date' ? CalendarDays : Clock3;
 
   if (Platform.OS === 'ios') {

@@ -78,6 +78,22 @@ export const Colors = {
   scrimDark: 'rgba(0, 0, 0, 0.75)',
 } as const;
 
+/** Material 3 baseline accent roles used only when the user opts in. */
+export const MaterialColors = {
+  light: {
+    primary: '#6750A4',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#EADDFF',
+    onPrimaryContainer: '#21005D',
+  },
+  dark: {
+    primary: '#D0BCFF',
+    onPrimary: '#381E72',
+    primaryContainer: '#4F378B',
+    onPrimaryContainer: '#EADDFF',
+  },
+} as const;
+
 export const SemanticColors = {
   light: {
     background: Colors.backgroundLight,
@@ -94,6 +110,10 @@ export const SemanticColors = {
     interactiveForeground: Colors.white,
     interactivePressed: Colors.zinc800,
     selected: Colors.zinc100,
+    accent: Colors.black,
+    onAccent: Colors.white,
+    accentContainer: Colors.zinc100,
+    onAccentContainer: Colors.black,
     destructive: Colors.destructiveTextLight,
     focus: Colors.black,
     scrim: Colors.scrimLight,
@@ -113,11 +133,41 @@ export const SemanticColors = {
     interactiveForeground: Colors.black,
     interactivePressed: Colors.zinc200,
     selected: Colors.zinc800,
+    accent: Colors.white,
+    onAccent: Colors.black,
+    accentContainer: Colors.zinc800,
+    onAccentContainer: Colors.white,
     destructive: Colors.destructiveTextDark,
     focus: Colors.white,
     scrim: Colors.scrimDark,
   },
 } as const;
+
+export type SemanticColorScheme = {
+  [Key in keyof typeof SemanticColors.light]: string;
+};
+
+export function getSemanticColors(
+  theme: 'light' | 'dark',
+  materialColorsEnabled = false,
+): SemanticColorScheme {
+  const baseColors = SemanticColors[theme];
+  if (!materialColorsEnabled) return baseColors;
+
+  const materialColors = MaterialColors[theme];
+  return {
+    ...baseColors,
+    interactive: materialColors.primary,
+    interactiveForeground: materialColors.onPrimary,
+    interactivePressed: materialColors.primaryContainer,
+    selected: materialColors.primaryContainer,
+    accent: materialColors.primary,
+    onAccent: materialColors.onPrimary,
+    accentContainer: materialColors.primaryContainer,
+    onAccentContainer: materialColors.onPrimaryContainer,
+    focus: materialColors.primary,
+  };
+}
 
 export const Spacing = {
   xs: 4,

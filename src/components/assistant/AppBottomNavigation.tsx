@@ -107,7 +107,7 @@ function NavigationButton({
   const indicatorStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
   const Icon = item.icon;
 
-  const highlightBg = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.07)';
+  const highlightBg = colors.accentContainer;
 
   return (
     <AnimatedPressable
@@ -128,12 +128,12 @@ function NavigationButton({
       />
       <Icon
         size={19}
-        color={active ? colors.textPrimary : colors.textSecondary}
+        color={active ? colors.accent : colors.textSecondary}
         strokeWidth={active ? 2.3 : 1.8}
       />
       <Typography
         variant="tiny"
-        color={active ? colors.textPrimary : colors.textSecondary}
+        color={active ? colors.accent : colors.textSecondary}
         style={styles.label}
         numberOfLines={1}
       >

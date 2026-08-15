@@ -1,6 +1,9 @@
-import { SemanticColors } from './tokens';
+import { getSemanticColors } from './tokens';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useIsDark } from './useResolvedTheme';
 
 export function useSemanticColors() {
-  return useIsDark() ? SemanticColors.dark : SemanticColors.light;
+  const isDark = useIsDark();
+  const materialColorsEnabled = useSettingsStore((state) => state.materialColorsEnabled);
+  return getSemanticColors(isDark ? 'dark' : 'light', materialColorsEnabled);
 }

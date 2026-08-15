@@ -24,6 +24,7 @@ import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import type { UserSettings } from "@/types";
 import * as Haptics from "expo-haptics";
 import {
@@ -37,6 +38,7 @@ import {
   Lock,
   Mic,
   Moon,
+  Palette,
   RefreshCw,
   RotateCcw,
   Search,
@@ -103,6 +105,7 @@ export default function SettingsScreen() {
   const openAiConfigured = useSettingsStore((s) => s.openAiConfigured);
   const secureStoreAvailable = useSettingsStore((s) => s.secureStoreAvailable);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
+  const materialColorsEnabled = useSettingsStore((s) => s.materialColorsEnabled);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const autoSummarize = useSettingsStore((s) => s.autoSummarize);
   const adaptiveNudgesEnabled = useSettingsStore((s) => s.adaptiveNudgesEnabled);
@@ -116,6 +119,9 @@ export default function SettingsScreen() {
   const deleteOpenAiApiKey = useSettingsStore((s) => s.deleteOpenAiApiKey);
   const setModel = useSettingsStore((s) => s.setModel);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const setMaterialColorsEnabled = useSettingsStore(
+    (s) => s.setMaterialColorsEnabled,
+  );
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
   const setAutoSummarize = useSettingsStore((s) => s.setAutoSummarize);
   const setAdaptiveNudgesPreference = useSettingsStore((s) => s.setAdaptiveNudgesEnabled);
@@ -148,6 +154,7 @@ export default function SettingsScreen() {
   const [showPrivacy, setShowPrivacy] = useState(false);
 
   const isDark = useIsDark();
+  const colors = useSemanticColors();
   const keyStateLoaded = openRouterKeyLoaded && openAiKeyLoaded;
 
   const assistantContext = useMemo(
@@ -1060,9 +1067,7 @@ export default function SettingsScreen() {
                           styles.segmentedItem,
                           {
                             backgroundColor: isActive
-                              ? isDark
-                                ? Colors.white
-                                : Colors.black
+                              ? colors.accent
                               : "transparent",
                           },
                         ]}
@@ -1071,9 +1076,7 @@ export default function SettingsScreen() {
                           variant="caption"
                           style={{
                             color: isActive
-                              ? isDark
-                                ? Colors.black
-                                : Colors.white
+                              ? colors.onAccent
                               : isDark
                                 ? Colors.secondaryTextDark
                                 : Colors.secondaryTextLight,
@@ -1087,6 +1090,58 @@ export default function SettingsScreen() {
                   },
                 )}
               </View>
+            </View>
+
+            <View
+              style={[
+                styles.divider,
+                {
+                  backgroundColor: isDark
+                    ? Colors.borderDark
+                    : Colors.borderLight,
+                },
+              ]}
+            />
+
+            {/* Material Colors Switch */}
+            <View style={styles.rowBetween}>
+              <View style={styles.rowLeftGroup}>
+                <View
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
+                      borderColor: isDark
+                        ? Colors.borderDark
+                        : Colors.borderLight,
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <Palette size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Typography variant="bodyBold">Material Colors</Typography>
+                  <Typography
+                    variant="tiny"
+                    color={
+                      isDark
+                        ? Colors.secondaryTextDark
+                        : Colors.secondaryTextLight
+                    }
+                  >
+                    Use Material 3 accent colors for controls
+                  </Typography>
+                </View>
+              </View>
+              <ToggleSwitch
+                value={materialColorsEnabled}
+                onValueChange={setMaterialColorsEnabled}
+                accessibilityLabel="Material colors"
+                accessibilityHint="Use Material 3 accent colors for controls"
+              />
             </View>
 
             <View
@@ -1871,11 +1926,11 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     height: "75%",
-    borderRadius: Radius.xl,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
     borderWidth: 1,
+    borderBottomWidth: 0,
     padding: Spacing.lg,
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
   },
   sheetHeader: {
     flexDirection: "row",

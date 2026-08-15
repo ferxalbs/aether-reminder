@@ -32,6 +32,7 @@ export type ThemePreference = 'system' | 'dark' | 'light';
 export interface UserSettings {
   selectedModel: string;
   theme: ThemePreference;
+  materialColorsEnabled: boolean;
   hapticsEnabled: boolean;
   autoSummarize: boolean;
   /** Conservative opt-in for local adaptive follow-up notifications. */

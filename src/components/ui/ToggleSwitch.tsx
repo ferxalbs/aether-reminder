@@ -11,6 +11,7 @@ import Animated, {
 import { AnimatedPressable } from './AnimatedPressable';
 import { Colors, getMinimumTouchTarget, Motion } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSemanticColors } from '@/theme/useSemanticColors';
 import { selectionAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -33,6 +34,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   style,
 }) => {
   const isDark = useIsDark();
+  const colors = useSemanticColors();
   const progress = useSharedValue(value ? 1 : 0);
   const reduceMotion = useReducedMotion();
 
@@ -57,7 +59,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   };
 
   const animatedTrackStyle = useAnimatedStyle(() => {
-    const activeColor = isDark ? Colors.white : Colors.black;
+    const activeColor = colors.accent;
     const inactiveColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
     const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
@@ -65,7 +67,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   });
 
   const animatedThumbStyle = useAnimatedStyle(() => {
-    const activeThumbColor = isDark ? Colors.black : Colors.white;
+    const activeThumbColor = colors.onAccent;
     const inactiveThumbColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
     const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveThumbColor, activeThumbColor]);
     const translateX = progress.value * 20;
@@ -85,7 +87,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ checked: value, disabled }}
-      android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+      android_ripple={{ color: colors.accent }}
       scaleTo={Motion.pressScale}
       style={[
         styles.touchTarget,

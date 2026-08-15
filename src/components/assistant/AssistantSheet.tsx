@@ -228,7 +228,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           ? Math.min(windowWidth >= 760 ? 760 : 720, windowHeight * 0.86)
           : 0;
 
-  const targetHeight = baseTargetHeight > 0 ? baseTargetHeight + Math.max(insets.bottom, 24) : 0;
+  const bottomPadding = Math.max(insets.bottom + 16, 40);
+  const targetHeight = baseTargetHeight > 0 ? baseTargetHeight + bottomPadding : 0;
 
   useEffect(() => {
     if (reduceMotion || sheetPreset.mode === "none") {
@@ -255,9 +256,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   }, [keyboardOffset, keyboardShift, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
-  const bottomMargin = Math.max(insets.bottom, Spacing.md);
   const animatedBottomStyle = useAnimatedStyle(() => ({
-    bottom: keyboardShift.value > 0 ? keyboardShift.value + Spacing.md : bottomMargin,
+    bottom: keyboardShift.value,
   }));
   if (!isVisible) return null;
 
@@ -278,9 +278,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         borderRadius={36}
         borderWidth={0}
         blurTarget={blurTarget}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
       />
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+      <View style={[styles.sheet, { paddingBottom: bottomPadding }]}>
         <View style={styles.keyboardView}>
           {showHeader ? (
             <View style={styles.header}>
@@ -715,13 +715,16 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    left: Spacing.md,
-    right: Spacing.md,
+    left: 0,
+    right: 0,
     alignSelf: "center",
+    width: "100%",
     maxWidth: 720,
     zIndex: 20,
-    borderRadius: 36,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
     borderWidth: 1,
+    borderBottomWidth: 0,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -8 },

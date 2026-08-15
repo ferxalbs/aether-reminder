@@ -7,6 +7,8 @@ export {
 export interface PersistedSettings {
   selectedModel: string;
   theme: 'system' | 'dark' | 'light';
+  /** Optional for backwards compatibility with snapshots created before Material colors existed. */
+  materialColorsEnabled?: boolean;
   hapticsEnabled: boolean;
   autoSummarize: boolean;
   adaptiveNudgesEnabled?: boolean;
@@ -22,6 +24,7 @@ export function persistedSettingsSnapshot(state: SettingsPersistenceInput): Pers
   return {
     selectedModel: state.selectedModel?.trim() || DEFAULT_OPENROUTER_MODEL_ID,
     theme: state.theme,
+    materialColorsEnabled: state.materialColorsEnabled ?? false,
     hapticsEnabled: state.hapticsEnabled,
     autoSummarize: state.autoSummarize,
     adaptiveNudgesEnabled: state.adaptiveNudgesEnabled ?? false,
