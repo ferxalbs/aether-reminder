@@ -16,10 +16,10 @@ export const Colors = {
   surfaceRaisedDark: '#121215',
 
   // Glass Chrome Surfaces (Restricted to Floating Chrome Only)
-  glassDark: 'rgba(18, 18, 20, 0.78)',
-  glassLight: 'rgba(244, 244, 246, 0.82)',
-  glassDarkFallback: 'rgba(18, 18, 20, 0.92)',
-  glassLightFallback: 'rgba(244, 244, 246, 0.95)',
+  glassDark: 'rgba(18, 18, 20, 0.55)',
+  glassLight: 'rgba(244, 244, 246, 0.65)',
+  glassDarkFallback: 'rgba(18, 18, 20, 0.85)',
+  glassLightFallback: 'rgba(244, 244, 246, 0.90)',
 
   // Typography Contrast Levels
   textLight: '#0A0A0A',
@@ -30,10 +30,10 @@ export const Colors = {
   tertiaryTextDark: '#52525B',
 
   // Subtle Hairline Borders & Separators (Semantic Hairlines)
-  borderLight: 'rgba(0, 0, 0, 0.08)',
-  borderDark: 'rgba(255, 255, 255, 0.12)',
-  separatorLight: 'rgba(0, 0, 0, 0.06)',
-  separatorDark: 'rgba(255, 255, 255, 0.08)',
+  borderLight: 'rgba(0, 0, 0, 0.04)',
+  borderDark: 'rgba(255, 255, 255, 0.08)',
+  separatorLight: 'rgba(0, 0, 0, 0.04)',
+  separatorDark: 'rgba(255, 255, 255, 0.06)',
 
   // Monochrome Ink & Statuses
   brandInk: '#000000',

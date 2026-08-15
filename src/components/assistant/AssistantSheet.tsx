@@ -255,8 +255,9 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   }, [keyboardOffset, keyboardShift, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
+  const bottomMargin = Math.max(insets.bottom, Spacing.md);
   const animatedBottomStyle = useAnimatedStyle(() => ({
-    bottom: keyboardShift.value,
+    bottom: keyboardShift.value > 0 ? keyboardShift.value + Spacing.md : bottomMargin,
   }));
   if (!isVisible) return null;
 
@@ -277,7 +278,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         borderRadius={36}
         borderWidth={0}
         blurTarget={blurTarget}
-        style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+        style={StyleSheet.absoluteFill}
       />
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <View style={styles.keyboardView}>
@@ -714,16 +715,13 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: Spacing.md,
+    right: Spacing.md,
     alignSelf: "center",
-    width: "100%",
     maxWidth: 720,
     zIndex: 20,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
+    borderRadius: 36,
     borderWidth: 1,
-    borderBottomWidth: 0,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -8 },

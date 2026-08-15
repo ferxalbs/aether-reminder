@@ -1871,11 +1871,11 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     height: "75%",
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderBottomWidth: 0,
     padding: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
   },
   sheetHeader: {
     flexDirection: "row",

@@ -19,6 +19,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -75,6 +76,7 @@ export const Sheet: React.FC<SheetProps> = ({
   const reduceMotion = useReducedMotion();
   const sheetPreset = useMotionPreset('sheet.present');
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   
   const [mounted, setMounted] = useState(visible);
   
@@ -151,8 +153,8 @@ export const Sheet: React.FC<SheetProps> = ({
         { translateY: translateY.value },
         { scale },
       ],
-      // Anchor the scale to the bottom so it doesn't lift off the screen edge
-      transformOrigin: 'bottom center',
+      // Anchor the scale to the center so it doesn't clip
+      transformOrigin: 'center center',
     };
   });
 
@@ -211,6 +213,8 @@ export const Sheet: React.FC<SheetProps> = ({
             {
               backgroundColor: 'transparent',
               borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+              marginHorizontal: Spacing.md,
+              marginBottom: Math.max(insets.bottom, Spacing.md),
             },
             animatedSurfaceStyle,
             surfaceStyle,
@@ -220,7 +224,7 @@ export const Sheet: React.FC<SheetProps> = ({
             pointerEvents="none"
             borderRadius={36}
             borderWidth={0}
-            style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+            style={StyleSheet.absoluteFill}
           />
 
           <GestureDetector gesture={panGesture}>
@@ -276,12 +280,9 @@ const styles = StyleSheet.create({
   surface: {
     flex: 1,
     maxHeight: ControlTokens.sheetMaxHeight,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
+    borderRadius: 36,
     borderWidth: 1,
-    borderBottomWidth: 0,
     overflow: 'hidden',
-    paddingBottom: Spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.2,
