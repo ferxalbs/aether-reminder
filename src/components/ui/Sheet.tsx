@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   Modal as NativeModal,
-  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
   View,
   ViewStyle,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
+  useAnimatedProps,
   useSharedValue,
   withSpring,
   withTiming,
@@ -20,11 +20,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { BlurView } from 'expo-blur';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { GlassSurface } from './GlassSurface';
 import { useMotionPreset } from '@/motion';
 import { Typography } from './Typography';
+
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 export interface SheetProps {
   visible: boolean;
@@ -97,12 +101,12 @@ export const Sheet: React.FC<SheetProps> = ({
     } else {
       if (reduceMotion || sheetPreset.mode === 'none') {
         opacity.value = withTiming(0, { duration: 150 }, () => {
-          runOnJS(setMounted)(false);
+          scheduleOnRN(setMounted, false);
         });
       } else {
         opacity.value = withTiming(0, { duration: 200 });
         translateY.value = withSpring(height, SPRING_CONFIG, () => {
-          runOnJS(setMounted)(false);
+          scheduleOnRN(setMounted, false);
         });
       }
     }
@@ -128,7 +132,7 @@ export const Sheet: React.FC<SheetProps> = ({
       
       if (projectedEndpoint > threshold || e.velocityY > 600) {
         translateY.value = withSpring(height, { ...SPRING_CONFIG, velocity: e.velocityY }, () => {
-          runOnJS(handleRequestClose)();
+          scheduleOnRN(handleRequestClose);
         });
       } else {
         translateY.value = withSpring(0, { ...SPRING_CONFIG, velocity: e.velocityY });
@@ -165,7 +169,17 @@ export const Sheet: React.FC<SheetProps> = ({
     
     return {
       opacity: opacity.value * progress,
-      backgroundColor: 'rgba(0,0,0,0.4)',
+    };
+  });
+
+  const animatedBlurProps = useAnimatedProps(() => {
+    return {
+      intensity: interpolate(
+        translateY.value,
+        [0, height],
+        [30, 0],
+        Extrapolation.CLAMP
+      ) * opacity.value,
     };
   });
 
@@ -181,6 +195,12 @@ export const Sheet: React.FC<SheetProps> = ({
     >
       <GestureHandlerRootView style={styles.modalRoot}>
         <Animated.View style={[StyleSheet.absoluteFill, animatedScrimStyle]}>
+          <AnimatedBlurView
+            tint={isDark ? "dark" : "dark"}
+            animatedProps={animatedBlurProps}
+            style={StyleSheet.absoluteFill}
+            experimentalBlurMethod="dimezisBlurView"
+          />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Dismiss ${title ?? 'sheet'}`}
