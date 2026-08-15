@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Typography } from './Typography';
 import { Colors, Hairline, Spacing } from '@/theme/tokens';
+import { useMotionProfile } from '@/motion';
 import { useIsDark } from '@/theme/useResolvedTheme';
 
 export type VoiceCaptureState = 'listening' | 'processing' | 'review' | 'committed';
@@ -14,7 +15,12 @@ export interface AetherVoiceCaptureProps {
 }
 
 function MeterLine({ level }: { level?: SharedValue<number> }) {
+  const profile = useMotionProfile();
+  const allowMeter = profile.budget.allowContinuousDecorativeMotion;
   const animatedStyle = useAnimatedStyle(() => {
+    if (!allowMeter) {
+      return { transform: [{ scaleY: 1 }] };
+    }
     const scaleY = level ? Math.max(0.2, Math.min(level.value * 2, 3)) : 1;
     return {
       transform: [{ scaleY }],

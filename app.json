@@ -73,7 +73,8 @@
       "expo-asset",
       "expo-sqlite",
       "expo-notifications",
-      "./modules/aether-capture/app.plugin.js"
+      "./modules/aether-capture/app.plugin.js",
+      "./modules/aether-motion/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true,

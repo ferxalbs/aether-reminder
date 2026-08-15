@@ -2,6 +2,46 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.14 (1) [Adaptive Native Motion Engine]
+
+### Runtime-adaptive motion language
+
+- Added a formal motion subsystem in [`src/motion/`](src/motion/) with four
+  semantic tiers (`full`, `standard`, `reduced`, `minimal`). The same AETHER
+  identity is kept; only fidelity and cost change.
+- The governor is a pure reducer. Static ceiling, accessibility, power,
+  thermal, and aggregated frame health combine with hysteresis. There is no
+  device, manufacturer, SoC, or GPU whitelist.
+- Native telemetry lives in [`modules/aether-motion`](modules/aether-motion).
+  Frame callbacks only increment bounded counters. Snapshots emit every 750 ms.
+  Missing or malformed native data fails safe to a conservative `standard`
+  profile.
+
+### Platform signals and surfaces
+
+- Android reads `JankStats`, display refresh rate, Power Saver, API 29+
+  thermal status, low-RAM, and snapshot-time `lowMemory`. API level can disable
+  blur; it does not pick the motion tier.
+- iOS/iPadOS reads one `CADisplayLink`, `ProcessInfo` thermal/Low Power, and
+  memory warnings. `CADisableMinimumFrameDurationOnPhone` is declared through
+  the module plugin so the OS may use supported ProMotion rates. 120 Hz is not
+  claimed.
+- [`AdaptiveBlur`](src/motion/components/AdaptiveBlur.tsx) and
+  [`AdaptiveGlass`](src/motion/components/AdaptiveGlass.tsx) own live blur and
+  iOS 26+ `expo-glass-effect` availability checks. `GlassSurface`, press,
+  task completion, sheets, Today enter motion, and the voice/Orb-equivalent
+  controls consume the shared presets.
+
+### Tests and remaining device gates
+
+- Pure policy, snapshot validation, preset, blur/glass, accessibility, and
+  architecture-guard tests run under Bun. Kotlin JVM tests cover thermal
+  mapping and bounded aggregation. Swift XCTest sources exist but are not
+  claimed as executed.
+- Physical FPS, jank, thermal, Power Saver, Reduce Motion, and ProMotion
+  behavior remain OPEN in [`docs/KNOWN_TRADEOFFS.md`](docs/KNOWN_TRADEOFFS.md).
+  See [`docs/ADAPTIVE_MOTION.md`](docs/ADAPTIVE_MOTION.md).
+
 ## Unreleased - 2026.08.13 (2) [Transcription WebSocket Bootstrap]
 
 ### Dedicated transcription session no longer uses a conversational model query

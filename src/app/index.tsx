@@ -23,12 +23,20 @@ import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/
 import { getDatabaseErrorMessage } from '@/db';
 import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
 import { reportNonFatalError } from '@/lib/nonFatalError';
+import { useMotionPreset } from '@/motion';
 import { canUndoTaskReceipt } from '@/stores/taskUndo';
 import type { TaskListItem } from '@/domain/entities';
 
 export default function TodayScreen() {
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
+  const enterPreset = useMotionPreset('navigation.push');
+  const titleEntering = reduceMotion || enterPreset.mode === 'none'
+    ? undefined
+    : FadeInDown.duration(enterPreset.durationMs).springify().damping(enterPreset.damping).stiffness(enterPreset.stiffness);
+  const fadeEntering = reduceMotion || enterPreset.mode === 'none'
+    ? undefined
+    : FadeIn.duration(Math.min(enterPreset.durationMs, 180)).delay(80);
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
@@ -207,7 +215,7 @@ export default function TodayScreen() {
           header={
             <View style={styles.headerContent}>
               <Animated.View
-                entering={reduceMotion ? undefined : FadeInDown.duration(240).springify()}
+                entering={titleEntering}
                 style={styles.titleBlock}
               >
                 <Typography variant="display">Today</Typography>
@@ -240,7 +248,7 @@ export default function TodayScreen() {
           empty={
             status === 'ready' && !attentionPlan ? (
               <Animated.View
-                entering={reduceMotion ? undefined : FadeIn.duration(180).delay(80)}
+                entering={fadeEntering}
                 style={styles.emptyState}
               >
                 <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
@@ -260,7 +268,7 @@ export default function TodayScreen() {
                 bottom: geometry.composerBottom,
               },
             ]}
-            entering={reduceMotion ? undefined : FadeInDown.duration(260).springify()}
+            entering={titleEntering}
           >
             <AetherComposer
             value={quickTitle}

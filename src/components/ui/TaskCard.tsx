@@ -11,6 +11,7 @@ import Animated, {
 import { Check, Trash2, Clock, Sparkles } from 'lucide-react-native';
 import type { TaskListItem } from '@/domain/entities';
 import { Colors, Motion, Radius, Spacing } from '@/theme/tokens';
+import { useMotionPreset } from '@/motion';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { Typography } from './Typography';
 import { AnimatedPressable } from './AnimatedPressable';
@@ -35,6 +36,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 }) => {
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
+  const completePreset = useMotionPreset('task.complete');
 
   const completionScale = useSharedValue(task.completed ? 1 : 0.85);
   const completionOpacity = useSharedValue(task.completed ? 1 : 0.5);
@@ -45,24 +47,30 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     const nextCompletionOpacity = task.completed ? 1 : 0.5;
     const nextContentOpacity = task.completed ? 0.45 : 1;
 
-    if (reduceMotion) {
+    if (reduceMotion || completePreset.mode === 'none') {
       completionScale.value = nextScale;
       completionOpacity.value = nextCompletionOpacity;
       contentOpacity.value = nextContentOpacity;
       return;
     }
 
-    completionScale.value = withSpring(nextScale, {
-      ...Motion.cardSpring,
-      reduceMotion: ReduceMotion.Never,
-    });
+    if (completePreset.mode === 'spring') {
+      completionScale.value = withSpring(nextScale, {
+        damping: completePreset.damping,
+        stiffness: completePreset.stiffness,
+        mass: completePreset.mass,
+        reduceMotion: ReduceMotion.Never,
+      });
+    } else {
+      completionScale.value = withTiming(nextScale, { duration: completePreset.durationMs });
+    }
     completionOpacity.value = withTiming(nextCompletionOpacity, {
-      duration: Motion.reducedMotionDuration,
+      duration: completePreset.durationMs,
     });
     contentOpacity.value = withTiming(nextContentOpacity, {
-      duration: Motion.reducedMotionDuration,
+      duration: completePreset.durationMs,
     });
-  }, [reduceMotion, task.completed, completionScale, completionOpacity, contentOpacity]);
+  }, [completePreset, reduceMotion, task.completed, completionScale, completionOpacity, contentOpacity]);
 
   const checkScaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completionScale.value }],

@@ -38,6 +38,7 @@ import {
   getPendingNativeCaptureId,
   initializeCaptureInbox,
 } from '@/services/capture';
+import { MotionProvider } from '@/motion';
 
 type BootState =
   | { phase: 'loading' }
@@ -304,6 +305,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <MotionProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={[styles.root, { backgroundColor: bgColor }]}>
         {/* Always mount the Tabs navigator so Expo Router's useLinking can apply
@@ -393,6 +395,7 @@ export default function RootLayout() {
           />
         ) : null}
       </View>
+      </MotionProvider>
     </SafeAreaProvider>
   );
 }

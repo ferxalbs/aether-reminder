@@ -20,6 +20,8 @@ import { testOpenAIRealtimeConnection } from "@/services/transcription";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
+import { useMotionPreset } from "@/motion";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import { useIsDark } from "@/theme/useResolvedTheme";
 import type { UserSettings } from "@/types";
@@ -86,7 +88,11 @@ type ProviderName = "OpenRouter" | "OpenAI";
 
 export default function SettingsScreen() {
   const reduceMotion = useReducedMotion();
-  const entering = reduceMotion ? undefined : settingsEntering;
+  const enterPreset = useMotionPreset("navigation.push");
+  const entering =
+    reduceMotion || enterPreset.mode === "none"
+      ? undefined
+      : settingsEntering;
   const geometry = useBottomChromeGeometry();
   const theme = useSettingsStore((s) => s.theme);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
@@ -1297,6 +1303,8 @@ export default function SettingsScreen() {
             </View>
           </Card>
         </Animated.View>
+
+        {__DEV__ ? <MotionDiagnosticsCard /> : null}
 
         {/* Section 6: About & Privacy Accordions */}
         <Animated.View entering={entering}>

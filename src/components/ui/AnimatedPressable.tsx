@@ -19,7 +19,8 @@ import * as Haptics from 'expo-haptics';
 import { useSettingsStore } from '@/stores/settings.store';
 import { impactAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import { getMinimumTouchTarget, Motion } from '@/theme/tokens';
+import { getMinimumTouchTarget } from '@/theme/tokens';
+import { useMotionPreset } from '@/motion';
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
@@ -45,6 +46,8 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
 }) => {
   const scale = useSharedValue(1);
   const reduceMotion = useReducedMotion();
+  const pressPreset = useMotionPreset('surface.press');
+  const releasePreset = useMotionPreset('surface.release');
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -54,10 +57,12 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
     if (disabled) return;
     // Reduced Motion keeps the control visually stable; the regular path uses
     // the shared critically damped spring for instant platform feedback.
-    scale.value = reduceMotion
+    scale.value = reduceMotion || pressPreset.mode === 'none'
       ? 1
       : withSpring(scaleTo, {
-          ...Motion.pressSpring,
+          damping: pressPreset.damping,
+          stiffness: pressPreset.stiffness,
+          mass: pressPreset.mass,
           reduceMotion: ReduceMotion.Never,
         });
     const hapticsEnabled = useSettingsStore.getState().hapticsEnabled;
@@ -71,10 +76,12 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
 
   const handlePressOut = (e: GestureResponderEvent) => {
     if (disabled) return;
-    scale.value = reduceMotion
+    scale.value = reduceMotion || releasePreset.mode === 'none'
       ? 1
       : withSpring(1, {
-          ...Motion.pressSpring,
+          damping: releasePreset.damping,
+          stiffness: releasePreset.stiffness,
+          mass: releasePreset.mass,
           reduceMotion: ReduceMotion.Never,
         });
     onPressOut?.(e);

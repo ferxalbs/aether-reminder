@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { useMotionProfile, useMotionPreset } from '@/motion';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import type { VoiceState } from './VoiceController';
 import { isVoiceFailureState } from './VoiceController';
@@ -88,11 +89,13 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
 
 function VoiceBar({ active, delay, color }: { active: boolean; delay: number; color: string }) {
   const reduceMotion = useReducedMotion();
+  const profile = useMotionProfile();
+  const listenPreset = useMotionPreset('orb.listen');
   const scale = useSharedValue(0.55);
 
   useEffect(() => {
-    if (!active || reduceMotion) {
-      scale.value = 0.7;
+    if (!active || reduceMotion || !listenPreset.continuous || !profile.budget.allowContinuousDecorativeMotion) {
+      scale.value = listenPreset.scale > 1 ? 0.85 : 0.7;
       return;
     }
     scale.value = withRepeat(
@@ -100,7 +103,7 @@ function VoiceBar({ active, delay, color }: { active: boolean; delay: number; co
       -1,
       true,
     );
-  }, [active, delay, reduceMotion, scale]);
+  }, [active, delay, listenPreset.continuous, listenPreset.scale, profile.budget.allowContinuousDecorativeMotion, reduceMotion, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scaleY: scale.value }],

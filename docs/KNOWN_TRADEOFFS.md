@@ -211,3 +211,189 @@ added later, but publication is not required to perform the local measurement.
 **Can be addressed during unrelated work:** Yes, at a release/build-size, beta, or
 Play preparation checkpoint when native builds are authorized. Do not publish or
 optimize blindly merely to close this record.
+
+## Adaptive Motion Engine validation gates
+
+The adaptive motion governor, native telemetry module, blur/glass policy, and
+semantic presets are implemented in `src/motion/` and `modules/aether-motion`.
+This section is the durable record of what this phase can and cannot claim.
+See [`ADAPTIVE_MOTION.md`](ADAPTIVE_MOTION.md) for the policy itself.
+
+### Gate A — TypeScript / lint / unit suite
+
+**Status:** PASS
+
+**Current evidence:** `bun run typecheck` passed. `bun run lint` passed with
+one pre-existing unused-import warning in `TaskUndoBanner.tsx`. `bun test`
+reported 307 passed, 2 skipped, 0 failed.
+
+**Risk:** Policy tests cannot prove device smoothness.
+
+**Closure evidence required:** `bun run typecheck`, `bun run lint`, and
+`bun test` passing on the motion change.
+
+**Can be addressed during unrelated work:** Yes, whenever the suite is run.
+
+### Gate B — Android JS bundle
+
+**Status:** PASS
+
+**Current evidence:** `bunx expo export --platform android` wrote a Hermes
+bundle to a temporary directory and that directory was deleted afterwards.
+
+**Risk:** Autolinking or Metro resolution of `AetherMotion` could fail in a
+release export even if unit tests pass.
+
+**Closure evidence required:** `expo export --platform android` to a temporary
+directory without installing or launching an app.
+
+### Gate C — iOS JS bundle
+
+**Status:** PASS
+
+**Current evidence:** `bunx expo export --platform ios` wrote a Hermes bundle
+to a temporary directory and that directory was deleted afterwards.
+
+**Risk:** Same as Gate B for the iOS bundle graph.
+
+**Closure evidence required:** `expo export --platform ios` to a temporary
+directory.
+
+### Gate D — Android native compile
+
+**Status:** PASS
+
+**Current evidence:** `./gradlew :app:compileDebugKotlin :app:compileDebugJavaWithJavac`
+completed with exit 0. Autolinking included `aether-motion` (1.0.0). No
+install, launch, or `adb` task was used. This is compile evidence, not
+device smoothness evidence.
+
+**Risk:** `JankStats`, thermal listeners, or autolinking of `aether-motion` may
+fail to compile.
+
+**Closure evidence required:** Compile-only Gradle such as `:app:compileDebugKotlin`
+or `:app:assembleDebug` with no install/launch tasks.
+
+### Gate E — Android native JVM tests
+
+**Status:** PASS
+
+**Current evidence:** `./gradlew :aether-motion:testDebugUnitTest` completed
+with exit 0 after a percentile-rank correction. Thermal mapping and bounded
+aggregation are covered. `JankStats` itself is not executed on a device.
+
+**Risk:** JVM stubs may not exercise `JankStats` itself. They only prove mapping
+and aggregation.
+
+**Closure evidence required:** Gradle unit tests for the `aether-motion` module.
+
+### Gate F — iOS native compile
+
+**Status:** FAIL
+
+**Current evidence:** `expo prebuild --platform ios` generated a gitignored
+`ios/` tree and installed pods, including `AetherMotion`. Full
+`xcodebuild` of scheme `AETHERReminder` for `iphonesimulator` failed in
+pre-existing `AetherShareExtension/ShareViewController.swift:213`
+(`initializer for conditional binding must have Optional type, not 'Data'`).
+An isolated `AetherMotion` scheme build failed in Expo's
+`ExpoModulesJSI` xcframework script, not in AetherMotion Swift. No
+physical device was used. Swift XCTest sources were not executed.
+
+**Risk:** App-level iOS compile remains blocked by the Share Extension
+error already recorded under Universal Capture Gate 1.
+
+**Closure evidence required:** Successful Xcode compile/link of the main
+app and Share Extension, plus an AetherMotion target compile.
+
+### Gate G — Physical low-end Android
+
+**Status:** OPEN
+
+**Current evidence:** None.
+
+**Risk:** A budget device may still jank on `standard` if the governor recovers
+too aggressively, or may look overly static if it never climbs.
+
+**Closure evidence required:** Release or development build on a low-end Android
+device. Record thermal, Power Saver, Reduce Motion, blur fallback, and task-list
+behavior. Do not infer this from unit tests.
+
+### Gate H — Physical mid-range Android
+
+**Status:** OPEN
+
+**Current evidence:** None.
+
+**Closure evidence required:** Same as Gate G on a mid-range device.
+
+### Gate I — Physical flagship Android 120 Hz
+
+**Status:** OPEN
+
+**Current evidence:** None.
+
+**Risk:** High refresh and live blur together may exceed the frame budget even
+on a flagship under thermal pressure.
+
+**Closure evidence required:** 90/120 Hz flagship, including a heat-soak and
+recovery observation.
+
+### Gate J — Physical iPhone 60 Hz
+
+**Status:** OPEN
+
+**Current evidence:** None.
+
+**Closure evidence required:** 60 Hz iPhone, Reduce Motion, Low Power Mode,
+and glass/blur fallback.
+
+### Gate K — Physical ProMotion iPhone
+
+**Status:** OPEN
+
+**Current evidence:** `CADisableMinimumFrameDurationOnPhone` is declared. That
+does not prove 120 Hz delivery.
+
+**Closure evidence required:** ProMotion iPhone observing cadence, Low Power
+Mode, and thermal reduction. Do not claim 120 Hz from configuration alone.
+
+### Gate L — Physical iPadOS
+
+**Status:** OPEN
+
+**Current evidence:** iPad is a first-class target in policy, but no iPad
+runtime evidence exists.
+
+**Closure evidence required:** iPad portrait/landscape and Split View, plus
+Reduce Motion and Low Power Mode.
+
+### Gate M — Thermal-throttling validation
+
+**Status:** OPEN
+
+**Current evidence:** Enum mapping is unit-tested. Real thermal callbacks are
+not.
+
+**Closure evidence required:** Observe native thermal transitions on Android
+API 29+ and iOS `ProcessInfo.thermalState` while the governor steps down and
+later recovers.
+
+### Gate N — Low Power / Power Saver validation
+
+**Status:** OPEN
+
+**Current evidence:** Policy tests only.
+
+**Closure evidence required:** Toggle platform power-saving on physical Android
+and iOS and confirm the ceiling becomes `standard` without removing causal
+feedback.
+
+### Gate O — Reduce Motion validation
+
+**Status:** OPEN
+
+**Current evidence:** Policy tests only.
+
+**Closure evidence required:** Enable Reduce Motion on physical Android and
+iOS and confirm the profile stays `minimal` after frames recover.

@@ -11,6 +11,7 @@ import { AlertCircle, Check, ChevronDown, ChevronUp, X } from 'lucide-react-nati
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { Colors, Hairline, Radius, Spacing } from '@/theme/tokens';
+import { useMotionPreset, useMotionProfile } from '@/motion';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '@/components/ui/Typography';
@@ -98,9 +99,13 @@ function confirmationTitle(pending: PendingAssistantConfirmation): string {
 }
 
 function VoiceMeter({ level, color }: { level: SharedValue<number>; color: string }) {
+  const profile = useMotionProfile();
+  const bars = profile.budget.allowComplexOrb
+    ? [0.45, 0.7, 0.95, 1.2, 0.95, 0.7, 0.45]
+    : [0.7, 1, 0.7];
   return (
     <View style={styles.voiceMeter} accessibilityElementsHidden>
-      {[0.45, 0.7, 0.95, 1.2, 0.95, 0.7, 0.45].map((weight, index) => (
+      {bars.map((weight, index) => (
         <VoiceMeterBar key={index} level={level} weight={weight} color={color} />
       ))}
     </View>
@@ -162,6 +167,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   onVoicePress,
 }) => {
   const isDark = useIsDark();
+  const sheetPreset = useMotionPreset('sheet.present');
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const height = useSharedValue(0);
@@ -181,10 +187,18 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           : 0;
 
   useEffect(() => {
-    height.value = reduceMotion
-      ? withTiming(targetHeight, { duration: 120 })
-      : withSpring(targetHeight, { damping: 28, stiffness: 300, mass: 0.7 });
-  }, [height, reduceMotion, targetHeight]);
+    if (reduceMotion || sheetPreset.mode === 'none') {
+      height.value = withTiming(targetHeight, { duration: Math.max(sheetPreset.durationMs, 80) });
+    } else if (sheetPreset.mode === 'timing') {
+      height.value = withTiming(targetHeight, { duration: sheetPreset.durationMs });
+    } else {
+      height.value = withSpring(targetHeight, {
+        damping: sheetPreset.damping,
+        stiffness: sheetPreset.stiffness,
+        mass: sheetPreset.mass,
+      });
+    }
+  }, [height, reduceMotion, sheetPreset, targetHeight]);
 
   useEffect(() => {
     keyboardShift.value = withTiming(keyboardOffset, { duration: reduceMotion ? 100 : 180 });

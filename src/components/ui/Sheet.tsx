@@ -12,6 +12,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { GlassSurface } from './GlassSurface';
+import { useMotionPreset } from '@/motion';
 import { Typography } from './Typography';
 
 export interface SheetProps {
@@ -47,6 +48,7 @@ export const Sheet: React.FC<SheetProps> = ({
 }) => {
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
+  const sheetPreset = useMotionPreset('sheet.present');
   const isIOS = Platform.OS === 'ios';
   const isAndroid = Platform.OS === 'android';
   const surfaceBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight;
@@ -60,7 +62,7 @@ export const Sheet: React.FC<SheetProps> = ({
     <NativeModal
       visible={visible}
       transparent={isAndroid}
-      animationType={reduceMotion ? 'none' : 'slide'}
+      animationType={reduceMotion || sheetPreset.mode === 'none' ? 'none' : 'slide'}
       presentationStyle={isIOS ? 'pageSheet' : undefined}
       allowSwipeDismissal={isIOS && dismissible}
       statusBarTranslucent={isAndroid}
