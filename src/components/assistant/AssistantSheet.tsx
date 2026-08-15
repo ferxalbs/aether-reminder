@@ -387,6 +387,11 @@ const styles = StyleSheet.create({
     width: 'auto',
     maxWidth: 720,
     zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 32,
+    elevation: 24,
   },
   sheet: {
     flex: 1,

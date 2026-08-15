@@ -46,6 +46,13 @@ Use `expo-blur` only when blur is needed, following its Android API requirements
 (`BlurTargetView` and an appropriate `blurMethod`) and its documented performance
 limitations on older Android versions.
 
+Global blur rule: every new and existing component that needs a blurred or glass
+surface must use `AdaptiveBlur` from `@/motion` (or a component that delegates to
+it) on every platform. Do not import or render `BlurView` directly in product
+components, and do not bypass `AdaptiveBlur` for one-off visual treatments. Pass
+an explicit `blurTarget` only when the Android capture hierarchy is safe; otherwise
+let `AdaptiveBlur` render its approved native fallback.
+
 ## Android Runtime & Native-View Safety
 
 - A `BlurTargetView` must never contain a `BlurView` or `GlassSurface` that targets

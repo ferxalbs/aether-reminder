@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
-  useAnimatedProps,
   useSharedValue,
   withSpring,
   withTiming,
@@ -21,14 +20,11 @@ import Animated, {
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { BlurView } from 'expo-blur';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
 import { GlassSurface } from './GlassSurface';
-import { useMotionPreset } from '@/motion';
+import { AdaptiveBlur, useMotionPreset } from '@/motion';
 import { Typography } from './Typography';
-
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 export interface SheetProps {
   visible: boolean;
@@ -172,17 +168,6 @@ export const Sheet: React.FC<SheetProps> = ({
     };
   });
 
-  const animatedBlurProps = useAnimatedProps(() => {
-    return {
-      intensity: interpolate(
-        translateY.value,
-        [0, height],
-        [30, 0],
-        Extrapolation.CLAMP
-      ) * opacity.value,
-    };
-  });
-
   if (!mounted) return null;
 
   return (
@@ -195,11 +180,10 @@ export const Sheet: React.FC<SheetProps> = ({
     >
       <GestureHandlerRootView style={styles.modalRoot}>
         <Animated.View style={[StyleSheet.absoluteFill, animatedScrimStyle]}>
-          <AnimatedBlurView
-            tint={isDark ? "dark" : "dark"}
-            animatedProps={animatedBlurProps}
+          <AdaptiveBlur
+            intensity={30}
+            tint="dark"
             style={StyleSheet.absoluteFill}
-            experimentalBlurMethod="dimezisBlurView"
           />
           <Pressable
             accessibilityRole="button"
@@ -223,21 +207,19 @@ export const Sheet: React.FC<SheetProps> = ({
           style={[
             styles.surface,
             {
-              backgroundColor: surfaceBackgroundColor,
+              backgroundColor: 'transparent',
               borderColor: isDark ? Colors.borderDark : Colors.borderLight,
             },
             animatedSurfaceStyle,
             surfaceStyle,
           ]}
         >
-          {Platform.OS === 'ios' ? (
-            <GlassSurface
-              pointerEvents="none"
-              borderRadius={ControlTokens.sheetTopRadius}
-              borderWidth={0}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null}
+          <GlassSurface
+            pointerEvents="none"
+            borderRadius={0}
+            borderWidth={0}
+            style={StyleSheet.absoluteFill}
+          />
 
           <GestureDetector gesture={panGesture}>
             <View style={styles.gestureHeader}>
@@ -292,12 +274,17 @@ const styles = StyleSheet.create({
   surface: {
     flex: 1,
     maxHeight: ControlTokens.sheetMaxHeight,
-    borderTopLeftRadius: ControlTokens.sheetTopRadius,
-    borderTopRightRadius: ControlTokens.sheetTopRadius,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
     paddingBottom: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 24,
   },
   gestureHeader: {
     paddingTop: ControlTokens.sheetContentGap,

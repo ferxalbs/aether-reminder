@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/aether-reminder.png",
-    "scheme": ["aether", "taskflowai"],
+    "scheme": "aether",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
     "ios": {
