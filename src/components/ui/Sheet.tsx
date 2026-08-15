@@ -135,9 +135,24 @@ export const Sheet: React.FC<SheetProps> = ({
       }
     });
 
-  const animatedSurfaceStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const animatedSurfaceStyle = useAnimatedStyle(() => {
+    // Premium Apple-style micro-animation: slightly scale up as it enters
+    const scale = interpolate(
+      translateY.value,
+      [height, 0],
+      [0.97, 1],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      transform: [
+        { translateY: translateY.value },
+        { scale },
+      ],
+      // Anchor the scale to the bottom so it doesn't lift off the screen edge
+      transformOrigin: 'bottom center',
+    };
+  });
 
   const animatedScrimStyle = useAnimatedStyle(() => {
     // Fade out the scrim proportionally as the sheet is dragged down
