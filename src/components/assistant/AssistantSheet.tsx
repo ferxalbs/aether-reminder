@@ -30,7 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssistantComposer } from "./AssistantComposer";
-import { AssistantMaterial } from "./AssistantMaterial";
+import { GlassSurface } from "../ui/GlassSurface";
 import type {
   AssistantMessage,
   AssistantReceipt,
@@ -213,7 +213,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
     "parsing",
   ].includes(voiceState);
   const voiceFailed = isVoiceFailureState(voiceState) && Boolean(voiceError);
-  const targetHeight =
+  const baseTargetHeight =
     surface === "opening" || surface === "compact"
       ? voiceActive
         ? voiceTranscript
@@ -227,6 +227,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         : surface === "full"
           ? Math.min(windowWidth >= 760 ? 760 : 720, windowHeight * 0.86)
           : 0;
+
+  const targetHeight = baseTargetHeight > 0 ? baseTargetHeight + Math.max(insets.bottom, 24) : 0;
 
   useEffect(() => {
     if (reduceMotion || sheetPreset.mode === "none") {
@@ -254,20 +256,30 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 
   const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
   const animatedBottomStyle = useAnimatedStyle(() => ({
-    bottom: Math.max(insets.bottom, 10) + 12 + keyboardShift.value,
+    bottom: keyboardShift.value,
   }));
   if (!isVisible) return null;
 
   return (
     <Animated.View
-      style={[styles.wrapper, animatedBottomStyle, animatedStyle]}
+      style={[
+        styles.wrapper,
+        animatedBottomStyle,
+        animatedStyle,
+        {
+          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+        }
+      ]}
       pointerEvents="box-none"
     >
-      <AssistantMaterial
-        style={styles.sheet}
-        borderRadius={24}
+      <GlassSurface
+        pointerEvents="none"
+        borderRadius={36}
+        borderWidth={0}
         blurTarget={blurTarget}
-      >
+        style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+      />
+      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <View style={styles.keyboardView}>
           {showHeader ? (
             <View style={styles.header}>
@@ -487,7 +499,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                           label="Cancel"
                           variant="secondary"
                           pill
-                          size="sm"
+                          size="md"
                           onPress={onCancelConfirmation}
                           style={styles.confirmationButton}
                         />
@@ -495,7 +507,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                           label="Confirm"
                           variant="primary"
                           pill
-                          size="sm"
+                          size="md"
                           onPress={onConfirm}
                           loading={isRunning}
                           style={styles.confirmationButton}
@@ -522,7 +534,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                           label="Retry"
                           variant="secondary"
                           pill
-                          size="sm"
+                          size="md"
                           onPress={onRetry}
                           loading={isRunning}
                           style={styles.retryButton}
@@ -603,7 +615,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       label="Cancel"
                       variant="secondary"
                       pill
-                      size="sm"
+                      size="md"
                       onPress={onVoiceCancel}
                     />
                     {voiceState === "listening" ? (
@@ -611,7 +623,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                         label="Stop & Send"
                         variant="primary"
                         pill
-                        size="sm"
+                        size="md"
                         onPress={onVoiceStop}
                       />
                     ) : null}
@@ -649,7 +661,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       label="Retry"
                       variant="primary"
                       pill
-                      size="sm"
+                      size="md"
                       onPress={onVoiceRetry}
                     />
                   ) : null}
@@ -658,7 +670,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       label="Settings"
                       variant="secondary"
                       pill
-                      size="sm"
+                      size="md"
                       onPress={onVoiceOpenSettings}
                     />
                   ) : null}
@@ -667,7 +679,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       label="Settings"
                       variant="secondary"
                       pill
-                      size="sm"
+                      size="md"
                       onPress={onVoiceOpenAppSettings}
                     />
                   ) : null}
@@ -675,7 +687,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                     label="Dismiss"
                     variant="ghost"
                     pill
-                    size="sm"
+                    size="md"
                     onPress={onVoiceDismiss}
                   />
                 </View>
@@ -694,7 +706,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
             ) : null}
           </View>
         </View>
-      </AssistantMaterial>
+      </View>
     </Animated.View>
   );
 };
@@ -702,16 +714,21 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    left: Spacing.sm,
-    right: Spacing.sm,
+    left: 0,
+    right: 0,
     alignSelf: "center",
-    width: "auto",
+    width: "100%",
     maxWidth: 720,
     zIndex: 20,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 32,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
     elevation: 24,
   },
   sheet: {

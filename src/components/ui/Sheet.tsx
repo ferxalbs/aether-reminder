@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
@@ -18,7 +19,6 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
 import { useIsDark } from '@/theme/useResolvedTheme';
@@ -81,32 +81,34 @@ export const Sheet: React.FC<SheetProps> = ({
   const translateY = useSharedValue(height);
   const opacity = useSharedValue(0);
 
-  const surfaceBackgroundColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceLight;
   const dialogLabel = accessibilityLabel ?? title ?? 'Sheet';
+  const shouldRender = visible || mounted;
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
       if (reduceMotion || sheetPreset.mode === 'none') {
-        translateY.value = 0;
-        opacity.value = withTiming(1, { duration: 150 });
+        translateY.set(0);
+        opacity.set(withTiming(1, { duration: 150 }));
       } else {
-        opacity.value = withTiming(1, { duration: 250 });
-        translateY.value = withSpring(0, SPRING_CONFIG);
+        opacity.set(withTiming(1, { duration: 250 }));
+        translateY.set(withSpring(0, SPRING_CONFIG));
       }
-    } else {
-      if (reduceMotion || sheetPreset.mode === 'none') {
-        opacity.value = withTiming(0, { duration: 150 }, () => {
-          scheduleOnRN(setMounted, false);
-        });
-      } else {
-        opacity.value = withTiming(0, { duration: 200 });
-        translateY.value = withSpring(height, SPRING_CONFIG, () => {
-          scheduleOnRN(setMounted, false);
-        });
-      }
+      return;
     }
-  }, [visible]);
+
+    if (!mounted) return;
+
+    if (reduceMotion || sheetPreset.mode === 'none') {
+      opacity.set(withTiming(0, { duration: 150 }, () => {
+        scheduleOnRN(setMounted, false);
+      }));
+    } else {
+      opacity.set(withTiming(0, { duration: 200 }));
+      translateY.set(withSpring(height, SPRING_CONFIG, () => {
+        scheduleOnRN(setMounted, false);
+      }));
+    }
+  }, [height, mounted, opacity, reduceMotion, sheetPreset, translateY, visible]);
 
   const handleRequestClose = () => {
     if (dismissible) onRequestClose();
@@ -116,22 +118,22 @@ export const Sheet: React.FC<SheetProps> = ({
     .onUpdate((e) => {
       if (!dismissible) return;
       if (e.translationY > 0) {
-        translateY.value = e.translationY;
+        translateY.set(e.translationY);
       } else {
-        translateY.value = -rubberband(-e.translationY, height);
+        translateY.set(-rubberband(-e.translationY, height));
       }
     })
     .onEnd((e) => {
       if (!dismissible) return;
       const projectedEndpoint = e.translationY + project(e.velocityY);
-      const threshold = height * 0.15; 
-      
+      const threshold = height * 0.15;
+
       if (projectedEndpoint > threshold || e.velocityY > 600) {
-        translateY.value = withSpring(height, { ...SPRING_CONFIG, velocity: e.velocityY }, () => {
+        translateY.set(withSpring(height, { ...SPRING_CONFIG, velocity: e.velocityY }, () => {
           scheduleOnRN(handleRequestClose);
-        });
+        }));
       } else {
-        translateY.value = withSpring(0, { ...SPRING_CONFIG, velocity: e.velocityY });
+        translateY.set(withSpring(0, { ...SPRING_CONFIG, velocity: e.velocityY }));
       }
     });
 
@@ -168,11 +170,11 @@ export const Sheet: React.FC<SheetProps> = ({
     };
   });
 
-  if (!mounted) return null;
+  if (!shouldRender) return null;
 
   return (
     <NativeModal
-      visible={true}
+      visible={shouldRender}
       transparent={true}
       animationType="none"
       onRequestClose={handleRequestClose}
@@ -216,9 +218,9 @@ export const Sheet: React.FC<SheetProps> = ({
         >
           <GlassSurface
             pointerEvents="none"
-            borderRadius={0}
+            borderRadius={36}
             borderWidth={0}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
           />
 
           <GestureDetector gesture={panGesture}>
