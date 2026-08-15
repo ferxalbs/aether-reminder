@@ -121,7 +121,7 @@ function computeCeiling(
     ceiling = minMotionTier(ceiling, 'standard');
     reason = 'low-power';
   }
-  if (snapshot?.lowMemory) {
+  if (snapshotHasMemoryPressure(snapshot)) {
     ceiling = minMotionTier(ceiling, 'reduced');
     reason = 'low-memory';
   }
@@ -263,6 +263,10 @@ function applySnapshot(
     consecutiveBadWindows: 0,
     consecutiveHealthyWindows: healthy ? next.consecutiveHealthyWindows : 0,
   };
+}
+
+function snapshotHasMemoryPressure(snapshot: NativeMotionSnapshot | null): boolean {
+  return snapshot?.memoryPressureActive === true || snapshot?.lowMemory === true;
 }
 
 function jankTarget(jankRatio: number | null): MotionTier | null {

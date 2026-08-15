@@ -17,6 +17,16 @@ function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function asPositiveNumber(value: unknown): number | null {
+  const parsed = asFiniteNumber(value);
+  return parsed != null && parsed > 0 ? parsed : null;
+}
+
+function asNonNegativeNumber(value: unknown): number | null {
+  const parsed = asFiniteNumber(value);
+  return parsed != null && parsed >= 0 ? parsed : null;
+}
+
 function asBoolean(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
@@ -39,23 +49,27 @@ export function parseNativeSnapshot(raw: unknown): NativeMotionSnapshot | null {
   if (frameCount == null || jankCount == null || frameCount < 0 || jankCount < 0) return null;
 
   const jankRatio = asFiniteNumber(frames.jankRatio);
+  const memoryPressureActive = asBoolean(value.memoryPressureActive) ?? asBoolean(value.lowMemory);
   return {
     platform: value.platform,
-    currentRefreshRateHz: asFiniteNumber(value.currentRefreshRateHz),
-    maximumRefreshRateHz: asFiniteNumber(value.maximumRefreshRateHz),
+    currentRefreshRateHz: asPositiveNumber(value.currentRefreshRateHz),
+    maximumRefreshRateHz: asPositiveNumber(value.maximumRefreshRateHz),
     lowPowerMode: asBoolean(value.lowPowerMode) ?? false,
-    lowMemory: asBoolean(value.lowMemory),
+    lowMemory: memoryPressureActive,
+    memoryPressureActive,
     lowRamDevice: asBoolean(value.lowRamDevice),
     thermalState: asThermal(value.thermalState),
     warmUpActive: asBoolean(value.warmUpActive) ?? false,
     timestampMs: asFiniteNumber(value.timestampMs) ?? Date.now(),
     frames: {
-      sampleWindowMs: asFiniteNumber(frames.sampleWindowMs) ?? 0,
+      sampleWindowMs: asNonNegativeNumber(frames.sampleWindowMs) ?? 0,
       frameCount: Math.round(frameCount),
       jankCount: Math.round(jankCount),
       jankRatio: jankRatio != null && jankRatio >= 0 ? jankRatio : null,
       averageFrameDurationMs: asFiniteNumber(frames.averageFrameDurationMs),
       frameOverrunP95Ms: asFiniteNumber(frames.frameOverrunP95Ms),
+      cadenceIntervalMs: asNonNegativeNumber(frames.cadenceIntervalMs),
+      callbackDelayP95Ms: asFiniteNumber(frames.callbackDelayP95Ms),
     },
   };
 }
@@ -74,7 +88,7 @@ export function parseNativeCapabilities(raw: unknown): {
   return {
     platform,
     androidApiLevel: asFiniteNumber(value.androidApiLevel),
-    maximumRefreshRateHz: asFiniteNumber(value.maximumRefreshRateHz),
+    maximumRefreshRateHz: asPositiveNumber(value.maximumRefreshRateHz),
     lowRamDevice: asBoolean(value.lowRamDevice),
     supportsNativeBlur: asBoolean(value.supportsNativeBlur) ?? false,
     nativeTelemetryAvailable: asBoolean(value.nativeTelemetryAvailable) ?? true,

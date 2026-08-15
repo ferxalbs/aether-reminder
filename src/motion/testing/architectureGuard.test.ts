@@ -63,4 +63,48 @@ describe('adaptive motion architecture guard', () => {
     const tick = ios.slice(ios.indexOf('func handleDisplayLink'), ios.indexOf('private func emitSnapshot'));
     expect(tick).not.toContain('sendEvent');
   });
+
+  test('iOS cadence classification does not use maximum refresh rate as required FPS', () => {
+    const ios = readFileSync(join(MODULE, 'ios/AetherMotionModule.swift'), 'utf8');
+    const tick = ios.slice(ios.indexOf('func handleDisplayLink'), ios.indexOf('private func emitSnapshot'));
+    expect(tick).not.toContain('maximumRefreshRateHz');
+    expect(tick).not.toContain('link.duration');
+    expect(tick).toContain('CadenceTelemetry.scheduledIntervalSeconds');
+    expect(tick).toContain('isJank: false');
+
+    const cadence = readFileSync(join(MODULE, 'ios/CadenceTelemetry.swift'), 'utf8');
+    expect(cadence).toContain('cadenceDifferenceIsJank');
+    expect(cadence).toMatch(/return false/);
+  });
+
+  test('Android frame aggregation is explicitly synchronized', () => {
+    const aggregator = readFileSync(
+      join(MODULE, 'android/src/main/java/expo/modules/aethermotion/FrameAggregator.kt'),
+      'utf8',
+    );
+    expect(aggregator).toContain('private val lock = Any()');
+    expect(aggregator).toContain('synchronized(lock)');
+    expect(aggregator).toContain('fun snapshotAndReset');
+    expect(aggregator).toContain('captureLocked');
+    expect(aggregator).toContain('resetLocked');
+    expect(aggregator).toContain('System.arraycopy');
+  });
+
+  test('MotionProvider reads native capabilities once and rerenders only on profile change', () => {
+    const provider = readFileSync(join(SRC, 'motion/runtime/MotionProvider.tsx'), 'utf8');
+    const reads = provider.match(/readNativeCapabilities\(/g) ?? [];
+    expect(reads).toHaveLength(1);
+    expect(provider).toContain('readNativeCapabilities() ?? platformCapabilities()');
+    expect(provider).not.toContain('governor.hydrate');
+    expect(provider).toContain('if (!profilesEqual(profileCurrent, next))');
+    expect(provider).toContain('setProfile(next)');
+  });
+
+  test('iOS memory-pressure cooldown stays a named AETHER constant', () => {
+    const policy = readFileSync(join(MODULE, 'ios/MemoryPressurePolicy.swift'), 'utf8');
+    const ts = readFileSync(join(SRC, 'motion/core/thresholds.ts'), 'utf8');
+    expect(policy).toMatch(/static let cooldownMs: Double = 180_000/);
+    expect(ts).toMatch(/MOTION_MEMORY_PRESSURE_COOLDOWN_MS = 180_000/);
+    expect(policy).toContain('Not an Apple');
+  });
 });

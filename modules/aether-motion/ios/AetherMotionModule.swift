@@ -16,6 +16,7 @@ final class AetherMotionModule: Module {
   }
 
   private let aggregator = FrameAggregator()
+  private let cadenceSmoother = RefreshRateSmoother(capacity: 5)
   private let displayLinkProxy = DisplayLinkProxy()
   private var displayLink: CADisplayLink?
   private var emitTimer: Timer?
@@ -26,8 +27,8 @@ final class AetherMotionModule: Module {
   private var maximumRefreshRateHz: Double?
   private var lowPowerMode = false
   private var thermalState = "unknown"
-  private var lowMemory: Bool?
-  private var receivedMemoryWarning = false
+  private var memoryPressureUntilMs: Double?
+  private var previousTargetTimestamp: Double?
 
   func definition() -> ModuleDefinition {
     Name("AetherMotion")
@@ -90,6 +91,8 @@ final class AetherMotionModule: Module {
     let now = CACurrentMediaTime() * 1000
     warmUpUntilMs = now + warmupMs
     aggregator.reset(nowMs: now)
+    cadenceSmoother.reset()
+    previousTargetTimestamp = nil
     tracking = true
     startDisplayLink()
   }
@@ -98,6 +101,7 @@ final class AetherMotionModule: Module {
     tracking = false
     displayLink?.invalidate()
     displayLink = nil
+    previousTargetTimestamp = nil
   }
 
   private func startDisplayLink() {
@@ -120,18 +124,29 @@ final class AetherMotionModule: Module {
   @objc
   private func handleDisplayLink(_ link: CADisplayLink) {
     guard tracking else { return }
-    let durationMs = (link.targetTimestamp - link.timestamp) * 1000.0
-    let expectedMs: Double
-    if let currentRefreshRateHz, currentRefreshRateHz > 0 {
-      expectedMs = 1000.0 / currentRefreshRateHz
-    } else if let maximumRefreshRateHz, maximumRefreshRateHz > 0 {
-      expectedMs = 1000.0 / maximumRefreshRateHz
-    } else {
-      expectedMs = 1000.0 / 60.0
+    guard let intervalSeconds = CadenceTelemetry.scheduledIntervalSeconds(
+      timestamp: link.timestamp,
+      targetTimestamp: link.targetTimestamp
+    ) else {
+      previousTargetTimestamp = link.targetTimestamp
+      return
     }
-    let overrunMs = durationMs - expectedMs
-    let isJank = durationMs > expectedMs * 1.5
-    aggregator.record(durationMs: durationMs, isJank: isJank, overrunMs: overrunMs)
+
+    if let hz = CadenceTelemetry.cadenceHz(intervalSeconds: intervalSeconds) {
+      currentRefreshRateHz = cadenceSmoother.push(hz)
+    }
+
+    let delaySeconds = CadenceTelemetry.callbackDelaySeconds(
+      previousTargetTimestamp: previousTargetTimestamp,
+      currentTimestamp: link.timestamp
+    )
+    previousTargetTimestamp = link.targetTimestamp
+
+    aggregator.record(
+      durationMs: intervalSeconds * 1000.0,
+      isJank: false,
+      overrunMs: delaySeconds.map { $0 * 1000.0 }
+    )
   }
 
   private func emitSnapshot() {
@@ -142,14 +157,14 @@ final class AetherMotionModule: Module {
   private func snapshotMap() -> [String: Any?] {
     let now = CACurrentMediaTime() * 1000
     let frames = aggregator.snapshotAndReset(nowMs: now)
-    let memoryFlag = receivedMemoryWarning ? true : lowMemory
-    receivedMemoryWarning = false
+    let memoryActive = MemoryPressurePolicy.isActive(nowMs: now, untilMs: memoryPressureUntilMs)
     return [
       "platform": "ios",
       "currentRefreshRateHz": currentRefreshRateHz,
       "maximumRefreshRateHz": maximumRefreshRateHz,
       "lowPowerMode": lowPowerMode,
-      "lowMemory": memoryFlag,
+      "lowMemory": memoryActive,
+      "memoryPressureActive": memoryActive,
       "lowRamDevice": nil,
       "thermalState": thermalState,
       "warmUpActive": now < warmUpUntilMs,
@@ -157,10 +172,12 @@ final class AetherMotionModule: Module {
       "frames": [
         "sampleWindowMs": frames.sampleWindowMs,
         "frameCount": frames.frameCount,
-        "jankCount": frames.jankCount,
-        "jankRatio": frames.jankRatio as Any,
+        "jankCount": 0,
+        "jankRatio": NSNull(),
         "averageFrameDurationMs": frames.averageFrameDurationMs as Any,
-        "frameOverrunP95Ms": frames.frameOverrunP95Ms as Any,
+        "frameOverrunP95Ms": NSNull(),
+        "cadenceIntervalMs": frames.averageFrameDurationMs as Any,
+        "callbackDelayP95Ms": frames.frameOverrunP95Ms as Any,
       ],
     ]
   }
@@ -184,13 +201,6 @@ final class AetherMotionModule: Module {
   private func readRuntimeSignals() {
     lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
     thermalState = ThermalMapper.fromProcessInfo(ProcessInfo.processInfo.thermalState)
-    if let link = displayLink, link.duration > 0 {
-      currentRefreshRateHz = 1.0 / link.duration
-    } else if let maximumRefreshRateHz {
-      currentRefreshRateHz = maximumRefreshRateHz
-    } else {
-      currentRefreshRateHz = nil
-    }
   }
 
   private func registerSystemObservers() {
@@ -230,7 +240,6 @@ final class AetherMotionModule: Module {
 
   @objc
   private func handleMemoryWarning() {
-    receivedMemoryWarning = true
-    lowMemory = true
+    memoryPressureUntilMs = MemoryPressurePolicy.extend(nowMs: CACurrentMediaTime() * 1000)
   }
 }

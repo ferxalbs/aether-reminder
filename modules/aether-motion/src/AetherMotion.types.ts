@@ -19,6 +19,8 @@ export interface NativeMotionFrameWindow {
   jankRatio: number | null;
   averageFrameDurationMs: number | null;
   frameOverrunP95Ms: number | null;
+  cadenceIntervalMs?: number | null;
+  callbackDelayP95Ms?: number | null;
 }
 
 export interface NativeMotionSnapshot {
@@ -27,6 +29,7 @@ export interface NativeMotionSnapshot {
   maximumRefreshRateHz: number | null;
   lowPowerMode: boolean;
   lowMemory: boolean | null;
+  memoryPressureActive?: boolean | null;
   lowRamDevice: boolean | null;
   thermalState: ThermalState;
   frames: NativeMotionFrameWindow;

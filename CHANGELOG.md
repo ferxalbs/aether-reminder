@@ -2,6 +2,62 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.14 (2) [Adaptive Motion Telemetry Correctness]
+
+### Android aggregator is thread-safe and atomically snapshotted
+
+- `FrameAggregator` no longer assumes `JankStats` and the 750 ms emit timer
+  share a thread. Mutable window state is guarded by a small lock.
+  [`FrameAggregator.kt`](modules/aether-motion/android/src/main/java/expo/modules/aethermotion/FrameAggregator.kt)
+- `snapshotAndReset()` copies the bounded overrun buffer under the lock,
+  resets in the same critical section, and sorts outside the lock. A frame
+  belongs to one window. The per-frame `record()` path stays O(1) and does
+  not allocate.
+- JVM tests now include concurrent record + snapshot/reset accounting,
+  repeated reset validity, bounded overrun storage, and percentile integrity
+  in [`FrameAggregatorTest.kt`](modules/aether-motion/android/src/test/java/expo/modules/aethermotion/FrameAggregatorTest.kt).
+
+### iOS cadence is not JankStats and not panel maximum
+
+- `currentRefreshRateHz` is the recent scheduled cadence from
+  `targetTimestamp - timestamp`, median-smoothed over five samples. It is
+  not `UIScreen.maximumFramesPerSecond` and not `1 / CADisplayLink.duration`.
+- `jankRatio` and `frameOverrunP95Ms` are `null` on iOS. Legitimate
+  ProMotion 120/80/60 Hz changes are not classified as jank.
+  [`AetherMotionModule.swift`](modules/aether-motion/ios/AetherMotionModule.swift),
+  [`CadenceTelemetry.swift`](modules/aether-motion/ios/CadenceTelemetry.swift)
+- Optional iOS diagnostics `cadenceIntervalMs` and `callbackDelayP95Ms` are
+  typed, optional, and ignored by older jank policy.
+
+### Memory pressure is temporary
+
+- An iOS memory warning now sets a timed `memoryPressureActive` ceiling for
+  `MOTION_MEMORY_PRESSURE_COOLDOWN_MS` (180 s). It is no longer a forever
+  `lowMemory` latch. Recovery uses the existing slower hysteresis, not an
+  instant `reduced → full` jump.
+  [`MemoryPressurePolicy.swift`](modules/aether-motion/ios/MemoryPressurePolicy.swift)
+
+### Native capability reads and parser safety
+
+- `MotionProvider` reads native capabilities once at initialization.
+- Snapshot parsing accepts `jankRatio = null`, unusual valid cadences, and
+  rejects zero/negative/`NaN`/infinite refresh rates without crashing
+  startup. [`snapshot.ts`](src/motion/core/snapshot.ts)
+
+### Share Extension compile nit and lint
+
+- Removed a non-optional `if let` unwrap on `Data` in
+  [`ShareViewController.swift`](targets/aether-share-extension/ShareViewController.swift).
+  Capture semantics are unchanged.
+- Removed the unused `AlertTriangle` import in `TaskUndoBanner.tsx`.
+
+### Remaining device gates
+
+- Physical FPS, jank, thermal, Power Saver, Reduce Motion, and ProMotion
+  behavior remain OPEN. No `adb` command was used. See
+  [`docs/ADAPTIVE_MOTION.md`](docs/ADAPTIVE_MOTION.md) and
+  [`docs/KNOWN_TRADEOFFS.md`](docs/KNOWN_TRADEOFFS.md).
+
 ## Unreleased - 2026.08.14 (1) [Adaptive Native Motion Engine]
 
 ### Runtime-adaptive motion language

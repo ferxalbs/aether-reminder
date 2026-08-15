@@ -10,7 +10,7 @@ import {
 } from '../core/nativeBridge';
 import { profilesEqual } from '../core/policy';
 import { ANDROID_NATIVE_BLUR_API } from '../core/thresholds';
-import type { MotionAccessibilityState, MotionProfile } from '../core/types';
+import type { MotionAccessibilityState, MotionProfile, NativeMotionCapabilities } from '../core/types';
 import { publishMotionDiagnostics } from './diagnosticsStore';
 import {
   MotionProfileContext,
@@ -27,11 +27,15 @@ function platformCapabilities() {
   );
 }
 
-function createGovernor(): MotionGovernor {
-  const capabilities = readNativeCapabilities() ?? platformCapabilities();
-  const governor = new MotionGovernor(capabilities);
-  if (readNativeCapabilities()) governor.hydrate(readNativeCapabilities());
-  return governor;
+function createMotionRuntime(): {
+  governor: MotionGovernor;
+  capabilities: NativeMotionCapabilities;
+} {
+  const initialCapabilities = readNativeCapabilities() ?? platformCapabilities();
+  return {
+    governor: new MotionGovernor(initialCapabilities),
+    capabilities: initialCapabilities,
+  };
 }
 
 function blurEnabledFor(profile: MotionProfile, androidApiLevel: number | null): boolean {
@@ -43,8 +47,7 @@ function blurEnabledFor(profile: MotionProfile, androidApiLevel: number | null):
 }
 
 export function MotionProvider({ children }: MotionProviderProps) {
-  const [governor] = useState(createGovernor);
-  const capabilities = readNativeCapabilities();
+  const [{ governor, capabilities }] = useState(createMotionRuntime);
   const [profile, setProfile] = useState<MotionProfile>(governor.profile());
 
   useEffect(() => {
@@ -65,7 +68,7 @@ export function MotionProvider({ children }: MotionProviderProps) {
         lastDowngradeReason: inspect.lastDowngradeReason,
         lastUpgradeReason: inspect.lastUpgradeReason,
         blurEnabled:
-          blurEnabledFor(next, capabilities?.androidApiLevel ?? null)
+          blurEnabledFor(next, capabilities.androidApiLevel)
           && !accessibilityRef.reduceTransparency,
         nativeTelemetryAvailable: isNativeMotionAvailable(),
       });
@@ -81,9 +84,12 @@ export function MotionProvider({ children }: MotionProviderProps) {
         maximumRefreshRateHz: snapshot.maximumRefreshRateHz,
         thermalState: snapshot.thermalState,
         lowPowerMode: snapshot.lowPowerMode,
-        lowMemory: snapshot.lowMemory,
+        lowMemory: snapshot.memoryPressureActive ?? snapshot.lowMemory,
+        memoryPressureActive: snapshot.memoryPressureActive ?? snapshot.lowMemory,
         lowRamDevice: snapshot.lowRamDevice,
         jankRatio: snapshot.frames.jankRatio,
+        cadenceIntervalMs: snapshot.frames.cadenceIntervalMs,
+        callbackDelayP95Ms: snapshot.frames.callbackDelayP95Ms,
         sampleCount: snapshot.frames.frameCount,
         warmUpActive: snapshot.warmUpActive,
         timestampMs: snapshot.timestampMs,
@@ -105,7 +111,7 @@ export function MotionProvider({ children }: MotionProviderProps) {
       stopAccessibility();
       appState.remove();
     };
-  }, [capabilities?.androidApiLevel, governor]);
+  }, [capabilities.androidApiLevel, governor]);
 
   return (
     <MotionProfileContext.Provider value={profile}>

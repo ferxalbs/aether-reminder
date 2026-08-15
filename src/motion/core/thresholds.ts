@@ -19,6 +19,12 @@ export const MOTION_JANK_FULL_TO_STANDARD = 0.08;
 export const MOTION_JANK_STANDARD_TO_REDUCED = 0.18;
 export const MOTION_JANK_REDUCED_TO_MINIMAL = 0.35;
 
+/**
+ * iOS AETHER policy: a memory warning lowers the motion ceiling for this long.
+ * Not an Apple guarantee. Must stay in sync with MemoryPressurePolicy.cooldownMs.
+ */
+export const MOTION_MEMORY_PRESSURE_COOLDOWN_MS = 180_000;
+
 export const DEFAULT_REFRESH_RATE_HZ = 60;
 
 export const ANDROID_NATIVE_BLUR_API = 31;

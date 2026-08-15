@@ -210,7 +210,7 @@ private final class ShareCaptureModel: ObservableObject {
   private static func hasExpectedImageSignature(at url: URL, mimeType: String) -> Bool {
     guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
     defer { try? handle.close() }
-    guard let data = try? handle.read(upToCount: 16), let data, data.count >= 3 else { return false }
+    guard let data = try? handle.read(upToCount: 16), data.count >= 3 else { return false }
     let bytes = [UInt8](data)
     func ascii(_ offset: Int, _ value: String) -> Bool {
       let expected = [UInt8](value.utf8)

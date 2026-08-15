@@ -219,13 +219,23 @@ semantic presets are implemented in `src/motion/` and `modules/aether-motion`.
 This section is the durable record of what this phase can and cannot claim.
 See [`ADAPTIVE_MOTION.md`](ADAPTIVE_MOTION.md) for the policy itself.
 
+Telemetry correctness notes that remain in force:
+
+- Android frame health is `JankStats`. iOS is variable-refresh-aware cadence
+  plus system pressure. iOS does **not** expose a trustworthy realtime jank
+  ratio; `jankRatio` and `frameOverrunP95Ms` are `null` on iOS.
+- Physical-device FPS, jank, thermal, Power Saver, and touch-latency claims
+  remain OPEN. Unit tests and compile tasks are not substitutes.
+- This telemetry patch did not execute `adb` or any install/launch path.
+
 ### Gate A — TypeScript / lint / unit suite
 
-**Status:** PASS
+**Status:** OPEN pending this patch's validation commands
 
-**Current evidence:** `bun run typecheck` passed. `bun run lint` passed with
-one pre-existing unused-import warning in `TaskUndoBanner.tsx`. `bun test`
-reported 307 passed, 2 skipped, 0 failed.
+**Current evidence:** Previous Adaptive Motion pass recorded typecheck, lint
+with one unused `AlertTriangle` import, and `bun test` 307 passed / 2 skipped.
+That unused import is removed in the telemetry patch. Re-run evidence belongs
+in the patch changelog.
 
 **Risk:** Policy tests cannot prove device smoothness.
 
@@ -276,16 +286,20 @@ or `:app:assembleDebug` with no install/launch tasks.
 
 ### Gate E — Android native JVM tests
 
-**Status:** PASS
+**Status:** OPEN pending this patch's Gradle run
 
-**Current evidence:** `./gradlew :aether-motion:testDebugUnitTest` completed
-with exit 0 after a percentile-rank correction. Thermal mapping and bounded
-aggregation are covered. `JankStats` itself is not executed on a device.
+**Current evidence:** The previous Adaptive Motion pass recorded
+`./gradlew :aether-motion:testDebugUnitTest` exit 0 for thermal mapping and
+single-thread aggregation. The telemetry patch adds concurrent
+record/snapshot stress, atomic snapshot/reset, bounded overrun storage, and
+percentile-copy integrity. `JankStats` itself is still not executed on a
+device.
 
 **Risk:** JVM stubs may not exercise `JankStats` itself. They only prove mapping
-and aggregation.
+and aggregation, plus thread-safety of the aggregator.
 
-**Closure evidence required:** Gradle unit tests for the `aether-motion` module.
+**Closure evidence required:** Gradle unit tests for the `aether-motion` module,
+including the concurrency suite.
 
 ### Gate F — iOS native compile
 

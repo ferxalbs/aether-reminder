@@ -16,6 +16,7 @@ export function snapshotFixture(
     maximumRefreshRateHz: 120,
     lowPowerMode: false,
     lowMemory: false,
+    memoryPressureActive: false,
     lowRamDevice: false,
     thermalState: 'nominal',
     warmUpActive: false,
@@ -28,6 +29,8 @@ export function snapshotFixture(
       jankRatio: 1 / 90,
       averageFrameDurationMs: 8.3,
       frameOverrunP95Ms: 0.4,
+      cadenceIntervalMs: null,
+      callbackDelayP95Ms: null,
       ...frames,
     },
   };

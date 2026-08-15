@@ -16,7 +16,12 @@ export function MotionDiagnosticsCard() {
     ['Refresh', diagnostics.refreshRateHz == null ? 'unknown' : `${diagnostics.refreshRateHz} Hz`],
     ['Thermal', diagnostics.thermalState],
     ['Low power', diagnostics.lowPowerMode ? 'yes' : 'no'],
+    ['Memory pressure', diagnostics.memoryPressureActive ? 'yes' : 'no'],
     ['Jank ratio', diagnostics.jankRatio == null ? 'n/a' : diagnostics.jankRatio.toFixed(3)],
+    [
+      'Cadence interval',
+      diagnostics.cadenceIntervalMs == null ? 'n/a' : `${diagnostics.cadenceIntervalMs.toFixed(2)} ms`,
+    ],
     ['Samples', String(diagnostics.sampleCount)],
     ['Downgrade', diagnostics.lastDowngradeReason ?? 'none'],
     ['Upgrade', diagnostics.lastUpgradeReason ?? 'none'],

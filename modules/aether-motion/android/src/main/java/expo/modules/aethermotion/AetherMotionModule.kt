@@ -140,6 +140,7 @@ class AetherMotionModule : Module() {
       "maximumRefreshRateHz" to maximumRefreshRateHz?.toDouble(),
       "lowPowerMode" to lowPowerMode,
       "lowMemory" to lowMemory,
+      "memoryPressureActive" to lowMemory,
       "lowRamDevice" to lowRamDevice,
       "thermalState" to thermalState,
       "warmUpActive" to (now < warmUpUntilElapsedMs),

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createGovernorState, profileFromState, reduceMotionState } from './policy';
+import { createGovernorState, profileFromState, profilesEqual, reduceMotionState } from './policy';
 import { frameBudgetMs } from './thresholds';
 import { accessibilityFixture, capabilitiesFixture, snapshotFixture } from '../testing/fixtures';
 import { applySnapshots, jankSnapshots, MOTION_DOWNGRADE_WINDOWS, MOTION_RECOVERY_WINDOWS } from '../testing/policyScenarios';
@@ -216,6 +216,108 @@ describe('warmup and empty samples', () => {
       accessibility: a11y,
     });
     expect(state.runtimeTier).toBe('full');
+  });
+});
+
+describe('iOS cadence is not jank', () => {
+  test('120 Hz capability at a healthy 60 Hz cadence does not downgrade', () => {
+    let state = createGovernorState(capabilitiesFixture({
+      platform: 'ios',
+      maximumRefreshRateHz: 120,
+    }));
+    state = { ...state, runtimeTier: 'full' };
+    state = applySnapshots(state, Array.from({ length: MOTION_DOWNGRADE_WINDOWS + 2 }, (_, index) =>
+      snapshotFixture({
+        platform: 'ios',
+        currentRefreshRateHz: 60,
+        maximumRefreshRateHz: 120,
+        thermalState: 'nominal',
+        lowPowerMode: false,
+        memoryPressureActive: false,
+        lowMemory: false,
+        timestampMs: 2_000 + index * 750,
+        frames: {
+          frameCount: 45,
+          jankCount: 0,
+          jankRatio: null,
+          cadenceIntervalMs: 1000 / 60,
+          callbackDelayP95Ms: 0.4,
+          frameOverrunP95Ms: null,
+        },
+      })));
+    expect(state.runtimeTier).toBe('full');
+    expect(state.lastDowngradeReason).toBeNull();
+    expect(state.effectiveCeiling).toBe('full');
+  });
+
+  test('null jankRatio never manufactures a jank downgrade', () => {
+    let state = createGovernorState(capabilitiesFixture({ platform: 'ios', maximumRefreshRateHz: 120 }));
+    state = { ...state, runtimeTier: 'full' };
+    state = applySnapshots(state, jankSnapshots(0.4, MOTION_DOWNGRADE_WINDOWS).map((snapshot) => ({
+      ...snapshot,
+      platform: 'ios' as const,
+      currentRefreshRateHz: 80,
+      maximumRefreshRateHz: 120,
+      frames: { ...snapshot.frames, jankCount: 0, jankRatio: null, frameOverrunP95Ms: null },
+    })));
+    expect(state.runtimeTier).toBe('full');
+  });
+});
+
+describe('memory pressure', () => {
+  test('active memory pressure reduces expensive effects without going minimal', () => {
+    let state = createGovernorState(capabilitiesFixture());
+    state = { ...state, runtimeTier: 'full' };
+    state = reduceMotionState(state, {
+      type: 'snapshot',
+      snapshot: snapshotFixture({ memoryPressureActive: true, lowMemory: true }),
+      accessibility: a11y,
+    });
+    expect(state.effectiveCeiling).toBe('reduced');
+    expect(state.runtimeTier).toBe('reduced');
+    const profile = profileFromState(state);
+    expect(profile.budget.allowLiveBlur).toBe(false);
+    expect(profile.budget.allowComplexOrb).toBe(false);
+    expect(profile.budget.maxSecondaryAnimations).toBeGreaterThan(0);
+  });
+
+  test('memory pressure expiry recovers through hysteresis', () => {
+    let state = createGovernorState(capabilitiesFixture());
+    state = { ...state, runtimeTier: 'full' };
+    state = reduceMotionState(state, {
+      type: 'snapshot',
+      snapshot: snapshotFixture({ memoryPressureActive: true, lowMemory: true }),
+      accessibility: a11y,
+    });
+    expect(state.runtimeTier).toBe('reduced');
+    state = applySnapshots(state, jankSnapshots(0.01, MOTION_RECOVERY_WINDOWS - 1, {
+      memoryPressureActive: false,
+      lowMemory: false,
+    }));
+    expect(state.effectiveCeiling).toBe('full');
+    expect(state.runtimeTier).toBe('reduced');
+    state = applySnapshots(state, jankSnapshots(0.01, 1, {
+      memoryPressureActive: false,
+      lowMemory: false,
+    }));
+    expect(state.runtimeTier).toBe('standard');
+    expect(state.lastUpgradeReason).toBe('recovery-upgrade');
+  });
+});
+
+describe('profile identity', () => {
+  test('telemetry-only snapshot extras do not change the published profile', () => {
+    const state = createGovernorState(capabilitiesFixture());
+    const first = profileFromState(state);
+    const second = profileFromState({
+      ...state,
+      lastSnapshot: snapshotFixture({
+        currentRefreshRateHz: 60,
+        timestampMs: 9_999,
+        frames: { jankRatio: null, cadenceIntervalMs: 16.67 },
+      }),
+    });
+    expect(profilesEqual(first, second)).toBe(true);
   });
 });
 

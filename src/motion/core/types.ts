@@ -38,17 +38,31 @@ export interface NativeMotionFrameWindow {
   sampleWindowMs: number;
   frameCount: number;
   jankCount: number;
+  /** Android JankStats ratio. Null on iOS — CADisplayLink is not JankStats. */
   jankRatio: number | null;
   averageFrameDurationMs: number | null;
+  /** Android frame overrun P95. Null on iOS. */
   frameOverrunP95Ms: number | null;
+  /** iOS scheduled display interval in ms. Optional on Android. */
+  cadenceIntervalMs: number | null;
+  /** iOS callback delay P95 vs the OS-scheduled target. Optional on Android. */
+  callbackDelayP95Ms: number | null;
 }
 
 export interface NativeMotionSnapshot {
   platform: 'android' | 'ios';
+  /** Observed/scheduled cadence. Not the panel maximum. */
   currentRefreshRateHz: number | null;
+  /** Maximum supported refresh rate. A capability, not the current rate. */
   maximumRefreshRateHz: number | null;
   lowPowerMode: boolean;
+  /**
+   * Android: current ActivityManager.MemoryInfo.lowMemory.
+   * iOS: backward-compatible alias of memoryPressureActive.
+   */
   lowMemory: boolean | null;
+  /** Current AETHER memory-pressure policy input. */
+  memoryPressureActive: boolean | null;
   lowRamDevice: boolean | null;
   thermalState: ThermalState;
   frames: NativeMotionFrameWindow;
@@ -100,8 +114,11 @@ export interface MotionDiagnostics {
   thermalState: ThermalState;
   lowPowerMode: boolean;
   lowMemory: boolean | null;
+  memoryPressureActive: boolean | null;
   lowRamDevice: boolean | null;
   jankRatio: number | null;
+  cadenceIntervalMs: number | null;
+  callbackDelayP95Ms: number | null;
   sampleCount: number;
   lastDowngradeReason: MotionChangeReason | null;
   lastUpgradeReason: MotionChangeReason | null;
