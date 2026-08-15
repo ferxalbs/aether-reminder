@@ -53,8 +53,11 @@ All notable changes to AETHER are documented here.
 
 ### Remaining device gates
 
-- Physical FPS, jank, thermal, Power Saver, Reduce Motion, and ProMotion
-  behavior remain OPEN. No `adb` command was used. See
+- Scheme `AetherShareExtension` now compiles for the iOS simulator. Full
+  scheme `AETHERReminder` and isolated `AetherMotion` still fail in Expo's
+  `ExpoModulesJSI` (`JavaScriptCodable+Date.swift:53`). Swift XCTest is
+  not wired. Physical FPS, jank, thermal, Power Saver, Reduce Motion, and
+  ProMotion behavior remain OPEN. No `adb` command was used. See
   [`docs/ADAPTIVE_MOTION.md`](docs/ADAPTIVE_MOTION.md) and
   [`docs/KNOWN_TRADEOFFS.md`](docs/KNOWN_TRADEOFFS.md).
 

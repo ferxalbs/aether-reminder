@@ -40,11 +40,14 @@ gates; previous agent reports are supporting history, not closure evidence.
 
 **Current evidence:** A prior clean Expo prebuild generated the main application,
 `AetherShareExtension`, extension embedding configuration, bundle identifiers,
-and matching App Group entitlements. Swift syntax parsing also passed. The Expo
-configuration now declares `AetherShareExtension` under
-`extra.eas.build.experimental.ios.appExtensions`, including its bundle identifier
-and App Group entitlement. This is required because Expo CNG support for iOS App
-Extensions is experimental. None of this is evidence of a full Xcode build.
+and matching App Group entitlements. The telemetry patch compiled scheme
+`AetherShareExtension` for `iphonesimulator` successfully after a one-line
+non-optional `Data` unwrap fix in `ShareViewController.swift`. Full scheme
+`AETHERReminder` still fails in Expo's `ExpoModulesJSI` xcframework script
+(`JavaScriptCodable+Date.swift:53`). The Expo configuration still declares
+`AetherShareExtension` under `extra.eas.build.experimental.ios.appExtensions`.
+This is required because Expo CNG support for iOS App Extensions is
+experimental. There is still no signed archive.
 
 **Risk:** Compilation, linking, embedding, App Intents discovery, signing,
 provisioning, and archive behavior may still fail or differ under the actual
@@ -230,14 +233,16 @@ Telemetry correctness notes that remain in force:
 
 ### Gate A — TypeScript / lint / unit suite
 
-**Status:** OPEN pending this patch's validation commands
+**Status:** PARTIALLY VERIFIED
 
-**Current evidence:** Previous Adaptive Motion pass recorded typecheck, lint
-with one unused `AlertTriangle` import, and `bun test` 307 passed / 2 skipped.
-That unused import is removed in the telemetry patch. Re-run evidence belongs
-in the patch changelog.
+**Current evidence:** Telemetry patch: `bun run typecheck` exit 0.
+`bun test` 324 passed, 2 skipped, 0 failed. `bun test src/motion` 69
+passed. `bun run lint` fails on pre-existing `Sheet.tsx` hook-plugin
+errors (3 errors, 5 warnings). Touched motion files and
+`TaskUndoBanner.tsx` lint clean after removing unused `AlertTriangle`.
 
-**Risk:** Policy tests cannot prove device smoothness.
+**Risk:** Policy tests cannot prove device smoothness. Repo-wide lint is
+not green because of `Sheet.tsx`.
 
 **Closure evidence required:** `bun run typecheck`, `bun run lint`, and
 `bun test` passing on the motion change.
@@ -286,14 +291,14 @@ or `:app:assembleDebug` with no install/launch tasks.
 
 ### Gate E — Android native JVM tests
 
-**Status:** OPEN pending this patch's Gradle run
+**Status:** PASS
 
-**Current evidence:** The previous Adaptive Motion pass recorded
-`./gradlew :aether-motion:testDebugUnitTest` exit 0 for thermal mapping and
-single-thread aggregation. The telemetry patch adds concurrent
-record/snapshot stress, atomic snapshot/reset, bounded overrun storage, and
-percentile-copy integrity. `JankStats` itself is still not executed on a
-device.
+**Current evidence:** Telemetry patch:
+`./gradlew :aether-motion:testDebugUnitTest` exit 0. Autolinking listed
+`aether-motion` (1.0.0). `FrameAggregatorTest` ran 8 tests including
+`concurrentRecordAndSnapshotAndResetPreservesInvariants` and
+`heavyConcurrentSamplingNeverExceedsRingCapacity`. `JankStats` itself is
+still not executed on a device. No install, launch, or `adb` task was used.
 
 **Risk:** JVM stubs may not exercise `JankStats` itself. They only prove mapping
 and aggregation, plus thread-safety of the aggregator.
@@ -305,17 +310,18 @@ including the concurrency suite.
 
 **Status:** FAIL
 
-**Current evidence:** `expo prebuild --platform ios` generated a gitignored
-`ios/` tree and installed pods, including `AetherMotion`. Full
-`xcodebuild` of scheme `AETHERReminder` for `iphonesimulator` failed in
-pre-existing `AetherShareExtension/ShareViewController.swift:213`
-(`initializer for conditional binding must have Optional type, not 'Data'`).
-An isolated `AetherMotion` scheme build failed in Expo's
-`ExpoModulesJSI` xcframework script, not in AetherMotion Swift. No
-physical device was used. Swift XCTest sources were not executed.
+**Current evidence:** Telemetry patch: scheme `AetherShareExtension`
+`xcodebuild` for `iphonesimulator` succeeded after a one-line
+non-optional `Data` unwrap fix. Full scheme `AETHERReminder` and isolated
+scheme `AetherMotion` failed in Expo's `ExpoModulesJSI` script
+(`JavaScriptCodable+Date.swift:53` ambiguous type). AetherMotion Swift
+was not reached. Pure helper sources typecheck with `swiftc -typecheck`
+against the iOS simulator SDK. Swift XCTest sources exist but have no
+wired target, so they were not executed. No physical device was used.
 
-**Risk:** App-level iOS compile remains blocked by the Share Extension
-error already recorded under Universal Capture Gate 1.
+**Risk:** App-level iOS compile remains blocked by ExpoModulesJSI, not by
+AetherMotion or the Share Extension source that previously failed at
+line 213.
 
 **Closure evidence required:** Successful Xcode compile/link of the main
 app and Share Extension, plus an AetherMotion target compile.
