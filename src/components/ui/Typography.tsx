@@ -1,19 +1,20 @@
-import React from 'react';
-import { Text, TextProps } from 'react-native';
-import { Colors, TypographyTokens } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React from "react";
+import { Text, TextProps } from "react-native";
+import { Colors, TypographyTokens } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
 export interface TypographyProps extends TextProps {
-  variant?: 'display' | 'headline' | 'title' | 'body' | 'bodyBold' | 'caption' | 'tiny';
+  variant?:
+    "display" | "headline" | "title" | "body" | "bodyBold" | "caption" | "tiny";
   color?: string;
-  align?: 'auto' | 'left' | 'right' | 'center' | 'justify';
+  align?: "auto" | "left" | "right" | "center" | "justify";
   children: React.ReactNode;
 }
 
 export const Typography: React.FC<TypographyProps> = ({
-  variant = 'body',
+  variant = "body",
   color,
-  align = 'left',
+  align = "left",
   allowFontScaling = true,
   style,
   children,

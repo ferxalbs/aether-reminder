@@ -1,56 +1,67 @@
-import type { ActionReceipt } from '@/domain/receipts';
-import type { TaskPriority, TemporalSemantics, UpdateTaskInput } from '@/domain/entities';
-import { getRecoveryUndoItems, RECOVERY_UNDO_KIND } from '@/domain/recovery';
+import type { ActionReceipt } from "@/domain/receipts";
+import type {
+  TaskPriority,
+  TemporalSemantics,
+  UpdateTaskInput,
+} from "@/domain/entities";
+import { getRecoveryUndoItems, RECOVERY_UNDO_KIND } from "@/domain/recovery";
 
 export type TaskUndoAction =
-  | 'task.soft_delete'
-  | 'task.reopen'
-  | 'task.complete'
-  | 'task.restore_soft_deleted'
-  | 'task.restore_fields'
-  | 'recovery.batch';
+  | "task.soft_delete"
+  | "task.reopen"
+  | "task.complete"
+  | "task.restore_soft_deleted"
+  | "task.restore_fields"
+  | "recovery.batch";
 
 function isTaskUndoAction(value: unknown): value is TaskUndoAction {
   return (
-    value === 'task.soft_delete' ||
-    value === 'task.reopen' ||
-    value === 'task.complete' ||
-    value === 'task.restore_soft_deleted' ||
-    value === 'task.restore_fields' ||
+    value === "task.soft_delete" ||
+    value === "task.reopen" ||
+    value === "task.complete" ||
+    value === "task.restore_soft_deleted" ||
+    value === "task.restore_fields" ||
     value === RECOVERY_UNDO_KIND
   );
 }
 
-export function getTaskUndoAction(receipt: ActionReceipt | null): TaskUndoAction | null {
-  if (receipt?.entityType !== 'task' || !receipt.undo) return null;
+export function getTaskUndoAction(
+  receipt: ActionReceipt | null,
+): TaskUndoAction | null {
+  if (receipt?.entityType !== "task" || !receipt.undo) return null;
   if (!isTaskUndoAction(receipt.undo.kind)) return null;
   if (receipt.undo.kind === RECOVERY_UNDO_KIND) {
     return getRecoveryUndoItems(receipt) ? receipt.undo.kind : null;
   }
-  return typeof receipt.undo.payload.taskId === 'string' && receipt.undo.payload.taskId.length > 0
+  return typeof receipt.undo.payload.taskId === "string" &&
+    receipt.undo.payload.taskId.length > 0
     ? receipt.undo.kind
     : null;
 }
 
-export function getTaskUndoTaskId(receipt: ActionReceipt | null): string | null {
+export function getTaskUndoTaskId(
+  receipt: ActionReceipt | null,
+): string | null {
   if (!getTaskUndoAction(receipt)) return null;
   const taskId = receipt?.undo?.payload.taskId;
-  return typeof taskId === 'string' && taskId.length > 0 ? taskId : null;
+  return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
 }
 
 export function canUndoTaskReceipt(receipt: ActionReceipt | null): boolean {
   const action = getTaskUndoAction(receipt);
   if (action === null) return false;
   if (action === RECOVERY_UNDO_KIND) return true;
-  return action === 'task.restore_fields' ? getTaskUndoRestoreFields(receipt) !== null : true;
+  return action === "task.restore_fields"
+    ? getTaskUndoRestoreFields(receipt) !== null
+    : true;
 }
 
 function isTaskPriority(value: unknown): value is TaskPriority {
-  return value === 'low' || value === 'medium' || value === 'high';
+  return value === "low" || value === "medium" || value === "high";
 }
 
 function isTemporalSemantics(value: unknown): value is TemporalSemantics {
-  return value === 'fixed' || value === 'floating';
+  return value === "fixed" || value === "floating";
 }
 
 /**
@@ -58,20 +69,27 @@ function isTemporalSemantics(value: unknown): value is TemporalSemantics {
  * Keep the payload opaque at the receipt boundary and validate it again before
  * handing it back to the command layer during an explicit Undo action.
  */
-export function getTaskUndoRestoreFields(receipt: ActionReceipt | null): UpdateTaskInput | null {
+export function getTaskUndoRestoreFields(
+  receipt: ActionReceipt | null,
+): UpdateTaskInput | null {
   if (
-    receipt?.entityType !== 'task' ||
-    receipt.undo?.kind !== 'task.restore_fields' ||
-    typeof receipt.undo.payload.taskId !== 'string' ||
+    receipt?.entityType !== "task" ||
+    receipt.undo?.kind !== "task.restore_fields" ||
+    typeof receipt.undo.payload.taskId !== "string" ||
     receipt.undo.payload.taskId.length === 0
-  ) return null;
+  )
+    return null;
   const payload = receipt?.undo?.payload;
-  if (!payload || typeof payload.title !== 'string' || !isTaskPriority(payload.priority)) {
+  if (
+    !payload ||
+    typeof payload.title !== "string" ||
+    !isTaskPriority(payload.priority)
+  ) {
     return null;
   }
 
   const nullableString = (value: unknown): string | null | undefined =>
-    value === null || typeof value === 'string' ? value : undefined;
+    value === null || typeof value === "string" ? value : undefined;
 
   const dueSemantics = payload.dueSemantics;
   return {

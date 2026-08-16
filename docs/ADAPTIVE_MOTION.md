@@ -46,12 +46,12 @@ There is no Snapdragon / Exynos / Tensor / GPU-name table.
 
 ## Tiers
 
-| Tier | Intent |
-| --- | --- |
-| `full` | Sustaining the requested UI workload. Springs, glass/blur where safe, Orb deformation, limited secondary motion. |
-| `standard` | Default production experience. Springs, task/navigation/Orb, small blur/glass. No ornamental parallax. |
-| `reduced` | Persistent jank, power/thermal pressure, or low-RAM / memory-pressure ceiling. Opacity, short transforms, static surfaces. |
-| `minimal` | Reduce Motion, critical thermal, or severe sustained jank. Opacity, tiny scale, haptics, immediate state. |
+| Tier       | Intent                                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `full`     | Sustaining the requested UI workload. Springs, glass/blur where safe, Orb deformation, limited secondary motion.           |
+| `standard` | Default production experience. Springs, task/navigation/Orb, small blur/glass. No ornamental parallax.                     |
+| `reduced`  | Persistent jank, power/thermal pressure, or low-RAM / memory-pressure ceiling. Opacity, short transforms, static surfaces. |
+| `minimal`  | Reduce Motion, critical thermal, or severe sustained jank. Opacity, tiny scale, haptics, immediate state.                  |
 
 `minimal` is still AETHER. It is not an unstyled fallback.
 
@@ -92,11 +92,11 @@ motion tier.
 
 These three concepts are distinct:
 
-| Field | Meaning |
-| --- | --- |
-| `maximumRefreshRateHz` | `UIScreen.maximumFramesPerSecond`. Capability only. |
+| Field                  | Meaning                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| `maximumRefreshRateHz` | `UIScreen.maximumFramesPerSecond`. Capability only.                                             |
 | `currentRefreshRateHz` | Recent scheduled cadence from `targetTimestamp - timestamp`, median-smoothed over five samples. |
-| jank | Not claimed. `jankRatio` and `frameOverrunP95Ms` are `null`. |
+| jank                   | Not claimed. `jankRatio` and `frameOverrunP95Ms` are `null`.                                    |
 
 iOS does not expose Android `JankStats`. `CADisplayLink` is not treated as
 an equivalent realtime jank meter. A legitimate ProMotion transition such as
@@ -138,16 +138,16 @@ Recovery never jumps `reduced → full` the instant the cooldown expires.
 
 ## Hysteresis
 
-| Constant | Value | Meaning |
-| --- | --- | --- |
-| `MOTION_SNAPSHOT_INTERVAL_MS` | 750 | Native aggregate interval |
-| `MOTION_WARMUP_MS` | 2500 | Ignore frame health after resume |
-| `MOTION_DOWNGRADE_WINDOWS` | 2 | Consecutive bad windows to step down |
-| `MOTION_RECOVERY_WINDOWS` | 27 | ~20.25 s of healthy windows to step up |
-| `MOTION_JANK_FULL_TO_STANDARD` | 0.08 | Full → standard (Android JankStats only) |
-| `MOTION_JANK_STANDARD_TO_REDUCED` | 0.18 | Standard → reduced (Android JankStats only) |
-| `MOTION_JANK_REDUCED_TO_MINIMAL` | 0.35 | Reduced → minimal (Android JankStats only) |
-| `MOTION_MEMORY_PRESSURE_COOLDOWN_MS` | 180000 | iOS memory-warning ceiling duration |
+| Constant                             | Value  | Meaning                                     |
+| ------------------------------------ | ------ | ------------------------------------------- |
+| `MOTION_SNAPSHOT_INTERVAL_MS`        | 750    | Native aggregate interval                   |
+| `MOTION_WARMUP_MS`                   | 2500   | Ignore frame health after resume            |
+| `MOTION_DOWNGRADE_WINDOWS`           | 2      | Consecutive bad windows to step down        |
+| `MOTION_RECOVERY_WINDOWS`            | 27     | ~20.25 s of healthy windows to step up      |
+| `MOTION_JANK_FULL_TO_STANDARD`       | 0.08   | Full → standard (Android JankStats only)    |
+| `MOTION_JANK_STANDARD_TO_REDUCED`    | 0.18   | Standard → reduced (Android JankStats only) |
+| `MOTION_JANK_REDUCED_TO_MINIMAL`     | 0.35   | Reduced → minimal (Android JankStats only)  |
+| `MOTION_MEMORY_PRESSURE_COOLDOWN_MS` | 180000 | iOS memory-warning ceiling duration         |
 
 Downgrade is one tier at a time. Upgrade is slower and cannot pass the current
 ceiling.

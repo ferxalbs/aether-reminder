@@ -1,10 +1,10 @@
-import type { InferenceToolDefinition } from '@/services/ai/inference/types';
-import { ANALYTICS_TOOLS } from './analyticsTools';
-import { APP_TOOLS } from './appTools';
-import { RECURRENCE_TOOLS } from './recurrenceTools';
-import { REMINDER_TOOLS } from './reminderTools';
-import { TASK_TOOLS } from './taskTools';
-import type { AgentTool } from './types';
+import type { InferenceToolDefinition } from "@/services/ai/inference/types";
+import { ANALYTICS_TOOLS } from "./analyticsTools";
+import { APP_TOOLS } from "./appTools";
+import { RECURRENCE_TOOLS } from "./recurrenceTools";
+import { REMINDER_TOOLS } from "./reminderTools";
+import { TASK_TOOLS } from "./taskTools";
+import type { AgentTool } from "./types";
 
 const ALL_TOOLS: AgentTool[] = [
   ...TASK_TOOLS,
@@ -37,7 +37,7 @@ export class ToolRegistry {
 
   toInferenceTools(): InferenceToolDefinition[] {
     return this.list().map((tool) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: tool.id,
         description: tool.description,

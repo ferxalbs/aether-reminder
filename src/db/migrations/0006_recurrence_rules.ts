@@ -1,9 +1,9 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /** First-class local recurrence rules. Appended schema; never edits shipped migrations. */
 export const migration0006RecurrenceRules: Migration = {
   version: 6,
-  name: '0006_recurrence_rules',
+  name: "0006_recurrence_rules",
   async up(db) {
     await db.execAsync(`
       CREATE TABLE recurrence_rules (

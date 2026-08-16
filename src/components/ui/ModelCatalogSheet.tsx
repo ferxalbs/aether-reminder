@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -6,15 +6,15 @@ import {
   StyleSheet,
   TextInput,
   View,
-} from 'react-native';
-import { Check, RefreshCw, Search } from 'lucide-react-native';
-import { canRunAsAgent } from '@/services/ai/inference';
-import type { AIModel } from '@/services/ai/models';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { AnimatedPressable } from './AnimatedPressable';
-import { Sheet } from './Sheet';
-import { Typography } from './Typography';
+} from "react-native";
+import { Check, RefreshCw, Search } from "lucide-react-native";
+import { canRunAsAgent } from "@/services/ai/inference";
+import type { AIModel } from "@/services/ai/models";
+import { Colors, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { Sheet } from "./Sheet";
+import { Typography } from "./Typography";
 
 export interface ModelCatalogSheetProps {
   visible: boolean;
@@ -28,9 +28,11 @@ export interface ModelCatalogSheetProps {
 }
 
 function formatContextLength(contextLength?: number): string {
-  if (!contextLength) return 'Context unknown';
-  if (contextLength >= 1000000) return `${(contextLength / 1000000).toFixed(1)}M context`;
-  if (contextLength >= 1000) return `${Math.round(contextLength / 1000)}k context`;
+  if (!contextLength) return "Context unknown";
+  if (contextLength >= 1000000)
+    return `${(contextLength / 1000000).toFixed(1)}M context`;
+  if (contextLength >= 1000)
+    return `${Math.round(contextLength / 1000)}k context`;
   return `${contextLength} tokens`;
 }
 
@@ -45,20 +47,22 @@ export function ModelCatalogSheet({
   onRefresh,
 }: ModelCatalogSheetProps) {
   const isDark = useIsDark();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredModels = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return query
       ? models.filter((model) =>
-          `${model.name} ${model.provider} ${model.id}`.toLowerCase().includes(query),
+          `${model.name} ${model.provider} ${model.id}`
+            .toLowerCase()
+            .includes(query),
         )
       : models;
   }, [models, searchQuery]);
 
   const handleSelect = (model: AIModel) => {
     const isSelectable =
-      model.availability === 'available' && canRunAsAgent(model.capabilities);
+      model.availability === "available" && canRunAsAgent(model.capabilities);
     if (isSelectable) {
       onSelectModel(model.id);
       onClose();
@@ -86,7 +90,7 @@ export function ModelCatalogSheet({
       title="OpenRouter Model Catalog"
       subtitle="Select a tool-capable reasoning model"
       headerAction={headerAction}
-      snapPoints={['90%']}
+      snapPoints={["90%"]}
       accessibilityLabel="OpenRouter Model Catalog"
     >
       <View style={styles.container}>
@@ -130,7 +134,9 @@ export function ModelCatalogSheet({
         ) : error ? (
           <Typography
             variant="caption"
-            color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+            color={
+              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
+            }
             style={styles.errorText}
           >
             {error}
@@ -138,7 +144,9 @@ export function ModelCatalogSheet({
         ) : filteredModels.length === 0 ? (
           <Typography
             variant="caption"
-            color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+            color={
+              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
+            }
             style={styles.errorText}
           >
             No models match &quot;{searchQuery}&quot;.
@@ -156,14 +164,14 @@ export function ModelCatalogSheet({
             renderItem={({ item: model }) => {
               const isSelected = selectedModelId === model.id;
               const isSelectable =
-                model.availability === 'available' &&
+                model.availability === "available" &&
                 canRunAsAgent(model.capabilities);
               const statusLabel =
-                model.availability !== 'available'
-                  ? 'Unavailable'
+                model.availability !== "available"
+                  ? "Unavailable"
                   : isSelectable
-                    ? 'Agent-Ready'
-                    : 'No Tool Support';
+                    ? "Agent-Ready"
+                    : "No Tool Support";
 
               return (
                 <AnimatedPressable
@@ -172,7 +180,10 @@ export function ModelCatalogSheet({
                   scaleTo={0.98}
                   accessibilityRole="radio"
                   accessibilityLabel={`${model.name}, ${model.provider}, ${formatContextLength(model.contextLength)}, ${statusLabel}`}
-                  accessibilityState={{ selected: isSelected, disabled: !isSelectable }}
+                  accessibilityState={{
+                    selected: isSelected,
+                    disabled: !isSelectable,
+                  }}
                   style={[
                     styles.modelCardItem,
                     {
@@ -180,7 +191,7 @@ export function ModelCatalogSheet({
                         ? isDark
                           ? Colors.surfaceRaisedDark
                           : Colors.surfaceRaisedLight
-                        : 'transparent',
+                        : "transparent",
                       borderColor: isSelected
                         ? isDark
                           ? Colors.white
@@ -264,12 +275,12 @@ const styles = StyleSheet.create({
     padding: 6,
     minHeight: 44,
     minWidth: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: Radius.md,
     borderWidth: 1,
     paddingHorizontal: Spacing.sm,
@@ -279,7 +290,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    paddingVertical: Platform.OS === "ios" ? 10 : 8,
     fontSize: 14,
   },
   centerLoader: {
@@ -295,8 +306,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
   },
   modelCardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -306,9 +317,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modelMetadataRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: 4,
   },

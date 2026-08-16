@@ -229,7 +229,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
           : 0;
 
   const bottomPadding = Math.max(insets.bottom + 16, 40);
-  const targetHeight = baseTargetHeight > 0 ? baseTargetHeight + bottomPadding : 0;
+  const targetHeight =
+    baseTargetHeight > 0 ? baseTargetHeight + bottomPadding : 0;
 
   useEffect(() => {
     if (reduceMotion || sheetPreset.mode === "none") {
@@ -269,7 +270,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         animatedStyle,
         {
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-        }
+        },
       ]}
       pointerEvents="box-none"
     >
@@ -278,7 +279,10 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         borderRadius={36}
         borderWidth={0}
         blurTarget={blurTarget}
-        style={[StyleSheet.absoluteFill, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+        ]}
       />
       <View style={[styles.sheet, { paddingBottom: bottomPadding }]}>
         <View style={styles.keyboardView}>

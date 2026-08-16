@@ -1,29 +1,33 @@
-import type { CaptureSource, TaskPriority, TemporalSemantics } from '@/domain/entities';
+import type {
+  CaptureSource,
+  TaskPriority,
+  TemporalSemantics,
+} from "@/domain/entities";
 
 export type CaptureIngress =
-  | 'in_app'
-  | 'voice'
-  | 'android_share'
-  | 'android_quick_settings'
-  | 'android_shortcut'
-  | 'ios_share_extension'
-  | 'ios_app_intent'
-  | 'ios_app_shortcut'
-  | 'deep_link';
+  | "in_app"
+  | "voice"
+  | "android_share"
+  | "android_quick_settings"
+  | "android_shortcut"
+  | "ios_share_extension"
+  | "ios_app_intent"
+  | "ios_app_shortcut"
+  | "deep_link";
 
 export type CaptureState =
-  | 'pending'
-  | 'processing'
-  | 'committed'
-  | 'discarded'
-  | 'failed_retryable'
-  | 'failed_terminal';
+  | "pending"
+  | "processing"
+  | "committed"
+  | "discarded"
+  | "failed_retryable"
+  | "failed_terminal";
 
 export type CapturePart =
-  | { kind: 'text'; text: string }
-  | { kind: 'url'; url: string }
+  | { kind: "text"; text: string }
+  | { kind: "url"; url: string }
   | {
-      kind: 'image';
+      kind: "image";
       assetRef: string;
       mimeType: string;
       sizeBytes?: number;
@@ -53,16 +57,16 @@ export interface CaptureDraft {
 }
 
 export type CaptureFailureCategory =
-  | 'empty_payload'
-  | 'unsupported_part'
-  | 'unsupported_mime'
-  | 'malformed_url'
-  | 'oversized_payload'
-  | 'invalid_envelope'
-  | 'asset_unavailable'
-  | 'database_busy'
-  | 'domain_validation'
-  | 'unknown';
+  | "empty_payload"
+  | "unsupported_part"
+  | "unsupported_mime"
+  | "malformed_url"
+  | "oversized_payload"
+  | "invalid_envelope"
+  | "asset_unavailable"
+  | "database_busy"
+  | "domain_validation"
+  | "unknown";
 
 export interface CaptureCapabilities {
   shareReceive: boolean;
@@ -82,11 +86,11 @@ export interface CaptureDiagnostics {
 }
 
 export type CaptureEventName =
-  | 'capture_received'
-  | 'capture_reviewed'
-  | 'capture_committed'
-  | 'capture_discarded'
-  | 'capture_failed';
+  | "capture_received"
+  | "capture_reviewed"
+  | "capture_committed"
+  | "capture_discarded"
+  | "capture_failed";
 
 export class CaptureError extends Error {
   constructor(
@@ -96,6 +100,6 @@ export class CaptureError extends Error {
     options?: ErrorOptions,
   ) {
     super(message, options);
-    this.name = 'CaptureError';
+    this.name = "CaptureError";
   }
 }

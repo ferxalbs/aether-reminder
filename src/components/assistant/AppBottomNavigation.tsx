@@ -1,29 +1,34 @@
-import React, { type RefObject, useEffect, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, View } from 'react-native';
-import { usePathname, useRouter } from 'expo-router';
-import { CalendarDays, CheckCircle2, ListTodo, Settings } from 'lucide-react-native';
+import React, { type RefObject, useEffect, useState } from "react";
+import { Keyboard, Platform, StyleSheet, View } from "react-native";
+import { usePathname, useRouter } from "expo-router";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ListTodo,
+  Settings,
+} from "lucide-react-native";
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSpring,
-} from 'react-native-reanimated';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { Typography } from '@/components/ui/Typography';
-import { GlassSurface } from '@/components/ui/GlassSurface';
-import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
-import { useSemanticColors } from '@/theme/useSemanticColors';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
-import { useAssistantActive } from './AssistantHost';
+} from "react-native-reanimated";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { Typography } from "@/components/ui/Typography";
+import { GlassSurface } from "@/components/ui/GlassSurface";
+import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
+import { useAssistantActive } from "./AssistantHost";
 
-type Destination = '/' | '/tasks' | '/all' | '/settings';
+type Destination = "/" | "/tasks" | "/all" | "/settings";
 
 const navigationItems = [
-  { destination: '/' as const, label: 'Today', icon: CheckCircle2 },
-  { destination: '/tasks' as const, label: 'Schedule', icon: CalendarDays },
-  { destination: '/all' as const, label: 'Reminders', icon: ListTodo },
-  { destination: '/settings' as const, label: 'Settings', icon: Settings },
+  { destination: "/" as const, label: "Today", icon: CheckCircle2 },
+  { destination: "/tasks" as const, label: "Schedule", icon: CalendarDays },
+  { destination: "/all" as const, label: "Reminders", icon: ListTodo },
+  { destination: "/settings" as const, label: "Settings", icon: Settings },
 ];
 
 interface AppBottomNavigationProps {
@@ -40,10 +45,12 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
 
   useEffect(() => {
     const show = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => setKeyboardVisible(true),
     );
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    const hide = Keyboard.addListener("keyboardDidHide", () =>
+      setKeyboardVisible(false),
+    );
     return () => {
       show.remove();
       hide.remove();
@@ -53,15 +60,18 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   if (keyboardVisible || assistantActive) return null;
 
   const isActive = (destination: Destination) =>
-    pathname === destination || (destination === '/' && pathname === '/index');
+    pathname === destination || (destination === "/" && pathname === "/index");
 
   return (
-    <View style={[styles.host, { bottom: geometry.navigationBottom }]} pointerEvents="box-none">
+    <View
+      style={[styles.host, { bottom: geometry.navigationBottom }]}
+      pointerEvents="box-none"
+    >
       <GlassSurface
         blurTarget={blurTarget}
         borderRadius={Radius.pill}
-        intensity={Platform.OS === 'ios' ? 65 : 45}
-        tier={Platform.OS === 'android' ? 'A' : undefined}
+        intensity={Platform.OS === "ios" ? 65 : 45}
+        tier={Platform.OS === "android" ? "A" : undefined}
         style={styles.capsule}
         contentStyle={styles.navigation}
         accessible
@@ -74,7 +84,8 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
             active={isActive(item.destination)}
             isDark={isDark}
             onPress={() => {
-              if (!isActive(item.destination)) router.navigate(item.destination);
+              if (!isActive(item.destination))
+                router.navigate(item.destination);
             }}
           />
         ))}
@@ -100,7 +111,9 @@ function NavigationButton({
 
   useEffect(() => {
     selected.value = reduceMotion
-      ? active ? 1 : 0
+      ? active
+        ? 1
+        : 0
       : withSpring(active ? 1 : 0, Motion.pressSpring);
   }, [active, reduceMotion, selected]);
 
@@ -145,41 +158,41 @@ function NavigationButton({
 
 const styles = StyleSheet.create({
   host: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 16,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 100,
   },
   capsule: {
-    width: '100%',
+    width: "100%",
     maxWidth: LayoutTokens.navigationMaxWidth,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 6,
   },
   navigation: {
-    width: '100%',
+    width: "100%",
     height: LayoutTokens.navigationHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
     paddingHorizontal: Spacing.xs,
   },
   item: {
     flex: 1,
     height: 48,
     minWidth: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 3,
     borderRadius: Radius.pill,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   selected: {
-    position: 'absolute',
+    position: "absolute",
     top: 4,
     right: 4,
     bottom: 4,
@@ -189,7 +202,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     lineHeight: 13,
-    textAlign: 'center',
-    fontWeight: '500',
+    textAlign: "center",
+    fontWeight: "500",
   },
 });

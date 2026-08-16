@@ -1,9 +1,15 @@
-import React from 'react';
-import { Platform, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
-import { Colors, Hairline, Radius, TouchTargets } from '@/theme/tokens';
-import { useSemanticColors } from '@/theme/useSemanticColors';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React from "react";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
+import { LucideIcon } from "lucide-react-native";
+import { Colors, Hairline, Radius, TouchTargets } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
 export interface AetherToolbarButtonProps {
   icon: LucideIcon;
@@ -24,7 +30,8 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
 }) => {
   const colors = useSemanticColors();
   const isDark = useIsDark();
-  const touchSize = Platform.OS === 'android' ? TouchTargets.android : TouchTargets.ios;
+  const touchSize =
+    Platform.OS === "android" ? TouchTargets.android : TouchTargets.ios;
 
   return (
     <Pressable
@@ -36,7 +43,9 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
         styles.button,
         { width: touchSize, height: touchSize },
         hasBackground && {
-          backgroundColor: isDark ? Colors.glassDarkFallback : Colors.glassLightFallback,
+          backgroundColor: isDark
+            ? Colors.glassDarkFallback
+            : Colors.glassLightFallback,
           borderRadius: Radius.pill,
           borderWidth: Hairline.width,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
@@ -53,8 +62,8 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   pressed: {
     opacity: 0.7,

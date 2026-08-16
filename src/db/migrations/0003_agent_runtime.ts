@@ -1,4 +1,4 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /**
  * Minimal durable agent runtime schema (Slice 3).
@@ -6,7 +6,7 @@ import type { Migration } from './types';
  */
 export const migration0003AgentRuntime: Migration = {
   version: 3,
-  name: '0003_agent_runtime',
+  name: "0003_agent_runtime",
   async up(db) {
     await db.execAsync(`
       CREATE TABLE agent_sessions (

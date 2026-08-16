@@ -5,7 +5,7 @@ export {
   isLocalDateBefore,
   isLocalDateAfter,
   getDeviceTimeZone,
-} from './localCalendar';
+} from "./localCalendar";
 
 export type {
   LocalDate,
@@ -14,8 +14,8 @@ export type {
   TemporalSemantics,
   ResolvedDateTime,
   Weekday,
-} from './types';
-export { TemporalValidationError, WEEKDAY_INDEX } from './types';
+} from "./types";
+export { TemporalValidationError, WEEKDAY_INDEX } from "./types";
 
 export {
   isValidLocalDate,
@@ -30,4 +30,4 @@ export {
   resolveNextWeekday,
   assertResolvedDateTime,
   resolveNowLocal,
-} from './resolve';
+} from "./resolve";

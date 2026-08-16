@@ -1,6 +1,6 @@
-import React from 'react';
-import type { TaskListItem } from '@/domain/entities';
-import { TaskEditorSheet } from './TaskEditorSheet';
+import React from "react";
+import type { TaskListItem } from "@/domain/entities";
+import { TaskEditorSheet } from "./TaskEditorSheet";
 
 /** @deprecated Use TaskEditorSheet for both create and edit flows. */
 export interface AddTaskModalProps {
@@ -20,7 +20,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   <TaskEditorSheet
     visible={visible}
     onClose={onClose}
-    mode={task ? 'edit' : 'create'}
+    mode={task ? "edit" : "create"}
     task={task}
     initialTitle={initialTitle}
   />

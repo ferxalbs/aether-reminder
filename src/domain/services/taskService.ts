@@ -1,25 +1,31 @@
-import type { CreateTaskInput, Task, TaskCaptureSource, UpdateTaskInput } from '@/domain/entities';
+import type {
+  CreateTaskInput,
+  Task,
+  TaskCaptureSource,
+  UpdateTaskInput,
+} from "@/domain/entities";
 import {
   assertRecoverySchedule,
   type RecoverySchedule,
-} from '@/domain/recovery';
-import { createReceipt, type ActionReceipt } from '@/domain/receipts';
-import { TasksRepository } from '@/db/repositories/tasksRepository';
-import { assertResolvedDateTime } from '@/temporal/resolve';
-import type { TemporalSemantics } from '@/temporal/types';
+} from "@/domain/recovery";
+import { createReceipt, type ActionReceipt } from "@/domain/receipts";
+import { TasksRepository } from "@/db/repositories/tasksRepository";
+import { assertResolvedDateTime } from "@/temporal/resolve";
+import type { TemporalSemantics } from "@/temporal/types";
 import type {
   ConditionalTaskScheduleOutcome,
   CaptureCommitContext,
-} from '@/db/repositories/tasksRepository';
-import type { CaptureCommitsRepository } from '@/db/repositories/captureCommitsRepository';
+} from "@/db/repositories/tasksRepository";
+import type { CaptureCommitsRepository } from "@/db/repositories/captureCommitsRepository";
 
-export type TaskListScope = 'today' | 'overdue' | 'upcoming' | 'all' | 'active' | 'all_active';
+export type TaskListScope =
+  "today" | "overdue" | "upcoming" | "all" | "active" | "all_active";
 
 export interface ListTasksOptions {
   scope?: TaskListScope;
   localDate?: string;
   projectId?: string;
-  priority?: Task['priority'];
+  priority?: Task["priority"];
   completed?: boolean;
   limit?: number;
 }
@@ -59,7 +65,7 @@ export class TaskService {
 
   async createTask(
     input: CreateTaskInput,
-    eventSource = 'manual'
+    eventSource = "manual",
   ): Promise<MutationResult<Task>> {
     if (input.dueDate != null) {
       const resolved = assertResolvedDateTime({
@@ -81,12 +87,12 @@ export class TaskService {
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.create',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.create",
+        entityType: "task",
         entityId: task.id,
         summary: `Created task “${task.title}”`,
-        undo: { kind: 'task.soft_delete', payload: { taskId: task.id } },
+        undo: { kind: "task.soft_delete", payload: { taskId: task.id } },
       }),
     };
   }
@@ -114,12 +120,12 @@ export class TaskService {
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.create',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.create",
+        entityType: "task",
         entityId: task.id,
         summary: `Created task “${task.title}”`,
-        undo: { kind: 'task.soft_delete', payload: { taskId: task.id } },
+        undo: { kind: "task.soft_delete", payload: { taskId: task.id } },
       }),
     };
   }
@@ -127,7 +133,7 @@ export class TaskService {
   async updateTask(
     id: string,
     input: UpdateTaskInput,
-    eventSource = 'manual'
+    eventSource = "manual",
   ): Promise<MutationResult<Task>> {
     if (input.dueDate !== undefined && input.dueDate != null) {
       const resolved = assertResolvedDateTime({
@@ -150,14 +156,14 @@ export class TaskService {
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.update',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.update",
+        entityType: "task",
         entityId: task.id,
         summary: `Updated task “${task.title}”`,
         undo: before
           ? {
-              kind: 'task.restore_fields',
+              kind: "task.restore_fields",
               payload: {
                 taskId: id,
                 title: before.title,
@@ -175,32 +181,38 @@ export class TaskService {
     };
   }
 
-  async completeTask(id: string, eventSource = 'manual'): Promise<MutationResult<Task>> {
+  async completeTask(
+    id: string,
+    eventSource = "manual",
+  ): Promise<MutationResult<Task>> {
     const task = await this.tasks.complete(id, eventSource);
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.complete',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.complete",
+        entityType: "task",
         entityId: task.id,
         summary: `Completed task “${task.title}”`,
-        undo: { kind: 'task.reopen', payload: { taskId: task.id } },
+        undo: { kind: "task.reopen", payload: { taskId: task.id } },
       }),
     };
   }
 
-  async reopenTask(id: string, eventSource = 'manual'): Promise<MutationResult<Task>> {
+  async reopenTask(
+    id: string,
+    eventSource = "manual",
+  ): Promise<MutationResult<Task>> {
     const task = await this.tasks.reopen(id, eventSource);
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.reopen',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.reopen",
+        entityType: "task",
         entityId: task.id,
         summary: `Reopened task “${task.title}”`,
-        undo: { kind: 'task.complete', payload: { taskId: task.id } },
+        undo: { kind: "task.complete", payload: { taskId: task.id } },
       }),
     };
   }
@@ -208,7 +220,7 @@ export class TaskService {
   async rescheduleTask(
     id: string,
     input: RescheduleTaskInput,
-    eventSource = 'manual'
+    eventSource = "manual",
   ): Promise<MutationResult<Task>> {
     const resolved = assertResolvedDateTime({
       date: input.dueDate,
@@ -225,19 +237,19 @@ export class TaskService {
         dueTimezone: resolved.timezone,
         dueSemantics: resolved.semantics,
       },
-      eventSource
+      eventSource,
     );
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.reschedule',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.reschedule",
+        entityType: "task",
         entityId: task.id,
         summary: `Rescheduled task “${task.title}” to ${resolved.date}`,
         undo: before
           ? {
-              kind: 'task.reschedule',
+              kind: "task.reschedule",
               payload: {
                 taskId: id,
                 dueDate: before.dueDate,
@@ -254,7 +266,7 @@ export class TaskService {
   /** Apply schedule-only recovery entries through the repository transaction. */
   async applyRecoverySchedules(
     changes: readonly ConditionalRecoveryScheduleChange[],
-    eventSource = 'recovery',
+    eventSource = "recovery",
   ): Promise<ConditionalTaskScheduleOutcome[]> {
     for (const change of changes) assertRecoverySchedule(change.schedule);
     return this.tasks.applyConditionalScheduleChanges(
@@ -271,20 +283,25 @@ export class TaskService {
   }
 
   /** Soft-delete (current product semantics). Returns a receipt suitable for Undo. */
-  async deleteTask(id: string, eventSource = 'manual'): Promise<MutationResult<{ id: string }>> {
+  async deleteTask(
+    id: string,
+    eventSource = "manual",
+  ): Promise<MutationResult<{ id: string }>> {
     const existing = await this.tasks.getById(id);
     await this.tasks.softDelete(id, eventSource);
     return {
       value: { id },
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.delete',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.delete",
+        entityType: "task",
         entityId: id,
-        summary: existing ? `Deleted task “${existing.title}”` : `Deleted task ${id}`,
+        summary: existing
+          ? `Deleted task “${existing.title}”`
+          : `Deleted task ${id}`,
         undo: existing
           ? {
-              kind: 'task.restore_soft_deleted',
+              kind: "task.restore_soft_deleted",
               payload: { taskId: id, snapshot: existing },
             }
           : undefined,
@@ -292,40 +309,48 @@ export class TaskService {
     };
   }
 
-  async restoreTask(id: string, eventSource = 'undo'): Promise<MutationResult<Task>> {
+  async restoreTask(
+    id: string,
+    eventSource = "undo",
+  ): Promise<MutationResult<Task>> {
     const task = await this.tasks.restoreSoftDeleted(id, eventSource);
     return {
       value: task,
       receipt: createReceipt({
-        risk: 'REVERSIBLE_WRITE',
-        action: 'tasks.restore',
-        entityType: 'task',
+        risk: "REVERSIBLE_WRITE",
+        action: "tasks.restore",
+        entityType: "task",
         entityId: id,
         summary: `Restored task “${task.title}”`,
-        undo: { kind: 'task.soft_delete', payload: { taskId: id } },
+        undo: { kind: "task.soft_delete", payload: { taskId: id } },
       }),
     };
   }
 
-  async getTask(id: string, options?: { includeDeleted?: boolean }): Promise<Task | null> {
+  async getTask(
+    id: string,
+    options?: { includeDeleted?: boolean },
+  ): Promise<Task | null> {
     return this.tasks.getById(id, options);
   }
 
   async listTasks(options: ListTasksOptions = {}): Promise<Task[]> {
-    const scope = options.scope ?? 'active';
+    const scope = options.scope ?? "active";
     switch (scope) {
-      case 'today':
+      case "today":
         return this.tasks.listToday(options.localDate);
-      case 'overdue':
+      case "overdue":
         return this.tasks.listOverdue(options.localDate);
-      case 'upcoming':
+      case "upcoming":
         return this.tasks.listUpcoming(options.localDate, options.limit ?? 100);
-      case 'all':
+      case "all":
         return this.tasks.listAll();
-      case 'all_active':
-      case 'active':
-        if (options.projectId) return this.tasks.listByProject(options.projectId);
-        if (options.priority) return this.tasks.listByPriority(options.priority);
+      case "all_active":
+      case "active":
+        if (options.projectId)
+          return this.tasks.listByProject(options.projectId);
+        if (options.priority)
+          return this.tasks.listByPriority(options.priority);
         return this.tasks.listActive({
           limit: options.limit ?? 100,
           completed: options.completed,

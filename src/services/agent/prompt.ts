@@ -3,9 +3,10 @@
  * No hype persona language. Facts come from tools.
  */
 
-export const AGENT_PROMPT_VERSION = 'aether-agent-v1';
+export const AGENT_PROMPT_VERSION = "aether-agent-v1";
 
-export const AGENT_SYSTEM_PROMPT = `You are AETHER, the in-app assistant for tasks and reminders.
+export const AGENT_SYSTEM_PROMPT =
+  `You are AETHER, the in-app assistant for tasks and reminders.
 
 Contract version: ${AGENT_PROMPT_VERSION}
 
@@ -38,25 +39,30 @@ export function buildContextMessage(context: {
 }): string {
   // Compact structured context — never a full DB dump
   return [
-    'Active UI context (authoritative for selection, not for task contents):',
+    "Active UI context (authoritative for selection, not for task contents):",
     `- surface: ${context.surface}`,
     `- invocationSource: ${context.invocationSource}`,
     `- locale: ${context.locale}`,
     `- timezone: ${context.timezone}`,
     `- localDate: ${context.localDate}`,
     context.selectedDate ? `- selectedDate: ${context.selectedDate}` : null,
-    context.selectedTaskId ? `- selectedTaskId: ${context.selectedTaskId}` : null,
+    context.selectedTaskId
+      ? `- selectedTaskId: ${context.selectedTaskId}`
+      : null,
     context.visibleTaskIds?.length
-      ? `- visibleTaskIds: ${context.visibleTaskIds.slice(0, 40).join(', ')}`
+      ? `- visibleTaskIds: ${context.visibleTaskIds.slice(0, 40).join(", ")}`
       : null,
     context.conversationEntities?.length
       ? `- recent conversation entities: ${context.conversationEntities
           .slice(-8)
-          .map((entity) => `${entity.type}:${entity.id}${entity.label ? ` (${entity.label})` : ''}`)
-          .join(', ')}`
+          .map(
+            (entity) =>
+              `${entity.type}:${entity.id}${entity.label ? ` (${entity.label})` : ""}`,
+          )
+          .join(", ")}`
       : null,
-    'Fetch task contents via tools. Do not assume titles from IDs alone.',
+    "Fetch task contents via tools. Do not assume titles from IDs alone.",
   ]
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 }

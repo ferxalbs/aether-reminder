@@ -1,28 +1,30 @@
-import {
-  NotificationError,
-  toNotificationError,
-} from './errors';
+import { NotificationError, toNotificationError } from "./errors";
 import type {
   NotificationReconciliationOptions,
   NotificationReconciliationResult,
-} from './notificationReconciliation';
+} from "./notificationReconciliation";
 
 export interface NotificationSyncClient {
   configure: () => Promise<void>;
-  reconcile: (options?: NotificationReconciliationOptions) => Promise<NotificationReconciliationResult>;
+  reconcile: (
+    options?: NotificationReconciliationOptions,
+  ) => Promise<NotificationReconciliationResult>;
 }
 
 export async function syncLocalNotifications(
   client: NotificationSyncClient,
-  options: NotificationReconciliationOptions = { mode: 'full', reason: 'cold-start' },
+  options: NotificationReconciliationOptions = {
+    mode: "full",
+    reason: "cold-start",
+  },
 ): Promise<NotificationReconciliationResult> {
   try {
     await client.configure();
   } catch (error) {
     throw toNotificationError(
       error,
-      'CONFIGURATION_FAILED',
-      'Local notifications could not be initialized. Try again.',
+      "CONFIGURATION_FAILED",
+      "Local notifications could not be initialized. Try again.",
     );
   }
 
@@ -32,16 +34,16 @@ export async function syncLocalNotifications(
   } catch (error) {
     throw toNotificationError(
       error,
-      'RECONCILIATION_FAILED',
-      'Reminders could not be synchronized with device notifications. Try again.',
+      "RECONCILIATION_FAILED",
+      "Reminders could not be synchronized with device notifications. Try again.",
     );
   }
 
   if (result.failed > 0) {
     throw new NotificationError(
-      'RECONCILIATION_FAILED',
+      "RECONCILIATION_FAILED",
       result.failed === 1
-        ? 'One reminder could not be synchronized with device notifications. Try again.'
+        ? "One reminder could not be synchronized with device notifications. Try again."
         : `${result.failed} reminders could not be synchronized with device notifications. Try again.`,
       true,
       result.failures,

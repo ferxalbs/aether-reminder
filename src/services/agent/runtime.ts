@@ -16,8 +16,8 @@ import { evaluateToolPolicy, isWriteRisk } from "./policy";
 import { AGENT_SYSTEM_PROMPT, buildContextMessage } from "./prompt";
 import { defaultToolRegistry, type ToolRegistry } from "./tools";
 import type { ToolExecutionContext } from "./tools/types";
-import { AetherCommandExecutor } from '@/core/commands';
-import { reportNonFatalError } from '@/lib/nonFatalError';
+import { AetherCommandExecutor } from "@/core/commands";
+import { reportNonFatalError } from "@/lib/nonFatalError";
 import type {
   AgentBudget,
   AgentEvent,
@@ -72,7 +72,8 @@ export class AetherAgentRuntime implements AgentRuntime {
 
   constructor(options: AetherAgentRuntimeOptions) {
     this.services = options.services ?? createDomainServices(options.db);
-    this.commands = options.commands ?? new AetherCommandExecutor(this.services);
+    this.commands =
+      options.commands ?? new AetherCommandExecutor(this.services);
     this.provider = options.provider ?? openRouterInferenceProvider;
     this.tools = options.tools ?? defaultToolRegistry;
     this.persistence = new AgentRuntimeRepository(options.db);
@@ -92,7 +93,7 @@ export class AetherAgentRuntime implements AgentRuntime {
       });
     } catch (error) {
       // A cancellation can race run creation; retain the cancellation request and trace the race.
-      reportNonFatalError('agent-cancel', error);
+      reportNonFatalError("agent-cancel", error);
     }
   }
 
@@ -108,66 +109,163 @@ export class AetherAgentRuntime implements AgentRuntime {
       row.tool_id !== action.toolId ||
       row.status === "skipped"
     ) {
-      yield { type: "run.failed", runId: action.runId, code: "PENDING_ACTION_INVALID", message: "This confirmation is no longer valid.", state: "error" };
+      yield {
+        type: "run.failed",
+        runId: action.runId,
+        code: "PENDING_ACTION_INVALID",
+        message: "This confirmation is no longer valid.",
+        state: "error",
+      };
       return;
     }
     if (row.status === "completed" && row.result_json) {
       const stored = JSON.parse(row.result_json) as { receipt?: ActionReceipt };
-      yield { type: "tool.completed", runId: action.runId, toolCallId: action.toolCallId, toolId: action.toolId, result: stored, receipt: stored.receipt, state: "executing" };
+      yield {
+        type: "tool.completed",
+        runId: action.runId,
+        toolCallId: action.toolCallId,
+        toolId: action.toolId,
+        result: stored,
+        receipt: stored.receipt,
+        state: "executing",
+      };
       if (stored.receipt) {
-        yield { type: "response.completed", runId: action.runId, response: { text: stored.receipt.summary, receipts: [stored.receipt] }, state: "responding" };
+        yield {
+          type: "response.completed",
+          runId: action.runId,
+          response: {
+            text: stored.receipt.summary,
+            receipts: [stored.receipt],
+          },
+          state: "responding",
+        };
       }
       return;
     }
     const persistedArgs = row.args_json
-      ? JSON.parse(row.args_json) as Record<string, unknown>
+      ? (JSON.parse(row.args_json) as Record<string, unknown>)
       : null;
-    if (!persistedArgs || row.status !== 'awaiting_confirmation') {
-      yield { type: "run.failed", runId: action.runId, code: "PENDING_ACTION_INVALID", message: "This confirmation is no longer valid.", state: "error" };
+    if (!persistedArgs || row.status !== "awaiting_confirmation") {
+      yield {
+        type: "run.failed",
+        runId: action.runId,
+        code: "PENDING_ACTION_INVALID",
+        message: "This confirmation is no longer valid.",
+        state: "error",
+      };
       return;
     }
-    const claimed = await this.persistence.claimToolExecution(action.id, 'awaiting_confirmation');
+    const claimed = await this.persistence.claimToolExecution(
+      action.id,
+      "awaiting_confirmation",
+    );
     if (!claimed) {
       const replay = await this.persistence.getToolExecution(action.id);
-      if (replay?.status === 'completed' && replay.result_json) {
-        const stored = JSON.parse(replay.result_json) as { receipt?: ActionReceipt };
-        yield { type: "tool.completed", runId: action.runId, toolCallId: action.toolCallId, toolId: action.toolId, result: stored, receipt: stored.receipt, state: "executing" };
-        if (stored.receipt) yield { type: "response.completed", runId: action.runId, response: { text: stored.receipt.summary, receipts: [stored.receipt] }, state: "responding" };
+      if (replay?.status === "completed" && replay.result_json) {
+        const stored = JSON.parse(replay.result_json) as {
+          receipt?: ActionReceipt;
+        };
+        yield {
+          type: "tool.completed",
+          runId: action.runId,
+          toolCallId: action.toolCallId,
+          toolId: action.toolId,
+          result: stored,
+          receipt: stored.receipt,
+          state: "executing",
+        };
+        if (stored.receipt)
+          yield {
+            type: "response.completed",
+            runId: action.runId,
+            response: {
+              text: stored.receipt.summary,
+              receipts: [stored.receipt],
+            },
+            state: "responding",
+          };
       }
       return;
     }
     const execution = this.observeExecutions([
-      (onEvent) => this.enqueueWrite(() => this.executeToolCall({
-        runId: action.runId,
-        call: { toolCallId: action.toolCallId, toolId: action.toolId, argsText: JSON.stringify(persistedArgs) },
-        input: { message: "", context: input.context, modelId: "", apiKey: "", onNavigate: input.onNavigate },
-        capabilities: { textInput: true, textOutput: true, streaming: false, tools: true, toolChoice: true, structuredOutputs: false, compatibility: "FULL_AGENT" },
-        controller: new AbortController(),
-        approvedExecutionId: action.id,
-        executionAlreadyClaimed: true,
-        onEvent,
-      })),
+      (onEvent) =>
+        this.enqueueWrite(() =>
+          this.executeToolCall({
+            runId: action.runId,
+            call: {
+              toolCallId: action.toolCallId,
+              toolId: action.toolId,
+              argsText: JSON.stringify(persistedArgs),
+            },
+            input: {
+              message: "",
+              context: input.context,
+              modelId: "",
+              apiKey: "",
+              onNavigate: input.onNavigate,
+            },
+            capabilities: {
+              textInput: true,
+              textOutput: true,
+              streaming: false,
+              tools: true,
+              toolChoice: true,
+              structuredOutputs: false,
+              compatibility: "FULL_AGENT",
+            },
+            controller: new AbortController(),
+            approvedExecutionId: action.id,
+            executionAlreadyClaimed: true,
+            onEvent,
+          }),
+        ),
     ]);
     let result: ToolCallResult | undefined;
     while (true) {
       const next = await execution.next();
-      if (next.done) { result = next.value[0]; break; }
+      if (next.done) {
+        result = next.value[0];
+        break;
+      }
       yield next.value;
     }
     if (!result) return;
     if (result.receipt) {
-      const response: AgentResponse = { text: result.receipt.summary, receipts: [result.receipt] };
-      yield { type: "response.completed", runId: action.runId, response, state: "responding" };
-      await this.persistence.updateRun(action.runId, { status: "completed", semanticState: "idle", finished: true });
-      yield { type: "state.changed", runId: action.runId, state: "idle", previous: "responding" };
+      const response: AgentResponse = {
+        text: result.receipt.summary,
+        receipts: [result.receipt],
+      };
+      yield {
+        type: "response.completed",
+        runId: action.runId,
+        response,
+        state: "responding",
+      };
+      await this.persistence.updateRun(action.runId, {
+        status: "completed",
+        semanticState: "idle",
+        finished: true,
+      });
+      yield {
+        type: "state.changed",
+        runId: action.runId,
+        state: "idle",
+        previous: "responding",
+      };
     }
   }
 
   async discard(action: PendingAction): Promise<void> {
     await this.persistence.updateToolExecution(action.id, {
-      status: "skipped", errorMessage: "User cancelled confirmation.", finished: true,
+      status: "skipped",
+      errorMessage: "User cancelled confirmation.",
+      finished: true,
     });
-    await this.persistence.updateRun(action.runId, { status: "cancelled", semanticState: "idle", finished: true });
+    await this.persistence.updateRun(action.runId, {
+      status: "cancelled",
+      semanticState: "idle",
+      finished: true,
+    });
   }
 
   async *run(input: AgentInput): AsyncIterable<AgentEvent> {
@@ -191,10 +289,12 @@ export class AetherAgentRuntime implements AgentRuntime {
         budget,
       });
     } catch (caught) {
-      const detail = caught instanceof Error && caught.message
-        ? ` ${caught.message}`
-        : '';
-      throw new Error(`AETHER could not initialize local run storage.${detail}`, { cause: caught });
+      const detail =
+        caught instanceof Error && caught.message ? ` ${caught.message}` : "";
+      throw new Error(
+        `AETHER could not initialize local run storage.${detail}`,
+        { cause: caught },
+      );
     }
 
     const controller = new AbortController();
@@ -207,11 +307,15 @@ export class AetherAgentRuntime implements AgentRuntime {
     let modelTurns = 0;
     let usageAcc: InferenceUsage = {};
 
-    const emit = async function* (event: AgentEvent): AsyncGenerator<AgentEvent> {
+    const emit = async function* (
+      event: AgentEvent,
+    ): AsyncGenerator<AgentEvent> {
       yield event;
     };
 
-    const setState = async function* (next: AgentSemanticState): AsyncGenerator<AgentEvent> {
+    const setState = async function* (
+      next: AgentSemanticState,
+    ): AsyncGenerator<AgentEvent> {
       if (next === state) return;
       const previous = state;
       state = next;
@@ -259,12 +363,17 @@ export class AetherAgentRuntime implements AgentRuntime {
           input.apiKey,
         );
       } catch (error) {
-        const providerError = error instanceof AIProviderError
-          ? error
-          : new AIProviderError('NETWORK_ERROR', 'The OpenRouter model could not be validated.');
-        const message = error instanceof AIProviderError
-          ? getAIErrorMessage(error)
-          : 'The OpenRouter model could not be validated.';
+        const providerError =
+          error instanceof AIProviderError
+            ? error
+            : new AIProviderError(
+                "NETWORK_ERROR",
+                "The OpenRouter model could not be validated.",
+              );
+        const message =
+          error instanceof AIProviderError
+            ? getAIErrorMessage(error)
+            : "The OpenRouter model could not be validated.";
         yield* setState("error");
         yield* emit({
           type: "run.failed",
@@ -490,21 +599,25 @@ export class AetherAgentRuntime implements AgentRuntime {
 
           yield* setState("executing");
           const execution = this.observeExecutions(
-            batch.map((call) => (onEvent: ToolEventSink) =>
-              this.executeToolCall({
-                runId,
-                call,
-                input,
-                capabilities,
-                controller,
-                onEvent,
-              }),
+            batch.map(
+              (call) => (onEvent: ToolEventSink) =>
+                this.executeToolCall({
+                  runId,
+                  call,
+                  input,
+                  capabilities,
+                  controller,
+                  onEvent,
+                }),
             ),
           );
           let results: ToolCallResult[] = [];
           while (true) {
             const next = await execution.next();
-            if (next.done) { results = next.value; break; }
+            if (next.done) {
+              results = next.value;
+              break;
+            }
             yield* emit(next.value);
           }
 
@@ -549,19 +662,25 @@ export class AetherAgentRuntime implements AgentRuntime {
 
           yield* setState("executing");
           const execution = this.observeExecutions([
-            (onEvent) => this.enqueueWrite(() => this.executeToolCall({
-              runId,
-              call,
-              input,
-              capabilities,
-              controller,
-              onEvent,
-            })),
+            (onEvent) =>
+              this.enqueueWrite(() =>
+                this.executeToolCall({
+                  runId,
+                  call,
+                  input,
+                  capabilities,
+                  controller,
+                  onEvent,
+                }),
+              ),
           ]);
           let result: ToolCallResult | undefined;
           while (true) {
             const next = await execution.next();
-            if (next.done) { result = next.value[0]; break; }
+            if (next.done) {
+              result = next.value[0];
+              break;
+            }
             yield* emit(next.value);
           }
           if (!result) continue;
@@ -590,9 +709,17 @@ export class AetherAgentRuntime implements AgentRuntime {
             receipts,
             entities: entities.length ? entities : undefined,
           };
-          yield* emit({ type: "response.completed", runId, response, state: "responding" });
+          yield* emit({
+            type: "response.completed",
+            runId,
+            response,
+            state: "responding",
+          });
           await this.persistence.updateRun(runId, {
-            status: "completed", semanticState: "idle", usage: usageAcc, finished: true,
+            status: "completed",
+            semanticState: "idle",
+            usage: usageAcc,
+            finished: true,
           });
           yield* setState("idle");
           return;
@@ -663,15 +790,23 @@ export class AetherAgentRuntime implements AgentRuntime {
       wake = null;
     };
     const all = Promise.all(starters.map((start) => start(onEvent)))
-      .then((value) => { results = value; })
-      .finally(() => { settled = true; wake?.(); wake = null; });
+      .then((value) => {
+        results = value;
+      })
+      .finally(() => {
+        settled = true;
+        wake?.();
+        wake = null;
+      });
 
     while (!settled || queue.length) {
       const event = queue.shift();
       if (event) {
         yield event;
       } else if (!settled) {
-        await new Promise<void>((resolve) => { wake = resolve; });
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+        });
       }
     }
     await all;
@@ -786,24 +921,32 @@ export class AetherAgentRuntime implements AgentRuntime {
       affectedCount,
       toolId: call.toolId,
     });
-    const begin = tool.risk === 'READ'
-      ? null
-      : options.approvedExecutionId
-      ? { kind: "fresh" as const, executionId: options.approvedExecutionId, idempotencyKey: options.approvedExecutionId, argsHash: "approved" }
-      : await this.persistence.beginToolExecution({
-      runId,
-      toolCallId: call.toolCallId,
-      toolId: call.toolId,
-      args,
-      risk,
-      policyDecision: policy.decision,
-    });
+    const begin =
+      tool.risk === "READ"
+        ? null
+        : options.approvedExecutionId
+          ? {
+              kind: "fresh" as const,
+              executionId: options.approvedExecutionId,
+              idempotencyKey: options.approvedExecutionId,
+              argsHash: "approved",
+            }
+          : await this.persistence.beginToolExecution({
+              runId,
+              toolCallId: call.toolCallId,
+              toolId: call.toolId,
+              args,
+              risk,
+              policyDecision: policy.decision,
+            });
 
     // Idempotent replay — never re-mutate
     if (begin?.kind === "replay") {
       const row = begin.row;
       if (row.status === "completed" && row.result_json) {
-        const result = JSON.parse(row.result_json) as { receipt?: ActionReceipt };
+        const result = JSON.parse(row.result_json) as {
+          receipt?: ActionReceipt;
+        };
         record({
           type: "tool.completed",
           runId,
@@ -845,16 +988,19 @@ export class AetherAgentRuntime implements AgentRuntime {
     }
 
     const executionId = begin
-      ? (begin.kind === "fresh" ? begin.executionId : begin.row.id)
+      ? begin.kind === "fresh"
+        ? begin.executionId
+        : begin.row.id
       : null;
 
     if (policy.decision === "deny") {
-      if (executionId) await this.persistence.updateToolExecution(executionId, {
-        status: "skipped",
-        policyDecision: "deny",
-        errorMessage: policy.reason,
-        finished: true,
-      });
+      if (executionId)
+        await this.persistence.updateToolExecution(executionId, {
+          status: "skipped",
+          policyDecision: "deny",
+          errorMessage: policy.reason,
+          finished: true,
+        });
       record({
         type: "tool.failed",
         runId,
@@ -873,31 +1019,35 @@ export class AetherAgentRuntime implements AgentRuntime {
       };
     }
 
-    if (policy.decision === "require_confirmation" && !options.approvedExecutionId) {
-        if (!executionId) throw new Error('Confirmation requires durable execution state.');
-        await this.persistence.updateToolExecution(executionId, {
-          status: "awaiting_confirmation",
-          policyDecision: "require_confirmation",
-        });
-        record({
-          type: "tool.confirmation_required",
+    if (
+      policy.decision === "require_confirmation" &&
+      !options.approvedExecutionId
+    ) {
+      if (!executionId)
+        throw new Error("Confirmation requires durable execution state.");
+      await this.persistence.updateToolExecution(executionId, {
+        status: "awaiting_confirmation",
+        policyDecision: "require_confirmation",
+      });
+      record({
+        type: "tool.confirmation_required",
+        runId,
+        toolCallId: call.toolCallId,
+        toolId: call.toolId,
+        args,
+        risk: policy.risk,
+        reason: policy.reason,
+        pendingAction: {
+          id: executionId,
           runId,
           toolCallId: call.toolCallId,
           toolId: call.toolId,
-          args,
+          args: args as Record<string, unknown>,
           risk: policy.risk,
-          reason: policy.reason,
-          pendingAction: {
-            id: executionId,
-            runId,
-            toolCallId: call.toolCallId,
-            toolId: call.toolId,
-            args: args as Record<string, unknown>,
-            risk: policy.risk,
-          },
-          state: "waiting_confirmation",
-        });
-        return { events, blockedOnConfirmation: true };
+        },
+        state: "waiting_confirmation",
+      });
+      return { events, blockedOnConfirmation: true };
     }
 
     record({
@@ -918,11 +1068,12 @@ export class AetherAgentRuntime implements AgentRuntime {
     try {
       const result = await tool.execute(args, ctx);
       if (!result.ok) {
-        if (executionId) await this.persistence.updateToolExecution(executionId, {
-          status: "failed",
-          errorMessage: result.error ?? "Tool failed",
-          finished: true,
-        });
+        if (executionId)
+          await this.persistence.updateToolExecution(executionId, {
+            status: "failed",
+            errorMessage: result.error ?? "Tool failed",
+            finished: true,
+          });
         record({
           type: "tool.failed",
           runId,
@@ -946,11 +1097,12 @@ export class AetherAgentRuntime implements AgentRuntime {
         data: result.data,
         receipt: result.receipt,
       };
-      if (executionId) await this.persistence.updateToolExecution(executionId, {
-        status: "completed",
-        result: payload,
-        finished: true,
-      });
+      if (executionId)
+        await this.persistence.updateToolExecution(executionId, {
+          status: "completed",
+          result: payload,
+          finished: true,
+        });
       record({
         type: "tool.completed",
         runId,
@@ -988,11 +1140,12 @@ export class AetherAgentRuntime implements AgentRuntime {
       };
     } catch (e) {
       const err = e instanceof Error ? e.message : "Tool execution failed";
-      if (executionId) await this.persistence.updateToolExecution(executionId, {
-        status: "failed",
-        errorMessage: err,
-        finished: true,
-      });
+      if (executionId)
+        await this.persistence.updateToolExecution(executionId, {
+          status: "failed",
+          errorMessage: err,
+          finished: true,
+        });
       record({
         type: "tool.failed",
         runId,

@@ -1,7 +1,7 @@
-import type { NativePcmBuffer } from './audio';
-import type { VoiceError } from './errors';
+import type { NativePcmBuffer } from "./audio";
+import type { VoiceError } from "./errors";
 
-export const REALTIME_TRANSCRIPTION_MODEL = 'gpt-live-transcribe';
+export const REALTIME_TRANSCRIPTION_MODEL = "gpt-live-transcribe";
 export const REALTIME_PCM_SAMPLE_RATE = 24000;
 export const REALTIME_PCM_CHANNELS = 1;
 
@@ -23,8 +23,9 @@ export const defaultRealtimeTranscriptionConfig: RealtimeTranscriptionConfig = {
   sampleRate: REALTIME_PCM_SAMPLE_RATE,
   turnDetection: null,
   context: {
-    languages: ['en', 'es'],
-    prompt: 'Short personal reminders, including tasks, names, dates, times, locations, and short notes. English and Spanish may be code-switched.',
+    languages: ["en", "es"],
+    prompt:
+      "Short personal reminders, including tasks, names, dates, times, locations, and short notes. English and Spanish may be code-switched.",
   },
 };
 
@@ -37,11 +38,11 @@ export const minimalRealtimeTranscriptionConfig: RealtimeTranscriptionConfig = {
 };
 
 export type RealtimeTransportEvent =
-  | { type: 'connected' }
-  | { type: 'speechDelta'; itemId: string; delta: string }
-  | { type: 'completed'; itemId: string; transcript: string }
-  | { type: 'failed'; error: VoiceError }
-  | { type: 'closed'; expected: boolean };
+  | { type: "connected" }
+  | { type: "speechDelta"; itemId: string; delta: string }
+  | { type: "completed"; itemId: string; transcript: string }
+  | { type: "failed"; error: VoiceError }
+  | { type: "closed"; expected: boolean };
 
 export type RealtimeTransportListener = (event: RealtimeTransportEvent) => void;
 
@@ -58,12 +59,15 @@ export interface RealtimeTranscriptionTransport {
 export interface RealtimeClientSecret {
   value: string;
   expiresAt: number;
-  modelAccess: 'MODEL_EXISTS';
+  modelAccess: "MODEL_EXISTS";
   requestId?: string;
 }
 
 export interface RealtimeClientSecretProvider {
-  create(config: RealtimeTranscriptionConfig, signal?: AbortSignal): Promise<RealtimeClientSecret>;
+  create(
+    config: RealtimeTranscriptionConfig,
+    signal?: AbortSignal,
+  ): Promise<RealtimeClientSecret>;
 }
 
 export interface NativeAudioCapture {

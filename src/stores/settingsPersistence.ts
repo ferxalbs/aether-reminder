@@ -1,12 +1,12 @@
-import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
+import { DEFAULT_OPENROUTER_MODEL_ID } from "@/services/ai/models";
 export {
   OPENAI_API_KEY_STORAGE_KEY,
   OPENROUTER_API_KEY_STORAGE_KEY,
-} from './secureCredentials';
+} from "./secureCredentials";
 
 export interface PersistedSettings {
   selectedModel: string;
-  theme: 'system' | 'dark' | 'light';
+  theme: "system" | "dark" | "light";
   /** Optional for backwards compatibility with snapshots created before Material colors existed. */
   materialColorsEnabled?: boolean;
   hapticsEnabled: boolean;
@@ -20,7 +20,9 @@ export interface SettingsPersistenceInput extends PersistedSettings {
 }
 
 /** The AsyncStorage boundary contains preferences only, never either provider secret. */
-export function persistedSettingsSnapshot(state: SettingsPersistenceInput): PersistedSettings {
+export function persistedSettingsSnapshot(
+  state: SettingsPersistenceInput,
+): PersistedSettings {
   return {
     selectedModel: state.selectedModel?.trim() || DEFAULT_OPENROUTER_MODEL_ID,
     theme: state.theme,

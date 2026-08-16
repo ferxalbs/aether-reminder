@@ -1,21 +1,17 @@
-import { createId } from '@/lib/id';
-import { DatabaseError } from '../errors';
-import type { SqlDatabase } from '../types';
+import { createId } from "@/lib/id";
+import { DatabaseError } from "../errors";
+import type { SqlDatabase } from "../types";
 
 export type AgentRunStatus =
-  | 'running'
-  | 'waiting_confirmation'
-  | 'completed'
-  | 'cancelled'
-  | 'failed';
+  "running" | "waiting_confirmation" | "completed" | "cancelled" | "failed";
 
 export type ToolExecutionStatus =
-  | 'proposed'
-  | 'awaiting_confirmation'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'skipped';
+  | "proposed"
+  | "awaiting_confirmation"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped";
 
 export interface AgentSessionRow {
   id: string;
@@ -64,7 +60,7 @@ export interface ToolExecutionRow {
 }
 
 function stableJson(value: unknown): string {
-  if (value === undefined) return 'null';
+  if (value === undefined) return "null";
   return JSON.stringify(value);
 }
 
@@ -76,7 +72,7 @@ export function hashArgs(args: unknown): string {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
   }
-  return (h >>> 0).toString(16).padStart(8, '0');
+  return (h >>> 0).toString(16).padStart(8, "0");
 }
 
 export function buildIdempotencyKey(parts: {
@@ -106,7 +102,14 @@ export class AgentRuntimeRepository {
     await this.db.runAsync(
       `INSERT INTO agent_sessions (id, surface, locale, timezone, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, input.surface ?? null, input.locale ?? null, input.timezone ?? null, now, now]
+      [
+        id,
+        input.surface ?? null,
+        input.locale ?? null,
+        input.timezone ?? null,
+        now,
+        now,
+      ],
     );
     return id;
   }
@@ -137,7 +140,7 @@ export class AgentRuntimeRepository {
         now,
         now,
         now,
-      ]
+      ],
     );
     return id;
   }
@@ -152,11 +155,11 @@ export class AgentRuntimeRepository {
       errorMessage?: string | null;
       usage?: unknown;
       finished?: boolean;
-    }
+    },
   ): Promise<void> {
     const now = new Date().toISOString();
     const existing = await this.getRun(runId);
-    if (!existing) throw new DatabaseError('NOT_FOUND', 'Agent run not found.');
+    if (!existing) throw new DatabaseError("NOT_FOUND", "Agent run not found.");
 
     await this.db.runAsync(
       `UPDATE agent_runs SET
@@ -174,17 +177,24 @@ export class AgentRuntimeRepository {
         patch.semanticState ?? existing.semantic_state,
         patch.modelId !== undefined ? patch.modelId : existing.model_id,
         patch.errorCode !== undefined ? patch.errorCode : existing.error_code,
-        patch.errorMessage !== undefined ? patch.errorMessage : existing.error_message,
-        patch.usage !== undefined ? stableJson(patch.usage) : existing.usage_json,
+        patch.errorMessage !== undefined
+          ? patch.errorMessage
+          : existing.error_message,
+        patch.usage !== undefined
+          ? stableJson(patch.usage)
+          : existing.usage_json,
         patch.finished ? now : existing.finished_at,
         now,
         runId,
-      ]
+      ],
     );
   }
 
   async getRun(runId: string): Promise<AgentRunRow | null> {
-    return this.db.getFirstAsync<AgentRunRow>(`SELECT * FROM agent_runs WHERE id = ?`, [runId]);
+    return this.db.getFirstAsync<AgentRunRow>(
+      `SELECT * FROM agent_runs WHERE id = ?`,
+      [runId],
+    );
   }
 
   async appendEvent(input: {
@@ -200,19 +210,29 @@ export class AgentRuntimeRepository {
     await this.db.runAsync(
       `INSERT INTO agent_events (id, run_id, seq, type, payload_json, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, input.runId, input.seq, input.type, safePayload != null ? stableJson(safePayload) : null, now]
+      [
+        id,
+        input.runId,
+        input.seq,
+        input.type,
+        safePayload != null ? stableJson(safePayload) : null,
+        now,
+      ],
     );
     return id;
   }
 
-  async listEvents(runId: string): Promise<{ seq: number; type: string; payload: unknown }[]> {
+  async listEvents(
+    runId: string,
+  ): Promise<{ seq: number; type: string; payload: unknown }[]> {
     const rows = await this.db.getAllAsync<{
       seq: number;
       type: string;
       payload_json: string | null;
-    }>(`SELECT seq, type, payload_json FROM agent_events WHERE run_id = ? ORDER BY seq ASC`, [
-      runId,
-    ]);
+    }>(
+      `SELECT seq, type, payload_json FROM agent_events WHERE run_id = ? ORDER BY seq ASC`,
+      [runId],
+    );
     return rows.map((r) => ({
       seq: r.seq,
       type: r.type,
@@ -232,8 +252,13 @@ export class AgentRuntimeRepository {
     risk?: string;
     policyDecision?: string;
   }): Promise<
-    | { kind: 'fresh'; executionId: string; idempotencyKey: string; argsHash: string }
-    | { kind: 'replay'; row: ToolExecutionRow }
+    | {
+        kind: "fresh";
+        executionId: string;
+        idempotencyKey: string;
+        argsHash: string;
+      }
+    | { kind: "replay"; row: ToolExecutionRow }
   > {
     const argsHash = hashArgs(input.args);
     const idempotencyKey = buildIdempotencyKey({
@@ -245,18 +270,18 @@ export class AgentRuntimeRepository {
 
     const existing = await this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE idempotency_key = ?`,
-      [idempotencyKey]
+      [idempotencyKey],
     );
     if (existing) {
-      return { kind: 'replay', row: existing };
+      return { kind: "replay", row: existing };
     }
 
     const byCall = await this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE run_id = ? AND tool_call_id = ?`,
-      [input.runId, input.toolCallId]
+      [input.runId, input.toolCallId],
     );
     if (byCall) {
-      return { kind: 'replay', row: byCall };
+      return { kind: "replay", row: byCall };
     }
 
     const id = createId();
@@ -279,9 +304,9 @@ export class AgentRuntimeRepository {
         stableJson(input.args),
         now,
         now,
-      ]
+      ],
     );
-    return { kind: 'fresh', executionId: id, idempotencyKey, argsHash };
+    return { kind: "fresh", executionId: id, idempotencyKey, argsHash };
   }
 
   async updateToolExecution(
@@ -293,14 +318,14 @@ export class AgentRuntimeRepository {
       errorMessage?: string | null;
       started?: boolean;
       finished?: boolean;
-    }
+    },
   ): Promise<void> {
     const now = new Date().toISOString();
     const row = await this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE id = ?`,
-      [executionId]
+      [executionId],
     );
-    if (!row) throw new DatabaseError('NOT_FOUND', 'Tool execution not found.');
+    if (!row) throw new DatabaseError("NOT_FOUND", "Tool execution not found.");
 
     await this.db.runAsync(
       `UPDATE tool_executions SET
@@ -316,41 +341,45 @@ export class AgentRuntimeRepository {
         patch.status ?? row.status,
         patch.policyDecision ?? row.policy_decision,
         patch.result !== undefined ? stableJson(patch.result) : row.result_json,
-        patch.errorMessage !== undefined ? patch.errorMessage : row.error_message,
+        patch.errorMessage !== undefined
+          ? patch.errorMessage
+          : row.error_message,
         patch.started ? (row.started_at ?? now) : row.started_at,
         patch.finished ? now : row.finished_at,
         now,
         executionId,
-      ]
+      ],
     );
   }
 
   /** Atomically grants one caller ownership of a pending execution. */
   async claimToolExecution(
     executionId: string,
-    expectedStatus: ToolExecutionStatus
+    expectedStatus: ToolExecutionStatus,
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const result = await this.db.runAsync(
       `UPDATE tool_executions
        SET status = 'running', started_at = COALESCE(started_at, ?), updated_at = ?
        WHERE id = ? AND status = ?`,
-      [now, now, executionId, expectedStatus]
+      [now, now, executionId, expectedStatus],
     );
     return result.changes === 1;
   }
 
-  async getToolExecutionByIdempotencyKey(key: string): Promise<ToolExecutionRow | null> {
+  async getToolExecutionByIdempotencyKey(
+    key: string,
+  ): Promise<ToolExecutionRow | null> {
     return this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE idempotency_key = ?`,
-      [key]
+      [key],
     );
   }
 
   async getToolExecution(id: string): Promise<ToolExecutionRow | null> {
     return this.db.getFirstAsync<ToolExecutionRow>(
       `SELECT * FROM tool_executions WHERE id = ?`,
-      [id]
+      [id],
     );
   }
 }
@@ -360,11 +389,11 @@ const SECRET_KEY_RE = /api[_-]?key|authorization|password|secret|token|bearer/i;
 function sanitizeEventPayload(payload: unknown): unknown {
   if (payload == null) return payload;
   if (Array.isArray(payload)) return payload.map(sanitizeEventPayload);
-  if (typeof payload !== 'object') return payload;
+  if (typeof payload !== "object") return payload;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
     if (SECRET_KEY_RE.test(k)) {
-      out[k] = '[redacted]';
+      out[k] = "[redacted]";
       continue;
     }
     out[k] = sanitizeEventPayload(v);

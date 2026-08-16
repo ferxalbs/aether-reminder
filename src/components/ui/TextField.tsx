@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Platform,
   StyleProp,
@@ -8,34 +8,40 @@ import {
   TextStyle,
   View,
   ViewStyle,
-} from 'react-native';
-import { Colors, ControlTokens, getMinimumTouchTarget, Radius, TypographyTokens } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { GlassSurface } from './GlassSurface';
-import { Typography } from './Typography';
+} from "react-native";
+import {
+  Colors,
+  ControlTokens,
+  getMinimumTouchTarget,
+  Radius,
+  TypographyTokens,
+} from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { GlassSurface } from "./GlassSurface";
+import { Typography } from "./Typography";
 
 export interface TextFieldProps extends Omit<
   TextInputProps,
-  | 'accessibilityLabel'
-  | 'accessibilityRole'
-  | 'accessibilityState'
-  | 'onBlur'
-  | 'onFocus'
-  | 'placeholderTextColor'
-  | 'style'
+  | "accessibilityLabel"
+  | "accessibilityRole"
+  | "accessibilityState"
+  | "onBlur"
+  | "onFocus"
+  | "placeholderTextColor"
+  | "style"
 > {
   label: string;
   helperText?: string;
   error?: string;
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
-  variant?: 'filled' | 'outline' | 'glass';
+  variant?: "filled" | "outline" | "glass";
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
   accessibilityHint?: string;
-  onBlur?: TextInputProps['onBlur'];
-  onFocus?: TextInputProps['onFocus'];
+  onBlur?: TextInputProps["onBlur"];
+  onFocus?: TextInputProps["onFocus"];
 }
 
 export const TextField: React.FC<TextFieldProps> = ({
@@ -44,7 +50,7 @@ export const TextField: React.FC<TextFieldProps> = ({
   error,
   leading,
   trailing,
-  variant = 'filled',
+  variant = "filled",
   containerStyle,
   inputStyle,
   accessibilityLabel,
@@ -72,29 +78,36 @@ export const TextField: React.FC<TextFieldProps> = ({
         ? Colors.borderDark
         : Colors.borderLight;
 
-  const backgroundColor = variant === 'filled'
-    ? isDark
-      ? Colors.surfaceRaisedDark
-      : Colors.surfaceRaisedLight
-    : 'transparent';
+  const backgroundColor =
+    variant === "filled"
+      ? isDark
+        ? Colors.surfaceRaisedDark
+        : Colors.surfaceRaisedLight
+      : "transparent";
 
   const textColor = isDark ? Colors.textDark : Colors.textLight;
-  const placeholderColor = isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
+  const placeholderColor = isDark
+    ? Colors.tertiaryTextDark
+    : Colors.tertiaryTextLight;
   const fieldRadius = Radius.md;
 
-  const handleFocus: NonNullable<TextInputProps['onFocus']> = (event) => {
+  const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
     setFocused(true);
     onFocus?.(event);
   };
 
-  const handleBlur: NonNullable<TextInputProps['onBlur']> = (event) => {
+  const handleBlur: NonNullable<TextInputProps["onBlur"]> = (event) => {
     setFocused(false);
     onBlur?.(event);
   };
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessible={false}>
+      <Typography
+        variant="caption"
+        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+        accessible={false}
+      >
         {label}
       </Typography>
       <View
@@ -109,7 +122,7 @@ export const TextField: React.FC<TextFieldProps> = ({
           isDisabled && styles.disabled,
         ]}
       >
-        {variant === 'glass' ? (
+        {variant === "glass" ? (
           <GlassSurface
             pointerEvents="none"
             borderRadius={fieldRadius}
@@ -117,7 +130,11 @@ export const TextField: React.FC<TextFieldProps> = ({
             style={StyleSheet.absoluteFill}
           />
         ) : null}
-        {leading ? <View style={styles.leading} pointerEvents="none">{leading}</View> : null}
+        {leading ? (
+          <View style={styles.leading} pointerEvents="none">
+            {leading}
+          </View>
+        ) : null}
         <TextInput
           {...inputProps}
           accessibilityRole="text"
@@ -151,7 +168,11 @@ export const TextField: React.FC<TextFieldProps> = ({
           {error}
         </Typography>
       ) : helperText ? (
-        <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.message}>
+        <Typography
+          variant="caption"
+          color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+          style={styles.message}
+        >
           {helperText}
         </Typography>
       ) : null}
@@ -164,20 +185,21 @@ const styles = StyleSheet.create({
     gap: ControlTokens.fieldLabelGap,
   },
   fieldShell: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: getMinimumTouchTarget(Platform.OS),
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   multilineShell: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
     paddingVertical: ControlTokens.fieldPaddingVertical,
   },
   input: {
     flex: 1,
-    minHeight: getMinimumTouchTarget(Platform.OS) - (ControlTokens.borderWidth * 2),
+    minHeight:
+      getMinimumTouchTarget(Platform.OS) - ControlTokens.borderWidth * 2,
     paddingVertical: ControlTokens.fieldPaddingVertical,
     paddingHorizontal: 0,
     fontSize: TypographyTokens.body.fontSize,
@@ -185,19 +207,19 @@ const styles = StyleSheet.create({
     letterSpacing: TypographyTokens.body.letterSpacing,
   },
   multilineInput: {
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   leading: {
     width: ControlTokens.fieldIconSize,
     height: ControlTokens.fieldIconSize,
     marginRight: ControlTokens.fieldContentGap,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   trailing: {
     marginLeft: ControlTokens.fieldContentGap,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   message: {
     marginTop: ControlTokens.fieldMessageGap,

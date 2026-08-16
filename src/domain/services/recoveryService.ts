@@ -1,14 +1,14 @@
-import type { RecurrenceRule, Task, TaskPriority } from '@/domain/entities';
+import type { RecurrenceRule, Task, TaskPriority } from "@/domain/entities";
 import {
   addLocalCalendarDays,
   getDeviceTimeZone,
   getLocalDateString,
   getLocalTimeString,
   getZonedDateTimeStrings,
-} from '@/temporal/localCalendar';
-import { isValidLocalDate, isValidLocalTime } from '@/temporal/resolve';
-import type { RecurrenceRulesRepository } from '@/db/repositories/recurrenceRulesRepository';
-import type { TasksRepository } from '@/db/repositories/tasksRepository';
+} from "@/temporal/localCalendar";
+import { isValidLocalDate, isValidLocalTime } from "@/temporal/resolve";
+import type { RecurrenceRulesRepository } from "@/db/repositories/recurrenceRulesRepository";
+import type { TasksRepository } from "@/db/repositories/tasksRepository";
 import type {
   RecoveryAlternative,
   RecoveryPlan,
@@ -16,11 +16,12 @@ import type {
   RecoveryReason,
   RecoverySchedule,
   RecoveryRecurrenceMetadata,
-} from '@/domain/recovery';
-import { RECOVERY_MISSED_GRACE_MINUTES as SHARED_RECOVERY_MISSED_GRACE_MINUTES } from '@/domain/recovery';
+} from "@/domain/recovery";
+import { RECOVERY_MISSED_GRACE_MINUTES as SHARED_RECOVERY_MISSED_GRACE_MINUTES } from "@/domain/recovery";
 
 /** Initial grace period before a timed task due today becomes a candidate. */
-export const RECOVERY_MISSED_GRACE_MINUTES = SHARED_RECOVERY_MISSED_GRACE_MINUTES;
+export const RECOVERY_MISSED_GRACE_MINUTES =
+  SHARED_RECOVERY_MISSED_GRACE_MINUTES;
 
 /** Minimum future room required before reusing the original time today. */
 export const RECOVERY_MINIMUM_FUTURE_MINUTES = 30;
@@ -51,14 +52,14 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
 };
 
 function toMinutes(value: string): number {
-  const [hours, minutes] = value.split(':').map(Number);
+  const [hours, minutes] = value.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
 function toTime(value: number): string {
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function scheduleForTask(task: Task): RecoverySchedule {
@@ -70,13 +71,19 @@ function scheduleForTask(task: Task): RecoverySchedule {
   };
 }
 
-function effectiveTimezone(task: Task, deviceTimezone: string | null | undefined): string | null {
-  return task.dueSemantics === 'fixed'
-    ? task.dueTimezone ?? deviceTimezone ?? null
-    : deviceTimezone ?? null;
+function effectiveTimezone(
+  task: Task,
+  deviceTimezone: string | null | undefined,
+): string | null {
+  return task.dueSemantics === "fixed"
+    ? (task.dueTimezone ?? deviceTimezone ?? null)
+    : (deviceTimezone ?? null);
 }
 
-function clockForTask(task: Task, context: RecoveryBuildContext): LocalClock | null {
+function clockForTask(
+  task: Task,
+  context: RecoveryBuildContext,
+): LocalClock | null {
   try {
     const timezone = effectiveTimezone(task, context.deviceTimezone);
     if (timezone) return getZonedDateTimeStrings(context.now, timezone);
@@ -91,29 +98,35 @@ function clockForTask(task: Task, context: RecoveryBuildContext): LocalClock | n
   }
 }
 
-function classify(task: Task, context: RecoveryBuildContext): RecoveryClassification | null {
+function classify(
+  task: Task,
+  context: RecoveryBuildContext,
+): RecoveryClassification | null {
   if (task.completed || task.deletedAt || !task.dueDate) return null;
   if (!isValidLocalDate(task.dueDate)) return null;
   if (task.dueTime !== null && !isValidLocalTime(task.dueTime)) return null;
-  if (task.dueSemantics !== 'fixed' && task.dueSemantics !== 'floating') return null;
+  if (task.dueSemantics !== "fixed" && task.dueSemantics !== "floating")
+    return null;
 
   const clock = clockForTask(task, context);
   if (!clock) return null;
 
-  if (task.dueDate < clock.date) return { reason: 'overdue', clock };
+  if (task.dueDate < clock.date) return { reason: "overdue", clock };
   if (task.dueDate > clock.date || task.dueTime === null) return null;
 
   const elapsed = toMinutes(clock.time) - toMinutes(task.dueTime);
   return elapsed >= RECOVERY_MISSED_GRACE_MINUTES
-    ? { reason: 'missed_time', clock }
+    ? { reason: "missed_time", clock }
     : null;
 }
 
 function sameSchedule(a: RecoverySchedule, b: RecoverySchedule): boolean {
-  return a.dueDate === b.dueDate
-    && a.dueTime === b.dueTime
-    && a.dueTimezone === b.dueTimezone
-    && a.dueSemantics === b.dueSemantics;
+  return (
+    a.dueDate === b.dueDate &&
+    a.dueTime === b.dueTime &&
+    a.dueTimezone === b.dueTimezone &&
+    a.dueSemantics === b.dueSemantics
+  );
 }
 
 function addAlternative(
@@ -121,8 +134,15 @@ function addAlternative(
   alternative: RecoveryAlternative,
   proposed: RecoverySchedule,
 ): void {
-  if (alternative.schedule && sameSchedule(alternative.schedule, proposed)) return;
-  if (alternative.schedule && alternatives.some((item) => item.schedule && sameSchedule(item.schedule, alternative.schedule!))) {
+  if (alternative.schedule && sameSchedule(alternative.schedule, proposed))
+    return;
+  if (
+    alternative.schedule &&
+    alternatives.some(
+      (item) =>
+        item.schedule && sameSchedule(item.schedule, alternative.schedule!),
+    )
+  ) {
     return;
   }
   alternatives.push(alternative);
@@ -141,39 +161,62 @@ function buildAlternatives(
   };
 
   if (task.dueTime !== null) {
-    const laterTodayMinutes = toMinutes(classification.clock.time) + RECOVERY_LATER_TODAY_OFFSET_MINUTES;
+    const laterTodayMinutes =
+      toMinutes(classification.clock.time) +
+      RECOVERY_LATER_TODAY_OFFSET_MINUTES;
     if (laterTodayMinutes < 24 * 60) {
-      addAlternative(alternatives, {
-        kind: 'later_today',
-        label: 'Later today',
-        schedule: {
-          ...original,
-          dueDate: classification.clock.date,
-          dueTime: toTime(laterTodayMinutes),
+      addAlternative(
+        alternatives,
+        {
+          kind: "later_today",
+          label: "Later today",
+          schedule: {
+            ...original,
+            dueDate: classification.clock.date,
+            dueTime: toTime(laterTodayMinutes),
+          },
         },
-      }, proposed);
+        proposed,
+      );
     }
 
     const originalMinutes = toMinutes(task.dueTime);
     if (
-      classification.reason === 'overdue' &&
-      originalMinutes - toMinutes(classification.clock.time) >= RECOVERY_MINIMUM_FUTURE_MINUTES
+      classification.reason === "overdue" &&
+      originalMinutes - toMinutes(classification.clock.time) >=
+        RECOVERY_MINIMUM_FUTURE_MINUTES
     ) {
-      addAlternative(alternatives, {
-        kind: 'today_original',
-        label: 'Today at original time',
-        schedule: { ...original, dueDate: classification.clock.date },
-      }, proposed);
+      addAlternative(
+        alternatives,
+        {
+          kind: "today_original",
+          label: "Today at original time",
+          schedule: { ...original, dueDate: classification.clock.date },
+        },
+        proposed,
+      );
     }
   }
 
-  addAlternative(alternatives, {
-    kind: 'tomorrow',
-    label: 'Tomorrow',
-    schedule: tomorrow,
-  }, proposed);
-  alternatives.push({ kind: 'keep_current', label: 'Keep current schedule', schedule: null });
-  alternatives.push({ kind: 'exclude', label: 'Remove from this recovery plan', schedule: null });
+  addAlternative(
+    alternatives,
+    {
+      kind: "tomorrow",
+      label: "Tomorrow",
+      schedule: tomorrow,
+    },
+    proposed,
+  );
+  alternatives.push({
+    kind: "keep_current",
+    label: "Keep current schedule",
+    schedule: null,
+  });
+  alternatives.push({
+    kind: "exclude",
+    label: "Remove from this recovery plan",
+    schedule: null,
+  });
   return alternatives;
 }
 
@@ -182,7 +225,7 @@ function recommendation(
   classification: RecoveryClassification,
 ): RecoverySchedule {
   const original = scheduleForTask(task);
-  if (classification.reason === 'missed_time') {
+  if (classification.reason === "missed_time") {
     return {
       ...original,
       dueDate: addLocalCalendarDays(classification.clock.date, 1),
@@ -193,15 +236,20 @@ function recommendation(
     return { ...original, dueDate: classification.clock.date, dueTime: null };
   }
 
-  const hasRoomToday = toMinutes(task.dueTime) - toMinutes(classification.clock.time)
-    >= RECOVERY_MINIMUM_FUTURE_MINUTES;
+  const hasRoomToday =
+    toMinutes(task.dueTime) - toMinutes(classification.clock.time) >=
+    RECOVERY_MINIMUM_FUTURE_MINUTES;
   return {
     ...original,
-    dueDate: hasRoomToday ? classification.clock.date : addLocalCalendarDays(classification.clock.date, 1),
+    dueDate: hasRoomToday
+      ? classification.clock.date
+      : addLocalCalendarDays(classification.clock.date, 1),
   };
 }
 
-function recurrenceMetadata(rule: RecurrenceRule | null | undefined): RecoveryRecurrenceMetadata | null {
+function recurrenceMetadata(
+  rule: RecurrenceRule | null | undefined,
+): RecoveryRecurrenceMetadata | null {
   return rule
     ? {
         ruleId: rule.id,
@@ -242,11 +290,16 @@ export function buildRecoveryPlan(
   }
 
   proposals.sort((a, b) => {
-    const dateOrder = (a.previous.dueDate ?? '').localeCompare(b.previous.dueDate ?? '');
+    const dateOrder = (a.previous.dueDate ?? "").localeCompare(
+      b.previous.dueDate ?? "",
+    );
     if (dateOrder !== 0) return dateOrder;
-    const priorityOrder = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    const priorityOrder =
+      PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     if (priorityOrder !== 0) return priorityOrder;
-    const timeOrder = (a.previous.dueTime ?? '').localeCompare(b.previous.dueTime ?? '');
+    const timeOrder = (a.previous.dueTime ?? "").localeCompare(
+      b.previous.dueTime ?? "",
+    );
     return timeOrder !== 0 ? timeOrder : a.taskId.localeCompare(b.taskId);
   });
 
@@ -273,12 +326,17 @@ export class RecoveryService {
     const throughDate = addLocalCalendarDays(deviceDate, 1);
     const candidates = await this.tasks.listRecoveryCandidates(throughDate);
     const ruleEntries = await Promise.all(
-      candidates.map(async (task) => [task.id, await this.recurrenceRules.getActiveForTask(task.id)] as const),
+      candidates.map(
+        async (task) =>
+          [
+            task.id,
+            await this.recurrenceRules.getActiveForTask(task.id),
+          ] as const,
+      ),
     );
-    return buildRecoveryPlan(
-      candidates,
-      new Map(ruleEntries),
-      { now, deviceTimezone },
-    );
+    return buildRecoveryPlan(candidates, new Map(ruleEntries), {
+      now,
+      deviceTimezone,
+    });
   }
 }

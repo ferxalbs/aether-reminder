@@ -1,36 +1,47 @@
-import { getAetherCore } from '@/core';
-import { getDatabase } from '@/db/client';
-import type { CaptureSource } from '@/domain/entities';
-import { initializeCaptureInbox } from './client';
-import { CaptureInboxDrainer } from './drainer';
-import { CaptureAssetAuthorityMigrator } from './assetAuthorityMigrator';
+import { getAetherCore } from "@/core";
+import { getDatabase } from "@/db/client";
+import type { CaptureSource } from "@/domain/entities";
+import { initializeCaptureInbox } from "./client";
+import { CaptureInboxDrainer } from "./drainer";
+import { CaptureAssetAuthorityMigrator } from "./assetAuthorityMigrator";
 import {
   adoptNativeImageAsset,
   discardNativeCaptureAssets,
   getCaptureCapabilities,
-} from './nativeCapture';
+} from "./nativeCapture";
 import {
   CaptureOrchestrator,
   type CaptureEventSink,
   type CaptureInvalidationSink,
-} from './orchestrator';
+} from "./orchestrator";
 
 const assets = {
-  async adopt(source: Extract<CaptureSource, { kind: 'image' }>, captureId: string) {
-    return { ...source, assetRef: await adoptNativeImageAsset(source.assetRef, captureId) };
+  async adopt(
+    source: Extract<CaptureSource, { kind: "image" }>,
+    captureId: string,
+  ) {
+    return {
+      ...source,
+      assetRef: await adoptNativeImageAsset(source.assetRef, captureId),
+    };
   },
   discardCapture: discardNativeCaptureAssets,
 };
 
-export async function createCaptureOrchestrator(options: {
-  persistEvents?: boolean;
-  invalidations?: CaptureInvalidationSink;
-} = {}): Promise<CaptureOrchestrator> {
+export async function createCaptureOrchestrator(
+  options: {
+    persistEvents?: boolean;
+    invalidations?: CaptureInvalidationSink;
+  } = {},
+): Promise<CaptureOrchestrator> {
   const core = getAetherCore(getDatabase());
   let events: CaptureEventSink | undefined;
   if (options.persistEvents) {
     const inbox = await initializeCaptureInbox();
-    events = { record: (name, envelope, metadata) => inbox.recordEvent(name, envelope, metadata) };
+    events = {
+      record: (name, envelope, metadata) =>
+        inbox.recordEvent(name, envelope, metadata),
+    };
   }
   return new CaptureOrchestrator(
     core.commands,
@@ -41,10 +52,12 @@ export async function createCaptureOrchestrator(options: {
   );
 }
 
-export async function drainCaptureInbox(options: {
-  invalidations?: CaptureInvalidationSink;
-  batchSize?: number;
-} = {}) {
+export async function drainCaptureInbox(
+  options: {
+    invalidations?: CaptureInvalidationSink;
+    batchSize?: number;
+  } = {},
+) {
   const core = getAetherCore(getDatabase());
   if (getCaptureCapabilities().shareExtension) {
     try {

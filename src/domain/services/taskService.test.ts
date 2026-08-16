@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
-import { createBunSqliteDatabase } from '@/db/bunSqliteAdapter';
-import { applyPragmas, runMigrations } from '@/db/migrator';
-import { createDomainServices } from './index';
-import { resolveTomorrow } from '@/temporal/resolve';
-import { getLocalDateString } from '@/temporal/localCalendar';
+import { describe, expect, test } from "bun:test";
+import { createBunSqliteDatabase } from "@/db/bunSqliteAdapter";
+import { applyPragmas, runMigrations } from "@/db/migrator";
+import { createDomainServices } from "./index";
+import { resolveTomorrow } from "@/temporal/resolve";
+import { getLocalDateString } from "@/temporal/localCalendar";
 
 async function ready() {
   const db = createBunSqliteDatabase();
@@ -12,89 +12,100 @@ async function ready() {
   return { db, services: createDomainServices(db) };
 }
 
-describe('TaskService', () => {
-  test('create/complete/reopen/delete with receipts and events', async () => {
+describe("TaskService", () => {
+  test("create/complete/reopen/delete with receipts and events", async () => {
     const { db, services } = await ready();
     const { value, receipt } = await services.tasks.createTask({
-      title: 'Service path',
-      priority: 'high',
+      title: "Service path",
+      priority: "high",
     });
-    expect(receipt.risk).toBe('REVERSIBLE_WRITE');
+    expect(receipt.risk).toBe("REVERSIBLE_WRITE");
     expect(receipt.undo).toBeTruthy();
 
     const done = await services.tasks.completeTask(value.id);
     expect(done.value.completed).toBe(true);
-    expect(done.receipt.action).toBe('tasks.complete');
+    expect(done.receipt.action).toBe("tasks.complete");
 
     const open = await services.tasks.reopenTask(value.id);
     expect(open.value.completed).toBe(false);
 
     const deleted = await services.tasks.deleteTask(value.id);
-    expect(deleted.receipt.undo?.kind).toBe('task.restore_soft_deleted');
+    expect(deleted.receipt.undo?.kind).toBe("task.restore_soft_deleted");
     expect(await services.tasks.getTask(value.id)).toBeNull();
 
     const restored = await services.tasks.restoreTask(value.id);
     expect(restored.value.deletedAt).toBeNull();
-    expect(restored.receipt.undo?.kind).toBe('task.soft_delete');
+    expect(restored.receipt.undo?.kind).toBe("task.soft_delete");
     expect(await services.tasks.getTask(value.id)).not.toBeNull();
     await db.closeAsync?.();
   });
 
-  test('reschedule validates temporal input', async () => {
+  test("reschedule validates temporal input", async () => {
     const { db, services } = await ready();
-    const { value } = await services.tasks.createTask({ title: 'Move me' });
+    const { value } = await services.tasks.createTask({ title: "Move me" });
     const tomorrow = resolveTomorrow().date;
-    const moved = await services.tasks.rescheduleTask(value.id, { dueDate: tomorrow });
+    const moved = await services.tasks.rescheduleTask(value.id, {
+      dueDate: tomorrow,
+    });
     expect(moved.value.dueDate).toBe(tomorrow);
 
     await expect(
       services.tasks.rescheduleTask(value.id, {
-        dueDate: '2026-08-07T00:00:00.000Z',
-      })
+        dueDate: "2026-08-07T00:00:00.000Z",
+      }),
     ).rejects.toThrow();
     await db.closeAsync?.();
   });
 
-  test('update returns a reversible field snapshot', async () => {
+  test("update returns a reversible field snapshot", async () => {
     const { db, services } = await ready();
     const { value } = await services.tasks.createTask({
-      title: 'Original reminder',
-      notes: 'Keep this note',
-      priority: 'low',
+      title: "Original reminder",
+      notes: "Keep this note",
+      priority: "low",
     });
     const updated = await services.tasks.updateTask(value.id, {
-      title: 'Edited reminder',
-      notes: 'Updated note',
-      priority: 'high',
+      title: "Edited reminder",
+      notes: "Updated note",
+      priority: "high",
       dueDate: resolveTomorrow().date,
-      dueTime: '09:30',
+      dueTime: "09:30",
     });
 
-    expect(updated.value.title).toBe('Edited reminder');
-    expect(updated.value.dueTime).toBe('09:30');
-    expect(updated.receipt.undo?.kind).toBe('task.restore_fields');
-    expect(updated.receipt.undo?.payload.title).toBe('Original reminder');
-    expect(updated.receipt.undo?.payload.priority).toBe('low');
+    expect(updated.value.title).toBe("Edited reminder");
+    expect(updated.value.dueTime).toBe("09:30");
+    expect(updated.receipt.undo?.kind).toBe("task.restore_fields");
+    expect(updated.receipt.undo?.payload.title).toBe("Original reminder");
+    expect(updated.receipt.undo?.payload.priority).toBe("low");
     await db.closeAsync?.();
   });
 
-  test('upcoming list propagates its limit to SQLite', async () => {
+  test("upcoming list propagates its limit to SQLite", async () => {
     const { db, services } = await ready();
     const today = getLocalDateString();
     const tomorrow = resolveTomorrow().date;
-    await services.tasks.createTask({ title: 'Upcoming one', dueDate: tomorrow });
-    await services.tasks.createTask({ title: 'Upcoming two', dueDate: tomorrow });
-    await services.tasks.createTask({ title: 'Upcoming three', dueDate: tomorrow });
+    await services.tasks.createTask({
+      title: "Upcoming one",
+      dueDate: tomorrow,
+    });
+    await services.tasks.createTask({
+      title: "Upcoming two",
+      dueDate: tomorrow,
+    });
+    await services.tasks.createTask({
+      title: "Upcoming three",
+      dueDate: tomorrow,
+    });
 
     const upcoming = await services.tasks.listTasks({
-      scope: 'upcoming',
+      scope: "upcoming",
       localDate: tomorrow,
       limit: 2,
     });
     expect(upcoming).toHaveLength(0);
 
     const fromToday = await services.tasks.listTasks({
-      scope: 'upcoming',
+      scope: "upcoming",
       localDate: today,
       limit: 2,
     });
@@ -102,14 +113,21 @@ describe('TaskService', () => {
     await db.closeAsync?.();
   });
 
-  test('all list includes completed reminders', async () => {
+  test("all list includes completed reminders", async () => {
     const { db, services } = await ready();
-    const active = await services.tasks.createTask({ title: 'Active all item' });
-    const completed = await services.tasks.createTask({ title: 'Completed all item' });
+    const active = await services.tasks.createTask({
+      title: "Active all item",
+    });
+    const completed = await services.tasks.createTask({
+      title: "Completed all item",
+    });
     await services.tasks.completeTask(completed.value.id);
 
-    const all = await services.tasks.listTasks({ scope: 'all' });
-    expect(all.map((task) => task.title)).toEqual(['Active all item', 'Completed all item']);
+    const all = await services.tasks.listTasks({ scope: "all" });
+    expect(all.map((task) => task.title)).toEqual([
+      "Active all item",
+      "Completed all item",
+    ]);
     expect(all.some((task) => task.id === active.value.id)).toBe(true);
     await db.closeAsync?.();
   });

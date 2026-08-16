@@ -1,4 +1,4 @@
-import type { ModelCapabilities, ModelCompatibilityClass } from './types';
+import type { ModelCapabilities, ModelCompatibilityClass } from "./types";
 
 export interface OpenRouterModelMetadata {
   id?: string;
@@ -15,23 +15,33 @@ export interface OpenRouterModelMetadata {
   top_provider?: { is_moderated?: boolean };
 }
 
-export function hasOpenRouterParameter(params: string[] | undefined, name: string): boolean {
+export function hasOpenRouterParameter(
+  params: string[] | undefined,
+  name: string,
+): boolean {
   if (!params) return false;
   return params.some((p) => p.toLowerCase() === name.toLowerCase());
 }
 
-export function classifyCompatibility(caps: Omit<ModelCapabilities, 'compatibility'>): ModelCompatibilityClass {
-  if (!caps.textInput || !caps.textOutput) return 'CONVERSATION_ONLY';
-  if (caps.tools && caps.toolChoice && caps.streaming && caps.structuredOutputs) {
-    return 'FULL_AGENT';
+export function classifyCompatibility(
+  caps: Omit<ModelCapabilities, "compatibility">,
+): ModelCompatibilityClass {
+  if (!caps.textInput || !caps.textOutput) return "CONVERSATION_ONLY";
+  if (
+    caps.tools &&
+    caps.toolChoice &&
+    caps.streaming &&
+    caps.structuredOutputs
+  ) {
+    return "FULL_AGENT";
   }
   if (caps.tools && caps.toolChoice && caps.streaming) {
-    return 'AGENT';
+    return "AGENT";
   }
   if (caps.streaming || caps.structuredOutputs) {
-    return 'LIMITED_ASSISTANT';
+    return "LIMITED_ASSISTANT";
   }
-  return 'CONVERSATION_ONLY';
+  return "CONVERSATION_ONLY";
 }
 
 /**
@@ -41,25 +51,25 @@ export function classifyCompatibility(caps: Omit<ModelCapabilities, 'compatibili
  * (caller may still attempt if user forced a model; runtime surfaces incompatibility).
  */
 export function capabilitiesFromOpenRouterMetadata(
-  model: OpenRouterModelMetadata
+  model: OpenRouterModelMetadata,
 ): ModelCapabilities {
   const input = model.architecture?.input_modalities;
   const output = model.architecture?.output_modalities;
   // The catalog is the source of truth. Missing modality metadata is not a
   // reason to assume compatibility for an agent that can mutate local data.
-  const textInput = input?.includes('text') === true;
-  const textOutput = output?.includes('text') === true;
+  const textInput = input?.includes("text") === true;
+  const textOutput = output?.includes("text") === true;
   const params = model.supported_parameters;
 
   // Streaming is standard for chat completions on OpenRouter when text output is available.
   const streaming = textOutput;
 
-  const tools = hasOpenRouterParameter(params, 'tools');
-  const toolChoice = hasOpenRouterParameter(params, 'tool_choice');
+  const tools = hasOpenRouterParameter(params, "tools");
+  const toolChoice = hasOpenRouterParameter(params, "tool_choice");
   const structuredOutputs =
-    hasOpenRouterParameter(params, 'structured_outputs') ||
-    hasOpenRouterParameter(params, 'response_format') ||
-    hasOpenRouterParameter(params, 'json_schema');
+    hasOpenRouterParameter(params, "structured_outputs") ||
+    hasOpenRouterParameter(params, "response_format") ||
+    hasOpenRouterParameter(params, "json_schema");
 
   const base = {
     textInput,
@@ -91,5 +101,5 @@ export function unknownModelCapabilities(): ModelCapabilities {
 }
 
 export function canRunAsAgent(caps: ModelCapabilities): boolean {
-  return caps.compatibility === 'FULL_AGENT' || caps.compatibility === 'AGENT';
+  return caps.compatibility === "FULL_AGENT" || caps.compatibility === "AGENT";
 }

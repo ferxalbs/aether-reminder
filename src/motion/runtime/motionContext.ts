@@ -1,13 +1,13 @@
-import { createContext } from 'react';
-import { budgetForTier } from '../core/thresholds';
-import type { MotionDiagnostics, MotionProfile } from '../core/types';
+import { createContext } from "react";
+import { budgetForTier } from "../core/thresholds";
+import type { MotionDiagnostics, MotionProfile } from "../core/types";
 
 export const defaultMotionProfile: MotionProfile = {
-  tier: 'standard',
-  staticCeiling: 'standard',
-  effectiveCeiling: 'standard',
-  budget: budgetForTier('standard'),
-  lastChangeReason: 'native-unavailable',
+  tier: "standard",
+  staticCeiling: "standard",
+  effectiveCeiling: "standard",
+  budget: budgetForTier("standard"),
+  lastChangeReason: "native-unavailable",
   reduceMotion: false,
   reduceTransparency: false,
   prefersCrossFade: false,
@@ -18,7 +18,7 @@ export const defaultMotionDiagnostics: MotionDiagnostics = {
   profile: defaultMotionProfile,
   refreshRateHz: null,
   maximumRefreshRateHz: null,
-  thermalState: 'unknown',
+  thermalState: "unknown",
   lowPowerMode: false,
   lowMemory: null,
   memoryPressureActive: null,
@@ -35,5 +35,8 @@ export const defaultMotionDiagnostics: MotionDiagnostics = {
   timestampMs: 0,
 };
 
-export const MotionProfileContext = createContext<MotionProfile>(defaultMotionProfile);
-export const MotionDiagnosticsContext = createContext<MotionDiagnostics>(defaultMotionDiagnostics);
+export const MotionProfileContext =
+  createContext<MotionProfile>(defaultMotionProfile);
+export const MotionDiagnosticsContext = createContext<MotionDiagnostics>(
+  defaultMotionDiagnostics,
+);

@@ -35,12 +35,12 @@ The legacy migration retains narrowly scoped knowledge of historical `demo-*` re
 
 ## Indexes
 
-| Index | Why |
-| --- | --- |
-| `idx_tasks_active_due` | today / overdue / upcoming |
-| `idx_tasks_active_completed` | completion filters |
-| `idx_tasks_active_project` | project lists |
-| `idx_tasks_active_priority` | priority filters |
-| `idx_task_events_task_created` | history |
-| `idx_reminders_task` | task reminders |
-| `idx_reminders_enabled_date` | future scheduling queries |
+| Index                          | Why                        |
+| ------------------------------ | -------------------------- |
+| `idx_tasks_active_due`         | today / overdue / upcoming |
+| `idx_tasks_active_completed`   | completion filters         |
+| `idx_tasks_active_project`     | project lists              |
+| `idx_tasks_active_priority`    | priority filters           |
+| `idx_task_events_task_created` | history                    |
+| `idx_reminders_task`           | task reminders             |
+| `idx_reminders_enabled_date`   | future scheduling queries  |

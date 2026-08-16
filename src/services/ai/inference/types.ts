@@ -4,10 +4,7 @@
  */
 
 export type ModelCompatibilityClass =
-  | 'FULL_AGENT'
-  | 'AGENT'
-  | 'LIMITED_ASSISTANT'
-  | 'CONVERSATION_ONLY';
+  "FULL_AGENT" | "AGENT" | "LIMITED_ASSISTANT" | "CONVERSATION_ONLY";
 
 export interface ModelCapabilities {
   textInput: boolean;
@@ -21,10 +18,10 @@ export interface ModelCapabilities {
   compatibility: ModelCompatibilityClass;
 }
 
-export type InferenceMessageRole = 'system' | 'user' | 'assistant' | 'tool';
+export type InferenceMessageRole = "system" | "user" | "assistant" | "tool";
 
 export interface InferenceToolDefinition {
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description?: string;
@@ -42,7 +39,7 @@ export interface InferenceMessage {
 
 export interface InferenceToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     arguments: string;
@@ -54,12 +51,13 @@ export interface InferenceRequest {
   messages: InferenceMessage[];
   apiKey: string;
   tools?: InferenceToolDefinition[];
-  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  toolChoice?:
+    "auto" | "none" | { type: "function"; function: { name: string } };
   temperature?: number;
   maxTokens?: number;
   /** JSON schema response format when model supports structured outputs. */
   responseFormat?: {
-    type: 'json_schema';
+    type: "json_schema";
     json_schema: {
       name: string;
       strict?: boolean;
@@ -69,29 +67,29 @@ export interface InferenceRequest {
 }
 
 export type ModelEvent =
-  | { type: 'stream.started'; modelId: string }
-  | { type: 'text.delta'; text: string }
+  | { type: "stream.started"; modelId: string }
+  | { type: "text.delta"; text: string }
   | {
-      type: 'tool_call.delta';
+      type: "tool_call.delta";
       toolCallId: string;
       index: number;
       name?: string;
       argumentsDelta?: string;
     }
   | {
-      type: 'tool_call.completed';
+      type: "tool_call.completed";
       toolCallId: string;
       index: number;
       name: string;
       arguments: string;
     }
   | {
-      type: 'stream.completed';
+      type: "stream.completed";
       finishReason?: string | null;
       usage?: InferenceUsage;
     }
-  | { type: 'stream.error'; error: InferenceErrorShape }
-  | { type: 'stream.aborted' };
+  | { type: "stream.error"; error: InferenceErrorShape }
+  | { type: "stream.aborted" };
 
 export interface InferenceUsage {
   promptTokens?: number;
@@ -112,5 +110,8 @@ export interface InferenceProvider {
 
   getCapabilities(modelId: string, apiKey?: string): Promise<ModelCapabilities>;
 
-  stream(request: InferenceRequest, signal: AbortSignal): AsyncIterable<ModelEvent>;
+  stream(
+    request: InferenceRequest,
+    signal: AbortSignal,
+  ): AsyncIterable<ModelEvent>;
 }

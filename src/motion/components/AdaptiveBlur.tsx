@@ -1,16 +1,16 @@
-import React, { type RefObject } from 'react';
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { BlurView, type BlurViewProps } from 'expo-blur';
-import { Colors } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useMotionProfile } from '../runtime/useMotionProfile';
-import { resolveAdaptiveBlurPolicy } from './blurPolicy';
+import React, { type RefObject } from "react";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { BlurView, type BlurViewProps } from "expo-blur";
+import { Colors } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useMotionProfile } from "../runtime/useMotionProfile";
+import { resolveAdaptiveBlurPolicy } from "./blurPolicy";
 
 export interface AdaptiveBlurProps {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
-  tint?: BlurViewProps['tint'];
+  tint?: BlurViewProps["tint"];
   blurTarget?: RefObject<View | null>;
   testID?: string;
 }
@@ -36,15 +36,23 @@ export function AdaptiveBlur({
     androidApiLevel: profile.androidApiLevel,
   });
 
-  const fallbackBg = isDark ? Colors.glassDarkFallback : Colors.glassLightFallback;
+  const fallbackBg = isDark
+    ? Colors.glassDarkFallback
+    : Colors.glassLightFallback;
   const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
-  const resolvedTint = tint ?? (isDark ? 'dark' : 'light');
-  const useNative = decision.mode === 'native' && (Platform.OS !== 'android' || Boolean(blurTarget));
+  const resolvedTint = tint ?? (isDark ? "dark" : "light");
+  const useNative =
+    decision.mode === "native" &&
+    (Platform.OS !== "android" || Boolean(blurTarget));
 
   return (
     <View
       testID={testID}
-      style={[styles.fill, { backgroundColor: useNative ? glassBg : fallbackBg }, style]}
+      style={[
+        styles.fill,
+        { backgroundColor: useNative ? glassBg : fallbackBg },
+        style,
+      ]}
     >
       {useNative ? (
         <BlurView
@@ -62,6 +70,6 @@ export function AdaptiveBlur({
 
 const styles = StyleSheet.create({
   fill: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

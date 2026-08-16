@@ -1,7 +1,7 @@
-import type { ActionReceipt } from '@/domain/receipts';
-import type { DomainServices } from '@/domain/services';
-import type { AetherCommandExecutor } from '@/core/commands';
-import type { ContextSnapshot, ToolRisk } from '../types';
+import type { ActionReceipt } from "@/domain/receipts";
+import type { DomainServices } from "@/domain/services";
+import type { AetherCommandExecutor } from "@/core/commands";
+import type { ContextSnapshot, ToolRisk } from "../types";
 
 export interface ToolExecutionContext {
   services: DomainServices;
@@ -31,5 +31,8 @@ export interface AgentTool<TInput = unknown> {
   outputSchema: Record<string, unknown>;
   execute(input: TInput, ctx: ToolExecutionContext): Promise<ToolResult>;
   /** Optional: estimate affected entities before execute (bulk policy). */
-  estimateAffectedCount?(input: TInput, ctx: ToolExecutionContext): Promise<number> | number;
+  estimateAffectedCount?(
+    input: TInput,
+    ctx: ToolExecutionContext,
+  ): Promise<number> | number;
 }

@@ -15,11 +15,10 @@
 function getRandomBytes(size: number): Uint8Array {
   const nativeUuid = globalThis.expo?.uuidv4?.();
   if (nativeUuid) {
-    const hex = nativeUuid.replace(/-/g, '');
+    const hex = nativeUuid.replace(/-/g, "");
     if (size <= 16 && /^[0-9a-f]{32}$/i.test(hex)) {
-      return Uint8Array.from(
-        { length: size },
-        (_, index) => Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16)
+      return Uint8Array.from({ length: size }, (_, index) =>
+        Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16),
       );
     }
   }
@@ -34,7 +33,7 @@ function getRandomBytes(size: number): Uint8Array {
 }
 
 function byteToHex(byte: number): string {
-  return byte.toString(16).padStart(2, '0');
+  return byte.toString(16).padStart(2, "0");
 }
 
 /** Generate a new UUIDv7 string. */
@@ -55,13 +54,14 @@ export function createId(): string {
   // RFC 4122 variant in high bits of byte 8
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = Array.from(bytes, byteToHex).join('');
+  const hex = Array.from(bytes, byteToHex).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /** True if value looks like a UUID (v4 or v7) or a preserved legacy non-demo id. */
 export function isPlausibleId(value: string): boolean {
-  if (typeof value !== 'string' || value.length < 8 || value.length > 64) return false;
+  if (typeof value !== "string" || value.length < 8 || value.length > 64)
+    return false;
   if (/^demo-\d+$/i.test(value)) return false;
   return /^[A-Za-z0-9_-]+$/.test(value);
 }

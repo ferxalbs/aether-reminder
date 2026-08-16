@@ -1,33 +1,42 @@
-import type { Reminder } from '@/domain/entities';
-import { assertResolvedDateTime, resolveTomorrow, resolveToday } from '@/temporal/resolve';
-import type { AgentTool, ToolResult } from './types';
+import type { Reminder } from "@/domain/entities";
+import {
+  assertResolvedDateTime,
+  resolveTomorrow,
+  resolveToday,
+} from "@/temporal/resolve";
+import type { AgentTool, ToolResult } from "./types";
 
 function asString(v: unknown): string | undefined {
-  return typeof v === 'string' ? v : undefined;
+  return typeof v === "string" ? v : undefined;
 }
 
 function isProjectionReconciled(reminder: Reminder): boolean {
   if (reminder.projectionDirty || reminder.projectionError) return false;
-  if (reminder.projectionState === 'scheduled') return Boolean(reminder.nativeNotificationId);
-  return !reminder.enabled || reminder.projectionState === 'not_required';
+  if (reminder.projectionState === "scheduled")
+    return Boolean(reminder.nativeNotificationId);
+  return !reminder.enabled || reminder.projectionState === "not_required";
 }
 
-const OS_NOTE = 'SQLite is authoritative; local notification delivery is reconciled with the OS.';
+const OS_NOTE =
+  "SQLite is authoritative; local notification delivery is reconciled with the OS.";
 
-export const remindersList: AgentTool<{ taskId?: string; enabledOnly?: boolean }> = {
-  id: 'reminders.list',
-  version: '1',
-  description: 'List reminders (domain state). ' + OS_NOTE,
-  risk: 'READ',
+export const remindersList: AgentTool<{
+  taskId?: string;
+  enabledOnly?: boolean;
+}> = {
+  id: "reminders.list",
+  version: "1",
+  description: "List reminders (domain state). " + OS_NOTE,
+  risk: "READ",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      taskId: { type: 'string' },
-      enabledOnly: { type: 'boolean' },
+      taskId: { type: "string" },
+      enabledOnly: { type: "boolean" },
     },
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const list = await ctx.services.reminders.listReminders({
       taskId: asString(input?.taskId),
@@ -38,7 +47,9 @@ export const remindersList: AgentTool<{ taskId?: string; enabledOnly?: boolean }
       data: {
         count: list.length,
         reminders: list,
-        osNotificationProjection: list.every(isProjectionReconciled) ? 'reconciled' : 'pending_repair',
+        osNotificationProjection: list.every(isProjectionReconciled)
+          ? "reconciled"
+          : "pending_repair",
         note: OS_NOTE,
       },
     };
@@ -50,29 +61,29 @@ export const remindersSchedule: AgentTool<{
   scheduledDate: string;
   scheduledTime?: string;
 }> = {
-  id: 'reminders.schedule',
-  version: '1',
-  description: 'Schedule a domain reminder for a task. ' + OS_NOTE,
-  risk: 'REVERSIBLE_WRITE',
+  id: "reminders.schedule",
+  version: "1",
+  description: "Schedule a domain reminder for a task. " + OS_NOTE,
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      taskId: { type: 'string' },
-      scheduledDate: { type: 'string' },
-      scheduledTime: { type: 'string' },
+      taskId: { type: "string" },
+      scheduledDate: { type: "string" },
+      scheduledTime: { type: "string" },
     },
-    required: ['taskId', 'scheduledDate'],
+    required: ["taskId", "scheduledDate"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const taskId = asString(input?.taskId);
     let scheduledDate = asString(input?.scheduledDate);
     if (!taskId || !scheduledDate) {
-      return { ok: false, error: 'taskId and scheduledDate are required' };
+      return { ok: false, error: "taskId and scheduledDate are required" };
     }
-    if (scheduledDate === 'today') scheduledDate = resolveToday().date;
-    if (scheduledDate === 'tomorrow') scheduledDate = resolveTomorrow().date;
+    if (scheduledDate === "today") scheduledDate = resolveToday().date;
+    if (scheduledDate === "tomorrow") scheduledDate = resolveTomorrow().date;
 
     try {
       assertResolvedDateTime({
@@ -94,10 +105,13 @@ export const remindersSchedule: AgentTool<{
           note: OS_NOTE,
           projectionError: result.projectionError,
         },
-        receipt: { ...result.receipt, toolId: 'reminders.schedule' },
+        receipt: { ...result.receipt, toolId: "reminders.schedule" },
       };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : 'Schedule failed' };
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Schedule failed",
+      };
     }
   },
 };
@@ -107,25 +121,26 @@ export const remindersReschedule: AgentTool<{
   scheduledDate: string;
   scheduledTime?: string;
 }> = {
-  id: 'reminders.reschedule',
-  version: '1',
-  description: 'Reschedule a domain reminder. ' + OS_NOTE,
-  risk: 'REVERSIBLE_WRITE',
+  id: "reminders.reschedule",
+  version: "1",
+  description: "Reschedule a domain reminder. " + OS_NOTE,
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      id: { type: 'string' },
-      scheduledDate: { type: 'string' },
-      scheduledTime: { type: 'string' },
+      id: { type: "string" },
+      scheduledDate: { type: "string" },
+      scheduledTime: { type: "string" },
     },
-    required: ['id', 'scheduledDate'],
+    required: ["id", "scheduledDate"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const id = asString(input?.id);
     const scheduledDate = asString(input?.scheduledDate);
-    if (!id || !scheduledDate) return { ok: false, error: 'id and scheduledDate are required' };
+    if (!id || !scheduledDate)
+      return { ok: false, error: "id and scheduledDate are required" };
     try {
       const result = await ctx.commands.rescheduleReminder(id, {
         scheduledDate,
@@ -140,29 +155,32 @@ export const remindersReschedule: AgentTool<{
           note: OS_NOTE,
           projectionError: result.projectionError,
         },
-        receipt: { ...result.receipt, toolId: 'reminders.reschedule' },
+        receipt: { ...result.receipt, toolId: "reminders.reschedule" },
       };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : 'Reschedule failed' };
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Reschedule failed",
+      };
     }
   },
 };
 
 export const remindersCancel: AgentTool<{ id: string }> = {
-  id: 'reminders.cancel',
-  version: '1',
-  description: 'Cancel (disable) a domain reminder. ' + OS_NOTE,
-  risk: 'REVERSIBLE_WRITE',
+  id: "reminders.cancel",
+  version: "1",
+  description: "Cancel (disable) a domain reminder. " + OS_NOTE,
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
-    properties: { id: { type: 'string' } },
-    required: ['id'],
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const id = asString(input?.id);
-    if (!id) return { ok: false, error: 'id is required' };
+    if (!id) return { ok: false, error: "id is required" };
     try {
       const result = await ctx.commands.cancelReminder(id);
       return {
@@ -173,10 +191,13 @@ export const remindersCancel: AgentTool<{ id: string }> = {
           note: OS_NOTE,
           projectionError: result.projectionError,
         },
-        receipt: { ...result.receipt, toolId: 'reminders.cancel' },
+        receipt: { ...result.receipt, toolId: "reminders.cancel" },
       };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : 'Cancel failed' };
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Cancel failed",
+      };
     }
   },
 };

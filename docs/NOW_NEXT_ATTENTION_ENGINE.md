@@ -15,14 +15,14 @@ NOW/NEXT is an execution surface, not a second task database. It answers:
 
 The ownership boundaries are:
 
-| Concern | Owner | NOW/NEXT behavior |
-| --- | --- | --- |
-| Task/reminder/recurrence truth | SQLite repositories and domain services | Reads bounded facts |
-| Native notification projection | Production Reliability | Exposes a separate degraded-delivery alert |
-| Missed/overdue replanning | Smart Recovery | Exposes one recovery intervention, not an overdue task queue |
-| Follow-up timing and learning | Adaptive Nudge | Exposes a semantic `nudge_due` signal |
-| Attention selection | Attention Planner | Produces `AttentionPlan` only |
-| Presentation | Home and `AttentionSurface` | Renders the plan and dispatches commands |
+| Concern                        | Owner                                   | NOW/NEXT behavior                                            |
+| ------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| Task/reminder/recurrence truth | SQLite repositories and domain services | Reads bounded facts                                          |
+| Native notification projection | Production Reliability                  | Exposes a separate degraded-delivery alert                   |
+| Missed/overdue replanning      | Smart Recovery                          | Exposes one recovery intervention, not an overdue task queue |
+| Follow-up timing and learning  | Adaptive Nudge                          | Exposes a semantic `nudge_due` signal                        |
+| Attention selection            | Attention Planner                       | Produces `AttentionPlan` only                                |
+| Presentation                   | Home and `AttentionSurface`             | Renders the plan and dispatches commands                     |
 
 NOW/NEXT never changes `dueDate`, `dueTime`, recurrence cadence, reminder
 projection state, or native notifications. Focus selection is explicit intent,
@@ -40,7 +40,7 @@ interface AttentionPlan {
   next: AttentionItem[];
   choices: AttentionItem[];
   alerts: AttentionAlert[];
-  selectionMode: 'recommended' | 'choose' | 'clear';
+  selectionMode: "recommended" | "choose" | "clear";
   nextRefreshAt: string | null;
 }
 ```
@@ -142,7 +142,7 @@ today”, or “Good follow-up time”.
 `attention.focus`:
 
 ```json
-{"taskId":"...","createdAt":"...","source":"manual"}
+{ "taskId": "...", "createdAt": "...", "source": "manual" }
 ```
 
 This state is cleared when the user clears focus or when the task is no longer

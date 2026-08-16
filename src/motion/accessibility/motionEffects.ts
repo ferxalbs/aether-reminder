@@ -1,4 +1,4 @@
-import type { MotionAccessibilityState } from '../core/types';
+import type { MotionAccessibilityState } from "../core/types";
 
 export function applyAccessibilityToBudget(
   accessibility: MotionAccessibilityState,

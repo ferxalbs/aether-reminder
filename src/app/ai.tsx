@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Redirect } from "expo-router";
 
 /**
  * Compatibility entry point for old deep links. The assistant is now a

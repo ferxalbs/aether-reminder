@@ -4,8 +4,8 @@
  * shapes used by screens and provider integrations.
  */
 
-export type { TaskPriority } from '@/domain/entities';
-export type { TaskListItem } from '@/domain/entities';
+export type { TaskPriority } from "@/domain/entities";
+export type { TaskListItem } from "@/domain/entities";
 
 /** @deprecated Prefer domain Task / TaskListItem — kept for AI service bridge. */
 export interface Task {
@@ -15,7 +15,7 @@ export interface Task {
   completed: boolean;
   createdAt: string;
   dueDate?: string;
-  priority: import('@/domain/entities').TaskPriority;
+  priority: import("@/domain/entities").TaskPriority;
   reminderDate?: string;
   aiSuggested?: boolean;
 }
@@ -27,7 +27,7 @@ export interface Reminder {
   enabled: boolean;
 }
 
-export type ThemePreference = 'system' | 'dark' | 'light';
+export type ThemePreference = "system" | "dark" | "light";
 
 export interface UserSettings {
   selectedModel: string;

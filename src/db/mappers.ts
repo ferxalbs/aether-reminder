@@ -11,8 +11,8 @@ import type {
   ReminderTimingPrecision,
   ReminderKind,
   ReminderGenerationSource,
-} from '@/domain/entities';
-import { reportNonFatalError } from '@/lib/nonFatalError';
+} from "@/domain/entities";
+import { reportNonFatalError } from "@/lib/nonFatalError";
 
 export interface TaskRow {
   id: string;
@@ -120,10 +120,11 @@ export function mapReminderRow(row: ReminderRow): Reminder {
     projectionErrorCode: row.projection_error_code,
     projectionError: row.projection_error,
     timingPrecision: row.timing_precision as ReminderTimingPrecision,
-    kind: (row.kind ?? 'primary') as ReminderKind,
+    kind: (row.kind ?? "primary") as ReminderKind,
     reason: row.reason ?? null,
-    generationSource: (row.generation_source ?? 'manual') as ReminderGenerationSource,
-    policyVersion: row.policy_version ?? 'baseline-v1',
+    generationSource: (row.generation_source ??
+      "manual") as ReminderGenerationSource,
+    policyVersion: row.policy_version ?? "baseline-v1",
     idempotencyKey: row.idempotency_key ?? null,
     cancelledAt: row.cancelled_at ?? null,
     consumedAt: row.consumed_at ?? null,
@@ -148,11 +149,11 @@ export function mapTaskEventRow(row: TaskEventRow): TaskEvent {
   if (row.payload_json) {
     try {
       const parsed = JSON.parse(row.payload_json) as unknown;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed as Record<string, unknown>;
       }
     } catch (error) {
-      reportNonFatalError('task-event-payload', error);
+      reportNonFatalError("task-event-payload", error);
       payload = null;
     }
   }

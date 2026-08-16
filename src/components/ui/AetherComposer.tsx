@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
-import {
-  Keyboard,
-  Platform,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
-import { Mic, Plus, ArrowUp } from 'lucide-react-native';
-import { GlassSurface } from './GlassSurface';
-import { AnimatedPressable } from './AnimatedPressable';
-import { LayoutTokens, Motion, Radius, Spacing } from '@/theme/tokens';
-import { useSemanticColors } from '@/theme/useSemanticColors';
+import React, { useState } from "react";
+import { Keyboard, Platform, StyleSheet, TextInput, View } from "react-native";
+import { Mic, Plus, ArrowUp } from "lucide-react-native";
+import { GlassSurface } from "./GlassSurface";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface AetherComposerProps {
   value?: string;
@@ -35,7 +29,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   onAttachFile,
   disabled = false,
 }) => {
-  const [internalValue, setInternalValue] = useState('');
+  const [internalValue, setInternalValue] = useState("");
   const colors = useSemanticColors();
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
@@ -48,7 +42,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
     const trimmed = textValue.trim();
     if (!trimmed) return;
     if (onSubmit) onSubmit(trimmed);
-    setTextValue('');
+    setTextValue("");
     Keyboard.dismiss();
   };
 
@@ -56,11 +50,10 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
   return (
     <View style={styles.host} pointerEvents="box-none">
-
       <GlassSurface
         borderRadius={Radius.pill}
-        intensity={Platform.OS === 'ios' ? 65 : 45}
-        tier={Platform.OS === 'android' ? 'A' : undefined}
+        intensity={Platform.OS === "ios" ? 65 : 45}
+        tier={Platform.OS === "android" ? "A" : undefined}
         style={styles.glassContainer}
         contentStyle={styles.content}
       >
@@ -97,12 +90,13 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Create reminder"
             scaleTo={Motion.iconPressScale}
-            style={[
-              styles.sendButton,
-              { backgroundColor: colors.interactive },
-            ]}
+            style={[styles.sendButton, { backgroundColor: colors.interactive }]}
           >
-            <ArrowUp size={18} color={colors.interactiveForeground} strokeWidth={2.8} />
+            <ArrowUp
+              size={18}
+              color={colors.interactiveForeground}
+              strokeWidth={2.8}
+            />
           </AnimatedPressable>
         ) : (
           <AnimatedPressable
@@ -122,14 +116,14 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
 const styles = StyleSheet.create({
   host: {
-    width: '100%',
+    width: "100%",
     maxWidth: LayoutTokens.navigationMaxWidth,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   glassContainer: {
-    width: '100%',
+    width: "100%",
     height: LayoutTokens.composerHeight,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -138,8 +132,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     height: LayoutTokens.composerHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.xs,
     gap: Spacing.xs,
   },
@@ -148,24 +142,23 @@ const styles = StyleSheet.create({
     height: 44,
     fontSize: 17,
     letterSpacing: -0.4,
-    paddingVertical: Platform.OS === 'android' ? 0 : undefined,
+    paddingVertical: Platform.OS === "android" ? 0 : undefined,
     paddingHorizontal: Spacing.sm,
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
   },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButton: {
     width: 36,
     height: 36,
     borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 4,
   },
 });
-

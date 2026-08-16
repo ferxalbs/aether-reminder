@@ -1,4 +1,4 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /**
  * Authoritative capture/task linkage and minimal committed source references.
@@ -6,7 +6,7 @@ import type { Migration } from './types';
  */
 export const migration0009UniversalCapture: Migration = {
   version: 9,
-  name: '0009_universal_capture',
+  name: "0009_universal_capture",
   async up(db) {
     await db.execAsync(`
       CREATE TABLE capture_commits (

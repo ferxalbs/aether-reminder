@@ -1,21 +1,37 @@
-import { describe, expect, mock, test } from 'bun:test';
-import React from 'react';
+import { describe, expect, mock, test } from "bun:test";
+import React from "react";
 
 const MockView: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement('View', props, props.children as React.ReactNode);
+  React.createElement("View", props, props.children as React.ReactNode);
 
 const MockText: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement('Text', props, props.children as React.ReactNode);
+  React.createElement("Text", props, props.children as React.ReactNode);
 
 // Mock react-native and dependencies for the Bun test environment
-mock.module('react-native', () => ({
-  Platform: { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios ?? obj.default },
+mock.module("react-native", () => ({
+  Platform: {
+    OS: "ios",
+    select: (obj: Record<string, unknown>) => obj.ios ?? obj.default,
+  },
   StyleSheet: {
     create: (styles: Record<string, unknown>) => styles,
-    flatten: (style: unknown) => (Array.isArray(style) ? Object.assign({}, ...style) : style || {}),
+    flatten: (style: unknown) =>
+      Array.isArray(style) ? Object.assign({}, ...style) : style || {},
     hairlineWidth: 1,
-    absoluteFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
-    absoluteFillObject: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+    absoluteFill: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    },
+    absoluteFillObject: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    },
   },
   View: MockView,
   Text: MockText,
@@ -25,28 +41,32 @@ mock.module('react-native', () => ({
   Pressable: MockView,
   Modal: MockView,
   Touchable: { Mixin: {} },
-  useColorScheme: () => 'dark',
+  useColorScheme: () => "dark",
   TurboModuleRegistry: { get: () => null, getEnforcing: () => null },
   NativeModules: {},
 }));
 
-mock.module('@expo/ui/community/bottom-sheet', () => ({
+mock.module("@expo/ui/community/bottom-sheet", () => ({
   BottomSheet: (props: Record<string, unknown>) =>
-    React.createElement('BottomSheet', props, props.children as React.ReactNode),
+    React.createElement(
+      "BottomSheet",
+      props,
+      props.children as React.ReactNode,
+    ),
 }));
 
-mock.module('@/theme/useResolvedTheme', () => ({
+mock.module("@/theme/useResolvedTheme", () => ({
   useIsDark: () => true,
-  useResolvedTheme: () => 'dark',
+  useResolvedTheme: () => "dark",
 }));
 
 // Import Sheet and test renderer
-const { Sheet } = await import('./Sheet');
-const ReactTestRenderer = (await import('react-test-renderer')).default;
-const { act } = await import('react-test-renderer');
+const { Sheet } = await import("./Sheet");
+const ReactTestRenderer = (await import("react-test-renderer")).default;
+const { act } = await import("react-test-renderer");
 
-describe('Sheet native-first presentation adapter', () => {
-  test('renders children and maps visible state to BottomSheet index', () => {
+describe("Sheet native-first presentation adapter", () => {
+  test("renders children and maps visible state to BottomSheet index", () => {
     const onRequestClose = mock(() => {});
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
 
@@ -65,16 +85,16 @@ describe('Sheet native-first presentation adapter', () => {
     });
 
     const root = renderer!.root;
-    const dialogView = root.findByProps({ accessibilityLabel: 'Test Sheet' });
+    const dialogView = root.findByProps({ accessibilityLabel: "Test Sheet" });
     expect(dialogView).toBeDefined();
-    expect(dialogView.props.role).toBe('dialog');
-    expect(dialogView.props.testID).toBe('test-sheet');
+    expect(dialogView.props.role).toBe("dialog");
+    expect(dialogView.props.testID).toBe("test-sheet");
 
-    const contentChild = root.findByProps({ testID: 'content-child' });
+    const contentChild = root.findByProps({ testID: "content-child" });
     expect(contentChild).toBeDefined();
   });
 
-  test('calls onRequestClose on dismissal when dismissible is true', () => {
+  test("calls onRequestClose on dismissal when dismissible is true", () => {
     const onRequestClose = mock(() => {});
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
 
@@ -91,7 +111,7 @@ describe('Sheet native-first presentation adapter', () => {
       );
     });
 
-    const bottomSheet = renderer!.root.findByType('BottomSheet');
+    const bottomSheet = renderer!.root.findByType("BottomSheet");
     expect(bottomSheet).toBeDefined();
     expect(bottomSheet.props.index).toBe(0);
     expect(bottomSheet.props.enablePanDownToClose).toBe(true);
@@ -103,7 +123,7 @@ describe('Sheet native-first presentation adapter', () => {
     expect(onRequestClose).toHaveBeenCalledTimes(1);
   });
 
-  test('does not call onRequestClose on dismissal when dismissible is false', () => {
+  test("does not call onRequestClose on dismissal when dismissible is false", () => {
     const onRequestClose = mock(() => {});
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
 
@@ -120,7 +140,7 @@ describe('Sheet native-first presentation adapter', () => {
       );
     });
 
-    const bottomSheet = renderer!.root.findByType('BottomSheet');
+    const bottomSheet = renderer!.root.findByType("BottomSheet");
     expect(bottomSheet.props.enablePanDownToClose).toBe(false);
 
     act(() => {
@@ -130,7 +150,7 @@ describe('Sheet native-first presentation adapter', () => {
     expect(onRequestClose).toHaveBeenCalledTimes(0);
   });
 
-  test('renders headerAction, footer, and custom snap points', () => {
+  test("renders headerAction, footer, and custom snap points", () => {
     const onRequestClose = mock(() => {});
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
 
@@ -142,7 +162,7 @@ describe('Sheet native-first presentation adapter', () => {
           title="Header Sheet"
           headerAction={<MockView testID="custom-header-action" />}
           footer={<MockView testID="custom-footer" />}
-          snapPoints={['50%', '90%']}
+          snapPoints={["50%", "90%"]}
         >
           <MockView testID="body" />
         </Sheet>,
@@ -150,17 +170,17 @@ describe('Sheet native-first presentation adapter', () => {
     });
 
     const root = renderer!.root;
-    const headerAction = root.findByProps({ testID: 'custom-header-action' });
+    const headerAction = root.findByProps({ testID: "custom-header-action" });
     expect(headerAction).toBeDefined();
 
-    const footer = root.findByProps({ testID: 'custom-footer' });
+    const footer = root.findByProps({ testID: "custom-footer" });
     expect(footer).toBeDefined();
 
-    const bottomSheet = root.findByType('BottomSheet');
-    expect(bottomSheet.props.snapPoints).toEqual(['50%', '90%']);
+    const bottomSheet = root.findByType("BottomSheet");
+    expect(bottomSheet.props.snapPoints).toEqual(["50%", "90%"]);
   });
 
-  test('sets index to -1 when visible is false', () => {
+  test("sets index to -1 when visible is false", () => {
     const onRequestClose = mock(() => {});
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
 
@@ -176,7 +196,7 @@ describe('Sheet native-first presentation adapter', () => {
       );
     });
 
-    const bottomSheet = renderer!.root.findByType('BottomSheet');
+    const bottomSheet = renderer!.root.findByType("BottomSheet");
     expect(bottomSheet.props.index).toBe(-1);
   });
 });

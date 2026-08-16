@@ -1,14 +1,16 @@
-import type { SqlDatabase } from '@/db/types';
-import { createDomainServices, type DomainServices } from '@/domain/services';
+import type { SqlDatabase } from "@/db/types";
+import { createDomainServices, type DomainServices } from "@/domain/services";
 import {
   AetherAgentRuntime,
   type AetherAgentRuntimeOptions,
-} from '@/services/agent/runtime';
-import type { NotificationReconciliationOptions } from '@/services/notifications/notificationReconciliation';
-import { AetherCommandExecutor } from './commands';
+} from "@/services/agent/runtime";
+import type { NotificationReconciliationOptions } from "@/services/notifications/notificationReconciliation";
+import { AetherCommandExecutor } from "./commands";
 
-export interface AetherCoreOptions
-  extends Omit<AetherAgentRuntimeOptions, 'services' | 'commands'> {
+export interface AetherCoreOptions extends Omit<
+  AetherAgentRuntimeOptions,
+  "services" | "commands"
+> {
   services?: DomainServices;
 }
 
@@ -28,7 +30,12 @@ export class AetherCore {
     });
   }
 
-  reconcileNotifications(options: NotificationReconciliationOptions = { mode: 'full', reason: 'legacy' }) {
+  reconcileNotifications(
+    options: NotificationReconciliationOptions = {
+      mode: "full",
+      reason: "legacy",
+    },
+  ) {
     return this.services.notifications.reconcile(options);
   }
 }

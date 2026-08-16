@@ -1,16 +1,16 @@
-export type MotionPlatform = 'android' | 'ios';
+export type MotionPlatform = "android" | "ios";
 
 export type ThermalState =
-  | 'unknown'
-  | 'nominal'
-  | 'fair'
-  | 'light'
-  | 'moderate'
-  | 'serious'
-  | 'severe'
-  | 'critical'
-  | 'emergency'
-  | 'shutdown';
+  | "unknown"
+  | "nominal"
+  | "fair"
+  | "light"
+  | "moderate"
+  | "serious"
+  | "severe"
+  | "critical"
+  | "emergency"
+  | "shutdown";
 
 export interface NativeMotionFrameWindow {
   sampleWindowMs: number;

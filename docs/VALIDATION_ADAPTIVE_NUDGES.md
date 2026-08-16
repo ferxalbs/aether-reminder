@@ -70,9 +70,9 @@ restrictions, and channel settings.
 
 ## Evidence record
 
-| Platform/device | OS build | App build | Tests run | Result | Evidence/link |
-| --- | --- | --- | --- | --- | --- |
-| User-reported physical device | Not provided | Not provided | Real-device testing reported by user; exact scenarios not recorded | Partial user validation; full matrix pending | — |
+| Platform/device               | OS build     | App build    | Tests run                                                          | Result                                       | Evidence/link |
+| ----------------------------- | ------------ | ------------ | ------------------------------------------------------------------ | -------------------------------------------- | ------------- |
+| User-reported physical device | Not provided | Not provided | Real-device testing reported by user; exact scenarios not recorded | Partial user validation; full matrix pending | —             |
 
 Static/unit validation cannot prove OEM channel behavior, process-killed cold
 actions, reboot persistence, permission transitions, or real notification

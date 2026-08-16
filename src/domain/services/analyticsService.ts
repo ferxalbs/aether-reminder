@@ -1,6 +1,9 @@
-import type { Task } from '@/domain/entities';
-import { TasksRepository } from '@/db/repositories/tasksRepository';
-import { getLocalDateString, isLocalDateBefore } from '@/temporal/localCalendar';
+import type { Task } from "@/domain/entities";
+import { TasksRepository } from "@/db/repositories/tasksRepository";
+import {
+  getLocalDateString,
+  isLocalDateBefore,
+} from "@/temporal/localCalendar";
 
 export interface WorkloadSnapshot {
   asOfLocalDate: string;
@@ -22,15 +25,20 @@ export interface WorkloadSnapshot {
 export class AnalyticsService {
   constructor(private readonly tasks: TasksRepository) {}
 
-  async getWorkload(options?: { localDate?: string; sampleLimit?: number }): Promise<WorkloadSnapshot> {
+  async getWorkload(options?: {
+    localDate?: string;
+    sampleLimit?: number;
+  }): Promise<WorkloadSnapshot> {
     const localDate = options?.localDate ?? getLocalDateString();
     const sampleLimit = options?.sampleLimit ?? 5;
     const active = await this.tasks.listActive({ limit: 500 });
     const pending = active.filter((t) => !t.completed);
     const completed = active.filter((t) => t.completed);
-    const overdue = pending.filter((t) => t.dueDate != null && isLocalDateBefore(t.dueDate, localDate));
+    const overdue = pending.filter(
+      (t) => t.dueDate != null && isLocalDateBefore(t.dueDate, localDate),
+    );
     const dueToday = pending.filter((t) => t.dueDate === localDate);
-    const highPriorityPending = pending.filter((t) => t.priority === 'high');
+    const highPriorityPending = pending.filter((t) => t.priority === "high");
 
     return {
       asOfLocalDate: localDate,

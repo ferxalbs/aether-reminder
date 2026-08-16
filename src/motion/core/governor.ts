@@ -1,16 +1,16 @@
-import { conservativeCapabilities } from './capabilities';
+import { conservativeCapabilities } from "./capabilities";
 import {
   createGovernorState,
   profileFromState,
   reduceMotionState,
   type GovernorState,
-} from './policy';
+} from "./policy";
 import type {
   MotionAccessibilityState,
   MotionProfile,
   NativeMotionCapabilities,
   NativeMotionSnapshot,
-} from './types';
+} from "./types";
 
 export class MotionGovernor {
   private state: GovernorState;
@@ -21,26 +21,35 @@ export class MotionGovernor {
     prefersCrossFade: false,
   };
 
-  constructor(capabilities: NativeMotionCapabilities | null = conservativeCapabilities()) {
+  constructor(
+    capabilities: NativeMotionCapabilities | null = conservativeCapabilities(),
+  ) {
     this.state = createGovernorState(capabilities);
     this.androidApiLevel = capabilities?.androidApiLevel ?? null;
   }
 
   hydrate(capabilities: NativeMotionCapabilities | null): MotionProfile {
-    this.androidApiLevel = capabilities?.androidApiLevel ?? this.androidApiLevel;
-    this.state = reduceMotionState(this.state, { type: 'hydrate', capabilities });
+    this.androidApiLevel =
+      capabilities?.androidApiLevel ?? this.androidApiLevel;
+    this.state = reduceMotionState(this.state, {
+      type: "hydrate",
+      capabilities,
+    });
     return this.profile();
   }
 
   setAccessibility(accessibility: MotionAccessibilityState): MotionProfile {
     this.accessibility = accessibility;
-    this.state = reduceMotionState(this.state, { type: 'accessibility', accessibility });
+    this.state = reduceMotionState(this.state, {
+      type: "accessibility",
+      accessibility,
+    });
     return this.profile();
   }
 
   resume(): MotionProfile {
     this.state = reduceMotionState(this.state, {
-      type: 'resume',
+      type: "resume",
       accessibility: this.accessibility,
     });
     return this.profile();
@@ -48,7 +57,7 @@ export class MotionGovernor {
 
   applySnapshot(snapshot: NativeMotionSnapshot): MotionProfile {
     this.state = reduceMotionState(this.state, {
-      type: 'snapshot',
+      type: "snapshot",
       snapshot,
       accessibility: this.accessibility,
     });

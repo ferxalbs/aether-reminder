@@ -1,8 +1,8 @@
-import type { ActionReceipt } from '@/domain/receipts';
-import type { TaskPriority, TemporalSemantics } from './entities';
-import { isValidLocalDate, isValidLocalTime } from '@/temporal/resolve';
+import type { ActionReceipt } from "@/domain/receipts";
+import type { TaskPriority, TemporalSemantics } from "./entities";
+import { isValidLocalDate, isValidLocalTime } from "@/temporal/resolve";
 
-export type RecoveryReason = 'overdue' | 'missed_time';
+export type RecoveryReason = "overdue" | "missed_time";
 
 /** The schedule fields Smart Recovery is allowed to change. */
 export interface RecoverySchedule {
@@ -13,11 +13,7 @@ export interface RecoverySchedule {
 }
 
 export type RecoveryAlternativeKind =
-  | 'later_today'
-  | 'today_original'
-  | 'tomorrow'
-  | 'keep_current'
-  | 'exclude';
+  "later_today" | "today_original" | "tomorrow" | "keep_current" | "exclude";
 
 export interface RecoveryAlternative {
   kind: RecoveryAlternativeKind;
@@ -27,7 +23,7 @@ export interface RecoveryAlternative {
 
 export interface RecoveryRecurrenceMetadata {
   ruleId: string;
-  mode: 'fixed' | 'after_completion';
+  mode: "fixed" | "after_completion";
   occurrenceCount: number;
   startDate: string;
 }
@@ -83,12 +79,12 @@ export interface RecoveryUndoItem {
   previous: RecoverySchedule;
 }
 
-export const RECOVERY_UNDO_KIND = 'recovery.batch';
+export const RECOVERY_UNDO_KIND = "recovery.batch";
 /** Shared handoff boundary used by Smart Recovery and Adaptive Nudge. */
 export const RECOVERY_MISSED_GRACE_MINUTES = 30;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function parseSchedule(value: unknown): RecoverySchedule | null {
@@ -98,11 +94,12 @@ function parseSchedule(value: unknown): RecoverySchedule | null {
   const dueTimezone = value.dueTimezone;
   const dueSemantics = value.dueSemantics;
   if (
-    !(dueDate === null || typeof dueDate === 'string') ||
-    !(dueTime === null || typeof dueTime === 'string') ||
-    !(dueTimezone === null || typeof dueTimezone === 'string') ||
-    (dueSemantics !== 'fixed' && dueSemantics !== 'floating')
-  ) return null;
+    !(dueDate === null || typeof dueDate === "string") ||
+    !(dueTime === null || typeof dueTime === "string") ||
+    !(dueTimezone === null || typeof dueTimezone === "string") ||
+    (dueSemantics !== "fixed" && dueSemantics !== "floating")
+  )
+    return null;
   return {
     dueDate,
     dueTime,
@@ -112,13 +109,16 @@ function parseSchedule(value: unknown): RecoverySchedule | null {
 }
 
 /** Parse the opaque batch receipt again immediately before an explicit Undo. */
-export function getRecoveryUndoItems(receipt: ActionReceipt | null): RecoveryUndoItem[] | null {
+export function getRecoveryUndoItems(
+  receipt: ActionReceipt | null,
+): RecoveryUndoItem[] | null {
   if (
-    receipt?.entityType !== 'task' ||
+    receipt?.entityType !== "task" ||
     receipt.undo?.kind !== RECOVERY_UNDO_KIND ||
     !isRecord(receipt.undo.payload) ||
     !Array.isArray(receipt.undo.payload.items)
-  ) return null;
+  )
+    return null;
 
   const items: RecoveryUndoItem[] = [];
   for (const value of receipt.undo.payload.items) {
@@ -128,10 +128,14 @@ export function getRecoveryUndoItems(receipt: ActionReceipt | null): RecoveryUnd
     const applied = parseSchedule(value.applied);
     const previous = parseSchedule(value.previous);
     if (
-      typeof taskId !== 'string' || taskId.length === 0 ||
-      typeof appliedUpdatedAt !== 'string' || appliedUpdatedAt.length === 0 ||
-      !applied || !previous
-    ) return null;
+      typeof taskId !== "string" ||
+      taskId.length === 0 ||
+      typeof appliedUpdatedAt !== "string" ||
+      appliedUpdatedAt.length === 0 ||
+      !applied ||
+      !previous
+    )
+      return null;
     items.push({ taskId, appliedUpdatedAt, applied, previous });
   }
   return items.length > 0 ? items : null;
@@ -139,7 +143,7 @@ export function getRecoveryUndoItems(receipt: ActionReceipt | null): RecoveryUnd
 
 function isValidTimezone(value: string): boolean {
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
     return true;
   } catch {
     return false;
@@ -149,15 +153,18 @@ function isValidTimezone(value: string): boolean {
 /** Defensive validation for derived schedules before they reach SQLite. */
 export function assertRecoverySchedule(schedule: RecoverySchedule): void {
   if (schedule.dueDate === null || !isValidLocalDate(schedule.dueDate)) {
-    throw new Error('Recovery schedule has an invalid due date.');
+    throw new Error("Recovery schedule has an invalid due date.");
   }
   if (schedule.dueTime !== null && !isValidLocalTime(schedule.dueTime)) {
-    throw new Error('Recovery schedule has an invalid due time.');
+    throw new Error("Recovery schedule has an invalid due time.");
   }
-  if (schedule.dueSemantics !== 'fixed' && schedule.dueSemantics !== 'floating') {
-    throw new Error('Recovery schedule has invalid temporal semantics.');
+  if (
+    schedule.dueSemantics !== "fixed" &&
+    schedule.dueSemantics !== "floating"
+  ) {
+    throw new Error("Recovery schedule has invalid temporal semantics.");
   }
   if (schedule.dueTimezone !== null && !isValidTimezone(schedule.dueTimezone)) {
-    throw new Error('Recovery schedule has an invalid timezone.');
+    throw new Error("Recovery schedule has an invalid timezone.");
   }
 }

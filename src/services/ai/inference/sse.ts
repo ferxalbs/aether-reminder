@@ -3,23 +3,23 @@
  * Emits data payloads only (ignores comments / event names).
  */
 
-import { reportNonFatalError } from '@/lib/nonFatalError';
+import { reportNonFatalError } from "@/lib/nonFatalError";
 
 export async function* parseSseStream(
   body: ReadableStream<Uint8Array> | null,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): AsyncGenerator<string, void, unknown> {
   if (!body) return;
 
   const reader = body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let buffer = '';
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
   const cancelReader = () => {
     void reader.cancel().catch((error: unknown) => {
-      reportNonFatalError('sse-reader-cancel', error);
+      reportNonFatalError("sse-reader-cancel", error);
     });
   };
-  signal.addEventListener('abort', cancelReader, { once: true });
+  signal.addEventListener("abort", cancelReader, { once: true });
 
   try {
     while (true) {
@@ -33,12 +33,12 @@ export async function* parseSseStream(
 
       buffer += decoder.decode(value, { stream: true });
       const parts = buffer.split(/\r?\n/);
-      buffer = parts.pop() ?? '';
+      buffer = parts.pop() ?? "";
 
       for (const line of parts) {
         const trimmed = line.trimEnd();
-        if (!trimmed || trimmed.startsWith(':')) continue;
-        if (trimmed.startsWith('data:')) {
+        if (!trimmed || trimmed.startsWith(":")) continue;
+        if (trimmed.startsWith("data:")) {
           const data = trimmed.slice(5).trimStart();
           if (data) yield data;
         }
@@ -46,16 +46,16 @@ export async function* parseSseStream(
     }
 
     // Flush trailing data line without newline
-    if (buffer.trim().startsWith('data:')) {
+    if (buffer.trim().startsWith("data:")) {
       const data = buffer.trim().slice(5).trimStart();
       if (data) yield data;
     }
   } finally {
-    signal.removeEventListener('abort', cancelReader);
+    signal.removeEventListener("abort", cancelReader);
     try {
       reader.releaseLock();
     } catch (error) {
-      reportNonFatalError('sse-reader-release', error);
+      reportNonFatalError("sse-reader-release", error);
     }
   }
 }

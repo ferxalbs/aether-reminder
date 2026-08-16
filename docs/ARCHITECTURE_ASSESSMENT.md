@@ -18,47 +18,47 @@
 
 ### Stack (keep)
 
-| Layer | Current |
-| --- | --- |
-| Runtime | Expo SDK **57**, React Native **0.86**, React **19.2**, TypeScript strict |
-| Routing | Expo Router (`src/app/*`), Stack, typed routes experiment |
-| Package manager | Bun (`bun.lock`) |
-| UI state | Zustand 5 + AsyncStorage persist |
-| Secrets | Expo SecureStore for OpenRouter key (correct partialization) |
-| Styling | RN `StyleSheet` + monochrome tokens (`src/theme/tokens.ts`) — no Tailwind/NativeWind |
-| Motion | Reanimated 4, Gesture Handler, expo-haptics |
-| Glass | `expo-blur` via `GlassSurface` (not platform Liquid Glass yet) |
-| Native shells | `android/` present (dev client package `com.ferxalbs.aetherreminder`); no custom iOS project checked in (managed + EAS) |
+| Layer           | Current                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Runtime         | Expo SDK **57**, React Native **0.86**, React **19.2**, TypeScript strict                                               |
+| Routing         | Expo Router (`src/app/*`), Stack, typed routes experiment                                                               |
+| Package manager | Bun (`bun.lock`)                                                                                                        |
+| UI state        | Zustand 5 + AsyncStorage persist                                                                                        |
+| Secrets         | Expo SecureStore for OpenRouter key (correct partialization)                                                            |
+| Styling         | RN `StyleSheet` + monochrome tokens (`src/theme/tokens.ts`) — no Tailwind/NativeWind                                    |
+| Motion          | Reanimated 4, Gesture Handler, expo-haptics                                                                             |
+| Glass           | `expo-blur` via `GlassSurface` (not platform Liquid Glass yet)                                                          |
+| Native shells   | `android/` present (dev client package `com.ferxalbs.aetherreminder`); no custom iOS project checked in (managed + EAS) |
 
 ### Routes
 
-| Route | File | Role |
-| --- | --- | --- |
-| `/` | `src/app/index.tsx` | Home — today’s tasks, progress, add modal |
-| `/ai` | `src/app/ai.tsx` | “AI Overview” — one-shot task summary |
-| `/transcribe` | `src/app/transcribe.tsx` | Standalone voice capture tab |
-| `/settings` | `src/app/settings.tsx` | BYOK OpenRouter key, model catalog, theme, haptics |
+| Route         | File                     | Role                                               |
+| ------------- | ------------------------ | -------------------------------------------------- |
+| `/`           | `src/app/index.tsx`      | Home — today’s tasks, progress, add modal          |
+| `/ai`         | `src/app/ai.tsx`         | “AI Overview” — one-shot task summary              |
+| `/transcribe` | `src/app/transcribe.tsx` | Standalone voice capture tab                       |
+| `/settings`   | `src/app/settings.tsx`   | BYOK OpenRouter key, model catalog, theme, haptics |
 
 Navigation chrome: per-screen `FloatingToolbar` (not a real tab navigator). Root is a bare `Stack` in `_layout.tsx`.
 
 ### Stores
 
-| Store | Persistence | Role |
-| --- | --- | --- |
-| `tasks.store` | AsyncStorage `taskflow-tasks-storage` | **Source of truth** for tasks (demo seed data) |
-| `settings.store` | AsyncStorage prefs + SecureStore API key | Preferences + in-memory key |
+| Store            | Persistence                              | Role                                           |
+| ---------------- | ---------------------------------------- | ---------------------------------------------- |
+| `tasks.store`    | AsyncStorage `taskflow-tasks-storage`    | **Source of truth** for tasks (demo seed data) |
+| `settings.store` | AsyncStorage prefs + SecureStore API key | Preferences + in-memory key                    |
 
 Zustand is used for domain data — wrong long-term. Target: SQLite for domain; Zustand for UI/session only.
 
 ### AI services
 
-| Module | Status |
-| --- | --- |
-| `providers.ts` | Typed `AIProviderError`, codes, `requireUserApiKey` — **preserve pattern** |
-| `openrouter.ts` | Non-streaming `complete()`, models list + cache, key test — **extend heavily** |
-| `models.ts` | Text-chat filter only; no tools/structured_outputs capabilities — **extend** |
-| Product AI | `generateTaskSummary` dumps all tasks into prompt, free-form JSON, markdown strip + `JSON.parse` |
-| Fallback | `generateFallbackSummary` pretends analysis succeeded when provider fails |
+| Module          | Status                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| `providers.ts`  | Typed `AIProviderError`, codes, `requireUserApiKey` — **preserve pattern**                       |
+| `openrouter.ts` | Non-streaming `complete()`, models list + cache, key test — **extend heavily**                   |
+| `models.ts`     | Text-chat filter only; no tools/structured_outputs capabilities — **extend**                     |
+| Product AI      | `generateTaskSummary` dumps all tasks into prompt, free-form JSON, markdown strip + `JSON.parse` |
+| Fallback        | `generateFallbackSummary` pretends analysis succeeded when provider fails                        |
 
 ### OpenRouter integration
 
@@ -135,23 +135,23 @@ See §2.
 
 ## 2. Critical correctness issues
 
-| ID | Issue | Location | Severity |
-| --- | --- | --- | --- |
-| C1 | Denied mic still enters `recording` | `transcribe.tsx` | P0 |
-| C2 | Audio prepare failure silently “records” | `transcribe.tsx` | P0 |
-| C3 | `mock://voice-recording` enters production path | `transcribe.tsx` | P0 |
-| C4 | Random/demo transcripts on failure | `transcription/index.ts` | P0 |
-| C5 | OpenRouter key sent to OpenAI STT | `transcription/index.ts` | P0 |
-| C6 | AI failure still shows synthetic “analysis” | `ai.tsx` + `generateFallbackSummary` | P0 |
-| C7 | UTC date slicing for local calendar | tasks store, AI, modal, transcribe | P0 |
-| C8 | System theme always dark | all screens/components | P1 |
-| C9 | Free-form JSON scrape instead of structured outputs | `openrouter.ts` | P1 |
-| C10 | Metro always shims expo-audio | `metro.config.js` | P1 |
-| C11 | Non-deterministic task IDs | `tasks.store` | P1 |
-| C12 | Demo tasks seeded as real data | `tasks.store` | P1 |
-| C13 | No real notifications / reminder engine | — | P1 product |
-| C14 | AI tab dumps entire task list into prompt | `generateTaskSummary` | P1 privacy/perf |
-| C15 | No tests | — | P1 |
+| ID  | Issue                                               | Location                             | Severity        |
+| --- | --------------------------------------------------- | ------------------------------------ | --------------- |
+| C1  | Denied mic still enters `recording`                 | `transcribe.tsx`                     | P0              |
+| C2  | Audio prepare failure silently “records”            | `transcribe.tsx`                     | P0              |
+| C3  | `mock://voice-recording` enters production path     | `transcribe.tsx`                     | P0              |
+| C4  | Random/demo transcripts on failure                  | `transcription/index.ts`             | P0              |
+| C5  | OpenRouter key sent to OpenAI STT                   | `transcription/index.ts`             | P0              |
+| C6  | AI failure still shows synthetic “analysis”         | `ai.tsx` + `generateFallbackSummary` | P0              |
+| C7  | UTC date slicing for local calendar                 | tasks store, AI, modal, transcribe   | P0              |
+| C8  | System theme always dark                            | all screens/components               | P1              |
+| C9  | Free-form JSON scrape instead of structured outputs | `openrouter.ts`                      | P1              |
+| C10 | Metro always shims expo-audio                       | `metro.config.js`                    | P1              |
+| C11 | Non-deterministic task IDs                          | `tasks.store`                        | P1              |
+| C12 | Demo tasks seeded as real data                      | `tasks.store`                        | P1              |
+| C13 | No real notifications / reminder engine             | —                                    | P1 product      |
+| C14 | AI tab dumps entire task list into prompt           | `generateTaskSummary`                | P1 privacy/perf |
+| C15 | No tests                                            | —                                    | P1              |
 
 **Rule going forward:** no fake-success. Failures are typed, explicit, user-visible.
 
@@ -159,38 +159,38 @@ See §2.
 
 ## 3. Files / subsystems to preserve
 
-| Item | Why |
-| --- | --- |
-| Expo 57 + Router + Bun + TS strict | Product constraints |
-| `settings.store` SecureStore BYOK pattern | Correct secret handling |
-| `AIProviderError` + user-facing `getAIErrorMessage` | Typed error surface (extend codes) |
-| OpenRouter models fetch + TTL cache | Good baseline |
-| `normalizeOpenRouterModels` / `maskApiKey` | Extend, don’t trash |
-| Theme tokens (`Colors`, `Spacing`, `Radius`, `TypographyTokens`) | Calm monochrome system |
-| UI primitives: Typography, Button, Card, IconButton, AnimatedPressable, TaskCard skeleton | Native StyleSheet quality |
-| Settings screen structure (key UX, model search, connection test) | Solid product surface |
-| Haptics usage patterns | Keep |
-| `app.json` EAS project id / package name | Don’t break native identity |
-| `MANIFESTO.md` as product architecture intent | Align runtime to it (minus local LLM) |
-| Dev client / android package | Keep |
+| Item                                                                                      | Why                                   |
+| ----------------------------------------------------------------------------------------- | ------------------------------------- |
+| Expo 57 + Router + Bun + TS strict                                                        | Product constraints                   |
+| `settings.store` SecureStore BYOK pattern                                                 | Correct secret handling               |
+| `AIProviderError` + user-facing `getAIErrorMessage`                                       | Typed error surface (extend codes)    |
+| OpenRouter models fetch + TTL cache                                                       | Good baseline                         |
+| `normalizeOpenRouterModels` / `maskApiKey`                                                | Extend, don’t trash                   |
+| Theme tokens (`Colors`, `Spacing`, `Radius`, `TypographyTokens`)                          | Calm monochrome system                |
+| UI primitives: Typography, Button, Card, IconButton, AnimatedPressable, TaskCard skeleton | Native StyleSheet quality             |
+| Settings screen structure (key UX, model search, connection test)                         | Solid product surface                 |
+| Haptics usage patterns                                                                    | Keep                                  |
+| `app.json` EAS project id / package name                                                  | Don’t break native identity           |
+| `MANIFESTO.md` as product architecture intent                                             | Align runtime to it (minus local LLM) |
+| Dev client / android package                                                              | Keep                                  |
 
 ---
 
 ## 4. Files / subsystems to replace or heavily redesign
 
-| Item | Action |
-| --- | --- |
-| `tasks.store` as domain SoT | Replace with SQLite repos + thin UI store |
-| `services/transcription/*` | Replace with STT provider abstraction (OpenRouter STT only this phase) |
-| `services/ai/openrouter.ts` complete-only | Replace with streaming InferenceProvider |
-| `generateTaskSummary` / free-form JSON | Delete; agent tools + structured responses |
-| `generateFallbackSummary` success path | Delete as “AI success”; optional deterministic local analytics UI only |
-| `/ai` tab as primary AI surface | Demote; global AssistantHost + orb |
-| `/transcribe` as primary tab | Fold into assistant voice mode |
-| `FloatingToolbar` 4 equal tabs | Redesign: Home · Calendar/Inbox · **Orb** · Settings |
-| `expo-audio-shim` always-on | Conditional or remove; honest failure if native unavailable |
-| Date helpers using UTC split | Central temporal service |
-| Product branding TaskFlow | Incremental rename to AETHER product identity (careful with scheme) |
+| Item                                      | Action                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| `tasks.store` as domain SoT               | Replace with SQLite repos + thin UI store                              |
+| `services/transcription/*`                | Replace with STT provider abstraction (OpenRouter STT only this phase) |
+| `services/ai/openrouter.ts` complete-only | Replace with streaming InferenceProvider                               |
+| `generateTaskSummary` / free-form JSON    | Delete; agent tools + structured responses                             |
+| `generateFallbackSummary` success path    | Delete as “AI success”; optional deterministic local analytics UI only |
+| `/ai` tab as primary AI surface           | Demote; global AssistantHost + orb                                     |
+| `/transcribe` as primary tab              | Fold into assistant voice mode                                         |
+| `FloatingToolbar` 4 equal tabs            | Redesign: Home · Calendar/Inbox · **Orb** · Settings                   |
+| `expo-audio-shim` always-on               | Conditional or remove; honest failure if native unavailable            |
+| Date helpers using UTC split              | Central temporal service                                               |
+| Product branding TaskFlow                 | Incremental rename to AETHER product identity (careful with scheme)    |
 
 ---
 
@@ -450,10 +450,10 @@ CREATE VIRTUAL TABLE tasks_fts USING fts5(
 
 ```ts
 interface AgentInput {
-  runId?: string;                 // client-generated for idempotency of start
+  runId?: string; // client-generated for idempotency of start
   sessionId: string;
   text: string;
-  source: 'app' | 'voice' | 'widget' | 'notification' | 'shortcut';
+  source: "app" | "voice" | "widget" | "notification" | "shortcut";
   context: ContextSnapshot;
   modelId: string;
   budgets: RunBudgets;
@@ -461,9 +461,9 @@ interface AgentInput {
 }
 
 interface RunBudgets {
-  maxModelTurns: number;          // e.g. 8
-  maxToolCalls: number;           // e.g. 12
-  maxParallelReads: number;       // e.g. 4
+  maxModelTurns: number; // e.g. 8
+  maxToolCalls: number; // e.g. 12
+  maxParallelReads: number; // e.g. 4
   maxInputChars: number;
   maxOutputTokens: number;
   timeoutMs: number;
@@ -471,36 +471,38 @@ interface RunBudgets {
 }
 
 interface ContextSnapshot {
-  surface: string;                // home|calendar|task_detail|settings|…
+  surface: string; // home|calendar|task_detail|settings|…
   selectedTaskId?: string;
   selectedLocalDate?: string;
-  visibleTaskIds: string[];       // not full rows
+  visibleTaskIds: string[]; // not full rows
   activeFilter?: string;
   locale: string;
   timezone: string;
-  invocationSource: AgentInput['source'];
-  provenance: ProvenanceTag;      // for any external blobs
+  invocationSource: AgentInput["source"];
+  provenance: ProvenanceTag; // for any external blobs
 }
 
 type ProvenanceTag =
-  | 'trusted_system'
-  | 'trusted_user'
-  | 'trusted_app'
-  | 'untrusted_external';
+  "trusted_system" | "trusted_user" | "trusted_app" | "untrusted_external";
 
 type AgentEvent =
-  | { type: 'run.started'; runId: string; sessionId: string }
-  | { type: 'context.ready'; snapshot: ContextSnapshot }
-  | { type: 'model.started'; provider: string; model: string }
-  | { type: 'response.delta'; text: string }
-  | { type: 'tool.proposed'; call: ToolCall }
-  | { type: 'tool.confirmation_required'; call: ToolCall; reason: string }
-  | { type: 'tool.started'; executionId: string; toolName: string }
-  | { type: 'tool.completed'; executionId: string; result: unknown; receipt?: ActionReceipt }
-  | { type: 'tool.failed'; executionId: string; error: AgentError }
-  | { type: 'response.completed'; response: AgentResponse }
-  | { type: 'run.cancelled'; runId: string }
-  | { type: 'run.failed'; runId: string; error: AgentError };
+  | { type: "run.started"; runId: string; sessionId: string }
+  | { type: "context.ready"; snapshot: ContextSnapshot }
+  | { type: "model.started"; provider: string; model: string }
+  | { type: "response.delta"; text: string }
+  | { type: "tool.proposed"; call: ToolCall }
+  | { type: "tool.confirmation_required"; call: ToolCall; reason: string }
+  | { type: "tool.started"; executionId: string; toolName: string }
+  | {
+      type: "tool.completed";
+      executionId: string;
+      result: unknown;
+      receipt?: ActionReceipt;
+    }
+  | { type: "tool.failed"; executionId: string; error: AgentError }
+  | { type: "response.completed"; response: AgentResponse }
+  | { type: "run.cancelled"; runId: string }
+  | { type: "run.failed"; runId: string; error: AgentError };
 
 interface AgentRuntime {
   run(input: AgentInput): AsyncIterable<AgentEvent>;
@@ -516,16 +518,16 @@ interface AgentResponse {
 
 // UI assistant state is DERIVED from events — never independent booleans that drift.
 type AssistantOrbState =
-  | 'idle'
-  | 'listening'
-  | 'transcribing'
-  | 'contextualizing'
-  | 'thinking'
-  | 'executing'
-  | 'waiting_confirmation'
-  | 'responding'
-  | 'speaking'
-  | 'error';
+  | "idle"
+  | "listening"
+  | "transcribing"
+  | "contextualizing"
+  | "thinking"
+  | "executing"
+  | "waiting_confirmation"
+  | "responding"
+  | "speaking"
+  | "error";
 ```
 
 Single root agent: **`AetherAgentRuntime`**. Tools are deterministic. No multi-agent swarm for CRUD.
@@ -534,24 +536,24 @@ Single root agent: **`AetherAgentRuntime`**. Tools are deterministic. No multi-a
 
 ## 8. Tool registry proposal
 
-| Tool ID | Risk | Notes |
-| --- | --- | --- |
-| `tasks.list` | READ | Parallel OK |
-| `tasks.search` | READ | FTS + filters |
-| `tasks.get` | READ | |
-| `tasks.create` | REVERSIBLE_WRITE | Undo; idempotent |
-| `tasks.update` | REVERSIBLE_WRITE | Serialize writes |
-| `tasks.complete` | REVERSIBLE_WRITE | Undo |
-| `tasks.reopen` | REVERSIBLE_WRITE | |
-| `tasks.delete` | DESTRUCTIVE | Confirm by context / always bulk |
-| `reminders.list` | READ | |
-| `reminders.schedule` | REVERSIBLE_WRITE | Outbox → OS |
-| `reminders.reschedule` | SENSITIVE_WRITE | Bulk → confirm |
-| `reminders.cancel` | REVERSIBLE_WRITE | |
-| `analytics.workload` | READ | SQL aggregates |
-| `analytics.activity` | READ | |
-| `analytics.completion` | READ | |
-| `app.navigate` | EXTERNAL | In-app routes only |
+| Tool ID                | Risk             | Notes                            |
+| ---------------------- | ---------------- | -------------------------------- |
+| `tasks.list`           | READ             | Parallel OK                      |
+| `tasks.search`         | READ             | FTS + filters                    |
+| `tasks.get`            | READ             |                                  |
+| `tasks.create`         | REVERSIBLE_WRITE | Undo; idempotent                 |
+| `tasks.update`         | REVERSIBLE_WRITE | Serialize writes                 |
+| `tasks.complete`       | REVERSIBLE_WRITE | Undo                             |
+| `tasks.reopen`         | REVERSIBLE_WRITE |                                  |
+| `tasks.delete`         | DESTRUCTIVE      | Confirm by context / always bulk |
+| `reminders.list`       | READ             |                                  |
+| `reminders.schedule`   | REVERSIBLE_WRITE | Outbox → OS                      |
+| `reminders.reschedule` | SENSITIVE_WRITE  | Bulk → confirm                   |
+| `reminders.cancel`     | REVERSIBLE_WRITE |                                  |
+| `analytics.workload`   | READ             | SQL aggregates                   |
+| `analytics.activity`   | READ             |                                  |
+| `analytics.completion` | READ             |                                  |
+| `app.navigate`         | EXTERNAL         | In-app routes only               |
 
 **Never:** SQL, HTTP, FS, shell, arbitrary JS.
 
@@ -561,17 +563,17 @@ Flow: `Model → ToolProposal → SchemaValidation → Policy → DomainValidati
 
 ## 9. Safety / policy matrix
 
-| Action | Policy |
-| --- | --- |
-| List / search / get / analytics | Execute immediately |
-| Create task / schedule reminder | Execute + Undo receipt |
-| Complete / reopen / single reschedule | Execute + Undo |
-| Bulk reschedule | Confirmation required |
-| Delete single (recent / empty notes) | Contextual confirm or Undo window |
-| Delete single (with history / notes) | Confirm |
-| Bulk delete / “delete everything” | Always confirm |
-| External content as instruction | Never; treat as data `untrusted_external` |
-| Model without tool support | Reject as Full Agent model |
+| Action                                | Policy                                    |
+| ------------------------------------- | ----------------------------------------- |
+| List / search / get / analytics       | Execute immediately                       |
+| Create task / schedule reminder       | Execute + Undo receipt                    |
+| Complete / reopen / single reschedule | Execute + Undo                            |
+| Bulk reschedule                       | Confirmation required                     |
+| Delete single (recent / empty notes)  | Contextual confirm or Undo window         |
+| Delete single (with history / notes)  | Confirm                                   |
+| Bulk delete / “delete everything”     | Always confirm                            |
+| External content as instruction       | Never; treat as data `untrusted_external` |
+| Model without tool support            | Reject as Full Agent model                |
 
 Policy Engine is code. LLM cannot lower risk.
 
@@ -586,12 +588,12 @@ Execution: parallelize READ; serialize all writes.
 1. Fetch `/models` including `supported_parameters`, architecture modalities, context.
 2. Classify each model:
 
-| Tier | Criteria | Role |
-| --- | --- | --- |
-| Full Agent | tools + structured_outputs | Default agent model |
-| Agent | tools only | Agent with runtime schema validation |
+| Tier              | Criteria                     | Role                                 |
+| ----------------- | ---------------------------- | ------------------------------------ |
+| Full Agent        | tools + structured_outputs   | Default agent model                  |
+| Agent             | tools only                   | Agent with runtime schema validation |
 | Limited Assistant | structured_outputs, no tools | Conversation + structured forms only |
-| Conversation Only | text | Chat only; no mutations |
+| Conversation Only | text                         | Chat only; no mutations              |
 
 3. Settings: only Full Agent / Agent selectable as **main Flow agent**.
 4. Requests: `stream: true`, `provider.require_parameters: true`, optional privacy `data_collection: 'deny'`.
@@ -605,7 +607,10 @@ Interface:
 interface InferenceProvider {
   id: string;
   getCapabilities(): ProviderCapabilities;
-  stream(request: InferenceRequest, signal: AbortSignal): AsyncIterable<ModelEvent>;
+  stream(
+    request: InferenceRequest,
+    signal: AbortSignal,
+  ): AsyncIterable<ModelEvent>;
 }
 ```
 
@@ -623,13 +628,13 @@ RootLayout
       └── Composer / half-sheet / full conversation
 ```
 
-| Gesture | Behavior |
-| --- | --- |
-| Tap orb | Open compact composer |
-| Hold | Start voice immediately |
-| Hold + lock | Longer capture |
-| Release | Finalize → STT → same AgentRuntime |
-| Swipe / expand | Half-sheet → full conversation |
+| Gesture        | Behavior                           |
+| -------------- | ---------------------------------- |
+| Tap orb        | Open compact composer              |
+| Hold           | Start voice immediately            |
+| Hold + lock    | Longer capture                     |
+| Release        | Finalize → STT → same AgentRuntime |
+| Swipe / expand | Half-sheet → full conversation     |
 
 Orb animation = `AssistantOrbState` from events. No decorative perpetual motion.
 
@@ -667,22 +672,22 @@ Domain, agent runtime, tools, policies, temporal, SQLite, inference protocol, co
 
 ## 13. Migration phases
 
-| Phase | Deliverable |
-| --- | --- |
-| **0** | Audit + this doc |
-| **1** | Remove fake AI/audio; honest failures; local calendar helper; fix system theme; STT provider interface + OpenRouter STT path only |
-| **2** | SQLite + migrations + repositories; migrate tasks from AsyncStorage |
-| **3** | Temporal core + domain Task/Reminder services + task_events |
-| **4** | OpenRouterProvider stream + capabilities + structured errors |
-| **5** | AetherAgentRuntime + ToolRegistry + Policy + idempotency (read tools first) |
-| **6** | Mutation tools + outbox skeleton |
-| **7** | AssistantHost + orb + text path |
-| **8** | Voice path wired to same runtime |
-| **9** | Real reminders + notification actions + bindings |
-| **10** | Widget data architecture |
-| **11** | Analytics tools (SQL) |
-| **12** | Conformance tests + lint/typecheck |
-| **13** | Document unresolved native-runtime requirements |
+| Phase  | Deliverable                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| **0**  | Audit + this doc                                                                                                                  |
+| **1**  | Remove fake AI/audio; honest failures; local calendar helper; fix system theme; STT provider interface + OpenRouter STT path only |
+| **2**  | SQLite + migrations + repositories; migrate tasks from AsyncStorage                                                               |
+| **3**  | Temporal core + domain Task/Reminder services + task_events                                                                       |
+| **4**  | OpenRouterProvider stream + capabilities + structured errors                                                                      |
+| **5**  | AetherAgentRuntime + ToolRegistry + Policy + idempotency (read tools first)                                                       |
+| **6**  | Mutation tools + outbox skeleton                                                                                                  |
+| **7**  | AssistantHost + orb + text path                                                                                                   |
+| **8**  | Voice path wired to same runtime                                                                                                  |
+| **9**  | Real reminders + notification actions + bindings                                                                                  |
+| **10** | Widget data architecture                                                                                                          |
+| **11** | Analytics tools (SQL)                                                                                                             |
+| **12** | Conformance tests + lint/typecheck                                                                                                |
+| **13** | Document unresolved native-runtime requirements                                                                                   |
 
 Each phase = reviewable PR-sized slice.
 
@@ -690,17 +695,17 @@ Each phase = reviewable PR-sized slice.
 
 ## 14. Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Scope explosion (widgets + full agent + notifications) | Strict phase order; widgets data-only first |
-| Metro audio shim hides broken native path | Conditional resolve; explicit unavailable state |
-| OpenRouter model variance (tools) | Capability tiers; block incompatible agent models |
-| Data migration from AsyncStorage demo tasks | One-shot migrator; drop demo seeds for new installs |
-| Background kill mid-run | Persist `agent_runs`/`tool_executions`; resume/cancel policy |
-| Exact alarms on Android 14+ | Explicit permission UX; best-effort fallback labeled honestly |
-| Secret leakage in logs/events | Structured instrumentation without content; never store key |
-| Confusing AETHER branding with Model Family | Docs + in-app copy: product runtime only |
-| Local LLM pressure from manifesto | Explicit non-goal this phase; no stubs |
+| Risk                                                   | Mitigation                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------- |
+| Scope explosion (widgets + full agent + notifications) | Strict phase order; widgets data-only first                   |
+| Metro audio shim hides broken native path              | Conditional resolve; explicit unavailable state               |
+| OpenRouter model variance (tools)                      | Capability tiers; block incompatible agent models             |
+| Data migration from AsyncStorage demo tasks            | One-shot migrator; drop demo seeds for new installs           |
+| Background kill mid-run                                | Persist `agent_runs`/`tool_executions`; resume/cancel policy  |
+| Exact alarms on Android 14+                            | Explicit permission UX; best-effort fallback labeled honestly |
+| Secret leakage in logs/events                          | Structured instrumentation without content; never store key   |
+| Confusing AETHER branding with Model Family            | Docs + in-app copy: product runtime only                      |
+| Local LLM pressure from manifesto                      | Explicit non-goal this phase; no stubs                        |
 
 ---
 
@@ -748,13 +753,13 @@ LOC src:    ~3305
 
 ## Appendix B — Preserve vs kill quick map
 
-| Preserve | Kill / replace |
-| --- | --- |
-| SecureStore BYOK | Fake success paths |
-| Error code taxonomy | Mock transcripts / mock URI |
-| Design tokens + UI kit | UTC-as-local dates |
-| Settings BYOK UX | System-always-dark |
-| OpenRouter as only inference | OpenAI STT with OR key |
-| Expo 57 / Bun / RN styles | TaskFlow AI-as-tab architecture (later) |
-| | Zustand tasks as SoT (phase 2) |
-| | Local LLM anything (all phases here) |
+| Preserve                     | Kill / replace                          |
+| ---------------------------- | --------------------------------------- |
+| SecureStore BYOK             | Fake success paths                      |
+| Error code taxonomy          | Mock transcripts / mock URI             |
+| Design tokens + UI kit       | UTC-as-local dates                      |
+| Settings BYOK UX             | System-always-dark                      |
+| OpenRouter as only inference | OpenAI STT with OR key                  |
+| Expo 57 / Bun / RN styles    | TaskFlow AI-as-tab architecture (later) |
+|                              | Zustand tasks as SoT (phase 2)          |
+|                              | Local LLM anything (all phases here)    |

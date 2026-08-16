@@ -1,7 +1,7 @@
-import React, { type RefObject } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { Colors, Hairline } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React, { type RefObject } from "react";
+import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { Colors, Hairline } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
 interface AssistantMaterialProps {
   children: React.ReactNode;
@@ -26,7 +26,9 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         {
           borderRadius,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          backgroundColor: isDark ? 'rgba(20, 20, 24, 0.96)' : 'rgba(248, 248, 250, 0.96)',
+          backgroundColor: isDark
+            ? "rgba(20, 20, 24, 0.96)"
+            : "rgba(248, 248, 250, 0.96)",
         },
         style,
       ]}
@@ -38,8 +40,8 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
 
 const styles = StyleSheet.create({
   clip: {
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
     shadowRadius: 18,
@@ -52,4 +54,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

@@ -1,5 +1,5 @@
-import type { CaptureSource, TaskCaptureSource } from '@/domain/entities';
-import type { SqlDatabase } from '@/db/types';
+import type { CaptureSource, TaskCaptureSource } from "@/domain/entities";
+import type { SqlDatabase } from "@/db/types";
 
 interface CaptureCommitRow {
   capture_id: string;
@@ -12,7 +12,7 @@ interface CaptureCommitRow {
 interface CaptureSourceRow {
   id: string;
   task_id: string;
-  kind: 'url' | 'image';
+  kind: "url" | "image";
   url: string | null;
   asset_ref: string | null;
   mime_type: string | null;
@@ -36,10 +36,10 @@ export interface LegacySharedCaptureAsset {
 
 function mapSource(row: CaptureSourceRow): TaskCaptureSource {
   const common = { id: row.id, taskId: row.task_id, createdAt: row.created_at };
-  if (row.kind === 'url') return { ...common, kind: 'url', url: row.url! };
+  if (row.kind === "url") return { ...common, kind: "url", url: row.url! };
   return {
     ...common,
-    kind: 'image',
+    kind: "image",
     assetRef: row.asset_ref!,
     mimeType: row.mime_type!,
     ...(row.size_bytes === null ? {} : { sizeBytes: row.size_bytes }),
@@ -52,15 +52,17 @@ export class CaptureCommitsRepository {
 
   async get(captureId: string): Promise<CaptureCommit | null> {
     const row = await this.db.getFirstAsync<CaptureCommitRow>(
-      'SELECT * FROM capture_commits WHERE capture_id = ?',
+      "SELECT * FROM capture_commits WHERE capture_id = ?",
       [captureId],
     );
-    return row ? {
-      captureId: row.capture_id,
-      taskId: row.task_id,
-      ingress: row.ingress,
-      committedAt: row.committed_at,
-    } : null;
+    return row
+      ? {
+          captureId: row.capture_id,
+          taskId: row.task_id,
+          ingress: row.ingress,
+          committedAt: row.committed_at,
+        }
+      : null;
   }
 
   async listSources(taskId: string): Promise<TaskCaptureSource[]> {
@@ -72,7 +74,11 @@ export class CaptureCommitsRepository {
     return rows.map(mapSource);
   }
 
-  async replaceImageAssetRef(taskId: string, from: string, to: string): Promise<void> {
+  async replaceImageAssetRef(
+    taskId: string,
+    from: string,
+    to: string,
+  ): Promise<void> {
     await this.db.runAsync(
       `UPDATE task_capture_sources SET asset_ref = ?
        WHERE task_id = ? AND kind = 'image' AND asset_ref = ?`,
@@ -80,7 +86,9 @@ export class CaptureCommitsRepository {
     );
   }
 
-  async listLegacySharedImageAssets(limit = 16): Promise<LegacySharedCaptureAsset[]> {
+  async listLegacySharedImageAssets(
+    limit = 16,
+  ): Promise<LegacySharedCaptureAsset[]> {
     const rows = await this.db.getAllAsync<{
       capture_id: string;
       task_id: string;

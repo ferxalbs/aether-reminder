@@ -1,4 +1,4 @@
-import type { SqlDatabase } from '../types';
+import type { SqlDatabase } from "../types";
 
 export class AppMetaRepository {
   constructor(private readonly db: SqlDatabase) {}

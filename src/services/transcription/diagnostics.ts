@@ -1,34 +1,34 @@
-import type { VoiceErrorCode } from './errors';
-import type { VoicePermissionState, VoiceState } from './stateMachine';
+import type { VoiceErrorCode } from "./errors";
+import type { VoicePermissionState, VoiceState } from "./stateMachine";
 
-export const VOICE_DIAGNOSTIC_PREFIX = '[AETHER_VOICE_DIAGNOSTIC]';
+export const VOICE_DIAGNOSTIC_PREFIX = "[AETHER_VOICE_DIAGNOSTIC]";
 
 export type VoiceDiagnosticStage =
-  | 'session_started'
-  | 'permission_checking'
-  | 'permission_result'
-  | 'microphone_stream_started'
-  | 'microphone_stream_failed'
-  | 'audio_format_detected'
-  | 'pcm_progress'
-  | 'credential_request_started'
-  | 'credential_request_succeeded'
-  | 'credential_request_failed'
-  | 'websocket_connecting'
-  | 'websocket_open'
-  | 'websocket_closed'
-  | 'session_created'
-  | 'session_configuration_sent'
-  | 'session_configuration_accepted'
-  | 'session_configuration_rejected'
-  | 'audio_append_progress'
-  | 'commit_sent'
-  | 'transcription_delta_progress'
-  | 'transcription_completed'
-  | 'parser_handoff'
-  | 'cleanup_completed'
-  | 'session_failed'
-  | 'session_summary';
+  | "session_started"
+  | "permission_checking"
+  | "permission_result"
+  | "microphone_stream_started"
+  | "microphone_stream_failed"
+  | "audio_format_detected"
+  | "pcm_progress"
+  | "credential_request_started"
+  | "credential_request_succeeded"
+  | "credential_request_failed"
+  | "websocket_connecting"
+  | "websocket_open"
+  | "websocket_closed"
+  | "session_created"
+  | "session_configuration_sent"
+  | "session_configuration_accepted"
+  | "session_configuration_rejected"
+  | "audio_append_progress"
+  | "commit_sent"
+  | "transcription_delta_progress"
+  | "transcription_completed"
+  | "parser_handoff"
+  | "cleanup_completed"
+  | "session_failed"
+  | "session_summary";
 
 export interface VoiceDiagnosticFields {
   permissionState?: VoicePermissionState;
@@ -39,9 +39,10 @@ export interface VoiceDiagnosticFields {
   resamplingActive?: boolean;
   pcmChunksReceived?: number;
   pcmBytesProduced?: number;
-  credentialRequest?: 'not_started' | 'pending' | 'succeeded' | 'failed';
-  webSocketState?: 'not_started' | 'connecting' | 'open' | 'closing' | 'closed' | 'failed';
-  sessionConfiguration?: 'not_started' | 'pending' | 'accepted' | 'rejected';
+  credentialRequest?: "not_started" | "pending" | "succeeded" | "failed";
+  webSocketState?:
+    "not_started" | "connecting" | "open" | "closing" | "closed" | "failed";
+  sessionConfiguration?: "not_started" | "pending" | "accepted" | "rejected";
   audioAppendCount?: number;
   audioBytesSubmitted?: number;
   commitSent?: boolean;
@@ -55,7 +56,7 @@ export interface VoiceDiagnosticFields {
 }
 
 export interface VoiceDiagnosticRecord extends VoiceDiagnosticFields {
-  schema: 'aether.voice.diagnostic.v1';
+  schema: "aether.voice.diagnostic.v1";
   sessionId: string;
   sequence: number;
   timestamp: string;
@@ -81,7 +82,7 @@ function nextSessionId(): string {
 }
 
 function developmentEnabled(): boolean {
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return typeof __DEV__ !== "undefined" && __DEV__;
 }
 
 function consoleSink(record: VoiceDiagnosticRecord): void {
@@ -94,11 +95,11 @@ export class DevelopmentVoiceDiagnostics implements VoiceDiagnosticReporter {
   private readonly enabled: boolean;
   private readonly sink: (record: VoiceDiagnosticRecord) => void;
   private readonly summary: VoiceDiagnosticFields = {
-    permissionState: 'unknown',
+    permissionState: "unknown",
     microphoneStreamStarted: false,
-    credentialRequest: 'not_started',
-    webSocketState: 'not_started',
-    sessionConfiguration: 'not_started',
+    credentialRequest: "not_started",
+    webSocketState: "not_started",
+    sessionConfiguration: "not_started",
     pcmChunksReceived: 0,
     pcmBytesProduced: 0,
     audioAppendCount: 0,
@@ -117,11 +118,14 @@ export class DevelopmentVoiceDiagnostics implements VoiceDiagnosticReporter {
     this.sink = options.sink ?? consoleSink;
   }
 
-  record(stage: VoiceDiagnosticStage, fields: VoiceDiagnosticFields = {}): void {
+  record(
+    stage: VoiceDiagnosticStage,
+    fields: VoiceDiagnosticFields = {},
+  ): void {
     if (!this.enabled || this.completed) return;
     Object.assign(this.summary, fields);
     this.sink({
-      schema: 'aether.voice.diagnostic.v1',
+      schema: "aether.voice.diagnostic.v1",
       sessionId: this.sessionId,
       sequence: ++this.sequence,
       timestamp: new Date().toISOString(),
@@ -135,11 +139,11 @@ export class DevelopmentVoiceDiagnostics implements VoiceDiagnosticReporter {
     this.completed = true;
     Object.assign(this.summary, fields);
     this.sink({
-      schema: 'aether.voice.diagnostic.v1',
+      schema: "aether.voice.diagnostic.v1",
       sessionId: this.sessionId,
       sequence: ++this.sequence,
       timestamp: new Date().toISOString(),
-      stage: 'session_summary',
+      stage: "session_summary",
       ...this.summary,
     });
   }

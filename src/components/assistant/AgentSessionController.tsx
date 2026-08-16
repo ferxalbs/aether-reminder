@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type AgentEvent, type ContextSnapshot } from '@/services/agent';
-import { getDatabase } from '@/db';
-import { getAetherCore } from '@/core';
-import type { ActionReceipt } from '@/domain/receipts';
-import { useSettingsStore } from '@/stores/settings.store';
-import { resolveAgentModel } from '@/services/ai/modelSelection';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type AgentEvent, type ContextSnapshot } from "@/services/agent";
+import { getDatabase } from "@/db";
+import { getAetherCore } from "@/core";
+import type { ActionReceipt } from "@/domain/receipts";
+import { useSettingsStore } from "@/stores/settings.store";
+import { resolveAgentModel } from "@/services/ai/modelSelection";
 import {
   AIProviderError,
   getAIErrorMessage,
   isRetryableAIProviderError,
   isRetryableAIProviderErrorCode,
-} from '@/services/ai/providers';
-import { reportNonFatalError } from '@/lib/nonFatalError';
+} from "@/services/ai/providers";
+import { reportNonFatalError } from "@/lib/nonFatalError";
 import type {
   AssistantMessage,
   AssistantReceipt,
   PendingAssistantConfirmation,
-} from './assistantTypes';
+} from "./assistantTypes";
 
 interface AgentSessionControllerOptions {
   context: ContextSnapshot;
@@ -27,7 +27,7 @@ interface AgentSessionControllerOptions {
 
 interface SubmitOptions {
   appendUserMessage?: boolean;
-  invocationSource?: ContextSnapshot['invocationSource'];
+  invocationSource?: ContextSnapshot["invocationSource"];
 }
 
 function messageId(prefix: string): string {
@@ -36,10 +36,10 @@ function messageId(prefix: string): string {
 
 function runStartErrorMessage(caught: unknown): string {
   if (caught instanceof AIProviderError) return getAIErrorMessage(caught);
-  return 'AETHER could not start this run.';
+  return "AETHER could not start this run.";
 }
 
-export { resolveAgentModel } from '@/services/ai/modelSelection';
+export { resolveAgentModel } from "@/services/ai/modelSelection";
 
 export function useAgentSessionController({
   context,
@@ -57,17 +57,30 @@ export function useAgentSessionController({
   const [pendingConfirmation, setPendingConfirmation] =
     useState<PendingAssistantConfirmation | null>(null);
   const [semanticState, setSemanticState] = useState<
-    'idle' | 'contextualizing' | 'thinking' | 'executing' | 'waiting_confirmation' | 'responding' | 'error'
-  >('idle');
+    | "idle"
+    | "contextualizing"
+    | "thinking"
+    | "executing"
+    | "waiting_confirmation"
+    | "responding"
+    | "error"
+  >("idle");
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [entities, setEntities] = useState<{ type: 'task' | 'reminder' | 'project'; id: string; label?: string }[]>([]);
+  const [entities, setEntities] = useState<
+    { type: "task" | "reminder" | "project"; id: string; label?: string }[]
+  >([]);
   const sessionIdRef = useRef<string | undefined>(undefined);
   const currentRunRef = useRef<string | undefined>(undefined);
   const runningRef = useRef(false);
   const entitiesRef = useRef(entities);
-  const handleEventRef = useRef<(event: AgentEvent, assistantMessageId: string) => void>(() => undefined);
-  const retrySubmissionRef = useRef<{ message: string; options: SubmitOptions } | null>(null);
+  const handleEventRef = useRef<
+    (event: AgentEvent, assistantMessageId: string) => void
+  >(() => undefined);
+  const retrySubmissionRef = useRef<{
+    message: string;
+    options: SubmitOptions;
+  } | null>(null);
   const [canRetry, setCanRetry] = useState(false);
 
   const submit = useCallback(
@@ -75,14 +88,14 @@ export function useAgentSessionController({
       const message = rawMessage.trim();
       if (!message || runningRef.current) return false;
       if (!apiKeyLoaded) {
-        setSemanticState('error');
-        setError('Secure storage is still loading. Try again in a moment.');
+        setSemanticState("error");
+        setError("Secure storage is still loading. Try again in a moment.");
         setCanRetry(false);
         return false;
       }
       if (!apiKey) {
-        setSemanticState('error');
-        setError('Add an OpenRouter API key in Settings to ask AETHER.');
+        setSemanticState("error");
+        setError("Add an OpenRouter API key in Settings to ask AETHER.");
         setCanRetry(false);
         return false;
       }
@@ -96,43 +109,50 @@ export function useAgentSessionController({
         modelId = await resolveAgentModel(selectedModel, apiKey);
       } catch (caught) {
         runningRef.current = false;
-        setSemanticState('error');
-        reportNonFatalError('agent-model-validation', caught);
+        setSemanticState("error");
+        reportNonFatalError("agent-model-validation", caught);
         const retryable = isRetryableAIProviderError(caught);
         setCanRetry(retryable);
-        if (retryable) retrySubmissionRef.current = { message, options: { ...options, appendUserMessage: true } };
+        if (retryable)
+          retrySubmissionRef.current = {
+            message,
+            options: { ...options, appendUserMessage: true },
+          };
         setError(
           caught instanceof AIProviderError
             ? getAIErrorMessage(caught)
-            : 'The selected OpenRouter model could not be validated.'
+            : "The selected OpenRouter model could not be validated.",
         );
         return false;
       }
 
       const appendUserMessage = options.appendUserMessage !== false;
-      const assistantMessageId = messageId('assistant');
+      const assistantMessageId = messageId("assistant");
       if (appendUserMessage) {
         setMessages((previous) => [
           ...previous,
-          { id: messageId('user'), role: 'user', text: message },
-          { id: assistantMessageId, role: 'assistant', text: '' },
+          { id: messageId("user"), role: "user", text: message },
+          { id: assistantMessageId, role: "assistant", text: "" },
         ]);
       } else {
         setMessages((previous) => [
           ...previous,
-          { id: assistantMessageId, role: 'assistant', text: '' },
+          { id: assistantMessageId, role: "assistant", text: "" },
         ]);
       }
       setError(null);
       setPendingConfirmation(null);
       setIsRunning(true);
-      setSemanticState('contextualizing');
-      retrySubmissionRef.current = { message, options: { ...options, appendUserMessage: false } };
+      setSemanticState("contextualizing");
+      retrySubmissionRef.current = {
+        message,
+        options: { ...options, appendUserMessage: false },
+      };
 
       try {
         const runContext: ContextSnapshot = {
           ...context,
-          invocationSource: options.invocationSource ?? 'assistant',
+          invocationSource: options.invocationSource ?? "assistant",
           conversationEntities: entitiesRef.current.slice(-8),
         };
         for await (const event of runtime.run({
@@ -147,7 +167,7 @@ export function useAgentSessionController({
         }
       } catch (caught) {
         const messageText = runStartErrorMessage(caught);
-        reportNonFatalError('agent-run', caught);
+        reportNonFatalError("agent-run", caught);
         const retryable = isRetryableAIProviderError(caught);
         setCanRetry(retryable);
         if (!retryable) retrySubmissionRef.current = null;
@@ -155,10 +175,10 @@ export function useAgentSessionController({
           previous.map((item) =>
             item.id === assistantMessageId && item.text.length === 0
               ? { ...item, text: messageText }
-              : item
-          )
+              : item,
+          ),
         );
-        setSemanticState('error');
+        setSemanticState("error");
         setError(messageText);
       } finally {
         runningRef.current = false;
@@ -168,82 +188,88 @@ export function useAgentSessionController({
       return true;
     },
     // The runtime is intentionally stable; the context is captured at send time.
-    [apiKey, apiKeyLoaded, context, onNavigate, runtime, selectedModel]
+    [apiKey, apiKeyLoaded, context, onNavigate, runtime, selectedModel],
   );
 
   const handleEvent = useCallback(
     (event: AgentEvent, assistantMessageId: string) => {
       setSemanticState(event.state);
       switch (event.type) {
-        case 'run.started':
+        case "run.started":
           sessionIdRef.current = event.sessionId;
           currentRunRef.current = event.runId;
           break;
-        case 'response.delta':
+        case "response.delta":
           setMessages((previous) =>
             previous.map((item) =>
-              item.id === assistantMessageId ? { ...item, text: item.text + event.text } : item
-            )
+              item.id === assistantMessageId
+                ? { ...item, text: item.text + event.text }
+                : item,
+            ),
           );
           break;
-        case 'tool.completed':
+        case "tool.completed":
           onMutation(event.toolId);
           if (event.receipt) {
-            const assistantReceipt = { receipt: event.receipt, toolId: event.toolId };
+            const assistantReceipt = {
+              receipt: event.receipt,
+              toolId: event.toolId,
+            };
             setReceipts((previous) => [...previous, assistantReceipt]);
             onReceipt(event.receipt);
           }
           break;
-        case 'tool.confirmation_required':
+        case "tool.confirmation_required":
           setPendingConfirmation({
             action: event.pendingAction,
             reason: event.reason,
           });
           break;
-        case 'tool.failed':
+        case "tool.failed":
           setCanRetry(false);
           setError(event.error);
           break;
-        case 'response.completed':
+        case "response.completed":
           setMessages((previous) =>
             previous.map((item) =>
               item.id === assistantMessageId && item.text.length === 0
                 ? { ...item, text: event.response.text }
-                : item
-            )
+                : item,
+            ),
           );
           if (event.response.entities?.length) {
             entitiesRef.current = event.response.entities;
             setEntities(event.response.entities);
           }
           break;
-        case 'run.failed':
+        case "run.failed":
           setCanRetry(isRetryableAIProviderErrorCode(event.code));
-          if (!isRetryableAIProviderErrorCode(event.code)) retrySubmissionRef.current = null;
+          if (!isRetryableAIProviderErrorCode(event.code))
+            retrySubmissionRef.current = null;
           setMessages((previous) =>
             previous.map((item) =>
               item.id === assistantMessageId && item.text.length === 0
                 ? { ...item, text: event.message }
-                : item
-            )
+                : item,
+            ),
           );
           setError(event.message);
           break;
-        case 'run.cancelled':
+        case "run.cancelled":
           setMessages((previous) =>
             previous.map((item) =>
               item.id === assistantMessageId && item.text.length === 0
-                ? { ...item, text: 'Run cancelled.' }
-                : item
-            )
+                ? { ...item, text: "Run cancelled." }
+                : item,
+            ),
           );
-          setError('Run cancelled.');
+          setError("Run cancelled.");
           break;
         default:
           break;
       }
     },
-    [onMutation, onReceipt]
+    [onMutation, onReceipt],
   );
   useEffect(() => {
     handleEventRef.current = handleEvent;
@@ -255,22 +281,30 @@ export function useAgentSessionController({
     runningRef.current = true;
     setPendingConfirmation(null);
     setIsRunning(true);
-    const assistantMessageId = messageId('assistant');
-    setMessages((previous) => [...previous, { id: assistantMessageId, role: 'assistant', text: '' }]);
+    const assistantMessageId = messageId("assistant");
+    setMessages((previous) => [
+      ...previous,
+      { id: assistantMessageId, role: "assistant", text: "" },
+    ]);
     void (async () => {
       try {
-        for await (const event of runtime.confirm(pending.action, { context, onNavigate })) {
+        for await (const event of runtime.confirm(pending.action, {
+          context,
+          onNavigate,
+        })) {
           handleEventRef.current(event, assistantMessageId);
         }
       } catch (caught) {
         const messageText = runStartErrorMessage(caught);
-        reportNonFatalError('agent-confirm', caught);
+        reportNonFatalError("agent-confirm", caught);
         setMessages((previous) =>
           previous.map((item) =>
-            item.id === assistantMessageId ? { ...item, text: messageText } : item
-          )
+            item.id === assistantMessageId
+              ? { ...item, text: messageText }
+              : item,
+          ),
         );
-        setSemanticState('error');
+        setSemanticState("error");
         setError(messageText);
       } finally {
         runningRef.current = false;
@@ -281,13 +315,15 @@ export function useAgentSessionController({
 
   const cancelConfirmation = useCallback(() => {
     if (pendingConfirmation) {
-      void runtime.discard(pendingConfirmation.action).catch((caught: unknown) => {
-        reportNonFatalError('agent-discard', caught);
-        setError('AETHER could not discard the pending action. Try again.');
-      });
+      void runtime
+        .discard(pendingConfirmation.action)
+        .catch((caught: unknown) => {
+          reportNonFatalError("agent-discard", caught);
+          setError("AETHER could not discard the pending action. Try again.");
+        });
     }
     setPendingConfirmation(null);
-    setSemanticState('idle');
+    setSemanticState("idle");
     setError(null);
   }, [pendingConfirmation, runtime]);
 
@@ -295,8 +331,8 @@ export function useAgentSessionController({
     const runId = currentRunRef.current;
     if (runId) {
       void runtime.cancel(runId).catch((caught: unknown) => {
-        reportNonFatalError('agent-cancel', caught);
-        setError('AETHER could not cancel the run. Try again.');
+        reportNonFatalError("agent-cancel", caught);
+        setError("AETHER could not cancel the run. Try again.");
       });
     }
   }, [runtime]);

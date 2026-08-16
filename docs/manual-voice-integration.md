@@ -60,9 +60,9 @@ not record microphone audio. Never put the key in a committed file or an
 8. Confirm partial transcript text appears while speaking.
 9. Tap **Stop & Send** once. Confirm capture stops and the surface finalizes.
 10. Confirm the completed transcript—not a partial—is passed unchanged into the
-   existing AETHER interpretation pipeline.
+    existing AETHER interpretation pipeline.
 11. Confirm the assistant enters its existing review/confirmation state and no
-   reminder is committed from partial text.
+    reminder is committed from partial text.
 12. Copy every diagnostic line sharing the new `sessionId`. The final
     `session_summary` must show `parserHandoffCount: 1` and
     `cleanupCompleted: true`.

@@ -1,23 +1,25 @@
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
-import { UserSettings } from '@/types';
-import { DEFAULT_OPENROUTER_MODEL_ID } from '@/services/ai/models';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import {
-  persistedSettingsSnapshot,
-} from './settingsPersistence';
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import { UserSettings } from "@/types";
+import { DEFAULT_OPENROUTER_MODEL_ID } from "@/services/ai/models";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { persistedSettingsSnapshot } from "./settingsPersistence";
 import {
   deleteProviderCredential,
   isSecureStoreAvailable,
   loadProviderCredentials,
   saveProviderCredential,
   type SecureStoreAdapter,
-} from './secureCredentials';
+} from "./secureCredentials";
 
-export { OPENAI_API_KEY_STORAGE_KEY, OPENROUTER_API_KEY_STORAGE_KEY, persistedSettingsSnapshot } from './settingsPersistence';
-const LEGACY_SETTINGS_STORAGE_KEY = 'taskflow-settings-storage';
+export {
+  OPENAI_API_KEY_STORAGE_KEY,
+  OPENROUTER_API_KEY_STORAGE_KEY,
+  persistedSettingsSnapshot,
+} from "./settingsPersistence";
+const LEGACY_SETTINGS_STORAGE_KEY = "taskflow-settings-storage";
 
 export interface SettingsState extends UserSettings {
   /** Loaded into memory only; excluded from the persisted Zustand snapshot below. */
@@ -35,7 +37,7 @@ export interface SettingsState extends UserSettings {
   setOpenAiApiKey: (key: string) => Promise<void>;
   deleteOpenAiApiKey: () => Promise<void>;
   setModel: (model: string) => void;
-  setTheme: (theme: UserSettings['theme']) => void;
+  setTheme: (theme: UserSettings["theme"]) => void;
   setMaterialColorsEnabled: (enabled: boolean) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setAutoSummarize: (enabled: boolean) => void;
@@ -45,7 +47,7 @@ export interface SettingsState extends UserSettings {
 
 export const initialSettings: UserSettings = {
   selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
-  theme: 'system',
+  theme: "system",
   materialColorsEnabled: false,
   hapticsEnabled: true,
   autoSummarize: true,
@@ -55,11 +57,12 @@ export const initialSettings: UserSettings = {
 const secureStoreAdapter: SecureStoreAdapter = {
   isAvailableAsync: () => SecureStore.isAvailableAsync(),
   getItemAsync: (key) => SecureStore.getItemAsync(key),
-  setItemAsync: (key, value, options) => SecureStore.setItemAsync(
-    key,
-    value,
-    options as Parameters<typeof SecureStore.setItemAsync>[2]
-  ),
+  setItemAsync: (key, value, options) =>
+    SecureStore.setItemAsync(
+      key,
+      value,
+      options as Parameters<typeof SecureStore.setItemAsync>[2],
+    ),
   deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
 };
 
@@ -67,8 +70,8 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       ...initialSettings,
-      openRouterApiKey: '',
-      openAiApiKey: '',
+      openRouterApiKey: "",
+      openAiApiKey: "",
       openRouterKeyLoaded: false,
       openAiKeyLoaded: false,
       openRouterConfigured: false,
@@ -78,14 +81,16 @@ export const useSettingsStore = create<SettingsState>()(
       loadCredentials: async () => {
         const available = await isSecureStoreAvailable(secureStoreAdapter);
         // Remove the pre-BYOK settings blob, which could contain a legacy plaintext key.
-        await AsyncStorage.removeItem(LEGACY_SETTINGS_STORAGE_KEY).catch((error: unknown) => {
-          reportNonFatalError('legacy-settings-cleanup', error);
-        });
+        await AsyncStorage.removeItem(LEGACY_SETTINGS_STORAGE_KEY).catch(
+          (error: unknown) => {
+            reportNonFatalError("legacy-settings-cleanup", error);
+          },
+        );
 
         if (!available) {
           set({
-            openRouterApiKey: '',
-            openAiApiKey: '',
+            openRouterApiKey: "",
+            openAiApiKey: "",
             openRouterKeyLoaded: true,
             openAiKeyLoaded: true,
             openRouterConfigured: false,
@@ -95,7 +100,8 @@ export const useSettingsStore = create<SettingsState>()(
           return;
         }
 
-        const { openRouterApiKey, openAiApiKey } = await loadProviderCredentials(secureStoreAdapter);
+        const { openRouterApiKey, openAiApiKey } =
+          await loadProviderCredentials(secureStoreAdapter);
         set({
           openRouterApiKey,
           openAiApiKey,
@@ -108,7 +114,12 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       setOpenRouterApiKey: async (key) => {
-        const normalizedKey = await saveProviderCredential(secureStoreAdapter, 'OpenRouter', key, SecureStore.WHEN_UNLOCKED);
+        const normalizedKey = await saveProviderCredential(
+          secureStoreAdapter,
+          "OpenRouter",
+          key,
+          SecureStore.WHEN_UNLOCKED,
+        );
         set({
           openRouterApiKey: normalizedKey,
           openRouterKeyLoaded: true,
@@ -118,9 +129,9 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       deleteOpenRouterApiKey: async () => {
-        await deleteProviderCredential(secureStoreAdapter, 'OpenRouter');
+        await deleteProviderCredential(secureStoreAdapter, "OpenRouter");
         set({
-          openRouterApiKey: '',
+          openRouterApiKey: "",
           openRouterKeyLoaded: true,
           openRouterConfigured: false,
           secureStoreAvailable: true,
@@ -128,7 +139,12 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       setOpenAiApiKey: async (key) => {
-        const normalizedKey = await saveProviderCredential(secureStoreAdapter, 'OpenAI', key, SecureStore.WHEN_UNLOCKED);
+        const normalizedKey = await saveProviderCredential(
+          secureStoreAdapter,
+          "OpenAI",
+          key,
+          SecureStore.WHEN_UNLOCKED,
+        );
         set({
           openAiApiKey: normalizedKey,
           openAiKeyLoaded: true,
@@ -138,30 +154,33 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       deleteOpenAiApiKey: async () => {
-        await deleteProviderCredential(secureStoreAdapter, 'OpenAI');
+        await deleteProviderCredential(secureStoreAdapter, "OpenAI");
         set({
-          openAiApiKey: '',
+          openAiApiKey: "",
           openAiKeyLoaded: true,
           openAiConfigured: false,
           secureStoreAvailable: true,
         });
       },
 
-      setModel: (model) => set({ selectedModel: model.trim() || DEFAULT_OPENROUTER_MODEL_ID }),
+      setModel: (model) =>
+        set({ selectedModel: model.trim() || DEFAULT_OPENROUTER_MODEL_ID }),
       setTheme: (theme) => set({ theme }),
-      setMaterialColorsEnabled: (enabled) => set({ materialColorsEnabled: enabled }),
+      setMaterialColorsEnabled: (enabled) =>
+        set({ materialColorsEnabled: enabled }),
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
       setAutoSummarize: (enabled) => set({ autoSummarize: enabled }),
-      setAdaptiveNudgesEnabled: (enabled) => set({ adaptiveNudgesEnabled: enabled }),
+      setAdaptiveNudgesEnabled: (enabled) =>
+        set({ adaptiveNudgesEnabled: enabled }),
       resetSettings: async () => {
         await Promise.all([
-          deleteProviderCredential(secureStoreAdapter, 'OpenRouter'),
-          deleteProviderCredential(secureStoreAdapter, 'OpenAI'),
+          deleteProviderCredential(secureStoreAdapter, "OpenRouter"),
+          deleteProviderCredential(secureStoreAdapter, "OpenAI"),
         ]);
         set({
           ...initialSettings,
-          openRouterApiKey: '',
-          openAiApiKey: '',
+          openRouterApiKey: "",
+          openAiApiKey: "",
           openRouterKeyLoaded: true,
           openAiKeyLoaded: true,
           openRouterConfigured: false,
@@ -171,7 +190,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
     }),
     {
-      name: 'aether-reminder-settings',
+      name: "aether-reminder-settings",
       storage: createJSONStorage(() => AsyncStorage),
       version: 2,
       // Only non-secret preferences are serialized. The API keys never reach AsyncStorage.
@@ -180,14 +199,17 @@ export const useSettingsStore = create<SettingsState>()(
         const stored = persisted as Partial<UserSettings> | undefined;
         return {
           ...current,
-          selectedModel: stored?.selectedModel?.trim() || DEFAULT_OPENROUTER_MODEL_ID,
+          selectedModel:
+            stored?.selectedModel?.trim() || DEFAULT_OPENROUTER_MODEL_ID,
           theme: stored?.theme ?? current.theme,
-          materialColorsEnabled: stored?.materialColorsEnabled ?? current.materialColorsEnabled,
+          materialColorsEnabled:
+            stored?.materialColorsEnabled ?? current.materialColorsEnabled,
           hapticsEnabled: stored?.hapticsEnabled ?? current.hapticsEnabled,
           autoSummarize: stored?.autoSummarize ?? current.autoSummarize,
-          adaptiveNudgesEnabled: stored?.adaptiveNudgesEnabled ?? current.adaptiveNudgesEnabled,
+          adaptiveNudgesEnabled:
+            stored?.adaptiveNudgesEnabled ?? current.adaptiveNudgesEnabled,
         };
       },
-    }
-  )
+    },
+  ),
 );

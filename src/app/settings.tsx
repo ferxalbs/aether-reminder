@@ -77,9 +77,7 @@ export default function SettingsScreen() {
   const reduceMotion = useReducedMotion();
   const enterPreset = useMotionPreset("navigation.push");
   const entering =
-    reduceMotion || enterPreset.mode === "none"
-      ? undefined
-      : settingsEntering;
+    reduceMotion || enterPreset.mode === "none" ? undefined : settingsEntering;
   const geometry = useBottomChromeGeometry();
   const theme = useSettingsStore((s) => s.theme);
   const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
@@ -90,10 +88,14 @@ export default function SettingsScreen() {
   const openAiConfigured = useSettingsStore((s) => s.openAiConfigured);
   const secureStoreAvailable = useSettingsStore((s) => s.secureStoreAvailable);
   const selectedModel = useSettingsStore((s) => s.selectedModel);
-  const materialColorsEnabled = useSettingsStore((s) => s.materialColorsEnabled);
+  const materialColorsEnabled = useSettingsStore(
+    (s) => s.materialColorsEnabled,
+  );
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const autoSummarize = useSettingsStore((s) => s.autoSummarize);
-  const adaptiveNudgesEnabled = useSettingsStore((s) => s.adaptiveNudgesEnabled);
+  const adaptiveNudgesEnabled = useSettingsStore(
+    (s) => s.adaptiveNudgesEnabled,
+  );
 
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const setOpenRouterApiKey = useSettingsStore((s) => s.setOpenRouterApiKey);
@@ -109,9 +111,15 @@ export default function SettingsScreen() {
   );
   const setHapticsEnabled = useSettingsStore((s) => s.setHapticsEnabled);
   const setAutoSummarize = useSettingsStore((s) => s.setAutoSummarize);
-  const setAdaptiveNudgesPreference = useSettingsStore((s) => s.setAdaptiveNudgesEnabled);
-  const persistAdaptiveNudges = useTasksUiStore((s) => s.setAdaptiveNudgesEnabled);
-  const resetAdaptiveNudgeLearning = useTasksUiStore((s) => s.resetAdaptiveNudgeLearning);
+  const setAdaptiveNudgesPreference = useSettingsStore(
+    (s) => s.setAdaptiveNudgesEnabled,
+  );
+  const persistAdaptiveNudges = useTasksUiStore(
+    (s) => s.setAdaptiveNudgesEnabled,
+  );
+  const resetAdaptiveNudgeLearning = useTasksUiStore(
+    (s) => s.resetAdaptiveNudgeLearning,
+  );
 
   const [openRouterInput, setOpenRouterInput] = useState("");
   const [openAiInput, setOpenAiInput] = useState("");
@@ -343,8 +351,15 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: () => {
             void resetAdaptiveNudgeLearning()
-              .then(() => Alert.alert("Learning reset", "AETHER will use its conservative baseline again."))
-              .catch((error: unknown) => Alert.alert("Learning Not Reset", getAIErrorMessage(error)));
+              .then(() =>
+                Alert.alert(
+                  "Learning reset",
+                  "AETHER will use its conservative baseline again.",
+                ),
+              )
+              .catch((error: unknown) =>
+                Alert.alert("Learning Not Reset", getAIErrorMessage(error)),
+              );
           },
         },
       ],
@@ -1255,15 +1270,23 @@ export default function SettingsScreen() {
                     },
                   ]}
                 >
-                  <RefreshCw size={18} color={isDark ? Colors.white : Colors.black} />
+                  <RefreshCw
+                    size={18}
+                    color={isDark ? Colors.white : Colors.black}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">Adaptive Nudges</Typography>
                   <Typography
                     variant="tiny"
-                    color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                    color={
+                      isDark
+                        ? Colors.secondaryTextDark
+                        : Colors.secondaryTextLight
+                    }
                   >
-                    AETHER can learn from completion and snooze patterns to choose better follow-up times.
+                    AETHER can learn from completion and snooze patterns to
+                    choose better follow-up times.
                   </Typography>
                 </View>
               </View>

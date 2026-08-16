@@ -1,11 +1,15 @@
-import React, { type RefObject } from 'react';
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Colors } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useMotionProfile } from '../runtime/useMotionProfile';
-import { AdaptiveBlur } from './AdaptiveBlur';
-import { resolveAdaptiveGlassPolicy } from './blurPolicy';
+import React, { type RefObject } from "react";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+} from "expo-glass-effect";
+import { Colors } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useMotionProfile } from "../runtime/useMotionProfile";
+import { AdaptiveBlur } from "./AdaptiveBlur";
+import { resolveAdaptiveGlassPolicy } from "./blurPolicy";
 
 export interface AdaptiveGlassProps {
   children?: React.ReactNode;
@@ -41,29 +45,33 @@ export function AdaptiveGlass({
     },
     platform: Platform.OS,
     androidApiLevel: profile.androidApiLevel,
-    iosGlassAvailable: Platform.OS === 'ios' && iosGlassAvailable(),
+    iosGlassAvailable: Platform.OS === "ios" && iosGlassAvailable(),
   });
 
-  if (decision.mode === 'ios-glass') {
+  if (decision.mode === "ios-glass") {
     return (
       <View testID={testID} style={[styles.fill, style]}>
         <GlassView
           style={StyleSheet.absoluteFill}
           glassEffectStyle="regular"
-          colorScheme={isDark ? 'dark' : 'light'}
+          colorScheme={isDark ? "dark" : "light"}
         />
         {children}
       </View>
     );
   }
 
-  if (decision.mode === 'translucent') {
+  if (decision.mode === "translucent") {
     return (
       <View
         testID={testID}
         style={[
           styles.fill,
-          { backgroundColor: isDark ? Colors.glassDarkFallback : Colors.glassLightFallback },
+          {
+            backgroundColor: isDark
+              ? Colors.glassDarkFallback
+              : Colors.glassLightFallback,
+          },
           style,
         ]}
       >
@@ -73,7 +81,12 @@ export function AdaptiveGlass({
   }
 
   return (
-    <AdaptiveBlur testID={testID} style={style} intensity={intensity} blurTarget={blurTarget}>
+    <AdaptiveBlur
+      testID={testID}
+      style={style}
+      intensity={intensity}
+      blurTarget={blurTarget}
+    >
       {children}
     </AdaptiveBlur>
   );
@@ -81,6 +94,6 @@ export function AdaptiveGlass({
 
 const styles = StyleSheet.create({
   fill: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

@@ -1,12 +1,16 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
-import { Typography } from './Typography';
-import { Colors, Hairline, Spacing } from '@/theme/tokens';
-import { useMotionProfile } from '@/motion';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  type SharedValue,
+  useAnimatedStyle,
+} from "react-native-reanimated";
+import { Typography } from "./Typography";
+import { Colors, Hairline, Spacing } from "@/theme/tokens";
+import { useMotionProfile } from "@/motion";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
-export type VoiceCaptureState = 'listening' | 'processing' | 'review' | 'committed';
+export type VoiceCaptureState =
+  "listening" | "processing" | "review" | "committed";
 
 export interface AetherVoiceCaptureProps {
   state: VoiceCaptureState;
@@ -38,17 +42,20 @@ export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
   const isDark = useIsDark();
 
   const stateLabel =
-    state === 'listening'
-      ? 'Listening…'
-      : state === 'processing'
-      ? 'Processing…'
-      : state === 'review'
-      ? 'Ready for review'
-      : 'Committed';
+    state === "listening"
+      ? "Listening…"
+      : state === "processing"
+        ? "Processing…"
+        : state === "review"
+          ? "Ready for review"
+          : "Committed";
 
   return (
     <View style={styles.container}>
-      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+      <Typography
+        variant="caption"
+        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+      >
         {stateLabel}
       </Typography>
 
@@ -58,7 +65,7 @@ export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
         </Typography>
       ) : null}
 
-      {state === 'listening' ? (
+      {state === "listening" ? (
         <View style={styles.meterContainer}>
           <MeterLine level={audioLevel} />
         </View>
@@ -78,14 +85,14 @@ const styles = StyleSheet.create({
   },
   meterContainer: {
     height: 2,
-    width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
+    width: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
     marginTop: Spacing.xs,
   },
   meterLine: {
     height: Hairline.width * 2,
-    width: '100%',
+    width: "100%",
     backgroundColor: Colors.white,
   },
 });

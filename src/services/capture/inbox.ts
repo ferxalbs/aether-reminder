@@ -1,6 +1,6 @@
-import type { SqlDatabase } from '@/db/types';
-import { createId } from '@/lib/id';
-import { normalizeCaptureEnvelope } from './normalization';
+import type { SqlDatabase } from "@/db/types";
+import { createId } from "@/lib/id";
+import { normalizeCaptureEnvelope } from "./normalization";
 import type {
   CaptureDiagnostics,
   CaptureEnvelope,
@@ -8,9 +8,9 @@ import type {
   CaptureFailureCategory,
   CaptureIngress,
   CaptureState,
-} from './types';
+} from "./types";
 
-export const CAPTURE_INBOX_DATABASE_NAME = 'aether_capture_ingress.sqlite';
+export const CAPTURE_INBOX_DATABASE_NAME = "aether_capture_ingress.sqlite";
 export const CAPTURE_INBOX_SCHEMA_VERSION = 1;
 
 interface CaptureRow {
@@ -44,7 +44,9 @@ function mapRow(row: CaptureRow): CaptureEnvelope {
     idempotencyKey: row.idempotency_key,
     state: row.state,
     reviewRequired: row.review_required === 1,
-    ...(row.committed_task_id ? { committedTaskId: row.committed_task_id } : {}),
+    ...(row.committed_task_id
+      ? { committedTaskId: row.committed_task_id }
+      : {}),
   });
 }
 
@@ -52,8 +54,8 @@ export class CaptureInboxRepository {
   constructor(private readonly db: SqlDatabase) {}
 
   async initialize(): Promise<void> {
-    await this.db.execAsync('PRAGMA journal_mode = WAL;');
-    await this.db.execAsync('PRAGMA busy_timeout = 3000;');
+    await this.db.execAsync("PRAGMA journal_mode = WAL;");
+    await this.db.execAsync("PRAGMA busy_timeout = 3000;");
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS capture_envelopes (
         id TEXT PRIMARY KEY NOT NULL,
@@ -107,23 +109,29 @@ export class CaptureInboxRepository {
         now,
       ],
     );
-    const stored = await this.getByIdOrKey(envelope.id, envelope.idempotencyKey);
-    if (!stored) throw new Error('Capture inbox insert verification failed.');
-    await this.recordEvent('capture_received', stored);
+    const stored = await this.getByIdOrKey(
+      envelope.id,
+      envelope.idempotencyKey,
+    );
+    if (!stored) throw new Error("Capture inbox insert verification failed.");
+    await this.recordEvent("capture_received", stored);
     return stored;
   }
 
   async get(id: string): Promise<CaptureEnvelope | null> {
     const row = await this.db.getFirstAsync<CaptureRow>(
-      'SELECT * FROM capture_envelopes WHERE id = ?',
+      "SELECT * FROM capture_envelopes WHERE id = ?",
       [id],
     );
     return row ? mapRow(row) : null;
   }
 
-  private async getByIdOrKey(id: string, key: string): Promise<CaptureEnvelope | null> {
+  private async getByIdOrKey(
+    id: string,
+    key: string,
+  ): Promise<CaptureEnvelope | null> {
     const row = await this.db.getFirstAsync<CaptureRow>(
-      'SELECT * FROM capture_envelopes WHERE id = ? OR idempotency_key = ? LIMIT 1',
+      "SELECT * FROM capture_envelopes WHERE id = ? OR idempotency_key = ? LIMIT 1",
       [id, key],
     );
     return row ? mapRow(row) : null;
@@ -136,10 +144,14 @@ export class CaptureInboxRepository {
       `UPDATE capture_envelopes SET review_required = 0, updated_at = ? WHERE id = ?`,
       [new Date().toISOString(), id],
     );
-    await this.recordEvent('capture_reviewed', envelope);
+    await this.recordEvent("capture_reviewed", envelope);
   }
 
-  async claim(id: string, now = new Date(), staleAfterMs = 120_000): Promise<ClaimedCapture | null> {
+  async claim(
+    id: string,
+    now = new Date(),
+    staleAfterMs = 120_000,
+  ): Promise<ClaimedCapture | null> {
     const token = createId();
     const nowIso = now.toISOString();
     const staleIso = new Date(now.getTime() - staleAfterMs).toISOString();
@@ -155,13 +167,19 @@ export class CaptureInboxRepository {
     );
     if (result.changes !== 1) return null;
     const row = await this.db.getFirstAsync<CaptureRow>(
-      'SELECT * FROM capture_envelopes WHERE id = ? AND claim_token = ?',
+      "SELECT * FROM capture_envelopes WHERE id = ? AND claim_token = ?",
       [id, token],
     );
-    return row ? { envelope: mapRow(row), claimToken: token, attempts: row.attempts } : null;
+    return row
+      ? { envelope: mapRow(row), claimToken: token, attempts: row.attempts }
+      : null;
   }
 
-  async listDrainable(limit: number, now = new Date(), staleAfterMs = 120_000): Promise<string[]> {
+  async listDrainable(
+    limit: number,
+    now = new Date(),
+    staleAfterMs = 120_000,
+  ): Promise<string[]> {
     const staleIso = new Date(now.getTime() - staleAfterMs).toISOString();
     const rows = await this.db.getAllAsync<{ id: string }>(
       `SELECT id FROM capture_envelopes
@@ -175,7 +193,12 @@ export class CaptureInboxRepository {
     return rows.map((row) => row.id);
   }
 
-  async markCommitted(id: string, token: string, taskId: string, now = new Date()): Promise<void> {
+  async markCommitted(
+    id: string,
+    token: string,
+    taskId: string,
+    now = new Date(),
+  ): Promise<void> {
     await this.db.runAsync(
       `UPDATE capture_envelopes SET state = 'committed', committed_task_id = ?,
        claim_token = NULL, claimed_at = NULL, updated_at = ?
@@ -195,7 +218,13 @@ export class CaptureInboxRepository {
       `UPDATE capture_envelopes SET state = ?, last_error_category = ?,
        claim_token = NULL, claimed_at = NULL, updated_at = ?
        WHERE id = ? AND claim_token = ?`,
-      [retryable ? 'failed_retryable' : 'failed_terminal', category, now.toISOString(), id, token],
+      [
+        retryable ? "failed_retryable" : "failed_terminal",
+        category,
+        now.toISOString(),
+        id,
+        token,
+      ],
     );
   }
 
@@ -207,7 +236,7 @@ export class CaptureInboxRepository {
        claimed_at = NULL, updated_at = ? WHERE id = ? AND state != 'committed'`,
       [new Date().toISOString(), id],
     );
-    await this.recordEvent('capture_discarded', envelope);
+    await this.recordEvent("capture_discarded", envelope);
   }
 
   async recordEvent(
@@ -224,7 +253,7 @@ export class CaptureInboxRepository {
         envelope.id,
         name,
         envelope.ingress,
-        envelope.parts.map((part) => part.kind).join('+'),
+        envelope.parts.map((part) => part.kind).join("+"),
         Object.keys(metadata).length ? JSON.stringify(metadata) : null,
         new Date().toISOString(),
       ],
@@ -232,7 +261,10 @@ export class CaptureInboxRepository {
   }
 
   async diagnostics(orphanTemporaryAssets = 0): Promise<CaptureDiagnostics> {
-    const counts = await this.db.getFirstAsync<{ pending: number; failed: number }>(
+    const counts = await this.db.getFirstAsync<{
+      pending: number;
+      failed: number;
+    }>(
       `SELECT
          SUM(CASE WHEN state IN ('pending', 'processing', 'failed_retryable') THEN 1 ELSE 0 END) pending,
          SUM(CASE WHEN state IN ('failed_retryable', 'failed_terminal') THEN 1 ELSE 0 END) failed
@@ -241,7 +273,9 @@ export class CaptureInboxRepository {
     const last = await this.db.getFirstAsync<{
       ingress: CaptureIngress;
       last_error_category: CaptureFailureCategory | null;
-    }>('SELECT ingress, last_error_category FROM capture_envelopes ORDER BY updated_at DESC LIMIT 1');
+    }>(
+      "SELECT ingress, last_error_category FROM capture_envelopes ORDER BY updated_at DESC LIMIT 1",
+    );
     const drain = await this.db.getFirstAsync<{ created_at: string }>(
       `SELECT created_at FROM capture_events
        WHERE name = 'capture_committed' ORDER BY created_at DESC LIMIT 1`,

@@ -1,8 +1,8 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 export const migration0004NotificationProjection: Migration = {
   version: 4,
-  name: '0004_notification_projection',
+  name: "0004_notification_projection",
   async up(db) {
     await db.execAsync(`
       ALTER TABLE reminders ADD COLUMN native_notification_id TEXT;

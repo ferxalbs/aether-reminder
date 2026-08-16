@@ -2,23 +2,23 @@ import type {
   MotionAccessibilityState,
   NativeMotionCapabilities,
   NativeMotionSnapshot,
-} from '../core/types';
+} from "../core/types";
 
 export function snapshotFixture(
-  overrides: Omit<Partial<NativeMotionSnapshot>, 'frames'> & {
-    frames?: Partial<NativeMotionSnapshot['frames']>;
+  overrides: Omit<Partial<NativeMotionSnapshot>, "frames"> & {
+    frames?: Partial<NativeMotionSnapshot["frames"]>;
   } = {},
 ): NativeMotionSnapshot {
   const { frames, ...rest } = overrides;
   return {
-    platform: 'android',
+    platform: "android",
     currentRefreshRateHz: 120,
     maximumRefreshRateHz: 120,
     lowPowerMode: false,
     lowMemory: false,
     memoryPressureActive: false,
     lowRamDevice: false,
-    thermalState: 'nominal',
+    thermalState: "nominal",
     warmUpActive: false,
     timestampMs: 1_000,
     ...rest,
@@ -40,7 +40,7 @@ export function capabilitiesFixture(
   overrides: Partial<NativeMotionCapabilities> = {},
 ): NativeMotionCapabilities {
   return {
-    platform: 'android',
+    platform: "android",
     androidApiLevel: 36,
     maximumRefreshRateHz: 120,
     lowRamDevice: false,

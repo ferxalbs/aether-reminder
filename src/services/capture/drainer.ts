@@ -1,6 +1,6 @@
-import { CaptureError, type CaptureFailureCategory } from './types';
-import type { CaptureInboxRepository } from './inbox';
-import type { CaptureOrchestrator } from './orchestrator';
+import { CaptureError, type CaptureFailureCategory } from "./types";
+import type { CaptureInboxRepository } from "./inbox";
+import type { CaptureOrchestrator } from "./orchestrator";
 
 export interface CaptureDrainResult {
   processed: number;
@@ -9,13 +9,21 @@ export interface CaptureDrainResult {
   failedTerminal: number;
 }
 
-function classify(error: unknown): { category: CaptureFailureCategory; retryable: boolean } {
-  if (error instanceof CaptureError) return { category: error.category, retryable: error.retryable };
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
-  if (message.includes('busy') || message.includes('locked') || message.includes('temporar')) {
-    return { category: 'database_busy', retryable: true };
+function classify(error: unknown): {
+  category: CaptureFailureCategory;
+  retryable: boolean;
+} {
+  if (error instanceof CaptureError)
+    return { category: error.category, retryable: error.retryable };
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (
+    message.includes("busy") ||
+    message.includes("locked") ||
+    message.includes("temporar")
+  ) {
+    return { category: "database_busy", retryable: true };
   }
-  return { category: 'unknown', retryable: true };
+  return { category: "unknown", retryable: true };
 }
 
 export class CaptureInboxDrainer {
@@ -42,17 +50,34 @@ export class CaptureInboxDrainer {
       this.options.staleAfterMs,
     );
     for (const id of ids) {
-      const claimed = await this.inbox.claim(id, now, this.options.staleAfterMs);
+      const claimed = await this.inbox.claim(
+        id,
+        now,
+        this.options.staleAfterMs,
+      );
       if (!claimed) continue;
       result.processed += 1;
       try {
         const committed = await this.orchestrator.commit(claimed.envelope);
-        await this.inbox.markCommitted(id, claimed.claimToken, committed.task.id, now);
+        await this.inbox.markCommitted(
+          id,
+          claimed.claimToken,
+          committed.task.id,
+          now,
+        );
         result.committed += 1;
       } catch (error) {
         const failure = classify(error);
-        await this.inbox.markFailure(id, claimed.claimToken, failure.category, failure.retryable, now);
-        await this.inbox.recordEvent('capture_failed', claimed.envelope, { category: failure.category });
+        await this.inbox.markFailure(
+          id,
+          claimed.claimToken,
+          failure.category,
+          failure.retryable,
+          now,
+        );
+        await this.inbox.recordEvent("capture_failed", claimed.envelope, {
+          category: failure.category,
+        });
         if (failure.retryable) result.failedRetryable += 1;
         else {
           try {

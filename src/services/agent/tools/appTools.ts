@@ -1,35 +1,43 @@
-import { createReceipt } from '@/domain/receipts';
-import type { AgentTool, ToolResult } from './types';
+import { createReceipt } from "@/domain/receipts";
+import type { AgentTool, ToolResult } from "./types";
 
 export const appNavigate: AgentTool<{
-  destination: 'home' | 'tasks' | 'all' | 'settings';
+  destination: "home" | "tasks" | "all" | "settings";
   entityId?: string;
 }> = {
-  id: 'app.navigate',
-  version: '1',
-  description: 'Navigate to an allowlisted AETHER destination: home, tasks, all, or settings.',
-  risk: 'EXTERNAL',
+  id: "app.navigate",
+  version: "1",
+  description:
+    "Navigate to an allowlisted AETHER destination: home, tasks, all, or settings.",
+  risk: "EXTERNAL",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      destination: { type: 'string', enum: ['home', 'tasks', 'all', 'settings'] },
-      entityId: { type: 'string' },
+      destination: {
+        type: "string",
+        enum: ["home", "tasks", "all", "settings"],
+      },
+      entityId: { type: "string" },
     },
-    required: ['destination'],
+    required: ["destination"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const destination = input?.destination;
     if (
-      destination !== 'home' &&
-      destination !== 'tasks' &&
-      destination !== 'all' &&
-      destination !== 'settings'
+      destination !== "home" &&
+      destination !== "tasks" &&
+      destination !== "all" &&
+      destination !== "settings"
     ) {
-      return { ok: false, error: 'destination must be home, tasks, all, or settings' };
+      return {
+        ok: false,
+        error: "destination must be home, tasks, all, or settings",
+      };
     }
-    const entityId = typeof input?.entityId === 'string' ? input.entityId : undefined;
+    const entityId =
+      typeof input?.entityId === "string" ? input.entityId : undefined;
     ctx.onNavigate?.(destination, entityId);
     return {
       ok: true,
@@ -38,12 +46,12 @@ export const appNavigate: AgentTool<{
         entityId,
       },
       receipt: createReceipt({
-        risk: 'EXTERNAL',
-        action: 'app.navigate',
-        entityType: 'navigation',
+        risk: "EXTERNAL",
+        action: "app.navigate",
+        entityType: "navigation",
         entityId: destination,
         summary: `Navigate to ${destination}`,
-        toolId: 'app.navigate',
+        toolId: "app.navigate",
       }),
     };
   },

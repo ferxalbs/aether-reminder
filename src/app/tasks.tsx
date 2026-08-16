@@ -1,33 +1,39 @@
-import { useCallback, useMemo, useState } from 'react';
-import { StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from '@/components/ui/Typography';
-import { TaskList } from '@/components/ui/TaskList';
-import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
-import { AetherComposer } from '@/components/ui/AetherComposer';
-import type { TaskListItem } from '@/domain/entities';
-import { useTasksUiStore } from '@/stores/tasksUi.store';
-import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
-import { getDatabaseErrorMessage } from '@/db';
-import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import { canUndoTaskReceipt } from '@/stores/taskUndo';
+import { useCallback, useMemo, useState } from "react";
+import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Typography } from "@/components/ui/Typography";
+import { TaskList } from "@/components/ui/TaskList";
+import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
+import { TaskEditorSheet } from "@/components/ui/TaskEditorSheet";
+import { AetherComposer } from "@/components/ui/AetherComposer";
+import type { TaskListItem } from "@/domain/entities";
+import { useTasksUiStore } from "@/stores/tasksUi.store";
+import { getLocalDateString } from "@/temporal/localCalendar";
+import {
+  useAssistantActions,
+  useAssistantSurface,
+  useAssistantActive,
+} from "@/components/assistant/AssistantHost";
+import { getDatabaseErrorMessage } from "@/db";
+import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { canUndoTaskReceipt } from "@/stores/taskUndo";
 
-import { addLocalCalendarDays } from '@/temporal/recurrence';
+import { addLocalCalendarDays } from "@/temporal/recurrence";
 
 export default function ScheduleScreen() {
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
   const horizontalPadding =
-    width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
+    width >= 980
+      ? LayoutTokens.screenHorizontalWide
+      : LayoutTokens.screenHorizontal;
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
-  const [quickTitle, setQuickTitle] = useState('');
+  const [quickTitle, setQuickTitle] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
@@ -46,27 +52,33 @@ export default function ScheduleScreen() {
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
 
-  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
-    const rawTitle = (titleToSave ?? quickTitle).trim();
-    if (!rawTitle || quickSaving) return;
+  const handleQuickCapture = useCallback(
+    async (titleToSave?: string) => {
+      const rawTitle = (titleToSave ?? quickTitle).trim();
+      if (!rawTitle || quickSaving) return;
 
-    setQuickSaving(true);
-    try {
-      await captureText(rawTitle, 'in_app', {
-        defaultDueDate: addLocalCalendarDays(getLocalDateString(), 1),
-      });
-      setQuickTitle('');
-    } catch (errorValue) {
-      reportNonFatalError('schedule-quick-capture', getDatabaseErrorMessage(errorValue));
-    } finally {
-      setQuickSaving(false);
-    }
-  }, [captureText, quickSaving, quickTitle]);
+      setQuickSaving(true);
+      try {
+        await captureText(rawTitle, "in_app", {
+          defaultDueDate: addLocalCalendarDays(getLocalDateString(), 1),
+        });
+        setQuickTitle("");
+      } catch (errorValue) {
+        reportNonFatalError(
+          "schedule-quick-capture",
+          getDatabaseErrorMessage(errorValue),
+        );
+      } finally {
+        setQuickSaving(false);
+      }
+    },
+    [captureText, quickSaving, quickTitle],
+  );
 
   const handleToggle = useCallback(
     (id: string) => {
       void toggleTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('tasks-task-toggle', errorValue);
+        reportNonFatalError("tasks-task-toggle", errorValue);
       });
     },
     [toggleTask],
@@ -75,7 +87,7 @@ export default function ScheduleScreen() {
   const handleDelete = useCallback(
     (id: string) => {
       void softDeleteTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('tasks-task-delete', errorValue);
+        reportNonFatalError("tasks-task-delete", errorValue);
       });
     },
     [softDeleteTask],
@@ -93,12 +105,12 @@ export default function ScheduleScreen() {
 
   const assistantContext = useMemo(
     () => ({
-      surface: 'upcoming',
+      surface: "upcoming",
       selectedDate: getLocalDateString(),
       visibleTaskIds: upcomingTasks.map((task) => task.id),
-      locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      invocationSource: 'app' as const,
+      locale: Intl.DateTimeFormat().resolvedOptions().locale || "en-US",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      invocationSource: "app" as const,
     }),
     [upcomingTasks],
   );
@@ -112,13 +124,17 @@ export default function ScheduleScreen() {
 
   return (
     <SafeAreaView
-      edges={['top', 'left', 'right']}
+      edges={["top", "left", "right"]}
       style={[
         styles.safeArea,
-        { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
+        {
+          backgroundColor: isDark
+            ? Colors.backgroundDark
+            : Colors.backgroundLight,
+        },
       ]}
     >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -149,7 +165,16 @@ export default function ScheduleScreen() {
               </View>
 
               {error ? (
-                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                <View
+                  style={[
+                    styles.errorToast,
+                    {
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
+                    },
+                  ]}
+                >
                   <Typography
                     variant="caption"
                     color={isDark ? Colors.white : Colors.black}
@@ -162,9 +187,16 @@ export default function ScheduleScreen() {
             </View>
           }
           empty={
-            status !== 'loading' ? (
+            status !== "loading" ? (
               <View style={styles.emptyState}>
-                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+                <Typography
+                  variant="body"
+                  color={
+                    isDark
+                      ? Colors.secondaryTextDark
+                      : Colors.secondaryTextLight
+                  }
+                >
                   Nothing scheduled ahead.
                 </Typography>
               </View>
@@ -199,7 +231,7 @@ export default function ScheduleScreen() {
       <TaskEditorSheet
         visible={editorVisible}
         onClose={closeEditor}
-        mode={editingTask ? 'edit' : 'create'}
+        mode={editingTask ? "edit" : "create"}
         task={editingTask}
       />
     </SafeAreaView>
@@ -214,12 +246,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
     paddingTop: Spacing.lg,
   },
   headerContent: {
-    width: '100%',
+    width: "100%",
   },
   header: {
     paddingTop: Spacing.lg,
@@ -230,17 +262,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   emptyState: {
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.lg,
   },
   composerWrap: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 90,
   },
 });

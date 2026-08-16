@@ -29,7 +29,7 @@ Guidelines for writing TSDoc comments in Expo SDK packages. The docs generation 
 
 Use third-person declarative ("Gets...", "Returns...", "Checks..."), not imperative ("Get...", "Return...").
 
-```typescript
+````typescript
 /**
  * Gets the uptime since the last reboot of the device, in milliseconds.
  * Android devices do not count time spent in deep sleep.
@@ -46,7 +46,7 @@ Use third-person declarative ("Gets...", "Returns...", "Checks..."), not imperat
  * @platform ios
  */
 export async function getUptimeAsync(): Promise<number> {
-```
+````
 
 **Key points:**
 
@@ -87,7 +87,7 @@ export type GetImageOptions = {
   /**
    * The format of the clipboard image to be converted to.
    */
-  format: 'png' | 'jpeg';
+  format: "png" | "jpeg";
   /**
    * Specify the quality of the returned image, between `0` and `1`.
    * Applicable only when `format` is set to `jpeg`, ignored otherwise.
@@ -101,19 +101,19 @@ export type GetImageOptions = {
 
 ## Supported TSDoc Tags
 
-| Tag | Purpose | Example |
-| ----- | --------- | --------- |
-| `@param` | Parameter description | `@param options Configuration for the request` |
-| `@return` / `@returns` | Return value description | `@return A promise fulfilled with the result` |
-| `@default` | Default value (no markdown, rendered as inline code) | `@default 1` |
-| `@platform` | Platform availability (android, ios, web, expo) | `@platform ios 11+` |
-| `@example` | Code example (placed at bottom of description) | See examples below |
-| `@deprecated` | Deprecation notice (auto-formatted as warning) | `@deprecated Use newMethod() instead` |
-| `@experimental` | Experimental API label | `@experimental` |
-| `@hidden` / `@internal` / `@private` | Hide from generated docs | `@hidden` |
-| `@header` | Group methods under custom headers | `@header Scheduling` |
-| `@needsAudit` | Mark for security/API audit (comment, not tag) | `// @needsAudit` |
-| `@hideType` | Hide generated Type callout for constants | `@hideType` |
+| Tag                                  | Purpose                                              | Example                                        |
+| ------------------------------------ | ---------------------------------------------------- | ---------------------------------------------- |
+| `@param`                             | Parameter description                                | `@param options Configuration for the request` |
+| `@return` / `@returns`               | Return value description                             | `@return A promise fulfilled with the result`  |
+| `@default`                           | Default value (no markdown, rendered as inline code) | `@default 1`                                   |
+| `@platform`                          | Platform availability (android, ios, web, expo)      | `@platform ios 11+`                            |
+| `@example`                           | Code example (placed at bottom of description)       | See examples below                             |
+| `@deprecated`                        | Deprecation notice (auto-formatted as warning)       | `@deprecated Use newMethod() instead`          |
+| `@experimental`                      | Experimental API label                               | `@experimental`                                |
+| `@hidden` / `@internal` / `@private` | Hide from generated docs                             | `@hidden`                                      |
+| `@header`                            | Group methods under custom headers                   | `@header Scheduling`                           |
+| `@needsAudit`                        | Mark for security/API audit (comment, not tag)       | `// @needsAudit`                               |
+| `@hideType`                          | Hide generated Type callout for constants            | `@hideType`                                    |
 
 **Platform tag notes:**
 
@@ -126,7 +126,7 @@ export type GetImageOptions = {
 
 Always wrap in triple backticks with language tag:
 
-```typescript
+````typescript
 /**
  * Checks device root/jailbreak status.
  *
@@ -138,7 +138,7 @@ Always wrap in triple backticks with language tag:
  * }
  * ```
  */
-```
+````
 
 ## Blockquote Notes and Warnings
 
@@ -177,13 +177,13 @@ Document the enum and individual values:
  * Type used to define what type of data is stored in the clipboard.
  */
 export enum ContentType {
-  PLAIN_TEXT = 'plain-text',
-  HTML = 'html',
-  IMAGE = 'image',
+  PLAIN_TEXT = "plain-text",
+  HTML = "html",
+  IMAGE = "image",
   /**
    * @platform iOS
    */
-  URL = 'url',
+  URL = "url",
 }
 ```
 
@@ -208,14 +208,14 @@ export {
   type FileCreateOptions,
   type DirectoryCreateOptions,
   type FileHandle,
-} from './Module.types';
+} from "./Module.types";
 ```
 
 **Re-export after import:**
 
 ```typescript
 // Haptics.ts
-import { NotificationFeedbackType, ImpactFeedbackStyle } from './Haptics.types';
+import { NotificationFeedbackType, ImpactFeedbackStyle } from "./Haptics.types";
 
 // ... function implementations ...
 
@@ -232,14 +232,14 @@ When writing examples in documentation pages:
 
 ### Code Block Format
 
-```
+````
 ```ts app/(tabs)/index.tsx
 import * as FileSystem from 'expo-file-system';
 
 const content = await FileSystem.readAsStringAsync(uri);
-```
+````
 
-```
+````
 
 Always include:
 - Language tag (`ts`, `tsx`, `js`, `json`, `swift`, `kotlin`)
@@ -255,14 +255,14 @@ import * as FileSystem from 'expo-file-system';
 export default function App() {
   // ...
 }
-```
+````
 
 </SnackInline>
 ```
 
 ### Collapsible Examples
 
-```jsx
+````jsx
 <Collapsible summary="Advanced usage with error handling">
 ```ts
 try {
@@ -270,7 +270,7 @@ try {
 } catch (error) {
   console.error('Operation failed:', error);
 }
-```
+````
 
 </Collapsible>
 ```

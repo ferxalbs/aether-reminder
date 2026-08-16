@@ -1,5 +1,5 @@
-import type { TemporalSemantics } from '@/domain/entities';
-import type { SqlDatabase } from '../types';
+import type { TemporalSemantics } from "@/domain/entities";
+import type { SqlDatabase } from "../types";
 
 export interface NotificationActionReceipt {
   responseKey: string;
@@ -10,7 +10,7 @@ export interface NotificationActionReceipt {
   targetTime: string | null;
   targetTimezone: string | null;
   targetSemantics: TemporalSemantics | null;
-  status: 'claimed' | 'completed';
+  status: "claimed" | "completed";
   attemptCount: number;
   claimedAt: string;
   completedAt: string | null;
@@ -36,7 +36,7 @@ interface NotificationActionReceiptRow {
   target_time: string | null;
   target_timezone: string | null;
   target_semantics: string | null;
-  status: 'claimed' | 'completed';
+  status: "claimed" | "completed";
   attempt_count: number;
   claimed_at: string;
   completed_at: string | null;
@@ -62,7 +62,9 @@ function mapRow(row: NotificationActionReceiptRow): NotificationActionReceipt {
 export class NotificationActionReceiptsRepository {
   constructor(private readonly db: SqlDatabase) {}
 
-  async claim(input: ClaimNotificationActionInput): Promise<NotificationActionReceipt> {
+  async claim(
+    input: ClaimNotificationActionInput,
+  ): Promise<NotificationActionReceipt> {
     const now = new Date().toISOString();
     await this.db.runAsync(
       `INSERT INTO notification_action_receipts (
@@ -91,7 +93,10 @@ export class NotificationActionReceiptsRepository {
       `SELECT * FROM notification_action_receipts WHERE response_key = ?`,
       [input.responseKey],
     );
-    if (!row) throw new Error('Notification action receipt claim could not be persisted.');
+    if (!row)
+      throw new Error(
+        "Notification action receipt claim could not be persisted.",
+      );
     return mapRow(row);
   }
 

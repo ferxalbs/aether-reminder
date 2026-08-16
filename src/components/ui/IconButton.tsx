@@ -1,17 +1,17 @@
-import React from 'react';
-import { Platform, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { AnimatedPressable } from './AnimatedPressable';
-import { GlassSurface } from './GlassSurface';
-import { Colors, getMinimumTouchTarget, Motion, Radius } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import * as Haptics from 'expo-haptics';
+import React from "react";
+import { Platform, StyleSheet, StyleProp, ViewStyle } from "react-native";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { GlassSurface } from "./GlassSurface";
+import { Colors, getMinimumTouchTarget, Motion, Radius } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import * as Haptics from "expo-haptics";
 
 export interface IconButtonProps {
   icon: React.ReactNode;
   onPress: () => void;
   accessibilityLabel: string;
   accessibilityHint?: string;
-  variant?: 'solid' | 'glass' | 'ghost';
+  variant?: "solid" | "glass" | "ghost";
   size?: number;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -23,7 +23,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   onPress,
   accessibilityLabel,
   accessibilityHint,
-  variant = 'glass',
+  variant = "glass",
   size = 44,
   disabled = false,
   style,
@@ -34,23 +34,25 @@ export const IconButton: React.FC<IconButtonProps> = ({
 
   const getContainerStyle = () => {
     switch (variant) {
-      case 'solid':
+      case "solid":
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          backgroundColor: isDark
+            ? Colors.surfaceRaisedDark
+            : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
         };
-      case 'glass':
+      case "glass":
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: 1,
         };
-      case 'ghost':
+      case "ghost":
       default:
         return {
-          backgroundColor: 'transparent',
-          borderColor: 'transparent',
+          backgroundColor: "transparent",
+          borderColor: "transparent",
           borderWidth: 0,
         };
     }
@@ -64,7 +66,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
-      android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+      android_ripple={{
+        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+      }}
       hapticStyle={hapticStyle}
       scaleTo={Motion.iconPressScale}
       style={[
@@ -79,7 +83,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         style,
       ]}
     >
-      {variant === 'glass' ? (
+      {variant === "glass" ? (
         <GlassSurface
           pointerEvents="none"
           borderRadius={Radius.md}
@@ -93,9 +97,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   disabled: {
     opacity: 0.4,

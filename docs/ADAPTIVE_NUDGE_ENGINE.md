@@ -45,15 +45,15 @@ adaptive reminder row; it does not reschedule the task.
 
 `nudge_events` stores only compact local behavioral data:
 
-| Event | Reliable signal used |
-| --- | --- |
-| `task_completed` | completion and bounded completion delay |
-| `notification_action_complete` | Complete action, including cold action responses |
-| `notification_opened` | explicit notification tap only |
-| `notification_action_snooze` | explicit Snooze and bounded effective minutes |
-| `notification_action_tomorrow` | explicit Tomorrow, kept distinct from Snooze |
-| `smart_recovery_accepted` / `smart_recovery_rejected` | explicit Recovery choice |
-| `task_rescheduled` | explicit manual schedule change |
+| Event                                                 | Reliable signal used                             |
+| ----------------------------------------------------- | ------------------------------------------------ |
+| `task_completed`                                      | completion and bounded completion delay          |
+| `notification_action_complete`                        | Complete action, including cold action responses |
+| `notification_opened`                                 | explicit notification tap only                   |
+| `notification_action_snooze`                          | explicit Snooze and bounded effective minutes    |
+| `notification_action_tomorrow`                        | explicit Tomorrow, kept distinct from Snooze     |
+| `smart_recovery_accepted` / `smart_recovery_rejected` | explicit Recovery choice                         |
+| `task_rescheduled`                                    | explicit manual schedule change                  |
 
 Every event contains an event type, local task/nudge reference, timestamp,
 weekday, bounded time bucket, source, optional bounded number, policy version,

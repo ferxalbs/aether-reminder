@@ -1,4 +1,4 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /**
  * Indexes for common task queries. Each index is intentional:
@@ -12,7 +12,7 @@ import type { Migration } from './types';
  */
 export const migration0002Indexes: Migration = {
   version: 2,
-  name: '0002_indexes',
+  name: "0002_indexes",
   async up(db) {
     await db.execAsync(`
       CREATE INDEX idx_tasks_active_due

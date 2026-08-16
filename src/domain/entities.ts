@@ -1,49 +1,45 @@
 /** Domain entities — independent of SQLite row shapes. */
 
-export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskPriority = "low" | "medium" | "high";
 
 /** fixed = absolute instant semantics; floating = wall-clock in local/device zone */
-export type TemporalSemantics = 'fixed' | 'floating';
+export type TemporalSemantics = "fixed" | "floating";
 export type ReminderProjectionState =
-  | 'pending'
-  | 'scheduled'
-  | 'stale'
-  | 'failed'
-  | 'missing'
-  | 'not_required'
-  | 'blocked';
-export type ReminderTimingPrecision = 'exact' | 'normal' | 'flexible';
-export type ReminderKind = 'primary' | 'adaptive_followup';
-export type ReminderGenerationSource = 'manual' | 'adaptive_nudge_engine' | 'recurrence' | string;
-export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
-export type RecurrenceMode = 'fixed' | 'after_completion';
+  | "pending"
+  | "scheduled"
+  | "stale"
+  | "failed"
+  | "missing"
+  | "not_required"
+  | "blocked";
+export type ReminderTimingPrecision = "exact" | "normal" | "flexible";
+export type ReminderKind = "primary" | "adaptive_followup";
+export type ReminderGenerationSource =
+  "manual" | "adaptive_nudge_engine" | "recurrence" | string;
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+export type RecurrenceMode = "fixed" | "after_completion";
 
 export type TaskSource =
-  | 'manual'
-  | 'voice'
-  | 'agent'
-  | 'recurrence'
-  | 'notification_candidate'
-  | 'widget'
-  | 'shortcut'
-  | 'android_share'
-  | 'android_quick_settings'
-  | 'android_shortcut'
-  | 'ios_share_extension'
-  | 'ios_app_intent'
-  | 'ios_app_shortcut'
-  | 'deep_link'
-  | 'import';
+  | "manual"
+  | "voice"
+  | "agent"
+  | "recurrence"
+  | "notification_candidate"
+  | "widget"
+  | "shortcut"
+  | "android_share"
+  | "android_quick_settings"
+  | "android_shortcut"
+  | "ios_share_extension"
+  | "ios_app_intent"
+  | "ios_app_shortcut"
+  | "deep_link"
+  | "import";
 
 export type TaskCreationOrigin = TaskSource;
 
 export type TaskEventType =
-  | 'created'
-  | 'updated'
-  | 'completed'
-  | 'reopened'
-  | 'rescheduled'
-  | 'deleted';
+  "created" | "updated" | "completed" | "reopened" | "rescheduled" | "deleted";
 
 export interface Project {
   id: string;
@@ -112,9 +108,9 @@ export interface Reminder {
 }
 
 export interface AdaptiveNudge extends Reminder {
-  kind: 'adaptive_followup';
+  kind: "adaptive_followup";
   reason: string;
-  generationSource: 'adaptive_nudge_engine';
+  generationSource: "adaptive_nudge_engine";
   policyVersion: string;
   idempotencyKey: string;
 }
@@ -178,9 +174,9 @@ export interface TaskEvent {
 
 /** Minimal source context retained from Universal Capture. */
 export type CaptureSource =
-  | { kind: 'url'; url: string }
+  | { kind: "url"; url: string }
   | {
-      kind: 'image';
+      kind: "image";
       assetRef: string;
       mimeType: string;
       sizeBytes?: number;
@@ -250,6 +246,6 @@ export function toTaskListItem(task: Task): TaskListItem {
     dueTimezone: task.dueTimezone ?? undefined,
     dueSemantics: task.dueSemantics,
     priority: task.priority,
-    aiSuggested: task.source === 'agent' || task.creationOrigin === 'agent',
+    aiSuggested: task.source === "agent" || task.creationOrigin === "agent",
   };
 }

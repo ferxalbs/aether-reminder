@@ -101,7 +101,13 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getSizeStyle = () => {
-    const baseRadius = pill ? Radius.pill : size === "sm" ? Radius.md : size === "lg" ? Radius.xl : Radius.lg;
+    const baseRadius = pill
+      ? Radius.pill
+      : size === "sm"
+        ? Radius.md
+        : size === "lg"
+          ? Radius.xl
+          : Radius.lg;
     switch (size) {
       case "sm":
         return {

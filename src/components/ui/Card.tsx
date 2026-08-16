@@ -1,13 +1,13 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
-import { AnimatedPressable } from './AnimatedPressable';
-import { GlassSurface } from './GlassSurface';
-import { Colors, Hairline, Motion, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
+import React from "react";
+import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { GlassSurface } from "./GlassSurface";
+import { Colors, Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
 
 interface CardBaseProps {
   children: React.ReactNode;
-  variant?: 'elevated' | 'glass' | 'outline';
+  variant?: "elevated" | "glass" | "outline";
   style?: StyleProp<ViewStyle>;
   padding?: number;
   borderRadius?: number;
@@ -23,7 +23,7 @@ export type CardProps = CardBaseProps &
 export const Card: React.FC<CardProps> = ({
   children,
   onPress,
-  variant = 'elevated',
+  variant = "elevated",
   style,
   padding = Spacing.lg,
   borderRadius = Radius.xl,
@@ -34,22 +34,24 @@ export const Card: React.FC<CardProps> = ({
 
   const getVariantStyle = () => {
     switch (variant) {
-      case 'elevated':
+      case "elevated":
         return {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          backgroundColor: isDark
+            ? Colors.surfaceRaisedDark
+            : Colors.surfaceRaisedLight,
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: Hairline.width,
         };
-      case 'glass':
+      case "glass":
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: Hairline.width,
         };
-      case 'outline':
+      case "outline":
       default:
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
           borderColor: isDark ? Colors.borderDark : Colors.borderLight,
           borderWidth: Hairline.width,
         };
@@ -64,7 +66,7 @@ export const Card: React.FC<CardProps> = ({
   ];
   const content = (
     <>
-      {variant === 'glass' ? (
+      {variant === "glass" ? (
         <GlassSurface
           pointerEvents="none"
           borderRadius={borderRadius}
@@ -82,7 +84,9 @@ export const Card: React.FC<CardProps> = ({
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
-        android_ripple={{ color: isDark ? Colors.rippleDark : Colors.rippleLight }}
+        android_ripple={{
+          color: isDark ? Colors.rippleDark : Colors.rippleLight,
+        }}
         scaleTo={Motion.cardPressScale}
         style={containerStyles}
       >
@@ -96,6 +100,6 @@ export const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

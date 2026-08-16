@@ -1,10 +1,14 @@
-import type { VoiceSnapshot } from './stateMachine';
+import type { VoiceSnapshot } from "./stateMachine";
 
 export class TranscriptReconciler {
   private readonly deltas = new Map<string, string>();
 
-  delta(snapshot: VoiceSnapshot, itemId: string, delta: string): Partial<VoiceSnapshot> {
-    const next = (this.deltas.get(itemId) ?? '') + delta;
+  delta(
+    snapshot: VoiceSnapshot,
+    itemId: string,
+    delta: string,
+  ): Partial<VoiceSnapshot> {
+    const next = (this.deltas.get(itemId) ?? "") + delta;
     this.deltas.set(itemId, next);
     return {
       activeItemId: itemId,

@@ -1,7 +1,7 @@
 import type {
   CaptureCommitsRepository,
   LegacySharedCaptureAsset,
-} from '@/db/repositories/captureCommitsRepository';
+} from "@/db/repositories/captureCommitsRepository";
 
 export interface CaptureAssetAuthorityMigrationResult {
   examined: number;
@@ -11,16 +11,21 @@ export interface CaptureAssetAuthorityMigrationResult {
 
 type CaptureAssetAuthorityRepository = Pick<
   CaptureCommitsRepository,
-  'listLegacySharedImageAssets' | 'replaceImageAssetRef'
+  "listLegacySharedImageAssets" | "replaceImageAssetRef"
 >;
 
 export class CaptureAssetAuthorityMigrator {
   constructor(
     private readonly repository: CaptureAssetAuthorityRepository,
-    private readonly adoptIntoHostStorage: (assetRef: string, captureId: string) => Promise<string>,
+    private readonly adoptIntoHostStorage: (
+      assetRef: string,
+      captureId: string,
+    ) => Promise<string>,
   ) {}
 
-  async migrateBatch(limit = 16): Promise<CaptureAssetAuthorityMigrationResult> {
+  async migrateBatch(
+    limit = 16,
+  ): Promise<CaptureAssetAuthorityMigrationResult> {
     const candidates = await this.repository.listLegacySharedImageAssets(limit);
     const result: CaptureAssetAuthorityMigrationResult = {
       examined: candidates.length,
@@ -40,10 +45,17 @@ export class CaptureAssetAuthorityMigrator {
   }
 
   private async migrate(candidate: LegacySharedCaptureAsset): Promise<void> {
-    const adoptedRef = await this.adoptIntoHostStorage(candidate.assetRef, candidate.captureId);
+    const adoptedRef = await this.adoptIntoHostStorage(
+      candidate.assetRef,
+      candidate.captureId,
+    );
     if (!adoptedRef || adoptedRef === candidate.assetRef) {
-      throw new Error('Capture asset did not move into host-private storage.');
+      throw new Error("Capture asset did not move into host-private storage.");
     }
-    await this.repository.replaceImageAssetRef(candidate.taskId, candidate.assetRef, adoptedRef);
+    await this.repository.replaceImageAssetRef(
+      candidate.taskId,
+      candidate.assetRef,
+      adoptedRef,
+    );
   }
 }

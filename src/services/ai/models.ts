@@ -1,15 +1,18 @@
 import {
   capabilitiesFromOpenRouterMetadata,
   type OpenRouterModelMetadata,
-} from './inference/capabilities';
-import type { ModelCapabilities, ModelCompatibilityClass } from './inference/types';
+} from "./inference/capabilities";
+import type {
+  ModelCapabilities,
+  ModelCompatibilityClass,
+} from "./inference/types";
 
 /** Stable OpenRouter model id used when the user has not selected another model. */
-export const DEFAULT_OPENROUTER_MODEL_ID = 'deepseek/deepseek-v4-flash';
+export const DEFAULT_OPENROUTER_MODEL_ID = "deepseek/deepseek-v4-flash";
 /** Backwards-readable alias for callers that refer to the default as a model constant. */
 export const DEFAULT_OPENROUTER_MODEL = DEFAULT_OPENROUTER_MODEL_ID;
 
-export type AIModelAvailability = 'available' | 'unavailable';
+export type AIModelAvailability = "available" | "unavailable";
 
 export interface AIModel {
   id: string;
@@ -30,22 +33,29 @@ export interface OpenRouterModelsResponse {
 
 function formatProviderName(providerId: string): string {
   const brandedNames: Record<string, string> = {
-    anthropic: 'Anthropic',
-    google: 'Google',
-    meta: 'Meta',
-    'meta-llama': 'Meta Llama',
-    openai: 'OpenAI',
+    anthropic: "Anthropic",
+    google: "Google",
+    meta: "Meta",
+    "meta-llama": "Meta Llama",
+    openai: "OpenAI",
   };
 
   if (brandedNames[providerId]) return brandedNames[providerId];
 
-  return providerId.split(/[-_]/g).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  return providerId
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function supportsTextChat(model: OpenRouterModelPayload): boolean {
   const inputModalities = model.architecture?.input_modalities;
   const outputModalities = model.architecture?.output_modalities;
-  return (!inputModalities || inputModalities.includes('text')) && (!outputModalities || outputModalities.includes('text'));
+  return (
+    (!inputModalities || inputModalities.includes("text")) &&
+    (!outputModalities || outputModalities.includes("text"))
+  );
 }
 
 function isExpired(expirationDate?: string | null): boolean {
@@ -54,23 +64,26 @@ function isExpired(expirationDate?: string | null): boolean {
   return Number.isFinite(expirationTime) && expirationTime <= Date.now();
 }
 
-export function normalizeOpenRouterModels(payload: OpenRouterModelsResponse): AIModel[] {
+export function normalizeOpenRouterModels(
+  payload: OpenRouterModelsResponse,
+): AIModel[] {
   return (payload.data ?? [])
     .filter((model): model is OpenRouterModelPayload & { id: string } =>
-      Boolean(model.id && supportsTextChat(model))
+      Boolean(model.id && supportsTextChat(model)),
     )
     .map((model) => {
-      const providerId = model.id.split('/')[0] || 'OpenRouter';
+      const providerId = model.id.split("/")[0] || "OpenRouter";
       const capabilities = capabilitiesFromOpenRouterMetadata(model);
       return {
         id: model.id,
         name: model.name?.trim() || model.id,
         provider: formatProviderName(providerId),
-        description: model.description?.trim() || 'OpenAI-compatible text model',
+        description:
+          model.description?.trim() || "OpenAI-compatible text model",
         contextLength: model.context_length ?? capabilities.contextLength,
         availability: (isExpired(model.expiration_date)
-          ? 'unavailable'
-          : 'available') as AIModelAvailability,
+          ? "unavailable"
+          : "available") as AIModelAvailability,
         capabilities,
         compatibility: capabilities.compatibility,
       };
@@ -78,8 +91,8 @@ export function normalizeOpenRouterModels(payload: OpenRouterModelsResponse): AI
     .sort((left, right) =>
       left.availability === right.availability
         ? left.name.localeCompare(right.name)
-        : left.availability === 'available'
+        : left.availability === "available"
           ? -1
-          : 1
+          : 1,
     );
 }

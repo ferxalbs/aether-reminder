@@ -1,7 +1,7 @@
-import type { AppMetaRepository } from '@/db/repositories/appMetaRepository';
-import type { TasksRepository } from '@/db/repositories/tasksRepository';
-import type { Task } from '@/domain/entities';
-import type { RecoveryPlan } from '@/domain/recovery';
+import type { AppMetaRepository } from "@/db/repositories/appMetaRepository";
+import type { TasksRepository } from "@/db/repositories/tasksRepository";
+import type { Task } from "@/domain/entities";
+import type { RecoveryPlan } from "@/domain/recovery";
 import {
   ATTENTION_POLICY,
   AttentionPlanner,
@@ -9,19 +9,23 @@ import {
   type AttentionFocusIntent,
   type AttentionPlan,
   type AttentionTemporalFacts,
-} from '@/domain/attentionPlanner';
+} from "@/domain/attentionPlanner";
 import {
   addLocalCalendarDays,
   getDeviceTimeZone,
   getLocalDateString,
   getLocalTimeString,
   getZonedDateTimeStrings,
-} from '@/temporal/localCalendar';
-import { isValidLocalDate, isValidLocalTime, localDateTimeInZoneToDate } from '@/temporal/resolve';
-import type { NudgeService } from './nudgeService';
-import type { ReliabilityDiagnosticsService } from '@/services/reliability/reliabilityDiagnostics';
+} from "@/temporal/localCalendar";
+import {
+  isValidLocalDate,
+  isValidLocalTime,
+  localDateTimeInZoneToDate,
+} from "@/temporal/resolve";
+import type { NudgeService } from "./nudgeService";
+import type { ReliabilityDiagnosticsService } from "@/services/reliability/reliabilityDiagnostics";
 
-export const ATTENTION_FOCUS_META_KEY = 'attention.focus';
+export const ATTENTION_FOCUS_META_KEY = "attention.focus";
 export const ATTENTION_CANDIDATE_LIMIT = ATTENTION_POLICY.candidateLimit;
 
 export interface AttentionPlanOptions {
@@ -36,15 +40,15 @@ function parseFocus(value: string | null): AttentionFocusIntent | null {
   try {
     const parsed = JSON.parse(value) as Record<string, unknown>;
     if (
-      typeof parsed.taskId === 'string'
-      && parsed.taskId.length > 0
-      && typeof parsed.createdAt === 'string'
-      && parsed.source === 'manual'
+      typeof parsed.taskId === "string" &&
+      parsed.taskId.length > 0 &&
+      typeof parsed.createdAt === "string" &&
+      parsed.source === "manual"
     ) {
       return {
         taskId: parsed.taskId,
         createdAt: parsed.createdAt,
-        source: 'manual',
+        source: "manual",
       };
     }
   } catch {
@@ -53,39 +57,53 @@ function parseFocus(value: string | null): AttentionFocusIntent | null {
   return null;
 }
 
-function timezoneFor(task: Task, deviceTimezone: string | undefined): string | null {
-  return task.dueSemantics === 'fixed'
-    ? task.dueTimezone ?? deviceTimezone ?? null
-    : deviceTimezone ?? null;
+function timezoneFor(
+  task: Task,
+  deviceTimezone: string | undefined,
+): string | null {
+  return task.dueSemantics === "fixed"
+    ? (task.dueTimezone ?? deviceTimezone ?? null)
+    : (deviceTimezone ?? null);
 }
 
-function localParts(now: Date, timezone: string | null): { date: string; time: string } {
+function localParts(
+  now: Date,
+  timezone: string | null,
+): { date: string; time: string } {
   return timezone
     ? getZonedDateTimeStrings(now, timezone)
     : { date: getLocalDateString(now), time: getLocalTimeString(now) };
 }
 
-function localInstant(date: string, time: string, timezone: string | null): Date {
+function localInstant(
+  date: string,
+  time: string,
+  timezone: string | null,
+): Date {
   if (timezone) return localDateTimeInZoneToDate(date, time, timezone);
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
   return new Date(year, month - 1, day, hour, minute, 0, 0);
 }
 
 function dayDifference(from: string, to: string): number | null {
   if (!isValidLocalDate(from) || !isValidLocalDate(to)) return null;
-  const [fromYear, fromMonth, fromDay] = from.split('-').map(Number);
-  const [toYear, toMonth, toDay] = to.split('-').map(Number);
+  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
+  const [toYear, toMonth, toDay] = to.split("-").map(Number);
   return Math.round(
-    (Date.UTC(toYear, toMonth - 1, toDay) - Date.UTC(fromYear, fromMonth - 1, fromDay))
-    / 86_400_000,
+    (Date.UTC(toYear, toMonth - 1, toDay) -
+      Date.UTC(fromYear, fromMonth - 1, fromDay)) /
+      86_400_000,
   );
 }
 
-function nextDateBoundary(localDate: string, timezone: string | null): number | null {
+function nextDateBoundary(
+  localDate: string,
+  timezone: string | null,
+): number | null {
   const tomorrow = addLocalCalendarDays(localDate, 1);
   try {
-    return localInstant(tomorrow, '00:00', timezone).getTime();
+    return localInstant(tomorrow, "00:00", timezone).getTime();
   } catch {
     return null;
   }
@@ -98,16 +116,17 @@ function dateOnlyTemporal(
   const daysUntilDue = dayDifference(localDate, dueDate);
   const isToday = dueDate === localDate;
   return {
-    status: 'date_only',
+    status: "date_only",
     dueAtMs: null,
     relevantDueDate: dueDate,
     isToday,
     isDueNow: false,
     minutesUntilDue: null,
     daysUntilDue,
-    isInNearFuture: daysUntilDue !== null
-      && daysUntilDue > 0
-      && daysUntilDue <= ATTENTION_POLICY.futureWindowDays,
+    isInNearFuture:
+      daysUntilDue !== null &&
+      daysUntilDue > 0 &&
+      daysUntilDue <= ATTENTION_POLICY.futureWindowDays,
     nextMeaningfulAtMs: null,
   };
 }
@@ -120,7 +139,7 @@ function buildTemporalFacts(
 ): AttentionTemporalFacts {
   if (!task.dueDate || !isValidLocalDate(task.dueDate)) {
     return {
-      status: 'undated',
+      status: "undated",
       dueAtMs: null,
       relevantDueDate: null,
       isToday: false,
@@ -142,17 +161,20 @@ function buildTemporalFacts(
     const minutesUntilDue = (dueAt.getTime() - now.getTime()) / 60_000;
     const daysUntilDue = dayDifference(localDate, task.dueDate);
     const isToday = task.dueDate === localDate;
-    const isInNearFuture = daysUntilDue !== null
-      && daysUntilDue > 0
-      && daysUntilDue <= ATTENTION_POLICY.futureWindowDays;
-    const imminentBoundary = dueAt.getTime() - ATTENTION_POLICY.imminentWindowMinutes * 60_000;
-    const nextMeaningfulAtMs = now.getTime() < imminentBoundary
-      ? imminentBoundary
-      : now.getTime() < dueAt.getTime()
-        ? dueAt.getTime()
-        : null;
+    const isInNearFuture =
+      daysUntilDue !== null &&
+      daysUntilDue > 0 &&
+      daysUntilDue <= ATTENTION_POLICY.futureWindowDays;
+    const imminentBoundary =
+      dueAt.getTime() - ATTENTION_POLICY.imminentWindowMinutes * 60_000;
+    const nextMeaningfulAtMs =
+      now.getTime() < imminentBoundary
+        ? imminentBoundary
+        : now.getTime() < dueAt.getTime()
+          ? dueAt.getTime()
+          : null;
     return {
-      status: 'timed',
+      status: "timed",
       dueAtMs: dueAt.getTime(),
       relevantDueDate: task.dueDate,
       isToday,
@@ -174,7 +196,7 @@ function buildCandidate(
   localDate: string,
   deviceTimezone: string | undefined,
   focus: AttentionFocusIntent | null,
-  nudgeState: AttentionCandidateFacts['adaptiveNudge'],
+  nudgeState: AttentionCandidateFacts["adaptiveNudge"],
   recoveryTaskIds: ReadonlySet<string>,
 ): AttentionCandidateFacts {
   return {
@@ -213,24 +235,32 @@ export class AttentionService {
   async getFocus(): Promise<AttentionFocusIntent | null> {
     const focus = parseFocus(await this.appMeta.get(ATTENTION_FOCUS_META_KEY));
     if (!focus) {
-      await this.appMeta.delete(ATTENTION_FOCUS_META_KEY).catch(() => undefined);
+      await this.appMeta
+        .delete(ATTENTION_FOCUS_META_KEY)
+        .catch(() => undefined);
       return null;
     }
     const task = await this.tasks.getById(focus.taskId);
     if (!task || task.completed || task.deletedAt) {
-      await this.appMeta.delete(ATTENTION_FOCUS_META_KEY).catch(() => undefined);
+      await this.appMeta
+        .delete(ATTENTION_FOCUS_META_KEY)
+        .catch(() => undefined);
       return null;
     }
     return focus;
   }
 
-  async focusNow(taskId: string, now = new Date()): Promise<AttentionFocusIntent> {
+  async focusNow(
+    taskId: string,
+    now = new Date(),
+  ): Promise<AttentionFocusIntent> {
     const task = await this.tasks.getById(taskId);
-    if (!task || task.completed || task.deletedAt) throw new Error('Task is not available for focus.');
+    if (!task || task.completed || task.deletedAt)
+      throw new Error("Task is not available for focus.");
     const focus: AttentionFocusIntent = {
       taskId,
       createdAt: now.toISOString(),
-      source: 'manual',
+      source: "manual",
     };
     await this.appMeta.set(ATTENTION_FOCUS_META_KEY, JSON.stringify(focus));
     return focus;
@@ -252,8 +282,14 @@ export class AttentionService {
 
     const [windowTasks, focusedTask] = await Promise.all([
       this.tasks.listAttentionCandidates({
-        fromDate: addLocalCalendarDays(currentLocal.date, -ATTENTION_POLICY.candidateLookbackDays),
-        throughDate: addLocalCalendarDays(currentLocal.date, ATTENTION_POLICY.futureWindowDays),
+        fromDate: addLocalCalendarDays(
+          currentLocal.date,
+          -ATTENTION_POLICY.candidateLookbackDays,
+        ),
+        throughDate: addLocalCalendarDays(
+          currentLocal.date,
+          ATTENTION_POLICY.futureWindowDays,
+        ),
         explicitTaskIds: focus ? [focus.taskId] : [],
         limit: ATTENTION_CANDIDATE_LIMIT,
       }),
@@ -265,28 +301,35 @@ export class AttentionService {
     const candidates = dedupeTasks([
       ...windowTasks,
       ...(focusedTask ? [focusedTask] : []),
-    ]).map((task) => buildCandidate(
-      task,
-      now,
-      currentLocal.date,
-      deviceTimezone,
-      focus,
-      nudgeSignals.get(task.id) ?? 'no_nudge',
-      recoveryTaskIds,
-    ));
+    ]).map((task) =>
+      buildCandidate(
+        task,
+        now,
+        currentLocal.date,
+        deviceTimezone,
+        focus,
+        nudgeSignals.get(task.id) ?? "no_nudge",
+        recoveryTaskIds,
+      ),
+    );
 
     return AttentionPlanner.plan({
       candidates,
       recoveryState: {
         proposalCount: options.recoveryPlan?.proposals.length ?? 0,
-        taskIds: options.recoveryPlan?.proposals.map((proposal) => proposal.taskId) ?? [],
+        taskIds:
+          options.recoveryPlan?.proposals.map((proposal) => proposal.taskId) ??
+          [],
       },
       reliabilityState,
       explicitFocus: focus,
       temporalContext: {
         now,
         localDate: currentLocal.date,
-        nextDateBoundaryAtMs: nextDateBoundary(currentLocal.date, deviceTimezone ?? null),
+        nextDateBoundaryAtMs: nextDateBoundary(
+          currentLocal.date,
+          deviceTimezone ?? null,
+        ),
       },
       previousPlan: options.previousPlan,
       suppressedTaskIds: options.suppressedTaskIds,

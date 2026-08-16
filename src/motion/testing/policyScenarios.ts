@@ -1,7 +1,23 @@
-import { MOTION_DOWNGRADE_WINDOWS, MOTION_RECOVERY_WINDOWS } from '../core/thresholds';
-import { createGovernorState, reduceMotionState, type GovernorEvent, type GovernorState } from '../core/policy';
-import type { MotionAccessibilityState, NativeMotionCapabilities, NativeMotionSnapshot } from '../core/types';
-import { accessibilityFixture, capabilitiesFixture, snapshotFixture } from './fixtures';
+import {
+  MOTION_DOWNGRADE_WINDOWS,
+  MOTION_RECOVERY_WINDOWS,
+} from "../core/thresholds";
+import {
+  createGovernorState,
+  reduceMotionState,
+  type GovernorEvent,
+  type GovernorState,
+} from "../core/policy";
+import type {
+  MotionAccessibilityState,
+  NativeMotionCapabilities,
+  NativeMotionSnapshot,
+} from "../core/types";
+import {
+  accessibilityFixture,
+  capabilitiesFixture,
+  snapshotFixture,
+} from "./fixtures";
 
 export function runScenario(
   events: GovernorEvent[],
@@ -38,7 +54,7 @@ export function applySnapshots(
 ): GovernorState {
   return snapshots.reduce(
     (current, snapshot) =>
-      reduceMotionState(current, { type: 'snapshot', snapshot, accessibility }),
+      reduceMotionState(current, { type: "snapshot", snapshot, accessibility }),
     state,
   );
 }

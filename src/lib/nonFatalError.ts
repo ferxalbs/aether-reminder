@@ -5,14 +5,15 @@ const SECRET_PATTERNS = [
 ];
 
 export function sanitizeErrorForLogging(error: unknown): string {
-  const raw = error instanceof Error
-    ? `${error.name}: ${error.message}`
-    : typeof error === 'string'
-    ? error
-    : 'Unknown error';
+  const raw =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : typeof error === "string"
+        ? error
+        : "Unknown error";
 
   return SECRET_PATTERNS.reduce(
-    (message, pattern) => message.replace(pattern, '[redacted]'),
+    (message, pattern) => message.replace(pattern, "[redacted]"),
     raw,
   ).slice(0, 240);
 }

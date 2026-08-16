@@ -1,15 +1,14 @@
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { BottomSheet } from "@expo/ui/community/bottom-sheet";
 import {
-  Platform,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from 'react-native';
-import { BottomSheet } from '@expo/ui/community/bottom-sheet';
-import { Colors, ControlTokens, getMinimumTouchTarget, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from './Typography';
+  Colors,
+  ControlTokens,
+  getMinimumTouchTarget,
+  Spacing,
+} from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Typography } from "./Typography";
 
 export interface SheetProps {
   visible: boolean;
@@ -28,7 +27,7 @@ export interface SheetProps {
   testID?: string;
 }
 
-const DEFAULT_SNAP_POINTS: (string | number)[] = ['90%'];
+const DEFAULT_SNAP_POINTS: (string | number)[] = ["90%"];
 
 export const Sheet: React.FC<SheetProps> = ({
   visible,
@@ -47,7 +46,7 @@ export const Sheet: React.FC<SheetProps> = ({
   testID,
 }) => {
   const isDark = useIsDark();
-  const dialogLabel = accessibilityLabel ?? title ?? 'Sheet';
+  const dialogLabel = accessibilityLabel ?? title ?? "Sheet";
 
   const handleDismiss = useCallback(() => {
     if (dismissible) {
@@ -87,7 +86,11 @@ export const Sheet: React.FC<SheetProps> = ({
               {subtitle ? (
                 <Typography
                   variant="caption"
-                  color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+                  color={
+                    isDark
+                      ? Colors.secondaryTextDark
+                      : Colors.secondaryTextLight
+                  }
                 >
                   {subtitle}
                 </Typography>
@@ -131,8 +134,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: ControlTokens.sheetContentGap,
     paddingHorizontal: ControlTokens.sheetHorizontalPadding,
     paddingTop: Spacing.xs,
@@ -143,8 +146,8 @@ const styles = StyleSheet.create({
     gap: ControlTokens.fieldLabelGap,
   },
   headerAction: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     flex: 1,

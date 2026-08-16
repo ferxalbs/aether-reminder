@@ -1,9 +1,8 @@
-import { getDatabaseErrorMessage } from '@/db/errors';
-import { reportNonFatalError } from './nonFatalError';
+import { getDatabaseErrorMessage } from "@/db/errors";
+import { reportNonFatalError } from "./nonFatalError";
 
 export type TaskMutationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; message: string };
+  { ok: true; value: T } | { ok: false; message: string };
 
 /**
  * Converts a local task mutation failure into safe UI feedback and a

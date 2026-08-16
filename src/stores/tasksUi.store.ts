@@ -3,8 +3,8 @@
  * NOT a mirror of SQLite — holds only the current query result for Home
  * (and small helpers). Mutations go through domain services, not raw SQL.
  */
-import { create } from 'zustand';
-import { getDatabaseErrorMessage, initializeDatabase } from '@/db';
+import { create } from "zustand";
+import { getDatabaseErrorMessage, initializeDatabase } from "@/db";
 import type {
   CreateTaskInput,
   RecurrenceRule,
@@ -13,30 +13,34 @@ import type {
   TaskListItem,
   TaskPriority,
   UpdateTaskInput,
-} from '@/domain/entities';
-import { toTaskListItem } from '@/domain/entities';
-import { getAetherCore, type AetherCore } from '@/core';
-import type { TaskEditorRecurrenceDraft } from '@/core/commands';
-import { getLocalDateString } from '@/temporal/localCalendar';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import type { ActionReceipt } from '@/domain/receipts';
-import type { AttentionPlan } from '@/domain/attentionPlanner';
+} from "@/domain/entities";
+import { toTaskListItem } from "@/domain/entities";
+import { getAetherCore, type AetherCore } from "@/core";
+import type { TaskEditorRecurrenceDraft } from "@/core/commands";
+import { getLocalDateString } from "@/temporal/localCalendar";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import type { ActionReceipt } from "@/domain/receipts";
+import type { AttentionPlan } from "@/domain/attentionPlanner";
 import {
   RECOVERY_UNDO_KIND,
   type RecoveryApplyResult,
   type RecoveryApplySelection,
   type RecoveryPlan,
-} from '@/domain/recovery';
-import { getTaskUndoAction, getTaskUndoRestoreFields, getTaskUndoTaskId } from './taskUndo';
+} from "@/domain/recovery";
+import {
+  getTaskUndoAction,
+  getTaskUndoRestoreFields,
+  getTaskUndoTaskId,
+} from "./taskUndo";
 import {
   createCaptureEnvelope,
   createCaptureOrchestrator,
   parseLocalReminderInput,
   type CaptureIngress,
-} from '@/services/capture';
+} from "@/services/capture";
 
-type TasksUiStatus = 'idle' | 'loading' | 'ready' | 'error';
-type RecoveryUiStatus = 'idle' | 'loading' | 'ready' | 'applying' | 'error';
+type TasksUiStatus = "idle" | "loading" | "ready" | "error";
+type RecoveryUiStatus = "idle" | "loading" | "ready" | "applying" | "error";
 
 export interface TaskEditorCreateInput {
   title: string;
@@ -45,8 +49,8 @@ export interface TaskEditorCreateInput {
   dueDate: string;
   dueTime?: string | null;
   dueTimezone?: string | null;
-  dueSemantics?: CreateTaskInput['dueSemantics'];
-  source?: CreateTaskInput['source'];
+  dueSemantics?: CreateTaskInput["dueSemantics"];
+  source?: CreateTaskInput["source"];
   recurrence: TaskEditorRecurrenceDraft;
 }
 
@@ -89,18 +93,21 @@ export interface TasksUiState {
     dueDate?: string | null;
     dueTime?: string | null;
     dueTimezone?: string | null;
-    dueSemantics?: CreateTaskInput['dueSemantics'];
-    source?: CreateTaskInput['source'];
+    dueSemantics?: CreateTaskInput["dueSemantics"];
+    source?: CreateTaskInput["source"];
   }) => Promise<Task>;
   captureText: (
     text: string,
-    ingress?: Extract<CaptureIngress, 'in_app' | 'voice'>,
+    ingress?: Extract<CaptureIngress, "in_app" | "voice">,
     options?: { defaultDueDate?: string },
   ) => Promise<Task>;
   createTaskWithRecurrence: (input: TaskEditorCreateInput) => Promise<Task>;
   saveTaskEditor: (
     id: string,
-    input: { task: UpdateTaskInput; recurrence: TaskEditorRecurrenceDraft | null },
+    input: {
+      task: UpdateTaskInput;
+      recurrence: TaskEditorRecurrenceDraft | null;
+    },
   ) => Promise<Task>;
   createTasksBatch: (
     inputs: {
@@ -108,11 +115,13 @@ export interface TasksUiState {
       notes?: string;
       priority?: TaskPriority;
       dueDate?: string;
-      source?: CreateTaskInput['source'];
-    }[]
+      source?: CreateTaskInput["source"];
+    }[],
   ) => Promise<void>;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
-  applyRecovery: (selections: readonly RecoveryApplySelection[]) => Promise<RecoveryApplyResult>;
+  applyRecovery: (
+    selections: readonly RecoveryApplySelection[],
+  ) => Promise<RecoveryApplyResult>;
   setAdaptiveNudgesEnabled: (enabled: boolean) => Promise<void>;
   resetAdaptiveNudgeLearning: () => Promise<void>;
   focusNow: (taskId: string) => Promise<void>;
@@ -131,7 +140,7 @@ async function core(): Promise<AetherCore> {
 }
 
 export const useTasksUiStore = create<TasksUiState>((set, get) => ({
-  status: 'idle',
+  status: "idle",
   error: null,
   todayTasks: [],
   upcomingTasks: [],
@@ -140,137 +149,145 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   undoReceipt: null,
   undoError: null,
   undoing: false,
-  recoveryStatus: 'idle',
+  recoveryStatus: "idle",
   recoveryPlan: null,
   recoveryError: null,
   attentionPlan: null,
-  attentionStatus: 'idle',
+  attentionStatus: "idle",
   attentionError: null,
   attentionSuppressedTaskIds: [],
 
   refreshToday: async () => {
-    set({ status: 'loading', error: null });
+    set({ status: "loading", error: null });
     try {
-      const tasks = await (await core()).services.tasks.listTasks({
-        scope: 'today',
+      const tasks = await (
+        await core()
+      ).services.tasks.listTasks({
+        scope: "today",
         localDate: getLocalDateString(),
       });
       set({
         todayTasks: tasks.map(toTaskListItem),
-        status: 'ready',
+        status: "ready",
         error: null,
       });
     } catch (error) {
-      reportNonFatalError('tasks-refresh-today', error);
+      reportNonFatalError("tasks-refresh-today", error);
       set({
-        status: 'error',
+        status: "error",
         error: getDatabaseErrorMessage(error),
       });
     }
   },
 
   refreshUpcoming: async () => {
-    set({ status: 'loading', error: null });
+    set({ status: "loading", error: null });
     try {
-      const tasks = await (await core()).services.tasks.listTasks({
-        scope: 'upcoming',
+      const tasks = await (
+        await core()
+      ).services.tasks.listTasks({
+        scope: "upcoming",
         localDate: getLocalDateString(),
         limit: 100,
       });
       set({
         upcomingTasks: tasks.map(toTaskListItem),
-        status: 'ready',
+        status: "ready",
         error: null,
       });
     } catch (error) {
-      reportNonFatalError('tasks-refresh-upcoming', error);
+      reportNonFatalError("tasks-refresh-upcoming", error);
       set({
-        status: 'error',
+        status: "error",
         error: getDatabaseErrorMessage(error),
       });
     }
   },
 
   refreshAll: async () => {
-    set({ status: 'loading', error: null });
+    set({ status: "loading", error: null });
     try {
-      const tasks = await (await core()).services.tasks.listTasks({ scope: 'all' });
+      const tasks = await (
+        await core()
+      ).services.tasks.listTasks({ scope: "all" });
       set({
         allTasks: tasks.map(toTaskListItem),
-        status: 'ready',
+        status: "ready",
         error: null,
       });
     } catch (error) {
-      reportNonFatalError('tasks-refresh-all', error);
+      reportNonFatalError("tasks-refresh-all", error);
       set({
-        status: 'error',
+        status: "error",
         error: getDatabaseErrorMessage(error),
       });
     }
   },
 
   refreshRecovery: async () => {
-    set({ recoveryStatus: 'loading', recoveryError: null });
+    set({ recoveryStatus: "loading", recoveryError: null });
     try {
       const plan = await (await core()).services.recovery.generatePlan();
       set({
         recoveryPlan: plan.proposals.length > 0 ? plan : null,
-        recoveryStatus: 'ready',
+        recoveryStatus: "ready",
         recoveryError: null,
       });
       await get().refreshAttention();
     } catch (error) {
-      reportNonFatalError('recovery-refresh', error);
+      reportNonFatalError("recovery-refresh", error);
       set({
-        recoveryStatus: 'error',
+        recoveryStatus: "error",
         recoveryError: getDatabaseErrorMessage(error),
       });
     }
   },
 
   refreshAttention: async () => {
-    set({ attentionStatus: 'loading', attentionError: null });
+    set({ attentionStatus: "loading", attentionError: null });
     try {
-      const plan = await (await core()).services.attention.plan({
+      const plan = await (
+        await core()
+      ).services.attention.plan({
         recoveryPlan: get().recoveryPlan,
         previousPlan: get().attentionPlan,
         suppressedTaskIds: get().attentionSuppressedTaskIds,
       });
       set({
         attentionPlan: plan,
-        attentionStatus: 'ready',
+        attentionStatus: "ready",
         attentionError: null,
       });
     } catch (error) {
-      reportNonFatalError('attention-refresh', error);
+      reportNonFatalError("attention-refresh", error);
       set({
-        attentionStatus: 'error',
+        attentionStatus: "error",
         attentionError: getDatabaseErrorMessage(error),
       });
     }
   },
 
   refreshAllSurfaces: async () => {
-    set({ status: 'loading', error: null });
+    set({ status: "loading", error: null });
     try {
       const tasks = (await core()).services.tasks;
       const localDate = getLocalDateString();
       const [today, upcoming, all] = await Promise.all([
-        tasks.listTasks({ scope: 'today', localDate }),
-        tasks.listTasks({ scope: 'upcoming', localDate, limit: 100 }),
-        tasks.listTasks({ scope: 'all' }),
+        tasks.listTasks({ scope: "today", localDate }),
+        tasks.listTasks({ scope: "upcoming", localDate, limit: 100 }),
+        tasks.listTasks({ scope: "all" }),
       ]);
       set({
         todayTasks: today.map(toTaskListItem),
         upcomingTasks: upcoming.map(toTaskListItem),
         allTasks: all.map(toTaskListItem),
-        status: 'ready',
+        status: "ready",
         error: null,
       });
     } catch (error) {
-      reportNonFatalError('tasks-refresh-surfaces', error);
+      reportNonFatalError("tasks-refresh-surfaces", error);
       set({
-        status: 'error',
+        status: "error",
         error: getDatabaseErrorMessage(error),
       });
     }
@@ -280,7 +297,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     try {
       return await (await core()).services.recurrence.getRuleForTask(taskId);
     } catch (error) {
-      reportNonFatalError('task-recurrence-read', error);
+      reportNonFatalError("task-recurrence-read", error);
       throw error;
     }
   },
@@ -289,7 +306,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     try {
       return await (await core()).services.tasks.listCaptureSources(taskId);
     } catch (error) {
-      reportNonFatalError('capture-sources-load', error);
+      reportNonFatalError("capture-sources-load", error);
       return [];
     }
   },
@@ -298,20 +315,23 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     let value: Task;
     let receipt: ActionReceipt;
     try {
-      ({ value, receipt } = await (await core()).commands.createTask({
+      ({ value, receipt } = await (
+        await core()
+      ).commands.createTask({
         title: input.title,
         notes: input.notes ?? null,
-        priority: input.priority ?? 'medium',
-        dueDate: input.dueDate === undefined ? getLocalDateString() : input.dueDate,
+        priority: input.priority ?? "medium",
+        dueDate:
+          input.dueDate === undefined ? getLocalDateString() : input.dueDate,
         dueTime: input.dueTime ?? null,
         dueTimezone: input.dueTimezone ?? null,
-        dueSemantics: input.dueSemantics ?? 'floating',
-        source: input.source ?? 'manual',
-        creationOrigin: input.source ?? 'manual',
+        dueSemantics: input.dueSemantics ?? "floating",
+        source: input.source ?? "manual",
+        creationOrigin: input.source ?? "manual",
       }));
     } catch (error) {
-      reportNonFatalError('task-create', error);
-      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      reportNonFatalError("task-create", error);
+      set({ status: "error", error: getDatabaseErrorMessage(error) });
       throw error;
     }
     set({ undoReceipt: receipt, undoError: null });
@@ -321,53 +341,60 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     return value;
   },
 
-  captureText: async (text, ingress = 'in_app', options) => {
+  captureText: async (text, ingress = "in_app", options) => {
     const envelope = createCaptureEnvelope({
       ingress,
-      parts: [{ kind: 'text', text }],
+      parts: [{ kind: "text", text }],
     });
     try {
       const orchestrator = await createCaptureOrchestrator({
         invalidations: {
           async taskCommitted() {
             set((state) => ({ revision: state.revision + 1 }));
-            await Promise.all([get().refreshAllSurfaces(), get().refreshAttention()]);
+            await Promise.all([
+              get().refreshAllSurfaces(),
+              get().refreshAttention(),
+            ]);
           },
         },
       });
       const draft = orchestrator.prepare(envelope);
-      if (options?.defaultDueDate
-        && !parseLocalReminderInput(text).signals.includes('date')) {
+      if (
+        options?.defaultDueDate &&
+        !parseLocalReminderInput(text).signals.includes("date")
+      ) {
         draft.dueDate = options.defaultDueDate;
       }
       const result = await orchestrator.commit(envelope, draft);
       if (result.receipt) set({ undoReceipt: result.receipt, undoError: null });
       return result.task;
     } catch (error) {
-      reportNonFatalError('capture-text', error);
-      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      reportNonFatalError("capture-text", error);
+      set({ status: "error", error: getDatabaseErrorMessage(error) });
       throw error;
     }
   },
 
   createTaskWithRecurrence: async (input) => {
     try {
-      const result = await (await core()).commands.createRecurringTask(
+      const result = await (
+        await core()
+      ).commands.createRecurringTask(
         {
           task: {
             title: input.title,
             notes: input.notes ?? null,
-            priority: input.priority ?? 'medium',
+            priority: input.priority ?? "medium",
             dueDate: input.dueDate,
             dueTime: input.dueTime ?? null,
             dueTimezone: input.dueTimezone ?? null,
-            dueSemantics: input.dueSemantics ?? 'floating',
-            source: input.source ?? 'manual',
-            creationOrigin: input.source ?? 'manual',
+            dueSemantics: input.dueSemantics ?? "floating",
+            source: input.source ?? "manual",
+            creationOrigin: input.source ?? "manual",
           },
           recurrence: input.recurrence,
         },
-        input.source ?? 'manual',
+        input.source ?? "manual",
       );
       set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
@@ -375,23 +402,25 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await get().refreshRecovery();
       return result.task;
     } catch (error) {
-      reportNonFatalError('task-create-recurring', error);
-      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      reportNonFatalError("task-create-recurring", error);
+      set({ status: "error", error: getDatabaseErrorMessage(error) });
       throw error;
     }
   },
 
   saveTaskEditor: async (id, input) => {
     try {
-      const result = await (await core()).commands.saveTaskEditorState(id, input);
+      const result = await (
+        await core()
+      ).commands.saveTaskEditorState(id, input);
       set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
       await get().refreshAllSurfaces();
       await get().refreshRecovery();
       return result.value;
     } catch (error) {
-      reportNonFatalError('task-editor-save', error);
-      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      reportNonFatalError("task-editor-save", error);
+      set({ status: "error", error: getDatabaseErrorMessage(error) });
       throw error;
     }
   },
@@ -400,10 +429,12 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     let value: Task;
     let receipt: ActionReceipt;
     try {
-      ({ value, receipt } = await (await core()).commands.updateTask(id, input));
+      ({ value, receipt } = await (
+        await core()
+      ).commands.updateTask(id, input));
     } catch (error) {
-      reportNonFatalError('task-update', error);
-      set({ status: 'error', error: getDatabaseErrorMessage(error) });
+      reportNonFatalError("task-update", error);
+      set({ status: "error", error: getDatabaseErrorMessage(error) });
       throw error;
     }
     set({ undoReceipt: receipt, undoError: null });
@@ -415,19 +446,21 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
 
   applyRecovery: async (selections) => {
     const plan = get().recoveryPlan;
-    if (!plan) throw new Error('Recovery plan is no longer available.');
-    set({ recoveryStatus: 'applying', recoveryError: null });
+    if (!plan) throw new Error("Recovery plan is no longer available.");
+    set({ recoveryStatus: "applying", recoveryError: null });
     try {
-      const result = await (await core()).commands.applyRecovery(plan.id, selections);
+      const result = await (
+        await core()
+      ).commands.applyRecovery(plan.id, selections);
       if (result.receipt) set({ undoReceipt: result.receipt, undoError: null });
       set((s) => ({ revision: s.revision + 1 }));
       await get().refreshAllSurfaces();
       await get().refreshRecovery();
       return result;
     } catch (error) {
-      reportNonFatalError('recovery-apply', error);
+      reportNonFatalError("recovery-apply", error);
       set({
-        recoveryStatus: 'error',
+        recoveryStatus: "error",
         recoveryError: getDatabaseErrorMessage(error),
       });
       throw error;
@@ -439,7 +472,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await (await core()).commands.setAdaptiveNudgesEnabled(enabled);
       await get().refreshAttention();
     } catch (error) {
-      reportNonFatalError('adaptive-nudges-setting', error);
+      reportNonFatalError("adaptive-nudges-setting", error);
       set({ error: getDatabaseErrorMessage(error) });
       throw error;
     }
@@ -450,7 +483,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await (await core()).commands.resetAdaptiveNudgeLearning();
       await get().refreshAttention();
     } catch (error) {
-      reportNonFatalError('adaptive-nudges-reset', error);
+      reportNonFatalError("adaptive-nudges-reset", error);
       set({ error: getDatabaseErrorMessage(error) });
       throw error;
     }
@@ -460,12 +493,17 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     try {
       await (await core()).commands.focusNow(taskId);
       set((s) => ({
-        attentionSuppressedTaskIds: s.attentionSuppressedTaskIds.filter((id) => id !== taskId),
+        attentionSuppressedTaskIds: s.attentionSuppressedTaskIds.filter(
+          (id) => id !== taskId,
+        ),
       }));
       await get().refreshAttention();
     } catch (error) {
-      reportNonFatalError('attention-focus-now', error);
-      set({ attentionStatus: 'error', attentionError: getDatabaseErrorMessage(error) });
+      reportNonFatalError("attention-focus-now", error);
+      set({
+        attentionStatus: "error",
+        attentionError: getDatabaseErrorMessage(error),
+      });
       throw error;
     }
   },
@@ -475,8 +513,11 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await (await core()).commands.clearFocus();
       await get().refreshAttention();
     } catch (error) {
-      reportNonFatalError('attention-clear-focus', error);
-      set({ attentionStatus: 'error', attentionError: getDatabaseErrorMessage(error) });
+      reportNonFatalError("attention-clear-focus", error);
+      set({
+        attentionStatus: "error",
+        attentionError: getDatabaseErrorMessage(error),
+      });
       throw error;
     }
   },
@@ -499,17 +540,17 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         const result = await commands.createTask({
           title: input.title,
           notes: input.notes ?? null,
-          priority: input.priority ?? 'medium',
+          priority: input.priority ?? "medium",
           dueDate: input.dueDate ?? getLocalDateString(),
-          source: input.source ?? 'voice',
-          creationOrigin: input.source ?? 'voice',
+          source: input.source ?? "voice",
+          creationOrigin: input.source ?? "voice",
         });
         lastReceipt = result.receipt;
       }
     } catch (error) {
-      reportNonFatalError('tasks-create-batch', error);
+      reportNonFatalError("tasks-create-batch", error);
       set({
-        status: 'error',
+        status: "error",
         error: getDatabaseErrorMessage(error),
         ...(lastReceipt ? { undoReceipt: lastReceipt, undoError: null } : {}),
       });
@@ -525,16 +566,18 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     const previousTodayTasks = get().todayTasks;
     const previousUpcomingTasks = get().upcomingTasks;
     const previousAllTasks = get().allTasks;
-    let target = [...previousTodayTasks, ...previousUpcomingTasks, ...previousAllTasks].find(
-      (t) => t.id === id,
-    );
+    let target = [
+      ...previousTodayTasks,
+      ...previousUpcomingTasks,
+      ...previousAllTasks,
+    ].find((t) => t.id === id);
     if (!target) {
       try {
         const task = await (await core()).services.tasks.getTask(id);
         if (!task) return;
         target = toTaskListItem(task);
       } catch (error) {
-        reportNonFatalError('task-toggle-read', error);
+        reportNonFatalError("task-toggle-read", error);
         return;
       }
     }
@@ -542,13 +585,13 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     const nextCompleted = !target.completed;
     set((s) => ({
       todayTasks: s.todayTasks.map((t) =>
-        t.id === id ? { ...t, completed: nextCompleted } : t
+        t.id === id ? { ...t, completed: nextCompleted } : t,
       ),
       upcomingTasks: s.upcomingTasks.map((t) =>
-        t.id === id ? { ...t, completed: nextCompleted } : t
+        t.id === id ? { ...t, completed: nextCompleted } : t,
       ),
       allTasks: s.allTasks.map((t) =>
-        t.id === id ? { ...t, completed: nextCompleted } : t
+        t.id === id ? { ...t, completed: nextCompleted } : t,
       ),
       revision: s.revision + 1,
     }));
@@ -560,9 +603,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         : await commands.reopenTask(id);
       set({ undoReceipt: result.receipt, undoError: null });
     } catch (error) {
-      reportNonFatalError('task-toggle', error);
+      reportNonFatalError("task-toggle", error);
       set({
-        status: 'error',
+        status: "error",
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
         allTasks: previousAllTasks,
@@ -589,9 +632,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       const result = await (await core()).commands.deleteTask(id);
       set({ undoReceipt: result.receipt, undoError: null });
     } catch (error) {
-      reportNonFatalError('task-delete', error);
+      reportNonFatalError("task-delete", error);
       set({
-        status: 'error',
+        status: "error",
         todayTasks: previousTodayTasks,
         upcomingTasks: previousUpcomingTasks,
         allTasks: previousAllTasks,
@@ -606,7 +649,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   setUndoReceipt: (receipt) => {
     // Read receipts must not erase a still-actionable task undo. Any write
     // receipt replaces it, even when this UI cannot execute that undo kind.
-    if (receipt.risk === 'READ') return;
+    if (receipt.risk === "READ") return;
     set({ undoReceipt: receipt, undoError: null, undoing: false });
   },
 
@@ -626,9 +669,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         await get().refreshAllSurfaces();
         await get().refreshRecovery();
       } catch (error) {
-        reportNonFatalError('recovery-undo', error);
+        reportNonFatalError("recovery-undo", error);
         set({
-          status: 'error',
+          status: "error",
           undoing: false,
           undoError: getDatabaseErrorMessage(error),
           error: getDatabaseErrorMessage(error),
@@ -646,22 +689,22 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     try {
       const commands = (await core()).commands;
       switch (action) {
-        case 'task.soft_delete':
-          await commands.deleteTask(taskId, 'undo');
+        case "task.soft_delete":
+          await commands.deleteTask(taskId, "undo");
           break;
-        case 'task.reopen':
-          await commands.reopenTask(taskId, 'undo');
+        case "task.reopen":
+          await commands.reopenTask(taskId, "undo");
           break;
-        case 'task.complete':
-          await commands.completeTask(taskId, 'undo');
+        case "task.complete":
+          await commands.completeTask(taskId, "undo");
           break;
-        case 'task.restore_soft_deleted':
-          await commands.restoreTask(taskId, 'undo');
+        case "task.restore_soft_deleted":
+          await commands.restoreTask(taskId, "undo");
           break;
-        case 'task.restore_fields': {
+        case "task.restore_fields": {
           const fields = getTaskUndoRestoreFields(receipt);
-          if (!fields) throw new Error('Task update undo payload is invalid.');
-          await commands.updateTask(taskId, fields, 'undo');
+          if (!fields) throw new Error("Task update undo payload is invalid.");
+          await commands.updateTask(taskId, fields, "undo");
           break;
         }
       }
@@ -675,9 +718,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       await get().refreshAllSurfaces();
       await get().refreshRecovery();
     } catch (error) {
-      reportNonFatalError('task-undo', error);
+      reportNonFatalError("task-undo", error);
       set({
-        status: 'error',
+        status: "error",
         undoing: false,
         undoError: getDatabaseErrorMessage(error),
         error: getDatabaseErrorMessage(error),
@@ -685,6 +728,6 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
     }
   },
 
-  dismissUndo: () => set({ undoReceipt: null, undoError: null, undoing: false }),
-
+  dismissUndo: () =>
+    set({ undoReceipt: null, undoError: null, undoing: false }),
 }));

@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Colors } from '@/theme/tokens';
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Colors } from "@/theme/tokens";
 
 interface AetherMarkProps {
   size?: number;
@@ -9,7 +9,10 @@ interface AetherMarkProps {
 }
 
 /** Crisp, minimal monochrome AETHER mark with zero decorative shadow or glow. */
-export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false }) => {
+export const AetherMark: React.FC<AetherMarkProps> = ({
+  size = 32,
+  muted = false,
+}) => {
   const isDark = useIsDark();
   const ringColor = muted
     ? isDark
@@ -69,8 +72,8 @@ export const AetherMark: React.FC<AetherMarkProps> = ({ size = 32, muted = false
 
 const styles = StyleSheet.create({
   mark: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
   },
   innerRing: {
@@ -78,8 +81,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   core: {
-    position: 'absolute',
-    right: '20%',
-    bottom: '20%',
+    position: "absolute",
+    right: "20%",
+    bottom: "20%",
   },
 });

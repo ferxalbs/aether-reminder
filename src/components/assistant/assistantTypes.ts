@@ -1,11 +1,17 @@
-import type { ActionReceipt } from '@/domain/receipts';
-import type { AgentSemanticState, ContextSnapshot, EntityReference, PendingAction } from '@/services/agent';
+import type { ActionReceipt } from "@/domain/receipts";
+import type {
+  AgentSemanticState,
+  ContextSnapshot,
+  EntityReference,
+  PendingAction,
+} from "@/services/agent";
 
-export type AssistantSurfaceState = 'closed' | 'opening' | 'compact' | 'medium' | 'full' | 'closing';
+export type AssistantSurfaceState =
+  "closed" | "opening" | "compact" | "medium" | "full" | "closing";
 
 export interface AssistantMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   text: string;
 }
 

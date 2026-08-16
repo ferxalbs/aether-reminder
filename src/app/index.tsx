@@ -1,51 +1,61 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useReducedMotion,
+} from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useRouter } from "expo-router";
+import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Typography } from "@/components/ui/Typography";
+import { TaskList } from "@/components/ui/TaskList";
+import { TaskEditorSheet } from "@/components/ui/TaskEditorSheet";
+import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
+import { RecoverySheet } from "@/components/ui/RecoverySurface";
+import { AttentionSurface } from "@/components/ui/AttentionSurface";
+import { AetherComposer } from "@/components/ui/AetherComposer";
+import { useTasksUiStore } from "@/stores/tasksUi.store";
+import { getLocalDateString } from "@/temporal/localCalendar";
 import {
-  StatusBar,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from '@/components/ui/Typography';
-import { TaskList } from '@/components/ui/TaskList';
-import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
-import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { RecoverySheet } from '@/components/ui/RecoverySurface';
-import { AttentionSurface } from '@/components/ui/AttentionSurface';
-import { AetherComposer } from '@/components/ui/AetherComposer';
-import { useTasksUiStore } from '@/stores/tasksUi.store';
-import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
-import { getDatabaseErrorMessage } from '@/db';
-import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import { useMotionPreset } from '@/motion';
-import { canUndoTaskReceipt } from '@/stores/taskUndo';
-import type { TaskListItem } from '@/domain/entities';
+  useAssistantActions,
+  useAssistantSurface,
+  useAssistantActive,
+} from "@/components/assistant/AssistantHost";
+import { getDatabaseErrorMessage } from "@/db";
+import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { useMotionPreset } from "@/motion";
+import { canUndoTaskReceipt } from "@/stores/taskUndo";
+import type { TaskListItem } from "@/domain/entities";
 
 export default function TodayScreen() {
   const isDark = useIsDark();
   const reduceMotion = useReducedMotion();
-  const enterPreset = useMotionPreset('navigation.push');
-  const titleEntering = reduceMotion || enterPreset.mode === 'none'
-    ? undefined
-    : FadeInDown.duration(enterPreset.durationMs).springify().damping(enterPreset.damping).stiffness(enterPreset.stiffness);
-  const fadeEntering = reduceMotion || enterPreset.mode === 'none'
-    ? undefined
-    : FadeIn.duration(Math.min(enterPreset.durationMs, 180)).delay(80);
+  const enterPreset = useMotionPreset("navigation.push");
+  const titleEntering =
+    reduceMotion || enterPreset.mode === "none"
+      ? undefined
+      : FadeInDown.duration(enterPreset.durationMs)
+          .springify()
+          .damping(enterPreset.damping)
+          .stiffness(enterPreset.stiffness);
+  const fadeEntering =
+    reduceMotion || enterPreset.mode === "none"
+      ? undefined
+      : FadeIn.duration(Math.min(enterPreset.durationMs, 180)).delay(80);
   const { width } = useWindowDimensions();
   const horizontalPadding =
-    width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
+    width >= 980
+      ? LayoutTokens.screenHorizontalWide
+      : LayoutTokens.screenHorizontal;
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
   const assistantActive = useAssistantActive();
   const router = useRouter();
 
-  const [quickTitle, setQuickTitle] = useState('');
+  const [quickTitle, setQuickTitle] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
@@ -81,10 +91,16 @@ export default function TodayScreen() {
 
   useEffect(() => {
     if (!attentionPlan?.nextRefreshAt) return undefined;
-    const delay = Math.max(250, new Date(attentionPlan.nextRefreshAt).getTime() - Date.now());
-    const timer = setTimeout(() => {
-      void useTasksUiStore.getState().refreshAttention();
-    }, Math.min(delay, 24 * 60 * 60 * 1000));
+    const delay = Math.max(
+      250,
+      new Date(attentionPlan.nextRefreshAt).getTime() - Date.now(),
+    );
+    const timer = setTimeout(
+      () => {
+        void useTasksUiStore.getState().refreshAttention();
+      },
+      Math.min(delay, 24 * 60 * 60 * 1000),
+    );
     return () => clearTimeout(timer);
   }, [attentionPlan?.nextRefreshAt]);
 
@@ -100,37 +116,40 @@ export default function TodayScreen() {
 
   const assistantContext = useMemo(
     () => ({
-      surface: 'home',
+      surface: "home",
       selectedDate: getLocalDateString(),
       visibleTaskIds: todayTasks.map((task) => task.id),
-      locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      invocationSource: 'app' as const,
+      locale: Intl.DateTimeFormat().resolvedOptions().locale || "en-US",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      invocationSource: "app" as const,
     }),
     [todayTasks],
   );
   useAssistantSurface(assistantContext);
 
-  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
-    const rawTitle = (titleToSave ?? quickTitle).trim();
-    if (!rawTitle || quickSaving) return;
+  const handleQuickCapture = useCallback(
+    async (titleToSave?: string) => {
+      const rawTitle = (titleToSave ?? quickTitle).trim();
+      if (!rawTitle || quickSaving) return;
 
-    setQuickSaving(true);
-    setQuickError(null);
-    try {
-      await captureText(rawTitle);
-      setQuickTitle('');
-    } catch (errorValue) {
-      setQuickError(getDatabaseErrorMessage(errorValue));
-    } finally {
-      setQuickSaving(false);
-    }
-  }, [captureText, quickSaving, quickTitle]);
+      setQuickSaving(true);
+      setQuickError(null);
+      try {
+        await captureText(rawTitle);
+        setQuickTitle("");
+      } catch (errorValue) {
+        setQuickError(getDatabaseErrorMessage(errorValue));
+      } finally {
+        setQuickSaving(false);
+      }
+    },
+    [captureText, quickSaving, quickTitle],
+  );
 
   const handleToggle = useCallback(
     (id: string) => {
       void toggleTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('home-task-toggle', errorValue);
+        reportNonFatalError("home-task-toggle", errorValue);
       });
     },
     [toggleTask],
@@ -139,7 +158,7 @@ export default function TodayScreen() {
   const handleDelete = useCallback(
     (id: string) => {
       void softDeleteTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('home-task-delete', errorValue);
+        reportNonFatalError("home-task-delete", errorValue);
       });
     },
     [softDeleteTask],
@@ -148,7 +167,7 @@ export default function TodayScreen() {
   const handleAttentionFocus = useCallback(
     (taskId: string) => {
       void focusNow(taskId).catch((errorValue: unknown) => {
-        reportNonFatalError('home-attention-focus', errorValue);
+        reportNonFatalError("home-attention-focus", errorValue);
       });
     },
     [focusNow],
@@ -157,7 +176,7 @@ export default function TodayScreen() {
   const handleAttentionNotNow = useCallback(
     (taskId: string) => {
       void rejectAttention(taskId).catch((errorValue: unknown) => {
-        reportNonFatalError('home-attention-not-now', errorValue);
+        reportNonFatalError("home-attention-not-now", errorValue);
       });
     },
     [rejectAttention],
@@ -180,13 +199,17 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView
-      edges={['top', 'left', 'right']}
+      edges={["top", "left", "right"]}
       style={[
         styles.safeArea,
-        { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
+        {
+          backgroundColor: isDark
+            ? Colors.backgroundDark
+            : Colors.backgroundLight,
+        },
       ]}
     >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -214,10 +237,7 @@ export default function TodayScreen() {
           ]}
           header={
             <View style={styles.headerContent}>
-              <Animated.View
-                entering={titleEntering}
-                style={styles.titleBlock}
-              >
+              <Animated.View entering={titleEntering} style={styles.titleBlock}>
                 <Typography variant="display">Today</Typography>
               </Animated.View>
 
@@ -229,11 +249,20 @@ export default function TodayScreen() {
                 onNotNow={handleAttentionNotNow}
                 onReviewRecovery={() => void openRecovery()}
                 onSwitchFocus={handleAttentionFocus}
-                onOpenSettings={() => router.push('/settings')}
+                onOpenSettings={() => router.push("/settings")}
               />
 
               {error || quickError || attentionError ? (
-                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                <View
+                  style={[
+                    styles.errorToast,
+                    {
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
+                    },
+                  ]}
+                >
                   <Typography
                     variant="caption"
                     color={isDark ? Colors.white : Colors.black}
@@ -246,12 +275,16 @@ export default function TodayScreen() {
             </View>
           }
           empty={
-            status === 'ready' && !attentionPlan ? (
-              <Animated.View
-                entering={fadeEntering}
-                style={styles.emptyState}
-              >
-                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
+            status === "ready" && !attentionPlan ? (
+              <Animated.View entering={fadeEntering} style={styles.emptyState}>
+                <Typography
+                  variant="body"
+                  color={
+                    isDark
+                      ? Colors.secondaryTextDark
+                      : Colors.secondaryTextLight
+                  }
+                >
                   Your day is clear.
                 </Typography>
               </Animated.View>
@@ -271,26 +304,26 @@ export default function TodayScreen() {
             entering={titleEntering}
           >
             <AetherComposer
-            value={quickTitle}
-            onChangeText={(val) => {
-              setQuickTitle(val);
-              if (quickError) setQuickError(null);
-            }}
-            onSubmit={(text) => void handleQuickCapture(text)}
-            onVoicePress={startVoiceAssistant}
-            onAddDate={() => openEditor()}
-            onSetPriority={() => openEditor()}
-            onAddLocation={() => openEditor()}
-            onAttachFile={() => openEditor()}
-          />
-        </Animated.View>
+              value={quickTitle}
+              onChangeText={(val) => {
+                setQuickTitle(val);
+                if (quickError) setQuickError(null);
+              }}
+              onSubmit={(text) => void handleQuickCapture(text)}
+              onVoicePress={startVoiceAssistant}
+              onAddDate={() => openEditor()}
+              onSetPriority={() => openEditor()}
+              onAddLocation={() => openEditor()}
+              onAttachFile={() => openEditor()}
+            />
+          </Animated.View>
         )}
       </View>
 
       <TaskEditorSheet
         visible={editorVisible}
         onClose={closeEditor}
-        mode={editingTask ? 'edit' : 'create'}
+        mode={editingTask ? "edit" : "create"}
         task={editingTask}
       />
       {recoveryPlan ? (
@@ -312,12 +345,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
     paddingTop: Spacing.md,
   },
   headerContent: {
-    width: '100%',
+    width: "100%",
   },
   titleBlock: {
     paddingTop: Spacing.lg,
@@ -328,17 +361,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   emptyState: {
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.lg,
   },
   composerWrap: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 90,
   },
 });

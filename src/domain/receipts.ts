@@ -3,17 +3,17 @@
  * Produced by domain services / tools — never invented by the model.
  */
 
-import { createId } from '@/lib/id';
+import { createId } from "@/lib/id";
 
-export type ReceiptEntityType = 'task' | 'reminder' | 'navigation';
+export type ReceiptEntityType = "task" | "reminder" | "navigation";
 
 export type ReceiptRisk =
-  | 'READ'
-  | 'REVERSIBLE_WRITE'
-  | 'SENSITIVE_WRITE'
-  | 'DESTRUCTIVE'
-  | 'EXTERNAL'
-  | 'BULK_MUTATION';
+  | "READ"
+  | "REVERSIBLE_WRITE"
+  | "SENSITIVE_WRITE"
+  | "DESTRUCTIVE"
+  | "EXTERNAL"
+  | "BULK_MUTATION";
 
 export interface ActionReceipt {
   id: string;
@@ -32,7 +32,10 @@ export interface ActionReceipt {
 }
 
 export function createReceipt(
-  partial: Omit<ActionReceipt, 'id' | 'createdAt'> & { id?: string; createdAt?: string }
+  partial: Omit<ActionReceipt, "id" | "createdAt"> & {
+    id?: string;
+    createdAt?: string;
+  },
 ): ActionReceipt {
   return {
     id: partial.id ?? createId(),

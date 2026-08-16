@@ -9,7 +9,7 @@ export type {
   ModelCompatibilityClass,
   ModelEvent,
   InferenceErrorShape,
-} from './types';
+} from "./types";
 
 export {
   capabilitiesFromOpenRouterMetadata,
@@ -17,7 +17,11 @@ export {
   hasOpenRouterParameter,
   unknownModelCapabilities,
   canRunAsAgent,
-} from './capabilities';
+} from "./capabilities";
 
-export { OpenRouterProvider, openRouterInferenceProvider, __clearOpenRouterModelsCache } from './openRouterProvider';
-export { parseSseStream } from './sse';
+export {
+  OpenRouterProvider,
+  openRouterInferenceProvider,
+  __clearOpenRouterModelsCache,
+} from "./openRouterProvider";
+export { parseSseStream } from "./sse";

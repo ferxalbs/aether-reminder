@@ -1,36 +1,48 @@
-import { useCallback, useMemo, useState } from 'react';
-import { StatusBar, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search } from 'lucide-react-native';
-import { Colors, LayoutTokens, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Typography } from '@/components/ui/Typography';
-import { TaskList } from '@/components/ui/TaskList';
-import { TaskUndoBanner } from '@/components/ui/TaskUndoBanner';
-import { TaskEditorSheet } from '@/components/ui/TaskEditorSheet';
-import { AetherComposer } from '@/components/ui/AetherComposer';
-import type { TaskListItem } from '@/domain/entities';
-import { useTasksUiStore } from '@/stores/tasksUi.store';
-import { getLocalDateString } from '@/temporal/localCalendar';
-import { useAssistantActions, useAssistantSurface, useAssistantActive } from '@/components/assistant/AssistantHost';
-import { getDatabaseErrorMessage } from '@/db';
-import { useBottomChromeGeometry } from '@/theme/useBottomChromeGeometry';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import { canUndoTaskReceipt } from '@/stores/taskUndo';
+import { useCallback, useMemo, useState } from "react";
+import {
+  StatusBar,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { useFocusEffect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Search } from "lucide-react-native";
+import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Typography } from "@/components/ui/Typography";
+import { TaskList } from "@/components/ui/TaskList";
+import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
+import { TaskEditorSheet } from "@/components/ui/TaskEditorSheet";
+import { AetherComposer } from "@/components/ui/AetherComposer";
+import type { TaskListItem } from "@/domain/entities";
+import { useTasksUiStore } from "@/stores/tasksUi.store";
+import { getLocalDateString } from "@/temporal/localCalendar";
+import {
+  useAssistantActions,
+  useAssistantSurface,
+  useAssistantActive,
+} from "@/components/assistant/AssistantHost";
+import { getDatabaseErrorMessage } from "@/db";
+import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { canUndoTaskReceipt } from "@/stores/taskUndo";
 
-type TaskFilter = 'all' | 'active' | 'completed';
+type TaskFilter = "all" | "active" | "completed";
 
 export default function RemindersScreen() {
   const isDark = useIsDark();
   const { width } = useWindowDimensions();
   const horizontalPadding =
-    width >= 980 ? LayoutTokens.screenHorizontalWide : LayoutTokens.screenHorizontal;
-  const [filter] = useState<TaskFilter>('all');
-  const [query, setQuery] = useState('');
+    width >= 980
+      ? LayoutTokens.screenHorizontalWide
+      : LayoutTokens.screenHorizontal;
+  const [filter] = useState<TaskFilter>("all");
+  const [query, setQuery] = useState("");
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
-  const [quickTitle, setQuickTitle] = useState('');
+  const [quickTitle, setQuickTitle] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
@@ -49,40 +61,49 @@ export default function RemindersScreen() {
   const undoLastMutation = useTasksUiStore((state) => state.undoLastMutation);
   const dismissUndo = useTasksUiStore((state) => state.dismissUndo);
 
-  const handleQuickCapture = useCallback(async (titleToSave?: string) => {
-    const rawTitle = (titleToSave ?? quickTitle).trim();
-    if (!rawTitle || quickSaving) return;
+  const handleQuickCapture = useCallback(
+    async (titleToSave?: string) => {
+      const rawTitle = (titleToSave ?? quickTitle).trim();
+      if (!rawTitle || quickSaving) return;
 
-    setQuickSaving(true);
-    try {
-      await captureText(rawTitle);
-      setQuickTitle('');
-    } catch (errorValue) {
-      reportNonFatalError('reminders-quick-capture', getDatabaseErrorMessage(errorValue));
-    } finally {
-      setQuickSaving(false);
-    }
-  }, [captureText, quickSaving, quickTitle]);
+      setQuickSaving(true);
+      try {
+        await captureText(rawTitle);
+        setQuickTitle("");
+      } catch (errorValue) {
+        reportNonFatalError(
+          "reminders-quick-capture",
+          getDatabaseErrorMessage(errorValue),
+        );
+      } finally {
+        setQuickSaving(false);
+      }
+    },
+    [captureText, quickSaving, quickTitle],
+  );
 
   const visibleTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     return allTasks.filter((task) => {
       const matchesFilter =
-        filter === 'all' || (filter === 'active' ? !task.completed : task.completed);
+        filter === "all" ||
+        (filter === "active" ? !task.completed : task.completed);
       if (!matchesFilter) return false;
       if (!normalizedQuery) return true;
-      return `${task.title} ${task.notes ?? ''}`.toLocaleLowerCase().includes(normalizedQuery);
+      return `${task.title} ${task.notes ?? ""}`
+        .toLocaleLowerCase()
+        .includes(normalizedQuery);
     });
   }, [allTasks, filter, query]);
 
   const assistantContext = useMemo(
     () => ({
-      surface: 'all',
+      surface: "all",
       selectedDate: getLocalDateString(),
       visibleTaskIds: visibleTasks.map((task) => task.id),
-      locale: Intl.DateTimeFormat().resolvedOptions().locale || 'en-US',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      invocationSource: 'app' as const,
+      locale: Intl.DateTimeFormat().resolvedOptions().locale || "en-US",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      invocationSource: "app" as const,
     }),
     [visibleTasks],
   );
@@ -97,7 +118,7 @@ export default function RemindersScreen() {
   const handleToggle = useCallback(
     (id: string) => {
       void toggleTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('all-task-toggle', errorValue);
+        reportNonFatalError("all-task-toggle", errorValue);
       });
     },
     [toggleTask],
@@ -106,7 +127,7 @@ export default function RemindersScreen() {
   const handleDelete = useCallback(
     (id: string) => {
       void softDeleteTask(id).catch((errorValue: unknown) => {
-        reportNonFatalError('all-task-delete', errorValue);
+        reportNonFatalError("all-task-delete", errorValue);
       });
     },
     [softDeleteTask],
@@ -124,13 +145,17 @@ export default function RemindersScreen() {
 
   return (
     <SafeAreaView
-      edges={['top', 'left', 'right']}
+      edges={["top", "left", "right"]}
       style={[
         styles.safeArea,
-        { backgroundColor: isDark ? Colors.backgroundDark : Colors.backgroundLight },
+        {
+          backgroundColor: isDark
+            ? Colors.backgroundDark
+            : Colors.backgroundLight,
+        },
       ]}
     >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -165,27 +190,55 @@ export default function RemindersScreen() {
                   style={[
                     styles.searchField,
                     {
-                      borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                      backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+                      borderColor: isDark
+                        ? Colors.borderDark
+                        : Colors.borderLight,
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
                     },
                   ]}
                 >
-                  <Search size={17} color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} strokeWidth={2} />
+                  <Search
+                    size={17}
+                    color={
+                      isDark
+                        ? Colors.secondaryTextDark
+                        : Colors.secondaryTextLight
+                    }
+                    strokeWidth={2}
+                  />
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Search reminders…"
-                    placeholderTextColor={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+                    placeholderTextColor={
+                      isDark
+                        ? Colors.tertiaryTextDark
+                        : Colors.tertiaryTextLight
+                    }
                     returnKeyType="search"
                     clearButtonMode="while-editing"
                     accessibilityLabel="Search all reminders"
-                    style={[styles.searchInput, { color: isDark ? Colors.textDark : Colors.textLight }]}
+                    style={[
+                      styles.searchInput,
+                      { color: isDark ? Colors.textDark : Colors.textLight },
+                    ]}
                   />
                 </View>
               ) : null}
 
               {error ? (
-                <View style={[styles.errorToast, { backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight }]}>
+                <View
+                  style={[
+                    styles.errorToast,
+                    {
+                      backgroundColor: isDark
+                        ? Colors.surfaceRaisedDark
+                        : Colors.surfaceRaisedLight,
+                    },
+                  ]}
+                >
                   <Typography
                     variant="caption"
                     color={isDark ? Colors.white : Colors.black}
@@ -198,10 +251,19 @@ export default function RemindersScreen() {
             </View>
           }
           empty={
-            status !== 'loading' ? (
+            status !== "loading" ? (
               <View style={styles.emptyState}>
-                <Typography variant="body" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}>
-                  {query.trim() ? 'No reminders found.' : 'Your library is empty.'}
+                <Typography
+                  variant="body"
+                  color={
+                    isDark
+                      ? Colors.secondaryTextDark
+                      : Colors.secondaryTextLight
+                  }
+                >
+                  {query.trim()
+                    ? "No reminders found."
+                    : "Your library is empty."}
                 </Typography>
               </View>
             ) : null
@@ -235,7 +297,7 @@ export default function RemindersScreen() {
       <TaskEditorSheet
         visible={editorVisible}
         onClose={closeEditor}
-        mode={editingTask ? 'edit' : 'create'}
+        mode={editingTask ? "edit" : "create"}
         task={editingTask}
       />
     </SafeAreaView>
@@ -250,12 +312,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
     paddingTop: Spacing.lg,
   },
   headerContent: {
-    width: '100%',
+    width: "100%",
   },
   header: {
     paddingTop: Spacing.lg,
@@ -263,8 +325,8 @@ const styles = StyleSheet.create({
   },
   searchField: {
     minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     borderWidth: 1,
     borderRadius: Radius.pill,
@@ -281,17 +343,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   emptyState: {
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.lg,
   },
   composerWrap: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 90,
   },
 });

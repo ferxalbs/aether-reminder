@@ -1,7 +1,13 @@
-import React, { useCallback } from 'react';
-import { FlatList, Platform, type ListRenderItemInfo, type StyleProp, type ViewStyle } from 'react-native';
-import type { TaskListItem } from '@/domain/entities';
-import { TaskCard } from './TaskCard';
+import React, { useCallback } from "react";
+import {
+  FlatList,
+  Platform,
+  type ListRenderItemInfo,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
+import type { TaskListItem } from "@/domain/entities";
+import { TaskCard } from "./TaskCard";
 
 export interface TaskListProps {
   tasks: TaskListItem[];
@@ -26,7 +32,12 @@ export function TaskList({
 }: TaskListProps) {
   const renderTask = useCallback(
     ({ item }: ListRenderItemInfo<TaskListItem>) => (
-      <TaskCard task={item} onToggle={onToggle} onDelete={onDelete} onPress={onPress} />
+      <TaskCard
+        task={item}
+        onToggle={onToggle}
+        onDelete={onDelete}
+        onPress={onPress}
+      />
     ),
     [onDelete, onPress, onToggle],
   );
@@ -40,7 +51,7 @@ export function TaskList({
       initialNumToRender={10}
       maxToRenderPerBatch={10}
       windowSize={7}
-      removeClippedSubviews={Platform.OS === 'android'}
+      removeClippedSubviews={Platform.OS === "android"}
       contentContainerStyle={contentContainerStyle}
       contentInsetAdjustmentBehavior="automatic"
       keyboardDismissMode="on-drag"

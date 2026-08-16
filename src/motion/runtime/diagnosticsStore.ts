@@ -1,5 +1,5 @@
-import type { MotionDiagnostics } from '../core/types';
-import { defaultMotionDiagnostics } from './motionContext';
+import type { MotionDiagnostics } from "../core/types";
+import { defaultMotionDiagnostics } from "./motionContext";
 
 let current = defaultMotionDiagnostics;
 const listeners = new Set<(value: MotionDiagnostics) => void>();

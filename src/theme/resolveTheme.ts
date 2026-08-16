@@ -1,6 +1,6 @@
-import type { ThemePreference } from '@/types';
+import type { ThemePreference } from "@/types";
 
-export type ResolvedTheme = 'light' | 'dark';
+export type ResolvedTheme = "light" | "dark";
 
 /**
  * Resolve user theme preference against the system appearance.
@@ -8,9 +8,9 @@ export type ResolvedTheme = 'light' | 'dark';
  */
 export function resolveTheme(
   preference: ThemePreference,
-  systemScheme: 'light' | 'dark' | null | undefined
+  systemScheme: "light" | "dark" | null | undefined,
 ): ResolvedTheme {
-  if (preference === 'light') return 'light';
-  if (preference === 'dark') return 'dark';
-  return systemScheme === 'light' ? 'light' : 'dark';
+  if (preference === "light") return "light";
+  if (preference === "dark") return "dark";
+  return systemScheme === "light" ? "light" : "dark";
 }

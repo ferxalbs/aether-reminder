@@ -1,9 +1,9 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /** Durable reminder projection and notification-action recovery state. */
 export const migration0007NotificationReliability: Migration = {
   version: 7,
-  name: '0007_notification_reliability',
+  name: "0007_notification_reliability",
   async up(db) {
     await db.execAsync(`
       ALTER TABLE reminders ADD COLUMN projection_state TEXT NOT NULL DEFAULT 'pending'

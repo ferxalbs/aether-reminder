@@ -6,15 +6,15 @@ This is a documentation-only audit of the meaningful reusable UI and system-like
 
 The audit identified 32 meaningful audit units. Some rows intentionally group a shared mechanism used by several closely related components; the counts below are counts of those primary audit units.
 
-| Classification | Count | Result |
-| --- | ---: | --- |
-| N0 | 5 | Native-backed / correct |
-| N1 | 10 | Semantic wrapper over native |
-| N2 | 4 | Generic React Native but acceptable |
-| N3 | 0 | Native migration candidate |
-| N4 | 0 | Strong fake-native / architecture debt |
-| N5 | 12 | Genuinely custom product surface |
-| N6 | 1 | Insufficient evidence; runtime investigation required |
+| Classification | Count | Result                                                |
+| -------------- | ----: | ----------------------------------------------------- |
+| N0             |     5 | Native-backed / correct                               |
+| N1             |    10 | Semantic wrapper over native                          |
+| N2             |     4 | Generic React Native but acceptable                   |
+| N3             |     0 | Native migration candidate                            |
+| N4             |     0 | Strong fake-native / architecture debt                |
+| N5             |    12 | Genuinely custom product surface                      |
+| N6             |     1 | Insufficient evidence; runtime investigation required |
 
 There are no P0 hazards established by static inspection. The highest-value initial migrations (`Sheet`, `Picker`, `ToggleSwitch`, and `ModelCatalogSheet`) have been completed as native-first semantic adapters. All N4 findings are now resolved (count: 0). The remaining open investigation is the N6 runtime seam for keyboard/IME and back handling across floating chrome and sheet surfaces.
 
@@ -85,8 +85,8 @@ All prior N4 findings have been resolved (N4 count: 0). The Settings model catal
 - **Final classification:** N1 — Semantic wrapper over native presentation adapter (`Sheet`)
 - **Product contract:** Open the catalog from Settings, search models/providers, view context lengths and capability status, force-refresh the catalog, select an agent-ready model (`canRunAsAgent`), persist to `useSettingsStore`, and dismiss back directly to the Settings screen.
 - **Architectural comparison:**
-  1. *Candidate A (AETHER Native-Backed `Sheet`) [CHOSEN]:* Backed by `@expo/ui/community/bottom-sheet` (Jetpack Compose Material 3 `ModalBottomSheet` on Android, SwiftUI `sheet` on Apple platforms). Accurately matches the transient in-situ picker semantics of `TaskEditorSheet` and `RecoverySheet` without creating an artificial route identity or refactoring the single `Tabs` root layout into a nested stack.
-  2. *Candidate B (Expo Router `formSheet`) [REJECTED]:* Rejected because the catalog does not have or need route identity, deep-linking, independent navigation history, or nested route stack lifecycle.
+  1. _Candidate A (AETHER Native-Backed `Sheet`) [CHOSEN]:_ Backed by `@expo/ui/community/bottom-sheet` (Jetpack Compose Material 3 `ModalBottomSheet` on Android, SwiftUI `sheet` on Apple platforms). Accurately matches the transient in-situ picker semantics of `TaskEditorSheet` and `RecoverySheet` without creating an artificial route identity or refactoring the single `Tabs` root layout into a nested stack.
+  2. _Candidate B (Expo Router `formSheet`) [REJECTED]:_ Rejected because the catalog does not have or need route identity, deep-linking, independent navigation history, or nested route stack lifecycle.
 - **Implementation:** Created `src/components/ui/ModelCatalogSheet.tsx` which embeds model search, capability filtering, empty/error/loading states, and selection logic inside the native `Sheet` primitive with `snapPoints={['90%']}`. Removed custom React Native `Modal`, custom scrim, fixed 75% height container, and manual close button from `src/app/settings.tsx`.
 
 ## Theme Preference Selector Decision
@@ -96,10 +96,10 @@ All prior N4 findings have been resolved (N4 count: 0). The Settings model catal
 - **Product contract:** The Settings theme selector is a prominent, branded three-mode chooser across `"dark"` (`"OLED Dark"`), `"light"` (`"Light"`), and `"system"` (`"System"`). It provides immediate controlled theme switching and synchronous persistence through `useSettingsStore` without modal, sheet, or popup layers. Visually, it is embedded directly in the OLED Settings card as a full-width capsule (`Radius.pill: 9999`) with high-contrast active pill highlight (`colors.accent` on `#121215` raised surface).
 - **Native candidate considered:** `@expo/ui/community/segmented-control` (Jetpack Compose `SingleChoiceSegmentedButtonRow` on Android and SwiftUI `Picker` with `pickerStyle('segmented')` on Apple).
 - **Why migration is not justified:**
-  1. *Visual & Product Identity Compromise:* Physical Android runtime evidence confirms the selector operates as a hero mode chooser integrated into AETHER's monochrome OLED design language. Expo SDK 57 documentation explicitly documents that for `@expo/ui/community/segmented-control`, `momentary`, `backgroundColor`, `fontStyle`, and `activeFontStyle` props are not supported, and `tintColor` only works on Android while having no effect on iOS. Adopting the native control would force standard platform-default segmented button geometry (Material 3 rounded rectangles or iOS fixed-height gray segmented controls), destroy the high-contrast pitch-black/white capsule treatment, and dilute AETHER's signature "OLED Dark" visual prominence.
-  2. *Bounded Implementation with Zero Platform Lifecycle Debt:* The current component is ~55 lines of controlled React Native code mapping 3 `AnimatedPressable` instances. It owns no custom gesture pan physics, no sliding thumb math/interpolation, no dropdown/rotor menus, no system back handlers, no IME keyboard seams, and no focus lifecycle races.
-  3. *State & Accessibility Simplicity:* Theme state is synchronously read and controlled from `useSettingsStore`. Selection triggers standard AETHER press-scale motion and haptics. Labels are explicit and fully legible.
-  4. *False Economy of Native-First:* Replacing 3 simple pressable buttons with a native platform wrapper would sacrifice core brand identity and visual coherence for negligible architectural simplification.
+  1. _Visual & Product Identity Compromise:_ Physical Android runtime evidence confirms the selector operates as a hero mode chooser integrated into AETHER's monochrome OLED design language. Expo SDK 57 documentation explicitly documents that for `@expo/ui/community/segmented-control`, `momentary`, `backgroundColor`, `fontStyle`, and `activeFontStyle` props are not supported, and `tintColor` only works on Android while having no effect on iOS. Adopting the native control would force standard platform-default segmented button geometry (Material 3 rounded rectangles or iOS fixed-height gray segmented controls), destroy the high-contrast pitch-black/white capsule treatment, and dilute AETHER's signature "OLED Dark" visual prominence.
+  2. _Bounded Implementation with Zero Platform Lifecycle Debt:_ The current component is ~55 lines of controlled React Native code mapping 3 `AnimatedPressable` instances. It owns no custom gesture pan physics, no sliding thumb math/interpolation, no dropdown/rotor menus, no system back handlers, no IME keyboard seams, and no focus lifecycle races.
+  3. _State & Accessibility Simplicity:_ Theme state is synchronously read and controlled from `useSettingsStore`. Selection triggers standard AETHER press-scale motion and haptics. Labels are explicit and fully legible.
+  4. _False Economy of Native-First:_ Replacing 3 simple pressable buttons with a native platform wrapper would sacrifice core brand identity and visual coherence for negligible architectural simplification.
 - **Runtime/visual evidence used:** Physical Android screenshot in OLED dark mode demonstrating full-width capsule geometry, high-contrast monochrome segment fill against `#121215` raised surface, visual grouping with the section header, and clear differentiation from the boolean switches below.
 - **Future reconsideration trigger:** Reconsider only if Expo UI introduces a universal segmented primitive supporting full custom container/segment background tokens, custom pill radii, and cross-platform tinting, or if AETHER adopts platform-standard settings styling across all platforms.
 
@@ -108,10 +108,10 @@ All prior N4 findings have been resolved (N4 count: 0). The Settings model catal
 - **Prior classification:** N4 — Strong fake-native / architecture debt candidate
 - **Final decision:** DELETED — Dead / unconsumed architecture removed
 - **Audit findings:**
-  1. *Zero Active Consumers:* Exhaustive literal and graph search confirmed zero runtime callers, zero route imports, and zero unit tests referencing `AetherContextMenu` or `AetherQuickActionsMenu`.
-  2. *Non-Existent Domain Capabilities:* The scaffolded quick actions included "Add location" and "Attach file", which correspond to no existing product capabilities, domain models, or database schemas. "Add date" and "Set priority" are handled directly by `TaskEditorSheet`.
-  3. *Unused Floating Chrome Scaffold:* In `AetherComposer`, the `[ + ]` button directly opens `TaskEditorSheet` (`openEditor()`), with no popup context menu trigger.
-  4. *Safe Removal:* Deleting `AetherContextMenu.tsx`, `AetherQuickActionsMenu.tsx`, and the now-orphaned `AetherContextSurface.tsx` removed dead fake-native debt without breaking builds, typechecking, or tests.
+  1. _Zero Active Consumers:_ Exhaustive literal and graph search confirmed zero runtime callers, zero route imports, and zero unit tests referencing `AetherContextMenu` or `AetherQuickActionsMenu`.
+  2. _Non-Existent Domain Capabilities:_ The scaffolded quick actions included "Add location" and "Attach file", which correspond to no existing product capabilities, domain models, or database schemas. "Add date" and "Set priority" are handled directly by `TaskEditorSheet`.
+  3. _Unused Floating Chrome Scaffold:_ In `AetherComposer`, the `[ + ]` button directly opens `TaskEditorSheet` (`openEditor()`), with no popup context menu trigger.
+  4. _Safe Removal:_ Deleting `AetherContextMenu.tsx`, `AetherQuickActionsMenu.tsx`, and the now-orphaned `AetherContextSurface.tsx` removed dead fake-native debt without breaking builds, typechecking, or tests.
 
 ## N6 unresolved runtime seams
 

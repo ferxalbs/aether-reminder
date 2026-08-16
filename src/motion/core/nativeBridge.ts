@@ -1,7 +1,7 @@
-import { requireOptionalNativeModule } from 'expo';
-import { MOTION_SNAPSHOT_INTERVAL_MS } from './thresholds';
-import { parseNativeCapabilities, parseNativeSnapshot } from './snapshot';
-import type { NativeMotionCapabilities, NativeMotionSnapshot } from './types';
+import { requireOptionalNativeModule } from "expo";
+import { MOTION_SNAPSHOT_INTERVAL_MS } from "./thresholds";
+import { parseNativeCapabilities, parseNativeSnapshot } from "./snapshot";
+import type { NativeMotionCapabilities, NativeMotionSnapshot } from "./types";
 
 interface NativeMotionModuleShape {
   getCapabilities(): unknown;
@@ -12,7 +12,8 @@ interface NativeMotionModuleShape {
   ): { remove(): void };
 }
 
-const nativeModule = requireOptionalNativeModule<NativeMotionModuleShape>('AetherMotion');
+const nativeModule =
+  requireOptionalNativeModule<NativeMotionModuleShape>("AetherMotion");
 
 export function isNativeMotionAvailable(): boolean {
   return nativeModule != null;
@@ -40,7 +41,7 @@ export function subscribeNativeSnapshots(
   listener: (snapshot: NativeMotionSnapshot) => void,
 ): () => void {
   if (!nativeModule?.addListener) return () => undefined;
-  const subscription = nativeModule.addListener('onMotionSnapshot', (event) => {
+  const subscription = nativeModule.addListener("onMotionSnapshot", (event) => {
     const snapshot = parseNativeSnapshot(event);
     if (snapshot) listener(snapshot);
   });

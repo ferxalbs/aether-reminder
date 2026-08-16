@@ -1,4 +1,4 @@
-const { createRunOncePlugin } = require('expo/config-plugins');
+const { createRunOncePlugin } = require("expo/config-plugins");
 
 function withAetherMotion(config) {
   config.ios = config.ios ?? {};
@@ -10,4 +10,8 @@ function withAetherMotion(config) {
   return config;
 }
 
-module.exports = createRunOncePlugin(withAetherMotion, 'aether-motion', '1.0.0');
+module.exports = createRunOncePlugin(
+  withAetherMotion,
+  "aether-motion",
+  "1.0.0",
+);

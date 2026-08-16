@@ -1,4 +1,4 @@
-import { createId } from '@/lib/id';
+import { createId } from "@/lib/id";
 import {
   applyNudgeEvent,
   createEmptyNudgeProfile,
@@ -6,8 +6,8 @@ import {
   type NudgeEvent,
   type NudgeEventType,
   type NudgeProfile,
-} from '@/domain/nudges';
-import type { SqlDatabase } from '../types';
+} from "@/domain/nudges";
+import type { SqlDatabase } from "../types";
 
 interface NudgeEventRow {
   id: string;
@@ -16,7 +16,7 @@ interface NudgeEventRow {
   nudge_id: string | null;
   occurred_at: string;
   local_weekday: number;
-  time_bucket: NudgeEvent['timeBucket'];
+  time_bucket: NudgeEvent["timeBucket"];
   source: string;
   numeric_value: number | null;
   secondary_numeric_value: number | null;
@@ -93,8 +93,13 @@ export class NudgeEventsRepository {
     return inserted;
   }
 
-  async getLastDeferralForTask(taskId: string): Promise<{ occurredAt: string; nudgeId: string | null } | null> {
-    const row = await this.db.getFirstAsync<{ occurred_at: string; nudge_id: string | null }>(
+  async getLastDeferralForTask(
+    taskId: string,
+  ): Promise<{ occurredAt: string; nudgeId: string | null } | null> {
+    const row = await this.db.getFirstAsync<{
+      occurred_at: string;
+      nudge_id: string | null;
+    }>(
       `SELECT occurred_at, nudge_id FROM nudge_events
        WHERE task_id = ?
          AND event_type IN ('notification_action_snooze', 'notification_action_tomorrow')

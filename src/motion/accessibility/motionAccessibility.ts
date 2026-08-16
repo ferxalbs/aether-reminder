@@ -1,7 +1,7 @@
-import { AccessibilityInfo, Platform } from 'react-native';
-import type { MotionAccessibilityState } from '../core/types';
+import { AccessibilityInfo, Platform } from "react-native";
+import type { MotionAccessibilityState } from "../core/types";
 
-export { applyAccessibilityToBudget } from './motionEffects';
+export { applyAccessibilityToBudget } from "./motionEffects";
 
 const empty: MotionAccessibilityState = {
   reduceMotion: false,
@@ -18,13 +18,14 @@ async function readFlag(reader: () => Promise<boolean>): Promise<boolean> {
 }
 
 export async function readMotionAccessibility(): Promise<MotionAccessibilityState> {
-  const [reduceMotion, reduceTransparency, prefersCrossFade] = await Promise.all([
-    readFlag(() => AccessibilityInfo.isReduceMotionEnabled()),
-    Platform.OS === 'ios'
-      ? readFlag(() => AccessibilityInfo.isReduceTransparencyEnabled())
-      : Promise.resolve(false),
-    readFlag(() => AccessibilityInfo.prefersCrossFadeTransitions()),
-  ]);
+  const [reduceMotion, reduceTransparency, prefersCrossFade] =
+    await Promise.all([
+      readFlag(() => AccessibilityInfo.isReduceMotionEnabled()),
+      Platform.OS === "ios"
+        ? readFlag(() => AccessibilityInfo.isReduceTransparencyEnabled())
+        : Promise.resolve(false),
+      readFlag(() => AccessibilityInfo.prefersCrossFadeTransitions()),
+    ]);
   return { reduceMotion, reduceTransparency, prefersCrossFade };
 }
 
@@ -42,11 +43,14 @@ export function subscribeMotionAccessibility(
     listener(state);
   });
 
-  const reduceMotion = AccessibilityInfo.addEventListener('reduceMotionChanged', (value) => {
-    emit({ reduceMotion: value });
-  });
+  const reduceMotion = AccessibilityInfo.addEventListener(
+    "reduceMotionChanged",
+    (value) => {
+      emit({ reduceMotion: value });
+    },
+  );
   const reduceTransparency = AccessibilityInfo.addEventListener(
-    'reduceTransparencyChanged',
+    "reduceTransparencyChanged",
     (value) => {
       emit({ reduceTransparency: value });
     },
@@ -57,5 +61,3 @@ export function subscribeMotionAccessibility(
     reduceTransparency.remove();
   };
 }
-
-

@@ -1,14 +1,14 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from "bun:test";
 import {
   DevelopmentVoiceDiagnostics,
   type VoiceDiagnosticRecord,
-} from './diagnostics';
+} from "./diagnostics";
 import {
   OpenAIRealtimeWebSocketTransport,
   type OpenAIRealtimeWebSocketTransportOptions,
   type RealtimeWebSocketLike,
-} from './openaiRealtimeWebSocketTransport';
-import { defaultRealtimeTranscriptionConfig } from './types';
+} from "./openaiRealtimeWebSocketTransport";
+import { defaultRealtimeTranscriptionConfig } from "./types";
 
 class FakeWebSocket implements RealtimeWebSocketLike {
   readonly sent: string[] = [];
@@ -54,9 +54,11 @@ interface Harness {
   records: VoiceDiagnosticRecord[];
 }
 
-function harness(options: OpenAIRealtimeWebSocketTransportOptions = {}): Harness {
+function harness(
+  options: OpenAIRealtimeWebSocketTransportOptions = {},
+): Harness {
   const socket = new FakeWebSocket();
-  let url = '';
+  let url = "";
   let protocols: string[] = [];
   const events: { type: string; [key: string]: unknown }[] = [];
   const records: VoiceDiagnosticRecord[] = [];
@@ -74,12 +76,18 @@ function harness(options: OpenAIRealtimeWebSocketTransportOptions = {}): Harness
       return socket;
     },
   });
-  transport.subscribe((event) => events.push(event as { type: string; [key: string]: unknown }));
+  transport.subscribe((event) =>
+    events.push(event as { type: string; [key: string]: unknown }),
+  );
   return {
     transport,
     socket,
-    get url() { return url; },
-    get protocols() { return protocols; },
+    get url() {
+      return url;
+    },
+    get protocols() {
+      return protocols;
+    },
     events,
     records,
   };
@@ -92,57 +100,70 @@ async function tick(): Promise<void> {
 }
 
 async function connectedAndConfigured(h: Harness): Promise<void> {
-  const connecting = h.transport.connect('ephemeral-secret');
+  const connecting = h.transport.connect("ephemeral-secret");
   h.socket.open();
   await connecting;
 
   const configuring = h.transport.configure(defaultRealtimeTranscriptionConfig);
-  h.socket.receive({ type: 'session.created', session: { type: 'transcription' } });
-  h.socket.receive({ type: 'session.updated', session: { type: 'transcription' } });
+  h.socket.receive({
+    type: "session.created",
+    session: { type: "transcription" },
+  });
+  h.socket.receive({
+    type: "session.updated",
+    session: { type: "transcription" },
+  });
   await configuring;
 }
 
 function parsedMessages(h: Harness): Record<string, unknown>[] {
-  return h.socket.sent.map((message) => JSON.parse(message) as Record<string, unknown>);
+  return h.socket.sent.map(
+    (message) => JSON.parse(message) as Record<string, unknown>,
+  );
 }
 
 function pcm(bytes: number[]): ArrayBuffer {
   return new Uint8Array(bytes).buffer;
 }
 
-describe('OpenAI Realtime WebSocket transport', () => {
-  test('uses the ephemeral WebSocket subprotocol and opens the current endpoint', async () => {
+describe("OpenAI Realtime WebSocket transport", () => {
+  test("uses the ephemeral WebSocket subprotocol and opens the current endpoint", async () => {
     const h = harness();
-    const connecting = h.transport.connect('ephemeral-secret');
+    const connecting = h.transport.connect("ephemeral-secret");
     h.socket.open();
     await connecting;
 
-    expect(h.url).toBe('wss://api.openai.com/v1/realtime?intent=transcription');
-    expect(h.url).not.toContain('model=');
-    expect(h.url).not.toContain('gpt-live-transcribe');
-    expect(h.protocols).toEqual(['realtime', 'openai-insecure-api-key.ephemeral-secret']);
-    expect(h.events).toContainEqual({ type: 'connected' });
-    expect(h.records).toContainEqual(expect.objectContaining({
-      stage: 'websocket_open',
-      webSocketState: 'open',
-    }));
+    expect(h.url).toBe("wss://api.openai.com/v1/realtime?intent=transcription");
+    expect(h.url).not.toContain("model=");
+    expect(h.url).not.toContain("gpt-live-transcribe");
+    expect(h.protocols).toEqual([
+      "realtime",
+      "openai-insecure-api-key.ephemeral-secret",
+    ]);
+    expect(h.events).toContainEqual({ type: "connected" });
+    expect(h.records).toContainEqual(
+      expect.objectContaining({
+        stage: "websocket_open",
+        webSocketState: "open",
+      }),
+    );
     h.transport.close();
   });
 
-  test('sends the exact current transcription session configuration', async () => {
+  test("sends the exact current transcription session configuration", async () => {
     const h = harness();
     await connectedAndConfigured(h);
     const [message] = parsedMessages(h);
     expect(message).toEqual({
-      type: 'session.update',
+      type: "session.update",
       session: {
-        type: 'transcription',
+        type: "transcription",
         audio: {
           input: {
-            format: { type: 'audio/pcm', rate: 24000 },
+            format: { type: "audio/pcm", rate: 24000 },
             transcription: {
-              model: 'gpt-live-transcribe',
-              languages: ['en', 'es'],
+              model: "gpt-live-transcribe",
+              languages: ["en", "es"],
               prompt: defaultRealtimeTranscriptionConfig.context.prompt,
             },
             turn_detection: null,
@@ -150,14 +171,16 @@ describe('OpenAI Realtime WebSocket transport', () => {
         },
       },
     });
-    expect(h.records).toContainEqual(expect.objectContaining({
-      stage: 'session_configuration_accepted',
-      sessionConfiguration: 'accepted',
-    }));
+    expect(h.records).toContainEqual(
+      expect.objectContaining({
+        stage: "session_configuration_accepted",
+        sessionConfiguration: "accepted",
+      }),
+    );
     h.transport.close();
   });
 
-  test('rejects append before ready and rejects odd-byte PCM without truncation', async () => {
+  test("rejects append before ready and rejects odd-byte PCM without truncation", async () => {
     const h = harness();
     const beforeReady = (() => {
       try {
@@ -167,7 +190,7 @@ describe('OpenAI Realtime WebSocket transport', () => {
         return error;
       }
     })();
-    expect(beforeReady).toMatchObject({ code: 'REALTIME_PROTOCOL_ERROR' });
+    expect(beforeReady).toMatchObject({ code: "REALTIME_PROTOCOL_ERROR" });
 
     await connectedAndConfigured(h);
     const odd = (() => {
@@ -178,12 +201,12 @@ describe('OpenAI Realtime WebSocket transport', () => {
         return error;
       }
     })();
-    expect(odd).toMatchObject({ code: 'AUDIO_FORMAT_UNSUPPORTED' });
+    expect(odd).toMatchObject({ code: "AUDIO_FORMAT_UNSUPPORTED" });
     expect(h.socket.sent).toHaveLength(1);
     h.transport.close();
   });
 
-  test('preserves packet boundaries, Base64 bytes, ordering, and manual commit', async () => {
+  test("preserves packet boundaries, Base64 bytes, ordering, and manual commit", async () => {
     const h = harness({ packetBytes: 4 });
     await connectedAndConfigured(h);
 
@@ -196,20 +219,22 @@ describe('OpenAI Realtime WebSocket transport', () => {
     await tick();
 
     expect(parsedMessages(h).slice(1)).toEqual([
-      { type: 'input_audio_buffer.append', audio: 'AAECAw==' },
-      { type: 'input_audio_buffer.append', audio: 'BAU=' },
-      { type: 'input_audio_buffer.commit' },
+      { type: "input_audio_buffer.append", audio: "AAECAw==" },
+      { type: "input_audio_buffer.append", audio: "BAU=" },
+      { type: "input_audio_buffer.commit" },
     ]);
-    expect(h.records).toContainEqual(expect.objectContaining({
-      stage: 'commit_sent',
-      audioAppendCount: 2,
-      audioBytesSubmitted: 6,
-      commitSent: true,
-    }));
-    expect(h.transport.currentState).toBe('finalizing');
+    expect(h.records).toContainEqual(
+      expect.objectContaining({
+        stage: "commit_sent",
+        audioAppendCount: 2,
+        audioBytesSubmitted: 6,
+        commitSent: true,
+      }),
+    );
+    expect(h.transport.currentState).toBe("finalizing");
   });
 
-  test('fails explicitly when the bounded packet queue is exceeded', async () => {
+  test("fails explicitly when the bounded packet queue is exceeded", async () => {
     const h = harness({ maxQueuedPackets: 1 });
     await connectedAndConfigured(h);
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
@@ -221,215 +246,268 @@ describe('OpenAI Realtime WebSocket transport', () => {
         return error;
       }
     })();
-    expect(failure).toMatchObject({ code: 'REALTIME_BACKPRESSURE' });
-    expect(h.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'REALTIME_BACKPRESSURE' }),
-    }));
+    expect(failure).toMatchObject({ code: "REALTIME_BACKPRESSURE" });
+    expect(h.events).toContainEqual(
+      expect.objectContaining({
+        type: "failed",
+        error: expect.objectContaining({ code: "REALTIME_BACKPRESSURE" }),
+      }),
+    );
   });
 
-  test('fails explicitly when WebSocket buffered bytes do not drain', async () => {
-    const h = harness({ backpressureTimeoutMs: 5, backpressurePollMs: 1, maxWebSocketBufferedBytes: 2 });
+  test("fails explicitly when WebSocket buffered bytes do not drain", async () => {
+    const h = harness({
+      backpressureTimeoutMs: 5,
+      backpressurePollMs: 1,
+      maxWebSocketBufferedBytes: 2,
+    });
     await connectedAndConfigured(h);
     h.socket.bufferedAmount = 100;
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(h.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'REALTIME_BACKPRESSURE' }),
-    }));
+    expect(h.events).toContainEqual(
+      expect.objectContaining({
+        type: "failed",
+        error: expect.objectContaining({ code: "REALTIME_BACKPRESSURE" }),
+      }),
+    );
   });
 
-  test('accepts live transcript deltas before commit and treats completion as authority', async () => {
+  test("accepts live transcript deltas before commit and treats completion as authority", async () => {
     const h = harness();
     await connectedAndConfigured(h);
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
     await tick();
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.delta',
-      item_id: 'item-1',
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "item-1",
       content_index: 0,
-      delta: 'Remind ',
+      delta: "Remind ",
     });
-    expect(h.transport.currentState).toBe('ready');
+    expect(h.transport.currentState).toBe("ready");
     expect(h.events).toContainEqual({
-      type: 'speechDelta',
-      itemId: 'item-1',
-      delta: 'Remind ',
+      type: "speechDelta",
+      itemId: "item-1",
+      delta: "Remind ",
     });
     h.transport.commit();
     await tick();
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.delta',
-      item_id: 'item-1',
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "item-1",
       content_index: 0,
-      delta: 'me',
+      delta: "me",
     });
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.completed',
-      item_id: 'item-1',
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "item-1",
       content_index: 0,
-      transcript: 'Remind me tomorrow',
+      transcript: "Remind me tomorrow",
     });
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.completed',
-      item_id: 'item-1',
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "item-1",
       content_index: 0,
-      transcript: 'duplicate must be ignored',
+      transcript: "duplicate must be ignored",
     });
-    expect(h.events.filter((event) => event.type === 'speechDelta')).toHaveLength(2);
-    expect(h.events.filter((event) => event.type === 'completed')).toEqual([{
-      type: 'completed',
-      itemId: 'item-1',
-      transcript: 'Remind me tomorrow',
-    }]);
-    expect(h.records).toContainEqual(expect.objectContaining({
-      stage: 'transcription_completed',
-      transcriptionCompleted: true,
-    }));
+    expect(
+      h.events.filter((event) => event.type === "speechDelta"),
+    ).toHaveLength(2);
+    expect(h.events.filter((event) => event.type === "completed")).toEqual([
+      {
+        type: "completed",
+        itemId: "item-1",
+        transcript: "Remind me tomorrow",
+      },
+    ]);
+    expect(h.records).toContainEqual(
+      expect.objectContaining({
+        stage: "transcription_completed",
+        transcriptionCompleted: true,
+      }),
+    );
   });
 
-  test('maps transcription failures and generic provider errors to typed failures', async () => {
+  test("maps transcription failures and generic provider errors to typed failures", async () => {
     const transcription = harness();
     await connectedAndConfigured(transcription);
     transcription.transport.appendPcm(pcm([0, 1, 2, 3]));
     transcription.transport.commit();
     await tick();
     transcription.socket.receive({
-      type: 'conversation.item.input_audio_transcription.failed',
-      item_id: 'item-1',
-      error: { type: 'transcription_error', code: 'audio_unusable', message: 'Audio was unusable.' },
+      type: "conversation.item.input_audio_transcription.failed",
+      item_id: "item-1",
+      error: {
+        type: "transcription_error",
+        code: "audio_unusable",
+        message: "Audio was unusable.",
+      },
     });
-    expect(transcription.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'TRANSCRIPTION_FAILED' }),
-    }));
+    expect(transcription.events).toContainEqual(
+      expect.objectContaining({
+        type: "failed",
+        error: expect.objectContaining({ code: "TRANSCRIPTION_FAILED" }),
+      }),
+    );
 
     const configuration = harness();
-    const opened = configuration.transport.connect('ephemeral-secret');
+    const opened = configuration.transport.connect("ephemeral-secret");
     configuration.socket.open();
     await opened;
-    const configuring = configuration.transport.configure(defaultRealtimeTranscriptionConfig);
+    const configuring = configuration.transport.configure(
+      defaultRealtimeTranscriptionConfig,
+    );
     configuration.socket.receive({
-      type: 'error',
-      event_id: 'evt-1',
+      type: "error",
+      event_id: "evt-1",
       error: {
-        type: 'invalid_request_error',
-        code: 'invalid_model',
-        message: 'Model "gpt-live-transcribe" is not supported in transcription mode.',
-        param: 'session',
-        request_id: 'req_model',
+        type: "invalid_request_error",
+        code: "invalid_model",
+        message:
+          'Model "gpt-live-transcribe" is not supported in transcription mode.',
+        param: "session",
+        request_id: "req_model",
       },
     });
     await expect(configuring).rejects.toMatchObject({
-      code: 'SESSION_CONFIGURATION_INVALID',
-      providerError: { code: 'invalid_model' },
+      code: "SESSION_CONFIGURATION_INVALID",
+      providerError: { code: "invalid_model" },
     });
-    const failed = configuration.events.find((event) => event.type === 'failed') as {
+    const failed = configuration.events.find(
+      (event) => event.type === "failed",
+    ) as {
       error: {
         code: string;
         message: string;
         providerError?: { code?: string; message?: string; requestId?: string };
       };
     };
-    expect(failed.error.code).toBe('SESSION_CONFIGURATION_INVALID');
-    expect(failed.error.message).toBe('Model "gpt-live-transcribe" is not supported in transcription mode.');
-    expect(failed.error.message).not.toBe('gpt-live-transcribe is not supported');
+    expect(failed.error.code).toBe("SESSION_CONFIGURATION_INVALID");
+    expect(failed.error.message).toBe(
+      'Model "gpt-live-transcribe" is not supported in transcription mode.',
+    );
+    expect(failed.error.message).not.toBe(
+      "gpt-live-transcribe is not supported",
+    );
     expect(failed.error.providerError).toMatchObject({
-      code: 'invalid_model',
-      message: 'Model "gpt-live-transcribe" is not supported in transcription mode.',
-      requestId: 'req_model',
+      code: "invalid_model",
+      message:
+        'Model "gpt-live-transcribe" is not supported in transcription mode.',
+      requestId: "req_model",
     });
-    expect(configuration.records).toContainEqual(expect.objectContaining({
-      stage: 'session_configuration_rejected',
-      errorCode: 'invalid_model',
-      requestId: 'req_model',
-    }));
+    expect(configuration.records).toContainEqual(
+      expect.objectContaining({
+        stage: "session_configuration_rejected",
+        errorCode: "invalid_model",
+        requestId: "req_model",
+      }),
+    );
   });
 
-  test('fails malformed contract events but ignores unknown harmless events', async () => {
+  test("fails malformed contract events but ignores unknown harmless events", async () => {
     const h = harness();
     await connectedAndConfigured(h);
-    h.socket.receive({ type: 'rate_limits.updated', rate_limits: [] });
-    expect(h.events.filter((event) => event.type === 'failed')).toHaveLength(0);
+    h.socket.receive({ type: "rate_limits.updated", rate_limits: [] });
+    expect(h.events.filter((event) => event.type === "failed")).toHaveLength(0);
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
     h.transport.commit();
     await tick();
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.delta',
-      item_id: 'item-1',
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "item-1",
       content_index: 0,
     });
-    expect(h.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'REALTIME_PROTOCOL_ERROR' }),
-    }));
+    expect(h.events).toContainEqual(
+      expect.objectContaining({
+        type: "failed",
+        error: expect.objectContaining({ code: "REALTIME_PROTOCOL_ERROR" }),
+      }),
+    );
   });
 
-  test('distinguishes an unexpected close from deterministic cancellation', async () => {
+  test("distinguishes an unexpected close from deterministic cancellation", async () => {
     const unexpected = harness();
     await connectedAndConfigured(unexpected);
     unexpected.socket.disconnect();
-    expect(unexpected.events).toContainEqual({ type: 'closed', expected: false });
-    expect(unexpected.events).toContainEqual(expect.objectContaining({
-      type: 'failed',
-      error: expect.objectContaining({ code: 'REALTIME_CONNECTION_LOST' }),
-    }));
+    expect(unexpected.events).toContainEqual({
+      type: "closed",
+      expected: false,
+    });
+    expect(unexpected.events).toContainEqual(
+      expect.objectContaining({
+        type: "failed",
+        error: expect.objectContaining({ code: "REALTIME_CONNECTION_LOST" }),
+      }),
+    );
 
     const cancelled = harness();
     await connectedAndConfigured(cancelled);
     cancelled.transport.appendPcm(pcm([0, 1, 2, 3]));
     cancelled.transport.cancel();
     cancelled.transport.cancel();
-    expect(cancelled.socket.sent).toContain(JSON.stringify({ type: 'input_audio_buffer.clear' }));
+    expect(cancelled.socket.sent).toContain(
+      JSON.stringify({ type: "input_audio_buffer.clear" }),
+    );
     expect(cancelled.socket.closeCount).toBe(1);
-    expect(cancelled.events.filter((event) => event.type === 'closed')).toEqual([
-      { type: 'closed', expected: true },
-    ]);
+    expect(cancelled.events.filter((event) => event.type === "closed")).toEqual(
+      [{ type: "closed", expected: true }],
+    );
     const eventCount = cancelled.events.length;
-    cancelled.socket.receive({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'stale', transcript: 'stale' });
+    cancelled.socket.receive({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "stale",
+      transcript: "stale",
+    });
     expect(cancelled.events).toHaveLength(eventCount);
-    expect(cancelled.transport.currentState).toBe('closed');
+    expect(cancelled.transport.currentState).toBe("closed");
   });
 
-  test('times out connection and configuration separately and cleans timers on close', async () => {
+  test("times out connection and configuration separately and cleans timers on close", async () => {
     const connection = harness({ connectionTimeoutMs: 5 });
-    const connecting = connection.transport.connect('ephemeral-secret');
-    await expect(connecting).rejects.toMatchObject({ code: 'REALTIME_TIMEOUT' });
-    expect(connection.transport.currentState).toBe('failed');
+    const connecting = connection.transport.connect("ephemeral-secret");
+    await expect(connecting).rejects.toMatchObject({
+      code: "REALTIME_TIMEOUT",
+    });
+    expect(connection.transport.currentState).toBe("failed");
 
     const configuration = harness({ configurationTimeoutMs: 5 });
-    const opened = configuration.transport.connect('ephemeral-secret');
+    const opened = configuration.transport.connect("ephemeral-secret");
     configuration.socket.open();
     await opened;
-    const configuring = configuration.transport.configure(defaultRealtimeTranscriptionConfig);
-    await expect(configuring).rejects.toMatchObject({ code: 'REALTIME_TIMEOUT' });
-    expect(configuration.transport.currentState).toBe('failed');
+    const configuring = configuration.transport.configure(
+      defaultRealtimeTranscriptionConfig,
+    );
+    await expect(configuring).rejects.toMatchObject({
+      code: "REALTIME_TIMEOUT",
+    });
+    expect(configuration.transport.currentState).toBe("failed");
 
     const clean = harness();
     await connectedAndConfigured(clean);
     clean.transport.close();
     clean.transport.close();
     expect(clean.socket.closeCount).toBe(1);
-    expect(clean.records.filter((record) => record.stage === 'websocket_closed')).toHaveLength(1);
+    expect(
+      clean.records.filter((record) => record.stage === "websocket_closed"),
+    ).toHaveLength(1);
   });
 
-  test('never places credentials, PCM, item ids, or transcript text in diagnostics', async () => {
+  test("never places credentials, PCM, item ids, or transcript text in diagnostics", async () => {
     const h = harness();
     await connectedAndConfigured(h);
     h.transport.appendPcm(pcm([0, 1, 2, 3]));
     h.transport.commit();
     await tick();
     h.socket.receive({
-      type: 'conversation.item.input_audio_transcription.completed',
-      item_id: 'private-item-id',
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "private-item-id",
       content_index: 0,
-      transcript: 'Sensitive spoken reminder text',
+      transcript: "Sensitive spoken reminder text",
     });
     const serialized = JSON.stringify(h.records);
-    expect(serialized).not.toContain('ephemeral-secret');
-    expect(serialized).not.toContain('private-item-id');
-    expect(serialized).not.toContain('Sensitive spoken reminder text');
-    expect(serialized).not.toContain('AAECAw==');
+    expect(serialized).not.toContain("ephemeral-secret");
+    expect(serialized).not.toContain("private-item-id");
+    expect(serialized).not.toContain("Sensitive spoken reminder text");
+    expect(serialized).not.toContain("AAECAw==");
   });
 });

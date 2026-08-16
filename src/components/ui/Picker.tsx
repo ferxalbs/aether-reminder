@@ -1,13 +1,13 @@
-import React, { useCallback } from 'react';
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { Host, Picker as UniversalPicker } from '@expo/ui';
-import { Colors, ControlTokens, getMinimumTouchTarget } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
-import { selectionAsync } from '@/lib/haptics';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useSemanticColors } from '@/theme/useSemanticColors';
-import { Typography } from './Typography';
+import React, { useCallback } from "react";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { Host, Picker as UniversalPicker } from "@expo/ui";
+import { Colors, ControlTokens, getMinimumTouchTarget } from "@/theme/tokens";
+import { useSettingsStore } from "@/stores/settings.store";
+import { selectionAsync } from "@/lib/haptics";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
+import { Typography } from "./Typography";
 
 export interface PickerOption<Value extends string | number = string> {
   value: Value;
@@ -52,12 +52,12 @@ export function Picker<Value extends string | number>({
       const typedValue = matched.value;
       if (typedValue !== value && useSettingsStore.getState().hapticsEnabled) {
         selectionAsync().catch((err: unknown) => {
-          reportNonFatalError('haptics', err);
+          reportNonFatalError("haptics", err);
         });
       }
       onValueChange(typedValue);
     },
-    [isDisabled, options, value, onValueChange]
+    [isDisabled, options, value, onValueChange],
   );
 
   return (
@@ -72,7 +72,7 @@ export function Picker<Value extends string | number>({
 
       <Host
         matchContents
-        colorScheme={isDark ? 'dark' : 'light'}
+        colorScheme={isDark ? "dark" : "light"}
         seedColor={colors.accent}
         style={styles.host}
       >
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   host: {
     minHeight: getMinimumTouchTarget(Platform.OS),
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   message: {
     marginTop: ControlTokens.fieldMessageGap,

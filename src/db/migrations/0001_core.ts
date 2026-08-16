@@ -1,4 +1,4 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /**
  * Core domain tables. Immutable once shipped — add later migrations to change.
@@ -6,7 +6,7 @@ import type { Migration } from './types';
  */
 export const migration0001Core: Migration = {
   version: 1,
-  name: '0001_core',
+  name: "0001_core",
   async up(db) {
     await db.execAsync(`
       CREATE TABLE projects (

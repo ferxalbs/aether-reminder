@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import type { ActionReceipt } from '@/domain/receipts';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { Button } from './Button';
-import { Typography } from './Typography';
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import type { ActionReceipt } from "@/domain/receipts";
+import { Colors, Radius, Spacing } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { Button } from "./Button";
+import { Typography } from "./Typography";
 
 export interface TaskUndoBannerProps {
   receipt: ActionReceipt;
@@ -33,7 +33,9 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+          backgroundColor: isDark
+            ? Colors.surfaceRaisedDark
+            : Colors.surfaceRaisedLight,
         },
       ]}
     >
@@ -63,8 +65,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.xs,
     paddingVertical: 2,
     borderRadius: Radius.pill,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   copy: {

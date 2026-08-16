@@ -1,6 +1,7 @@
-import { VoiceError } from './errors';
+import { VoiceError } from "./errors";
 
-const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 export interface NativePcmBuffer {
   data: ArrayBuffer;
@@ -11,10 +12,13 @@ export interface NativePcmBuffer {
 
 export function pcm16ToBase64(data: ArrayBuffer): string {
   if (data.byteLength % 2 !== 0) {
-    throw new VoiceError('AUDIO_FORMAT_UNSUPPORTED', 'PCM16 data must contain complete samples.');
+    throw new VoiceError(
+      "AUDIO_FORMAT_UNSUPPORTED",
+      "PCM16 data must contain complete samples.",
+    );
   }
   const bytes = new Uint8Array(data);
-  let output = '';
+  let output = "";
   for (let index = 0; index < bytes.length; index += 3) {
     const first = bytes[index];
     const second = index + 1 < bytes.length ? bytes[index + 1] : 0;
@@ -22,8 +26,9 @@ export function pcm16ToBase64(data: ArrayBuffer): string {
     const triple = (first << 16) | (second << 8) | third;
     output += BASE64_CHARS[(triple >> 18) & 0x3f];
     output += BASE64_CHARS[(triple >> 12) & 0x3f];
-    output += index + 1 < bytes.length ? BASE64_CHARS[(triple >> 6) & 0x3f] : '=';
-    output += index + 2 < bytes.length ? BASE64_CHARS[triple & 0x3f] : '=';
+    output +=
+      index + 1 < bytes.length ? BASE64_CHARS[(triple >> 6) & 0x3f] : "=";
+    output += index + 2 < bytes.length ? BASE64_CHARS[triple & 0x3f] : "=";
   }
   return output;
 }
@@ -41,8 +46,15 @@ export function pcm16AudioLevel(data: ArrayBuffer): number {
 }
 
 function readMonoFrames(data: ArrayBuffer, channels: number): Float64Array {
-  if (data.byteLength % 2 !== 0 || channels < 1 || data.byteLength % (channels * 2) !== 0) {
-    throw new VoiceError('AUDIO_FORMAT_UNSUPPORTED', 'Native PCM16 data has an incomplete frame.');
+  if (
+    data.byteLength % 2 !== 0 ||
+    channels < 1 ||
+    data.byteLength % (channels * 2) !== 0
+  ) {
+    throw new VoiceError(
+      "AUDIO_FORMAT_UNSUPPORTED",
+      "Native PCM16 data has an incomplete frame.",
+    );
   }
   const view = new DataView(data);
   const frames = data.byteLength / 2 / channels;
@@ -78,18 +90,35 @@ export class Pcm16StreamNormalizer {
   constructor(private readonly targetRate = 24000) {}
 
   push(buffer: NativePcmBuffer): ArrayBuffer {
-    if (!Number.isFinite(buffer.sampleRate) || buffer.sampleRate <= 0 || buffer.channels < 1) {
-      throw new VoiceError('AUDIO_FORMAT_UNSUPPORTED', 'Native stream metadata is invalid.');
+    if (
+      !Number.isFinite(buffer.sampleRate) ||
+      buffer.sampleRate <= 0 ||
+      buffer.channels < 1
+    ) {
+      throw new VoiceError(
+        "AUDIO_FORMAT_UNSUPPORTED",
+        "Native stream metadata is invalid.",
+      );
     }
-    if (this.sourceRate !== null && (this.sourceRate !== buffer.sampleRate || this.sourceChannels !== buffer.channels)) {
-      throw new VoiceError('AUDIO_FORMAT_UNSUPPORTED', 'Native stream format changed during capture.');
+    if (
+      this.sourceRate !== null &&
+      (this.sourceRate !== buffer.sampleRate ||
+        this.sourceChannels !== buffer.channels)
+    ) {
+      throw new VoiceError(
+        "AUDIO_FORMAT_UNSUPPORTED",
+        "Native stream format changed during capture.",
+      );
     }
     this.sourceRate = buffer.sampleRate;
     this.sourceChannels = buffer.channels;
 
     if (buffer.sampleRate === this.targetRate && buffer.channels === 1) {
       if (buffer.data.byteLength % 2 !== 0) {
-        throw new VoiceError('AUDIO_FORMAT_UNSUPPORTED', 'Native PCM16 data has an incomplete sample.');
+        throw new VoiceError(
+          "AUDIO_FORMAT_UNSUPPORTED",
+          "Native PCM16 data has an incomplete sample.",
+        );
       }
       this.totalInputFrames += buffer.data.byteLength / 2;
       this.nextOutputPosition = this.totalInputFrames;
@@ -106,8 +135,12 @@ export class Pcm16StreamNormalizer {
       const output: number[] = [];
 
       const sampleAt = (frame: number): number => {
-        if (frame === chunkStart - 1 && this.previousSample !== null) return this.previousSample;
-        const local = Math.max(0, Math.min(mono.length - 1, frame - chunkStart));
+        if (frame === chunkStart - 1 && this.previousSample !== null)
+          return this.previousSample;
+        const local = Math.max(
+          0,
+          Math.min(mono.length - 1, frame - chunkStart),
+        );
         return mono[local];
       };
 
@@ -126,12 +159,15 @@ export class Pcm16StreamNormalizer {
       return writePcm16(output);
     } catch (error) {
       if (error instanceof VoiceError) throw error;
-      throw new VoiceError('RESAMPLE_FAILED', 'PCM16 resampling failed.', { cause: error });
+      throw new VoiceError("RESAMPLE_FAILED", "PCM16 resampling failed.", {
+        cause: error,
+      });
     }
   }
 
   flush(): ArrayBuffer {
-    if (this.sourceRate === null || this.previousSample === null) return new ArrayBuffer(0);
+    if (this.sourceRate === null || this.previousSample === null)
+      return new ArrayBuffer(0);
     const step = this.sourceRate / this.targetRate;
     const output: number[] = [];
     while (this.nextOutputPosition < this.totalInputFrames) {

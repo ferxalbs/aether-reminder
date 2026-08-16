@@ -1,4 +1,4 @@
-import { VoiceError } from './errors';
+import { VoiceError } from "./errors";
 
 export interface AudioSessionGateway {
   activate(owner: symbol): Promise<void>;
@@ -14,13 +14,18 @@ export interface VoiceAudioMode {
 
 export type SetVoiceAudioMode = (mode: VoiceAudioMode) => Promise<void>;
 
-export function createOwnedAudioSession(setAudioMode: SetVoiceAudioMode): AudioSessionGateway {
+export function createOwnedAudioSession(
+  setAudioMode: SetVoiceAudioMode,
+): AudioSessionGateway {
   let activeOwner: symbol | null = null;
   let operation: Promise<void> = Promise.resolve();
 
   const serialize = (task: () => Promise<void>): Promise<void> => {
     const next = operation.then(task, task);
-    operation = next.then(() => undefined, () => undefined);
+    operation = next.then(
+      () => undefined,
+      () => undefined,
+    );
     return next;
   };
 
@@ -28,7 +33,10 @@ export function createOwnedAudioSession(setAudioMode: SetVoiceAudioMode): AudioS
     activate(owner) {
       return serialize(async () => {
         if (activeOwner && activeOwner !== owner) {
-          throw new VoiceError('AUDIO_STREAM_START_FAILED', 'Another microphone session is already active.');
+          throw new VoiceError(
+            "AUDIO_STREAM_START_FAILED",
+            "Another microphone session is already active.",
+          );
         }
         activeOwner = owner;
         try {
@@ -40,7 +48,11 @@ export function createOwnedAudioSession(setAudioMode: SetVoiceAudioMode): AudioS
           });
         } catch (error) {
           activeOwner = null;
-          throw new VoiceError('AUDIO_STREAM_START_FAILED', 'Expo audio session activation failed.', { cause: error });
+          throw new VoiceError(
+            "AUDIO_STREAM_START_FAILED",
+            "Expo audio session activation failed.",
+            { cause: error },
+          );
         }
       });
     },
@@ -56,7 +68,11 @@ export function createOwnedAudioSession(setAudioMode: SetVoiceAudioMode): AudioS
             shouldPlayInBackground: false,
           });
         } catch (error) {
-          throw new VoiceError('AUDIO_STREAM_START_FAILED', 'Expo audio session deactivation failed.', { cause: error });
+          throw new VoiceError(
+            "AUDIO_STREAM_START_FAILED",
+            "Expo audio session deactivation failed.",
+            { cause: error },
+          );
         }
       });
     },

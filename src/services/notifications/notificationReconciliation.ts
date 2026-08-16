@@ -1,15 +1,15 @@
-import type { Reminder } from '@/domain/entities';
-import { AppMetaRepository } from '@/db/repositories/appMetaRepository';
-import { RemindersRepository } from '@/db/repositories/remindersRepository';
-import { TasksRepository } from '@/db/repositories/tasksRepository';
+import type { Reminder } from "@/domain/entities";
+import { AppMetaRepository } from "@/db/repositories/appMetaRepository";
+import { RemindersRepository } from "@/db/repositories/remindersRepository";
+import { TasksRepository } from "@/db/repositories/tasksRepository";
 import {
   LocalNotificationProjection,
   NOTIFICATION_RECONCILIATION_BATCH_SIZE,
   type LocalNotificationAdapter,
-} from './localNotificationProjection';
-import { NotificationError, toNotificationError } from './errors';
+} from "./localNotificationProjection";
+import { NotificationError, toNotificationError } from "./errors";
 
-export type NotificationReconciliationMode = 'incremental' | 'full';
+export type NotificationReconciliationMode = "incremental" | "full";
 
 export interface NotificationReconciliationOptions {
   mode?: NotificationReconciliationMode;
@@ -19,10 +19,10 @@ export interface NotificationReconciliationOptions {
 }
 
 export type NotificationReconciliationFailureKind =
-  | 'orphan_cancel'
-  | 'duplicate_cancel'
-  | 'disabled_cancel'
-  | 'reminder_projection';
+  | "orphan_cancel"
+  | "duplicate_cancel"
+  | "disabled_cancel"
+  | "reminder_projection";
 
 export interface NotificationReconciliationFailure {
   kind: NotificationReconciliationFailureKind;
@@ -81,9 +81,16 @@ async function mapInBatches<T, R>(
   worker: (item: T) => Promise<R>,
 ): Promise<R[]> {
   const results: R[] = [];
-  for (let offset = 0; offset < items.length; offset += NOTIFICATION_RECONCILIATION_BATCH_SIZE) {
-    const batch = items.slice(offset, offset + NOTIFICATION_RECONCILIATION_BATCH_SIZE);
-    results.push(...await Promise.all(batch.map(worker)));
+  for (
+    let offset = 0;
+    offset < items.length;
+    offset += NOTIFICATION_RECONCILIATION_BATCH_SIZE
+  ) {
+    const batch = items.slice(
+      offset,
+      offset + NOTIFICATION_RECONCILIATION_BATCH_SIZE,
+    );
+    results.push(...(await Promise.all(batch.map(worker))));
   }
   return results;
 }
@@ -111,7 +118,7 @@ function failureFor(
     kind,
     reminderId,
     nativeNotificationId,
-    error: toNotificationError(error, 'RECONCILIATION_FAILED', fallback),
+    error: toNotificationError(error, "RECONCILIATION_FAILED", fallback),
   };
 }
 
@@ -125,8 +132,10 @@ export class NotificationReconciliationService {
     private readonly appMeta?: AppMetaRepository,
   ) {}
 
-  async reconcile(options: NotificationReconciliationOptions = {}): Promise<NotificationReconciliationResult> {
-    const mode = options.mode ?? 'incremental';
+  async reconcile(
+    options: NotificationReconciliationOptions = {},
+  ): Promise<NotificationReconciliationResult> {
+    const mode = options.mode ?? "incremental";
     const startedAt = new Date().toISOString();
     const startedMs = Date.now();
     const operation: OperationResult = { ...EMPTY_OPERATION, failures: [] };
@@ -135,7 +144,7 @@ export class NotificationReconciliationService {
     let orphanCancelled = 0;
     let duplicateCancelled = 0;
 
-    const native = mode === 'full' ? await this.adapter.list() : [];
+    const native = mode === "full" ? await this.adapter.list() : [];
     const nativeByReminder = new Map<string, string[]>();
     for (const item of native) {
       if (!item.reminderId) continue;
@@ -145,44 +154,70 @@ export class NotificationReconciliationService {
     }
 
     const reminders = options.taskIds?.length
-      ? (await Promise.all(options.taskIds.map((taskId) => this.reminders.listForTask(taskId)))).flat()
-      : mode === 'full'
+      ? (
+          await Promise.all(
+            options.taskIds.map((taskId) => this.reminders.listForTask(taskId)),
+          )
+        ).flat()
+      : mode === "full"
         ? await this.reminders.listAll()
         : await this.reminders.listDirty(options.dirtyLimit ?? 100);
-    const uniqueReminders = [...new Map(reminders.map((reminder) => [reminder.id, reminder])).values()];
+    const uniqueReminders = [
+      ...new Map(reminders.map((reminder) => [reminder.id, reminder])).values(),
+    ];
     inspected = uniqueReminders.length;
 
-    if (mode === 'full' && !options.taskIds?.length) {
-      const knownReminderIds = new Set(uniqueReminders.map((reminder) => reminder.id));
-      const orphanItems = native.filter(
-        (item) => item.reminderId !== undefined && !knownReminderIds.has(item.reminderId),
+    if (mode === "full" && !options.taskIds?.length) {
+      const knownReminderIds = new Set(
+        uniqueReminders.map((reminder) => reminder.id),
       );
-      const orphanResults = await mapInBatches(orphanItems, async (item): Promise<OperationResult> => {
-        try {
-          await this.adapter.cancel(item.identifier);
-          orphanCancelled += 1;
-          return { ...EMPTY_OPERATION, repaired: 1, cancelled: 1 };
-        } catch (error) {
-          return {
-            ...EMPTY_OPERATION,
-            failed: 1,
-            failures: [failureFor(
-              'orphan_cancel',
-              error,
-              'An obsolete device notification could not be removed.',
-              undefined,
-              item.identifier,
-            )],
-          };
-        }
-      });
+      const orphanItems = native.filter(
+        (item) =>
+          item.reminderId !== undefined &&
+          !knownReminderIds.has(item.reminderId),
+      );
+      const orphanResults = await mapInBatches(
+        orphanItems,
+        async (item): Promise<OperationResult> => {
+          try {
+            await this.adapter.cancel(item.identifier);
+            orphanCancelled += 1;
+            return { ...EMPTY_OPERATION, repaired: 1, cancelled: 1 };
+          } catch (error) {
+            return {
+              ...EMPTY_OPERATION,
+              failed: 1,
+              failures: [
+                failureFor(
+                  "orphan_cancel",
+                  error,
+                  "An obsolete device notification could not be removed.",
+                  undefined,
+                  item.identifier,
+                ),
+              ],
+            };
+          }
+        },
+      );
       for (const result of orphanResults) addOperation(operation, result);
     }
 
-    const reminderResults = await mapInBatches(uniqueReminders, async (reminder) => {
-      if (reminder.projectionDirty || options.taskIds?.includes(reminder.taskId)) dirtyProcessed += 1;
-      return this.reconcileReminder(reminder, mode, nativeByReminder.get(reminder.id) ?? []);
-    });
+    const reminderResults = await mapInBatches(
+      uniqueReminders,
+      async (reminder) => {
+        if (
+          reminder.projectionDirty ||
+          options.taskIds?.includes(reminder.taskId)
+        )
+          dirtyProcessed += 1;
+        return this.reconcileReminder(
+          reminder,
+          mode,
+          nativeByReminder.get(reminder.id) ?? [],
+        );
+      },
+    );
     for (const result of reminderResults) {
       duplicateCancelled += result.duplicateCancelled;
       addOperation(operation, result.operation);
@@ -214,8 +249,8 @@ export class NotificationReconciliationService {
     return result;
   }
 
-  async repair(options: Omit<NotificationReconciliationOptions, 'mode'> = {}) {
-    return this.reconcile({ ...options, mode: 'full' });
+  async repair(options: Omit<NotificationReconciliationOptions, "mode"> = {}) {
+    return this.reconcile({ ...options, mode: "full" });
   }
 
   private async reconcileReminder(
@@ -225,31 +260,36 @@ export class NotificationReconciliationService {
   ): Promise<{ operation: OperationResult; duplicateCancelled: number }> {
     const operation: OperationResult = { ...EMPTY_OPERATION, failures: [] };
     let duplicateCancelled = 0;
-    const preferredId = actualIds.includes(reminder.nativeNotificationId ?? '')
+    const preferredId = actualIds.includes(reminder.nativeNotificationId ?? "")
       ? reminder.nativeNotificationId
-      : actualIds[0] ?? null;
+      : (actualIds[0] ?? null);
     const duplicateIds = actualIds.filter((id) => id !== preferredId);
 
-    if (mode === 'full' && duplicateIds.length) {
-      const duplicateResults = await mapInBatches(duplicateIds, async (identifier): Promise<OperationResult> => {
-        try {
-          await this.adapter.cancel(identifier);
-          duplicateCancelled += 1;
-          return { ...EMPTY_OPERATION, repaired: 1, cancelled: 1 };
-        } catch (error) {
-          return {
-            ...EMPTY_OPERATION,
-            failed: 1,
-            failures: [failureFor(
-              'duplicate_cancel',
-              error,
-              'A duplicate device notification could not be removed.',
-              reminder.id,
-              identifier,
-            )],
-          };
-        }
-      });
+    if (mode === "full" && duplicateIds.length) {
+      const duplicateResults = await mapInBatches(
+        duplicateIds,
+        async (identifier): Promise<OperationResult> => {
+          try {
+            await this.adapter.cancel(identifier);
+            duplicateCancelled += 1;
+            return { ...EMPTY_OPERATION, repaired: 1, cancelled: 1 };
+          } catch (error) {
+            return {
+              ...EMPTY_OPERATION,
+              failed: 1,
+              failures: [
+                failureFor(
+                  "duplicate_cancel",
+                  error,
+                  "A duplicate device notification could not be removed.",
+                  reminder.id,
+                  identifier,
+                ),
+              ],
+            };
+          }
+        },
+      );
       for (const result of duplicateResults) addOperation(operation, result);
     }
 
@@ -258,35 +298,41 @@ export class NotificationReconciliationService {
     const hasMatchingNative = required
       ? preferredId !== null && preferredId === reminder.nativeNotificationId
       : preferredId === null && reminder.nativeNotificationId === null;
-    const canSkip = mode === 'full'
-      ? hasMatchingNative
-        && reminder.projectionState === 'scheduled'
-        && !reminder.projectionDirty
-        && !reminder.projectionError
-      : !reminder.projectionDirty;
+    const canSkip =
+      mode === "full"
+        ? hasMatchingNative &&
+          reminder.projectionState === "scheduled" &&
+          !reminder.projectionDirty &&
+          !reminder.projectionError
+        : !reminder.projectionDirty;
 
     if (canSkip) {
       operation.unchanged = 1;
       return { operation, duplicateCancelled };
     }
 
-    if (mode === 'full' && !reminder.projectionDirty) {
+    if (mode === "full" && !reminder.projectionDirty) {
       await this.reminders.markDirty(reminder.id);
       const refreshed = await this.reminders.getById(reminder.id);
       if (refreshed) {
-        return this.reconcileReminder(refreshed, mode, preferredId ? [preferredId] : []);
+        return this.reconcileReminder(
+          refreshed,
+          mode,
+          preferredId ? [preferredId] : [],
+        );
       }
     }
 
-    const projectionInput = preferredId === null
-      ? reminder
-      : { ...reminder, nativeNotificationId: preferredId };
+    const projectionInput =
+      preferredId === null
+        ? reminder
+        : { ...reminder, nativeNotificationId: preferredId };
     try {
       const result = await this.projection.project(projectionInput);
-      if (result === 'scheduled') {
+      if (result === "scheduled") {
         operation.repaired = 1;
         operation.scheduled = 1;
-      } else if (result === 'cancelled') {
+      } else if (result === "cancelled") {
         operation.repaired = 1;
         operation.cancelled = 1;
       } else {
@@ -295,20 +341,23 @@ export class NotificationReconciliationService {
     } catch (error) {
       const notificationError = toNotificationError(
         error,
-        'RECONCILIATION_FAILED',
+        "RECONCILIATION_FAILED",
         required
-          ? 'A reminder could not be scheduled on this device.'
-          : 'A disabled reminder could not be removed from device notifications.',
+          ? "A reminder could not be scheduled on this device."
+          : "A disabled reminder could not be removed from device notifications.",
       );
-      if (notificationError.code === 'EXACT_TIMING_UNAVAILABLE'
-        || notificationError.code === 'PERMISSION_DENIED'
-        || notificationError.code === 'CHANNEL_UNAVAILABLE') {
+      if (
+        notificationError.code === "EXACT_TIMING_UNAVAILABLE" ||
+        notificationError.code === "PERMISSION_DENIED" ||
+        notificationError.code === "CHANNEL_UNAVAILABLE"
+      ) {
         operation.blocked = 1;
       }
-      if (notificationError.code === 'NATIVE_NOTIFICATION_MISSING') operation.missing = 1;
+      if (notificationError.code === "NATIVE_NOTIFICATION_MISSING")
+        operation.missing = 1;
       operation.failed = 1;
       operation.failures.push({
-        kind: required ? 'reminder_projection' : 'disabled_cancel',
+        kind: required ? "reminder_projection" : "disabled_cancel",
         reminderId: reminder.id,
         error: notificationError,
       });
@@ -316,33 +365,41 @@ export class NotificationReconciliationService {
     return { operation, duplicateCancelled };
   }
 
-  private async persistResult(result: NotificationReconciliationResult): Promise<void> {
+  private async persistResult(
+    result: NotificationReconciliationResult,
+  ): Promise<void> {
     if (!this.appMeta) return;
     try {
-      await this.appMeta.set('reliability.last_reconciliation_at', result.completedAt);
-      await this.appMeta.set('reliability.last_reconciliation_result', JSON.stringify({
-        mode: result.mode,
-        reason: result.reason ?? null,
-        inspected: result.inspected,
-        dirtyProcessed: result.dirtyProcessed,
-        repaired: result.repaired,
-        scheduled: result.scheduled,
-        cancelled: result.cancelled,
-        unchanged: result.unchanged,
-        blocked: result.blocked,
-        missing: result.missing,
-        stale: result.stale,
-        failed: result.failed,
-        durationMs: result.durationMs,
-      }));
       await this.appMeta.set(
-        'reliability.last_error_category',
-        result.failures[0]?.error.code ?? 'NONE',
+        "reliability.last_reconciliation_at",
+        result.completedAt,
+      );
+      await this.appMeta.set(
+        "reliability.last_reconciliation_result",
+        JSON.stringify({
+          mode: result.mode,
+          reason: result.reason ?? null,
+          inspected: result.inspected,
+          dirtyProcessed: result.dirtyProcessed,
+          repaired: result.repaired,
+          scheduled: result.scheduled,
+          cancelled: result.cancelled,
+          unchanged: result.unchanged,
+          blocked: result.blocked,
+          missing: result.missing,
+          stale: result.stale,
+          failed: result.failed,
+          durationMs: result.durationMs,
+        }),
+      );
+      await this.appMeta.set(
+        "reliability.last_error_category",
+        result.failures[0]?.error.code ?? "NONE",
       );
     } catch (error) {
       throw new NotificationError(
-        'PERSISTENCE_FAILED',
-        'Notification reconciliation result could not be saved.',
+        "PERSISTENCE_FAILED",
+        "Notification reconciliation result could not be saved.",
         true,
         error,
       );

@@ -3,9 +3,18 @@ export {
   buildRealtimeSessionPayload,
   classifyOpenAIModelAccessError,
   testOpenAIRealtimeConnection,
-} from './auth';
-export { Pcm16StreamNormalizer, pcm16AudioLevel, pcm16ToBase64, type NativePcmBuffer } from './audio';
-export { createExpoAudioSession, expoAudioSession, type AudioSessionGateway } from './audioSession';
+} from "./auth";
+export {
+  Pcm16StreamNormalizer,
+  pcm16AudioLevel,
+  pcm16ToBase64,
+  type NativePcmBuffer,
+} from "./audio";
+export {
+  createExpoAudioSession,
+  expoAudioSession,
+  type AudioSessionGateway,
+} from "./audioSession";
 export {
   DevelopmentVoiceDiagnostics,
   VOICE_DIAGNOSTIC_PREFIX,
@@ -14,7 +23,7 @@ export {
   type VoiceDiagnosticRecord,
   type VoiceDiagnosticReporter,
   type VoiceDiagnosticStage,
-} from './diagnostics';
+} from "./diagnostics";
 export {
   VoiceError,
   getVoiceErrorMessage,
@@ -22,15 +31,18 @@ export {
   isRetryableVoiceErrorCode,
   toVoiceError,
   type VoiceErrorCode,
-} from './errors';
-export { ensureMicrophonePermission, type MicrophonePermissionGateway } from './permissions';
+} from "./errors";
+export {
+  ensureMicrophonePermission,
+  type MicrophonePermissionGateway,
+} from "./permissions";
 export {
   OpenAIRealtimeWebSocketTransport,
   type OpenAIRealtimeWebSocketTransportOptions,
   type RealtimeWebSocketFactory,
   type RealtimeWebSocketLike,
   type RealtimeWebSocketState,
-} from './openaiRealtimeWebSocketTransport';
+} from "./openaiRealtimeWebSocketTransport";
 export {
   OPENAI_REALTIME_TRANSCRIPTION_INTENT,
   OPENAI_REALTIME_WEBSOCKET_URL,
@@ -39,8 +51,8 @@ export {
   buildRealtimeWebSocketUrl,
   isTranscriptionWebSocketUrl,
   nestedTranscriptionModel,
-} from './protocol';
-export { TranscriptReconciler } from './reconciler';
+} from "./protocol";
+export { TranscriptReconciler } from "./reconciler";
 export {
   VoiceStateMachine,
   failureStateFor,
@@ -49,7 +61,7 @@ export {
   type VoicePermissionState,
   type VoiceSnapshot,
   type VoiceState,
-} from './stateMachine';
+} from "./stateMachine";
 export {
   REALTIME_PCM_CHANNELS,
   REALTIME_PCM_SAMPLE_RATE,
@@ -63,5 +75,5 @@ export {
   type RealtimeTranscriptionTransport,
   type RealtimeTransportEvent,
   type TranscriptionContext,
-} from './types';
-export { VoiceSession, type VoiceSessionDependencies } from './voiceSession';
+} from "./types";
+export { VoiceSession, type VoiceSessionDependencies } from "./voiceSession";

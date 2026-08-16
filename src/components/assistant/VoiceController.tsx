@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import {
   getRecordingPermissionsAsync,
   requestRecordingPermissionsAsync,
   useAudioStream,
   type AudioStreamBuffer,
-} from 'expo-audio';
-import { usePathname } from 'expo-router';
-import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+} from "expo-audio";
+import { usePathname } from "expo-router";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import {
   OpenAIByokClientSecretProvider,
   OpenAIRealtimeWebSocketTransport,
@@ -23,11 +23,11 @@ import {
   type VoicePermissionState,
   type VoiceSnapshot,
   type VoiceState,
-} from '@/services/transcription';
-import { useSettingsStore } from '@/stores/settings.store';
-import { reportNonFatalError } from '@/lib/nonFatalError';
+} from "@/services/transcription";
+import { useSettingsStore } from "@/stores/settings.store";
+import { reportNonFatalError } from "@/lib/nonFatalError";
 
-export type { VoiceState } from '@/services/transcription';
+export type { VoiceState } from "@/services/transcription";
 
 interface VoiceControllerOptions {
   onTranscript: (text: string) => void | Promise<void>;
@@ -54,12 +54,16 @@ export interface VoiceControllerResult {
   cancel: () => void;
 }
 
-export function useVoiceController({ onTranscript }: VoiceControllerOptions): VoiceControllerResult {
+export function useVoiceController({
+  onTranscript,
+}: VoiceControllerOptions): VoiceControllerResult {
   const pathname = usePathname();
   const openAiApiKey = useSettingsStore((state) => state.openAiApiKey);
   const openAiKeyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
   const onTranscriptRef = useRef(onTranscript);
-  const bufferListenerRef = useRef<((buffer: AudioStreamBuffer) => void) | null>(null);
+  const bufferListenerRef = useRef<
+    ((buffer: AudioStreamBuffer) => void) | null
+  >(null);
   const previousPathnameRef = useRef(pathname);
   const wasStreamingRef = useRef(false);
   const [snapshot, setSnapshot] = useState<VoiceSnapshot>(initialVoiceSnapshot);
@@ -69,60 +73,81 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
     onTranscriptRef.current = onTranscript;
   }, [onTranscript]);
 
-  const deliverTranscript = useCallback((transcript: string) => (
-    onTranscriptRef.current(transcript)
-  ), []);
+  const deliverTranscript = useCallback(
+    (transcript: string) => onTranscriptRef.current(transcript),
+    [],
+  );
 
   const audioStream = useAudioStream({
     sampleRate: defaultRealtimeTranscriptionConfig.sampleRate,
     channels: 1,
-    encoding: 'int16',
+    encoding: "int16",
     onBuffer: (buffer) => bufferListenerRef.current?.(buffer),
   });
 
-  const capture = useMemo<NativeAudioCapture>(() => ({
-    async start(onBuffer) {
-      bufferListenerRef.current = onBuffer;
-      await audioStream.stream.start();
-    },
-    async stop() {
-      bufferListenerRef.current = null;
-      audioStream.stream.stop();
-    },
-  }), [audioStream.stream]);
+  const capture = useMemo<NativeAudioCapture>(
+    () => ({
+      async start(onBuffer) {
+        bufferListenerRef.current = onBuffer;
+        await audioStream.stream.start();
+      },
+      async stop() {
+        bufferListenerRef.current = null;
+        audioStream.stream.stop();
+      },
+    }),
+    [audioStream.stream],
+  );
 
   // VoiceSession's constructor only stores these callbacks; it does not invoke ref-backed capture during render.
   // eslint-disable-next-line react-hooks/refs
-  const voiceSession = useMemo(() => new VoiceSession({
-    permission: {
-      get: getRecordingPermissionsAsync,
-      request: requestRecordingPermissionsAsync,
+  const voiceSession = useMemo(
+    () =>
+      new VoiceSession({
+        permission: {
+          get: getRecordingPermissionsAsync,
+          request: requestRecordingPermissionsAsync,
+        },
+        audioSession: expoAudioSession,
+        capture,
+        clientSecrets: new OpenAIByokClientSecretProvider(
+          openAiKeyLoaded ? openAiApiKey : "",
+        ),
+        createTransport: (diagnostics) =>
+          new OpenAIRealtimeWebSocketTransport({
+            diagnostics,
+          }),
+        config: defaultRealtimeTranscriptionConfig,
+        onFinalTranscript: deliverTranscript,
+        onAudioLevel: (level) => audioLevel.set(level),
+        onTechnicalError: (error) =>
+          reportNonFatalError("voice-cleanup", error),
+      }),
+    [audioLevel, capture, deliverTranscript, openAiApiKey, openAiKeyLoaded],
+  );
+
+  useEffect(
+    () =>
+      voiceSession.subscribe((next) => {
+        setSnapshot(next);
+        if (next.error) {
+          reportNonFatalError(
+            "voice-session",
+            new Error(`code=${next.error.code} message=${next.error.message}`, {
+              cause: next.error.cause,
+            }),
+          );
+        }
+      }),
+    [voiceSession],
+  );
+
+  useEffect(
+    () => () => {
+      void voiceSession.dispose();
     },
-    audioSession: expoAudioSession,
-    capture,
-    clientSecrets: new OpenAIByokClientSecretProvider(openAiKeyLoaded ? openAiApiKey : ''),
-    createTransport: (diagnostics) => new OpenAIRealtimeWebSocketTransport({
-      diagnostics,
-    }),
-    config: defaultRealtimeTranscriptionConfig,
-    onFinalTranscript: deliverTranscript,
-    onAudioLevel: (level) => audioLevel.set(level),
-    onTechnicalError: (error) => reportNonFatalError('voice-cleanup', error),
-  }), [audioLevel, capture, deliverTranscript, openAiApiKey, openAiKeyLoaded]);
-
-  useEffect(() => voiceSession.subscribe((next) => {
-    setSnapshot(next);
-    if (next.error) {
-      reportNonFatalError(
-        'voice-session',
-        new Error(`code=${next.error.code} message=${next.error.message}`, { cause: next.error.cause }),
-      );
-    }
-  }), [voiceSession]);
-
-  useEffect(() => () => {
-    void voiceSession.dispose();
-  }, [voiceSession]);
+    [voiceSession],
+  );
 
   const cancel = useCallback(() => {
     void voiceSession.cancel();
@@ -130,16 +155,16 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
 
   useEffect(() => {
     const onAppStateChange = (next: AppStateStatus) => {
-      if (next !== 'active' && voiceSession.snapshot.state !== 'idle') cancel();
+      if (next !== "active" && voiceSession.snapshot.state !== "idle") cancel();
     };
-    const subscription = AppState.addEventListener('change', onAppStateChange);
+    const subscription = AppState.addEventListener("change", onAppStateChange);
     return () => subscription.remove();
   }, [cancel, voiceSession]);
 
   useEffect(() => {
     if (previousPathnameRef.current !== pathname) {
       previousPathnameRef.current = pathname;
-      if (voiceSession.snapshot.state !== 'idle') cancel();
+      if (voiceSession.snapshot.state !== "idle") cancel();
     }
   }, [cancel, pathname, voiceSession]);
 
@@ -148,8 +173,11 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
       wasStreamingRef.current = true;
       return;
     }
-    if (wasStreamingRef.current
-      && (voiceSession.snapshot.state === 'connecting' || voiceSession.snapshot.state === 'listening')) {
+    if (
+      wasStreamingRef.current &&
+      (voiceSession.snapshot.state === "connecting" ||
+        voiceSession.snapshot.state === "listening")
+    ) {
       wasStreamingRef.current = false;
       void voiceSession.captureInterrupted();
     }
@@ -169,10 +197,12 @@ export function useVoiceController({ onTranscript }: VoiceControllerOptions): Vo
   return {
     state: snapshot.state,
     permission: snapshot.permission,
-    locked: snapshot.state === 'listening',
+    locked: snapshot.state === "listening",
     error,
     errorCode: snapshot.error?.code ?? null,
-    canRetry: snapshot.error ? isRetryableVoiceErrorCode(snapshot.error.code) : false,
+    canRetry: snapshot.error
+      ? isRetryableVoiceErrorCode(snapshot.error.code)
+      : false,
     retryAttempt: snapshot.retryAttempt,
     partialTranscript: snapshot.partialTranscript,
     finalTranscript: snapshot.finalTranscript,

@@ -5,19 +5,19 @@
  */
 
 /** Calendar date in a local zone, ISO `YYYY-MM-DD`. */
-export type LocalDate = string & { readonly __brand: 'LocalDate' };
+export type LocalDate = string & { readonly __brand: "LocalDate" };
 
 /** Wall-clock time, 24h `HH:mm` (optional seconds not stored in domain). */
-export type LocalTime = string & { readonly __brand: 'LocalTime' };
+export type LocalTime = string & { readonly __brand: "LocalTime" };
 
 /** IANA timezone id (e.g. `America/Mexico_City`) or empty for device-local floating. */
-export type TimeZone = string & { readonly __brand: 'TimeZone' };
+export type TimeZone = string & { readonly __brand: "TimeZone" };
 
 /**
  * fixed — absolute / zoned instant semantics
  * floating — wall-clock in the user's local calendar (moves with zone)
  */
-export type TemporalSemantics = 'fixed' | 'floating';
+export type TemporalSemantics = "fixed" | "floating";
 
 export interface ResolvedDateTime {
   date: LocalDate;
@@ -27,13 +27,13 @@ export interface ResolvedDateTime {
 }
 
 export type Weekday =
-  | 'sunday'
-  | 'monday'
-  | 'tuesday'
-  | 'wednesday'
-  | 'thursday'
-  | 'friday'
-  | 'saturday';
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";
 
 export const WEEKDAY_INDEX: Record<Weekday, number> = {
   sunday: 0,
@@ -46,10 +46,10 @@ export const WEEKDAY_INDEX: Record<Weekday, number> = {
 };
 
 export class TemporalValidationError extends Error {
-  readonly code = 'TEMPORAL_VALIDATION_FAILED' as const;
+  readonly code = "TEMPORAL_VALIDATION_FAILED" as const;
 
   constructor(message: string) {
     super(message);
-    this.name = 'TemporalValidationError';
+    this.name = "TemporalValidationError";
   }
 }

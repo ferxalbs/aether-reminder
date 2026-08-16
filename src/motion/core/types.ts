@@ -1,38 +1,38 @@
-export type MotionTier = 'full' | 'standard' | 'reduced' | 'minimal';
+export type MotionTier = "full" | "standard" | "reduced" | "minimal";
 
-export type MotionPlatform = 'android' | 'ios' | 'unknown';
+export type MotionPlatform = "android" | "ios" | "unknown";
 
 export type ThermalState =
-  | 'unknown'
-  | 'nominal'
-  | 'fair'
-  | 'light'
-  | 'moderate'
-  | 'serious'
-  | 'severe'
-  | 'critical'
-  | 'emergency'
-  | 'shutdown';
+  | "unknown"
+  | "nominal"
+  | "fair"
+  | "light"
+  | "moderate"
+  | "serious"
+  | "severe"
+  | "critical"
+  | "emergency"
+  | "shutdown";
 
 export type MotionChangeReason =
-  | 'initial'
-  | 'unknown-capabilities'
-  | 'low-ram-ceiling'
-  | 'reduce-motion'
-  | 'reduce-transparency'
-  | 'low-power'
-  | 'thermal-moderate'
-  | 'thermal-serious'
-  | 'thermal-severe'
-  | 'thermal-critical'
-  | 'low-memory'
-  | 'jank-full-to-standard'
-  | 'jank-standard-to-reduced'
-  | 'jank-reduced-to-minimal'
-  | 'recovery-upgrade'
-  | 'warmup'
-  | 'native-unavailable'
-  | 'malformed-snapshot';
+  | "initial"
+  | "unknown-capabilities"
+  | "low-ram-ceiling"
+  | "reduce-motion"
+  | "reduce-transparency"
+  | "low-power"
+  | "thermal-moderate"
+  | "thermal-serious"
+  | "thermal-severe"
+  | "thermal-critical"
+  | "low-memory"
+  | "jank-full-to-standard"
+  | "jank-standard-to-reduced"
+  | "jank-reduced-to-minimal"
+  | "recovery-upgrade"
+  | "warmup"
+  | "native-unavailable"
+  | "malformed-snapshot";
 
 export interface NativeMotionFrameWindow {
   sampleWindowMs: number;
@@ -50,7 +50,7 @@ export interface NativeMotionFrameWindow {
 }
 
 export interface NativeMotionSnapshot {
-  platform: 'android' | 'ios';
+  platform: "android" | "ios";
   /** Observed/scheduled cadence. Not the panel maximum. */
   currentRefreshRateHz: number | null;
   /** Maximum supported refresh rate. A capability, not the current rate. */
@@ -129,26 +129,26 @@ export interface MotionDiagnostics {
 }
 
 export type MotionPresetId =
-  | 'task.enter'
-  | 'task.complete'
-  | 'task.dismiss'
-  | 'task.reorder'
-  | 'navigation.push'
-  | 'navigation.tab'
-  | 'navigation.modal'
-  | 'surface.press'
-  | 'surface.release'
-  | 'orb.idle'
-  | 'orb.listen'
-  | 'orb.think'
-  | 'orb.success'
-  | 'orb.error'
-  | 'capture.enter'
-  | 'capture.commit'
-  | 'sheet.present'
-  | 'sheet.dismiss';
+  | "task.enter"
+  | "task.complete"
+  | "task.dismiss"
+  | "task.reorder"
+  | "navigation.push"
+  | "navigation.tab"
+  | "navigation.modal"
+  | "surface.press"
+  | "surface.release"
+  | "orb.idle"
+  | "orb.listen"
+  | "orb.think"
+  | "orb.success"
+  | "orb.error"
+  | "capture.enter"
+  | "capture.commit"
+  | "sheet.present"
+  | "sheet.dismiss";
 
-export type MotionPresetMode = 'spring' | 'timing' | 'none';
+export type MotionPresetMode = "spring" | "timing" | "none";
 
 export interface ResolvedMotionPreset {
   id: MotionPresetId;
@@ -173,7 +173,10 @@ export const MOTION_TIER_RANK: Record<MotionTier, number> = {
   full: 3,
 };
 
-export function clampMotionTier(tier: MotionTier, ceiling: MotionTier): MotionTier {
+export function clampMotionTier(
+  tier: MotionTier,
+  ceiling: MotionTier,
+): MotionTier {
   return MOTION_TIER_RANK[tier] <= MOTION_TIER_RANK[ceiling] ? tier : ceiling;
 }
 
@@ -182,15 +185,15 @@ export function minMotionTier(a: MotionTier, b: MotionTier): MotionTier {
 }
 
 export function nextHigherTier(tier: MotionTier): MotionTier {
-  if (tier === 'minimal') return 'reduced';
-  if (tier === 'reduced') return 'standard';
-  if (tier === 'standard') return 'full';
-  return 'full';
+  if (tier === "minimal") return "reduced";
+  if (tier === "reduced") return "standard";
+  if (tier === "standard") return "full";
+  return "full";
 }
 
 export function nextLowerTier(tier: MotionTier): MotionTier {
-  if (tier === 'full') return 'standard';
-  if (tier === 'standard') return 'reduced';
-  if (tier === 'reduced') return 'minimal';
-  return 'minimal';
+  if (tier === "full") return "standard";
+  if (tier === "standard") return "reduced";
+  if (tier === "reduced") return "minimal";
+  return "minimal";
 }

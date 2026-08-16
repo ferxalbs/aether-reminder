@@ -1,14 +1,20 @@
-import React, { useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import ExpoDateTimePicker from '@expo/ui/community/datetime-picker';
-import { CalendarDays, Clock3 } from 'lucide-react-native';
-import { Colors, ControlTokens, getMinimumTouchTarget, Radius, Spacing } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useSemanticColors } from '@/theme/useSemanticColors';
-import { Typography } from './Typography';
-import { AnimatedPressable } from './AnimatedPressable';
+import React, { useMemo, useState } from "react";
+import { Platform, StyleSheet, View } from "react-native";
+import ExpoDateTimePicker from "@expo/ui/community/datetime-picker";
+import { CalendarDays, Clock3 } from "lucide-react-native";
+import {
+  Colors,
+  ControlTokens,
+  getMinimumTouchTarget,
+  Radius,
+  Spacing,
+} from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
+import { Typography } from "./Typography";
+import { AnimatedPressable } from "./AnimatedPressable";
 
-export type NativeDateTimeMode = 'date' | 'time';
+export type NativeDateTimeMode = "date" | "time";
 
 export interface NativeDateTimeControlProps {
   label: string;
@@ -23,13 +29,18 @@ export interface NativeDateTimeControlProps {
 
 function formatValue(value: Date, mode: NativeDateTimeMode): string {
   try {
-    return mode === 'date'
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(value)
-      : new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(value);
+    return mode === "date"
+      ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+          value,
+        )
+      : new Intl.DateTimeFormat(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(value);
   } catch {
-    return mode === 'date'
-      ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
-      : `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+    return mode === "date"
+      ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`
+      : `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
   }
 }
 
@@ -54,12 +65,16 @@ export function NativeDateTimeControl({
   const formatted = useMemo(() => formatValue(value, mode), [mode, value]);
   const accentColor = colors.accent;
   const secondary = colors.textSecondary;
-  const Icon = mode === 'date' ? CalendarDays : Clock3;
+  const Icon = mode === "date" ? CalendarDays : Clock3;
 
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === "ios") {
     return (
       <View style={styles.container} testID={testID}>
-        <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700} accessible={false}>
+        <Typography
+          variant="caption"
+          color={isDark ? Colors.zinc300 : Colors.zinc700}
+          accessible={false}
+        >
           {label}
         </Typography>
         <View
@@ -67,7 +82,9 @@ export function NativeDateTimeControl({
             styles.iosControl,
             {
               borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+              backgroundColor: isDark
+                ? Colors.surfaceRaisedDark
+                : Colors.surfaceRaisedLight,
             },
           ]}
         >
@@ -77,7 +94,7 @@ export function NativeDateTimeControl({
             mode={mode}
             display="compact"
             accentColor={accentColor}
-            themeVariant={isDark ? 'dark' : 'light'}
+            themeVariant={isDark ? "dark" : "light"}
             minimumDate={minimumDate}
             maximumDate={maximumDate}
             onValueChange={(_event, selectedDate) => onChange(selectedDate)}
@@ -91,7 +108,11 @@ export function NativeDateTimeControl({
 
   return (
     <View style={styles.container} testID={testID}>
-      <Typography variant="caption" color={isDark ? Colors.zinc300 : Colors.zinc700} accessible={false}>
+      <Typography
+        variant="caption"
+        color={isDark ? Colors.zinc300 : Colors.zinc700}
+        accessible={false}
+      >
         {label}
       </Typography>
       <AnimatedPressable
@@ -104,7 +125,9 @@ export function NativeDateTimeControl({
           {
             minHeight: getMinimumTouchTarget(Platform.OS),
             borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-            backgroundColor: isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight,
+            backgroundColor: isDark
+              ? Colors.surfaceRaisedDark
+              : Colors.surfaceRaisedLight,
           },
         ]}
       >
@@ -118,12 +141,12 @@ export function NativeDateTimeControl({
           value={value}
           mode={mode}
           presentation="dialog"
-          display={mode === 'date' ? 'calendar' : 'clock'}
+          display={mode === "date" ? "calendar" : "clock"}
           is24Hour
           accentColor={accentColor}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
-          positiveButton={{ label: 'Done' }}
+          positiveButton={{ label: "Done" }}
           onValueChange={(_event, selectedDate) => {
             setDialogOpen(false);
             onChange(selectedDate);
@@ -143,28 +166,28 @@ const styles = StyleSheet.create({
   },
   iosControl: {
     minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: Spacing.xs,
     paddingLeft: Spacing.sm,
     paddingRight: Spacing.xs,
     borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.lg,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
+    borderCurve: "continuous",
+    overflow: "hidden",
   },
   iosPicker: {
     flexGrow: 0,
   },
   androidTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.lg,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   triggerLabel: {
     flex: 1,

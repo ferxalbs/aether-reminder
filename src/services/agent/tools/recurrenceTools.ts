@@ -3,96 +3,110 @@ import type {
   RecurrenceMode,
   Reminder,
   TaskPriority,
-} from '@/domain/entities';
-import { resolveToday } from '@/temporal/resolve';
-import type { AgentTool, ToolResult } from './types';
+} from "@/domain/entities";
+import { resolveToday } from "@/temporal/resolve";
+import type { AgentTool, ToolResult } from "./types";
 
 function asString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === "string" ? value : undefined;
 }
 
 function asPositiveInt(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 1
+  return typeof value === "number" && Number.isFinite(value) && value >= 1
     ? Math.floor(value)
     : undefined;
 }
 
 function asNumberArray(value: unknown): number[] | undefined {
-  return Array.isArray(value) && value.every((item) => typeof item === 'number')
+  return Array.isArray(value) && value.every((item) => typeof item === "number")
     ? value
     : undefined;
 }
 
 function asPriority(value: unknown): TaskPriority | undefined {
-  return value === 'low' || value === 'medium' || value === 'high' ? value : undefined;
+  return value === "low" || value === "medium" || value === "high"
+    ? value
+    : undefined;
 }
 
 function asFrequency(value: unknown): RecurrenceFrequency | undefined {
-  return value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'yearly'
+  return value === "daily" ||
+    value === "weekly" ||
+    value === "monthly" ||
+    value === "yearly"
     ? value
     : undefined;
 }
 
 function asMode(value: unknown): RecurrenceMode | undefined {
-  return value === 'fixed' || value === 'after_completion' ? value : undefined;
+  return value === "fixed" || value === "after_completion" ? value : undefined;
 }
 
 function isProjectionReconciled(reminder: Reminder): boolean {
   if (reminder.projectionDirty || reminder.projectionError) return false;
-  if (reminder.projectionState === 'scheduled') return Boolean(reminder.nativeNotificationId);
-  return !reminder.enabled || reminder.projectionState === 'not_required';
+  if (reminder.projectionState === "scheduled")
+    return Boolean(reminder.nativeNotificationId);
+  return !reminder.enabled || reminder.projectionState === "not_required";
 }
 
 export const recurrenceGet: AgentTool<{ taskId: string }> = {
-  id: 'tasks.recurrence_get',
-  version: '1',
-  description: 'Get the active recurrence rule for a task.',
-  risk: 'READ',
+  id: "tasks.recurrence_get",
+  version: "1",
+  description: "Get the active recurrence rule for a task.",
+  risk: "READ",
   inputSchema: {
-    type: 'object',
-    properties: { taskId: { type: 'string' } },
-    required: ['taskId'],
+    type: "object",
+    properties: { taskId: { type: "string" } },
+    required: ["taskId"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const taskId = asString(input?.taskId);
-    if (!taskId) return { ok: false, error: 'taskId is required' };
+    if (!taskId) return { ok: false, error: "taskId is required" };
     const rule = await ctx.services.recurrence.getRuleForTask(taskId);
     return { ok: true, data: { rule } };
   },
 };
 
 export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
-  id: 'tasks.create_recurring',
-  version: '1',
-  description: 'Create a task with a local recurrence rule. Use resolved YYYY-MM-DD dates.',
-  risk: 'REVERSIBLE_WRITE',
+  id: "tasks.create_recurring",
+  version: "1",
+  description:
+    "Create a task with a local recurrence rule. Use resolved YYYY-MM-DD dates.",
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      title: { type: 'string' },
-      notes: { type: 'string' },
-      priority: { type: 'string', enum: ['low', 'medium', 'high'] },
-      startDate: { type: 'string' },
-      startTime: { type: 'string' },
-      frequency: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'yearly'] },
-      interval: { type: 'number' },
-      weekdays: { type: 'array', items: { type: 'number' } },
-      monthDays: { type: 'array', items: { type: 'number' } },
-      mode: { type: 'string', enum: ['fixed', 'after_completion'] },
-      endDate: { type: 'string' },
-      maxOccurrences: { type: 'number' },
+      title: { type: "string" },
+      notes: { type: "string" },
+      priority: { type: "string", enum: ["low", "medium", "high"] },
+      startDate: { type: "string" },
+      startTime: { type: "string" },
+      frequency: {
+        type: "string",
+        enum: ["daily", "weekly", "monthly", "yearly"],
+      },
+      interval: { type: "number" },
+      weekdays: { type: "array", items: { type: "number" } },
+      monthDays: { type: "array", items: { type: "number" } },
+      mode: { type: "string", enum: ["fixed", "after_completion"] },
+      endDate: { type: "string" },
+      maxOccurrences: { type: "number" },
     },
-    required: ['title', 'frequency'],
+    required: ["title", "frequency"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const title = asString(input?.title)?.trim();
     const frequency = asFrequency(input?.frequency);
-    if (!title || !frequency) return { ok: false, error: 'title and frequency are required' };
-    const startDate = asString(input?.startDate) ?? ctx.context.selectedDate ?? resolveToday().date;
+    if (!title || !frequency)
+      return { ok: false, error: "title and frequency are required" };
+    const startDate =
+      asString(input?.startDate) ??
+      ctx.context.selectedDate ??
+      resolveToday().date;
     const startTime = asString(input?.startTime) ?? null;
     try {
       const result = await ctx.commands.createRecurringTask(
@@ -100,20 +114,20 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
           task: {
             title,
             notes: asString(input?.notes) ?? null,
-            priority: asPriority(input?.priority) ?? 'medium',
+            priority: asPriority(input?.priority) ?? "medium",
             dueDate: startDate,
             dueTime: startTime,
             dueTimezone: ctx.context.timezone,
-            dueSemantics: 'floating',
-            source: 'agent',
-            creationOrigin: 'agent',
+            dueSemantics: "floating",
+            source: "agent",
+            creationOrigin: "agent",
           },
           recurrence: {
             frequency,
             interval: asPositiveInt(input?.interval) ?? 1,
             weekdays: asNumberArray(input?.weekdays) ?? null,
             monthDays: asNumberArray(input?.monthDays) ?? null,
-            mode: asMode(input?.mode) ?? 'fixed',
+            mode: asMode(input?.mode) ?? "fixed",
             endDate: asString(input?.endDate) ?? null,
             maxOccurrences: asPositiveInt(input?.maxOccurrences) ?? null,
             timezone: ctx.context.timezone,
@@ -125,11 +139,17 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
       // The command layer owns the primary due-time reminder for every task.
       // Do not schedule a second notification here.
       const reminders = startTime
-        ? await ctx.services.reminders.listReminders({ taskId: result.task.id, enabledOnly: true })
+        ? await ctx.services.reminders.listReminders({
+            taskId: result.task.id,
+            enabledOnly: true,
+          })
         : [];
-      const reminder = reminders.find((item) =>
-        item.scheduledDate === startDate && item.scheduledTime === startTime
-      ) ?? null;
+      const reminder =
+        reminders.find(
+          (item) =>
+            item.scheduledDate === startDate &&
+            item.scheduledTime === startTime,
+        ) ?? null;
       return {
         ok: true,
         data: {
@@ -138,89 +158,118 @@ export const recurrenceCreate: AgentTool<Record<string, unknown>> = {
           reminder,
           osNotificationProjection: reminder
             ? reminder.projectionError || reminder.projectionDirty
-              ? 'failed'
+              ? "failed"
               : isProjectionReconciled(reminder)
-                ? 'scheduled'
-                : 'pending_repair'
+                ? "scheduled"
+                : "pending_repair"
             : undefined,
         },
-        receipt: { ...result.receipt, toolId: 'tasks.create_recurring' },
+        receipt: { ...result.receipt, toolId: "tasks.create_recurring" },
       };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'Recurring task creation failed' };
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Recurring task creation failed",
+      };
     }
   },
 };
 
 export const recurrenceUpdate: AgentTool<Record<string, unknown>> = {
-  id: 'tasks.update_recurrence',
-  version: '1',
-  description: 'Update an existing recurrence rule by rule id.',
-  risk: 'REVERSIBLE_WRITE',
+  id: "tasks.update_recurrence",
+  version: "1",
+  description: "Update an existing recurrence rule by rule id.",
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      ruleId: { type: 'string' },
-      frequency: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'yearly'] },
-      interval: { type: 'number' },
-      weekdays: { type: 'array', items: { type: 'number' } },
-      monthDays: { type: 'array', items: { type: 'number' } },
-      mode: { type: 'string', enum: ['fixed', 'after_completion'] },
-      endDate: { type: 'string' },
-      maxOccurrences: { type: 'number' },
+      ruleId: { type: "string" },
+      frequency: {
+        type: "string",
+        enum: ["daily", "weekly", "monthly", "yearly"],
+      },
+      interval: { type: "number" },
+      weekdays: { type: "array", items: { type: "number" } },
+      monthDays: { type: "array", items: { type: "number" } },
+      mode: { type: "string", enum: ["fixed", "after_completion"] },
+      endDate: { type: "string" },
+      maxOccurrences: { type: "number" },
     },
-    required: ['ruleId'],
+    required: ["ruleId"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const ruleId = asString(input?.ruleId);
-    if (!ruleId) return { ok: false, error: 'ruleId is required' };
+    if (!ruleId) return { ok: false, error: "ruleId is required" };
     try {
       const result = await ctx.commands.updateRecurrenceRule(ruleId, {
         frequency: asFrequency(input?.frequency),
         interval: asPositiveInt(input?.interval),
-        weekdays: input?.weekdays === undefined ? undefined : (asNumberArray(input.weekdays) ?? null),
-        monthDays: input?.monthDays === undefined ? undefined : (asNumberArray(input.monthDays) ?? null),
+        weekdays:
+          input?.weekdays === undefined
+            ? undefined
+            : (asNumberArray(input.weekdays) ?? null),
+        monthDays:
+          input?.monthDays === undefined
+            ? undefined
+            : (asNumberArray(input.monthDays) ?? null),
         mode: asMode(input?.mode),
-        endDate: input?.endDate === undefined ? undefined : (asString(input.endDate) ?? null),
-        maxOccurrences: input?.maxOccurrences === undefined ? undefined : (asPositiveInt(input.maxOccurrences) ?? null),
+        endDate:
+          input?.endDate === undefined
+            ? undefined
+            : (asString(input.endDate) ?? null),
+        maxOccurrences:
+          input?.maxOccurrences === undefined
+            ? undefined
+            : (asPositiveInt(input.maxOccurrences) ?? null),
       });
       return {
         ok: true,
         data: { recurrence: result.value },
-        receipt: { ...result.receipt, toolId: 'tasks.update_recurrence' },
+        receipt: { ...result.receipt, toolId: "tasks.update_recurrence" },
       };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'Recurrence update failed' };
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Recurrence update failed",
+      };
     }
   },
 };
 
 export const recurrenceStop: AgentTool<{ ruleId: string }> = {
-  id: 'tasks.stop_recurrence',
-  version: '1',
-  description: 'Stop a recurrence rule without deleting the current task.',
-  risk: 'REVERSIBLE_WRITE',
+  id: "tasks.stop_recurrence",
+  version: "1",
+  description: "Stop a recurrence rule without deleting the current task.",
+  risk: "REVERSIBLE_WRITE",
   inputSchema: {
-    type: 'object',
-    properties: { ruleId: { type: 'string' } },
-    required: ['ruleId'],
+    type: "object",
+    properties: { ruleId: { type: "string" } },
+    required: ["ruleId"],
     additionalProperties: false,
   },
-  outputSchema: { type: 'object' },
+  outputSchema: { type: "object" },
   async execute(input, ctx): Promise<ToolResult> {
     const ruleId = asString(input?.ruleId);
-    if (!ruleId) return { ok: false, error: 'ruleId is required' };
+    if (!ruleId) return { ok: false, error: "ruleId is required" };
     try {
       const result = await ctx.commands.stopRecurrenceRule(ruleId);
       return {
         ok: true,
         data: { recurrence: result.value },
-        receipt: { ...result.receipt, toolId: 'tasks.stop_recurrence' },
+        receipt: { ...result.receipt, toolId: "tasks.stop_recurrence" },
       };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'Recurrence stop failed' };
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Recurrence stop failed",
+      };
     }
   },
 };

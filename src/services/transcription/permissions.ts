@@ -1,4 +1,4 @@
-import { VoiceError } from './errors';
+import { VoiceError } from "./errors";
 
 export interface MicrophonePermissionResponse {
   granted: boolean;
@@ -13,16 +13,19 @@ export interface MicrophonePermissionGateway {
 
 export async function ensureMicrophonePermission(
   gateway: MicrophonePermissionGateway,
-): Promise<'granted'> {
+): Promise<"granted"> {
   const current = await gateway.get();
-  if (current.granted) return 'granted';
+  if (current.granted) return "granted";
   if (!current.canAskAgain) {
-    throw new VoiceError('MIC_PERMISSION_BLOCKED', 'Microphone permission is permanently denied.');
+    throw new VoiceError(
+      "MIC_PERMISSION_BLOCKED",
+      "Microphone permission is permanently denied.",
+    );
   }
   const requested = await gateway.request();
-  if (requested.granted) return 'granted';
+  if (requested.granted) return "granted";
   throw new VoiceError(
-    requested.canAskAgain ? 'MIC_PERMISSION_DENIED' : 'MIC_PERMISSION_BLOCKED',
-    'Microphone permission was denied.',
+    requested.canAskAgain ? "MIC_PERMISSION_DENIED" : "MIC_PERMISSION_BLOCKED",
+    "Microphone permission was denied.",
   );
 }

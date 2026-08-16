@@ -1,4 +1,4 @@
-import type { MotionTier, ThermalState } from './types';
+import type { MotionTier, ThermalState } from "./types";
 
 /** Aggregate native snapshots are emitted at this interval. Not per-frame. */
 export const MOTION_SNAPSHOT_INTERVAL_MS = 750;
@@ -29,8 +29,14 @@ export const DEFAULT_REFRESH_RATE_HZ = 60;
 
 export const ANDROID_NATIVE_BLUR_API = 31;
 
-export function frameBudgetMs(refreshRateHz: number | null | undefined): number {
-  if (refreshRateHz == null || !Number.isFinite(refreshRateHz) || refreshRateHz <= 0) {
+export function frameBudgetMs(
+  refreshRateHz: number | null | undefined,
+): number {
+  if (
+    refreshRateHz == null ||
+    !Number.isFinite(refreshRateHz) ||
+    refreshRateHz <= 0
+  ) {
     return 1000 / DEFAULT_REFRESH_RATE_HZ;
   }
   return 1000 / refreshRateHz;
@@ -46,7 +52,7 @@ export function budgetForTier(tier: MotionTier): {
   allowHighRefreshOrnament: boolean;
 } {
   switch (tier) {
-    case 'full':
+    case "full":
       return {
         maxSecondaryAnimations: 4,
         allowContinuousDecorativeMotion: true,
@@ -56,7 +62,7 @@ export function budgetForTier(tier: MotionTier): {
         allowComplexOrb: true,
         allowHighRefreshOrnament: true,
       };
-    case 'standard':
+    case "standard":
       return {
         maxSecondaryAnimations: 2,
         allowContinuousDecorativeMotion: false,
@@ -66,7 +72,7 @@ export function budgetForTier(tier: MotionTier): {
         allowComplexOrb: true,
         allowHighRefreshOrnament: false,
       };
-    case 'reduced':
+    case "reduced":
       return {
         maxSecondaryAnimations: 1,
         allowContinuousDecorativeMotion: false,
@@ -76,7 +82,7 @@ export function budgetForTier(tier: MotionTier): {
         allowComplexOrb: false,
         allowHighRefreshOrnament: false,
       };
-    case 'minimal':
+    case "minimal":
       return {
         maxSecondaryAnimations: 0,
         allowContinuousDecorativeMotion: false,
@@ -91,34 +97,36 @@ export function budgetForTier(tier: MotionTier): {
 
 export function thermalCeiling(state: ThermalState): MotionTier {
   switch (state) {
-    case 'severe':
-    case 'critical':
-    case 'emergency':
-    case 'shutdown':
-      return 'minimal';
-    case 'serious':
-      return 'reduced';
-    case 'moderate':
-    case 'light':
-    case 'fair':
-      return 'standard';
-    case 'nominal':
-    case 'unknown':
-      return 'full';
+    case "severe":
+    case "critical":
+    case "emergency":
+    case "shutdown":
+      return "minimal";
+    case "serious":
+      return "reduced";
+    case "moderate":
+    case "light":
+    case "fair":
+      return "standard";
+    case "nominal":
+    case "unknown":
+      return "full";
   }
 }
 
-export function thermalReason(state: ThermalState):
-  | 'thermal-moderate'
-  | 'thermal-serious'
-  | 'thermal-severe'
-  | 'thermal-critical'
+export function thermalReason(
+  state: ThermalState,
+):
+  | "thermal-moderate"
+  | "thermal-serious"
+  | "thermal-severe"
+  | "thermal-critical"
   | null {
-  if (state === 'critical' || state === 'emergency' || state === 'shutdown') {
-    return 'thermal-critical';
+  if (state === "critical" || state === "emergency" || state === "shutdown") {
+    return "thermal-critical";
   }
-  if (state === 'severe') return 'thermal-severe';
-  if (state === 'serious') return 'thermal-serious';
-  if (state === 'moderate') return 'thermal-moderate';
+  if (state === "severe") return "thermal-severe";
+  if (state === "serious") return "thermal-serious";
+  if (state === "moderate") return "thermal-moderate";
   return null;
 }

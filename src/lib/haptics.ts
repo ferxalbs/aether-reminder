@@ -1,7 +1,9 @@
-import { Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { Platform } from "react-native";
+import * as Haptics from "expo-haptics";
 
-function androidImpact(style: Haptics.ImpactFeedbackStyle): Haptics.AndroidHaptics {
+function androidImpact(
+  style: Haptics.ImpactFeedbackStyle,
+): Haptics.AndroidHaptics {
   switch (style) {
     case Haptics.ImpactFeedbackStyle.Heavy:
     case Haptics.ImpactFeedbackStyle.Rigid:
@@ -17,9 +19,9 @@ function androidImpact(style: Haptics.ImpactFeedbackStyle): Haptics.AndroidHapti
 }
 
 export async function impactAsync(
-  style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light
+  style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light,
 ): Promise<void> {
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     await Haptics.performAndroidHapticsAsync(androidImpact(style));
     return;
   }
@@ -27,22 +29,25 @@ export async function impactAsync(
 }
 
 export async function selectionAsync(): Promise<void> {
-  if (Platform.OS === 'android') {
-    await Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Segment_Frequent_Tick);
+  if (Platform.OS === "android") {
+    await Haptics.performAndroidHapticsAsync(
+      Haptics.AndroidHaptics.Segment_Frequent_Tick,
+    );
     return;
   }
   await Haptics.selectionAsync();
 }
 
 export async function notificationAsync(
-  type: Haptics.NotificationFeedbackType
+  type: Haptics.NotificationFeedbackType,
 ): Promise<void> {
-  if (Platform.OS === 'android') {
-    const androidType = type === Haptics.NotificationFeedbackType.Success
-      ? Haptics.AndroidHaptics.Confirm
-      : type === Haptics.NotificationFeedbackType.Warning
-        ? Haptics.AndroidHaptics.Gesture_End
-        : Haptics.AndroidHaptics.Reject;
+  if (Platform.OS === "android") {
+    const androidType =
+      type === Haptics.NotificationFeedbackType.Success
+        ? Haptics.AndroidHaptics.Confirm
+        : type === Haptics.NotificationFeedbackType.Warning
+          ? Haptics.AndroidHaptics.Gesture_End
+          : Haptics.AndroidHaptics.Reject;
     await Haptics.performAndroidHapticsAsync(androidType);
     return;
   }

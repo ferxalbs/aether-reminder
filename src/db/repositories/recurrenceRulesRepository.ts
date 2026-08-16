@@ -1,13 +1,13 @@
-import { createId } from '@/lib/id';
+import { createId } from "@/lib/id";
 import type {
   CreateRecurrenceRuleInput,
   RecurrenceFrequency,
   RecurrenceMode,
   RecurrenceRule,
   UpdateRecurrenceRuleInput,
-} from '@/domain/entities';
-import { DatabaseError } from '../errors';
-import type { SqlDatabase } from '../types';
+} from "@/domain/entities";
+import { DatabaseError } from "../errors";
+import type { SqlDatabase } from "../types";
 
 interface RecurrenceRuleRow {
   id: string;
@@ -32,7 +32,10 @@ function parseNumberArray(value: string | null): number[] | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) && parsed.every((item) => typeof item === 'number') ? parsed : null;
+    return Array.isArray(parsed) &&
+      parsed.every((item) => typeof item === "number")
+      ? parsed
+      : null;
   } catch {
     return null;
   }
@@ -59,7 +62,9 @@ function mapRule(row: RecurrenceRuleRow): RecurrenceRule {
 }
 
 function serializeArray(value: number[] | null | undefined): string | null {
-  return value && value.length > 0 ? JSON.stringify([...new Set(value)].sort((a, b) => a - b)) : null;
+  return value && value.length > 0
+    ? JSON.stringify([...new Set(value)].sort((a, b) => a - b))
+    : null;
 }
 
 export class RecurrenceRulesRepository {
@@ -91,7 +96,10 @@ export class RecurrenceRulesRepository {
 
   async create(input: CreateRecurrenceRuleInput): Promise<RecurrenceRule> {
     if (!input.taskId || !input.startDate) {
-      throw new DatabaseError('VALIDATION_FAILED', 'Recurrence requires taskId and startDate.');
+      throw new DatabaseError(
+        "VALIDATION_FAILED",
+        "Recurrence requires taskId and startDate.",
+      );
     }
     const interval = Math.max(1, Math.floor(input.interval ?? 1));
     const id = input.id ?? createId();
@@ -113,30 +121,47 @@ export class RecurrenceRulesRepository {
         input.endDate ?? null,
         input.maxOccurrences ?? null,
         Math.max(1, Math.floor(input.occurrenceCount ?? 1)),
-        input.mode ?? 'fixed',
+        input.mode ?? "fixed",
         input.timezone ?? null,
         now,
         now,
       ],
     );
     const created = await this.getById(id);
-    if (!created) throw new DatabaseError('QUERY_FAILED', 'Recurrence insert verification failed.');
+    if (!created)
+      throw new DatabaseError(
+        "QUERY_FAILED",
+        "Recurrence insert verification failed.",
+      );
     return created;
   }
 
-  async update(id: string, input: UpdateRecurrenceRuleInput): Promise<RecurrenceRule> {
+  async update(
+    id: string,
+    input: UpdateRecurrenceRuleInput,
+  ): Promise<RecurrenceRule> {
     const existing = await this.getById(id);
-    if (!existing) throw new DatabaseError('NOT_FOUND', 'Recurrence rule not found.');
+    if (!existing)
+      throw new DatabaseError("NOT_FOUND", "Recurrence rule not found.");
     const next = {
       frequency: input.frequency ?? existing.frequency,
-      interval: input.interval === undefined ? existing.interval : Math.max(1, Math.floor(input.interval)),
-      weekdays: input.weekdays === undefined ? existing.weekdays : input.weekdays,
-      monthDays: input.monthDays === undefined ? existing.monthDays : input.monthDays,
+      interval:
+        input.interval === undefined
+          ? existing.interval
+          : Math.max(1, Math.floor(input.interval)),
+      weekdays:
+        input.weekdays === undefined ? existing.weekdays : input.weekdays,
+      monthDays:
+        input.monthDays === undefined ? existing.monthDays : input.monthDays,
       startDate: input.startDate ?? existing.startDate,
       endDate: input.endDate === undefined ? existing.endDate : input.endDate,
-      maxOccurrences: input.maxOccurrences === undefined ? existing.maxOccurrences : input.maxOccurrences,
+      maxOccurrences:
+        input.maxOccurrences === undefined
+          ? existing.maxOccurrences
+          : input.maxOccurrences,
       mode: input.mode ?? existing.mode,
-      timezone: input.timezone === undefined ? existing.timezone : input.timezone,
+      timezone:
+        input.timezone === undefined ? existing.timezone : input.timezone,
     };
     await this.db.runAsync(
       `UPDATE recurrence_rules SET
@@ -158,7 +183,11 @@ export class RecurrenceRulesRepository {
       ],
     );
     const updated = await this.getById(id);
-    if (!updated) throw new DatabaseError('QUERY_FAILED', 'Recurrence update verification failed.');
+    if (!updated)
+      throw new DatabaseError(
+        "QUERY_FAILED",
+        "Recurrence update verification failed.",
+      );
     return updated;
   }
 
@@ -168,7 +197,8 @@ export class RecurrenceRulesRepository {
       [new Date().toISOString(), id],
     );
     const rule = await this.getById(id);
-    if (!rule) throw new DatabaseError('NOT_FOUND', 'Recurrence rule not found.');
+    if (!rule)
+      throw new DatabaseError("NOT_FOUND", "Recurrence rule not found.");
     return rule;
   }
 
@@ -182,7 +212,14 @@ export class RecurrenceRulesRepository {
       `UPDATE recurrence_rules
        SET task_id = ?, last_completed_task_id = ?, occurrence_count = occurrence_count + 1, updated_at = ?
        WHERE id = ? AND active = 1 AND task_id = ? AND occurrence_count = ?`,
-      [nextTaskId, previousTaskId, new Date().toISOString(), id, previousTaskId, expectedOccurrenceCount],
+      [
+        nextTaskId,
+        previousTaskId,
+        new Date().toISOString(),
+        id,
+        previousTaskId,
+        expectedOccurrenceCount,
+      ],
     );
     return result.changes === 1;
   }
@@ -199,7 +236,14 @@ export class RecurrenceRulesRepository {
            occurrence_count = occurrence_count - 1, updated_at = ?
        WHERE id = ? AND active = 1 AND task_id = ?
          AND last_completed_task_id = ? AND occurrence_count = ?`,
-      [previousTaskId, new Date().toISOString(), id, currentTaskId, previousTaskId, expectedOccurrenceCount],
+      [
+        previousTaskId,
+        new Date().toISOString(),
+        id,
+        currentTaskId,
+        previousTaskId,
+        expectedOccurrenceCount,
+      ],
     );
     return result.changes === 1;
   }

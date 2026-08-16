@@ -1,14 +1,14 @@
-import { createId } from '@/lib/id';
+import { createId } from "@/lib/id";
 import type {
   Reminder,
   ReminderKind,
   ReminderProjectionState,
   ReminderTimingPrecision,
   TemporalSemantics,
-} from '@/domain/entities';
-import { DatabaseError } from '../errors';
-import { mapReminderRow, type ReminderRow } from '../mappers';
-import type { SqlDatabase } from '../types';
+} from "@/domain/entities";
+import { DatabaseError } from "../errors";
+import { mapReminderRow, type ReminderRow } from "../mappers";
+import type { SqlDatabase } from "../types";
 
 export interface CreateReminderInput {
   id?: string;
@@ -29,7 +29,7 @@ export interface CreateReminderInput {
 export interface ProjectionFailureInput {
   code: string;
   message: string;
-  state?: Extract<ReminderProjectionState, 'failed' | 'blocked' | 'missing'>;
+  state?: Extract<ReminderProjectionState, "failed" | "blocked" | "missing">;
 }
 
 export interface ProjectionCounts {
@@ -48,13 +48,16 @@ export class RemindersRepository {
   async getById(id: string): Promise<Reminder | null> {
     const row = await this.db.getFirstAsync<ReminderRow>(
       `SELECT * FROM reminders WHERE id = ?`,
-      [id]
+      [id],
     );
     return row ? mapReminderRow(row) : null;
   }
 
-  async listForTask(taskId: string, options?: { kind?: ReminderKind }): Promise<Reminder[]> {
-    const kindClause = options?.kind ? ' AND kind = ?' : '';
+  async listForTask(
+    taskId: string,
+    options?: { kind?: ReminderKind },
+  ): Promise<Reminder[]> {
+    const kindClause = options?.kind ? " AND kind = ?" : "";
     const rows = await this.db.getAllAsync<ReminderRow>(
       `SELECT * FROM reminders WHERE task_id = ?${kindClause}
        ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC`,
@@ -65,20 +68,21 @@ export class RemindersRepository {
 
   async listEnabled(): Promise<Reminder[]> {
     const rows = await this.db.getAllAsync<ReminderRow>(
-      `SELECT * FROM reminders WHERE enabled = 1 ORDER BY scheduled_date ASC, scheduled_time ASC`
+      `SELECT * FROM reminders WHERE enabled = 1 ORDER BY scheduled_date ASC, scheduled_time ASC`,
     );
     return rows.map(mapReminderRow);
   }
 
   async listAll(limit?: number): Promise<Reminder[]> {
-    const rows = limit === undefined
-      ? await this.db.getAllAsync<ReminderRow>(
-        `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC`
-      )
-      : await this.db.getAllAsync<ReminderRow>(
-        `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC LIMIT ?`,
-        [limit]
-      );
+    const rows =
+      limit === undefined
+        ? await this.db.getAllAsync<ReminderRow>(
+            `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC`,
+          )
+        : await this.db.getAllAsync<ReminderRow>(
+            `SELECT * FROM reminders ORDER BY scheduled_date ASC, scheduled_time ASC LIMIT ?`,
+            [limit],
+          );
     return rows.map(mapReminderRow);
   }
 
@@ -88,14 +92,14 @@ export class RemindersRepository {
        WHERE projection_dirty = 1
        ORDER BY updated_at ASC, id ASC
        LIMIT ?`,
-      [Math.max(1, Math.floor(limit))]
+      [Math.max(1, Math.floor(limit))],
     );
     return rows.map(mapReminderRow);
   }
 
   async create(input: CreateReminderInput): Promise<Reminder> {
     if (!input.taskId) {
-      throw new DatabaseError('VALIDATION_FAILED', 'Reminder requires taskId.');
+      throw new DatabaseError("VALIDATION_FAILED", "Reminder requires taskId.");
     }
     const id = input.id ?? createId();
     const now = new Date().toISOString();
@@ -111,20 +115,28 @@ export class RemindersRepository {
         input.scheduledDate ?? null,
         input.scheduledTime ?? null,
         input.timezone ?? null,
-        input.semantics ?? 'floating',
+        input.semantics ?? "floating",
         input.enabled === false ? 0 : 1,
-        input.timingPrecision ?? 'normal',
-        input.kind ?? 'primary',
+        input.timingPrecision ?? "normal",
+        input.kind ?? "primary",
         input.reason ?? null,
-        input.generationSource ?? (input.kind === 'adaptive_followup' ? 'adaptive_nudge_engine' : 'manual'),
-        input.policyVersion ?? (input.kind === 'adaptive_followup' ? 'adaptive-v1' : 'baseline-v1'),
+        input.generationSource ??
+          (input.kind === "adaptive_followup"
+            ? "adaptive_nudge_engine"
+            : "manual"),
+        input.policyVersion ??
+          (input.kind === "adaptive_followup" ? "adaptive-v1" : "baseline-v1"),
         input.idempotencyKey ?? null,
         now,
         now,
-      ]
+      ],
     );
     const reminder = await this.getById(id);
-    if (!reminder) throw new DatabaseError('QUERY_FAILED', 'Reminder insert verification failed.');
+    if (!reminder)
+      throw new DatabaseError(
+        "QUERY_FAILED",
+        "Reminder insert verification failed.",
+      );
     return reminder;
   }
 
@@ -138,10 +150,10 @@ export class RemindersRepository {
        SET enabled = ?, projection_dirty = 1, projection_state = ${nextState},
            projection_revision = projection_revision + 1, updated_at = ?
        WHERE id = ?`,
-      [enabled ? 1 : 0, now, id]
+      [enabled ? 1 : 0, now, id],
     );
     const reminder = await this.getById(id);
-    if (!reminder) throw new DatabaseError('NOT_FOUND', 'Reminder not found.');
+    if (!reminder) throw new DatabaseError("NOT_FOUND", "Reminder not found.");
     return reminder;
   }
 
@@ -153,10 +165,10 @@ export class RemindersRepository {
       timezone?: string | null;
       semantics?: TemporalSemantics;
       timingPrecision?: ReminderTimingPrecision;
-    }
+    },
   ): Promise<Reminder> {
     const existing = await this.getById(id);
-    if (!existing) throw new DatabaseError('NOT_FOUND', 'Reminder not found.');
+    if (!existing) throw new DatabaseError("NOT_FOUND", "Reminder not found.");
 
     const now = new Date().toISOString();
     await this.db.runAsync(
@@ -166,38 +178,47 @@ export class RemindersRepository {
         projection_revision = projection_revision + 1, updated_at = ?
        WHERE id = ?`,
       [
-        input.scheduledDate !== undefined ? input.scheduledDate : existing.scheduledDate,
-        input.scheduledTime !== undefined ? input.scheduledTime : existing.scheduledTime,
+        input.scheduledDate !== undefined
+          ? input.scheduledDate
+          : existing.scheduledDate,
+        input.scheduledTime !== undefined
+          ? input.scheduledTime
+          : existing.scheduledTime,
         input.timezone !== undefined ? input.timezone : existing.timezone,
         input.semantics ?? existing.semantics,
         input.timingPrecision ?? existing.timingPrecision,
         now,
         id,
-      ]
+      ],
     );
     const reminder = await this.getById(id);
-    if (!reminder) throw new DatabaseError('QUERY_FAILED', 'Reminder update verification failed.');
+    if (!reminder)
+      throw new DatabaseError(
+        "QUERY_FAILED",
+        "Reminder update verification failed.",
+      );
     return reminder;
   }
 
   async listAdaptiveNudgesForTask(taskId: string): Promise<Reminder[]> {
-    return this.listForTask(taskId, { kind: 'adaptive_followup' });
+    return this.listForTask(taskId, { kind: "adaptive_followup" });
   }
 
   async listAdaptiveNudges(limit?: number): Promise<Reminder[]> {
-    const rows = limit === undefined
-      ? await this.db.getAllAsync<ReminderRow>(
-        `SELECT * FROM reminders
+    const rows =
+      limit === undefined
+        ? await this.db.getAllAsync<ReminderRow>(
+            `SELECT * FROM reminders
          WHERE kind = 'adaptive_followup'
          ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC`,
-      )
-      : await this.db.getAllAsync<ReminderRow>(
-        `SELECT * FROM reminders
+          )
+        : await this.db.getAllAsync<ReminderRow>(
+            `SELECT * FROM reminders
          WHERE kind = 'adaptive_followup'
          ORDER BY scheduled_date ASC, scheduled_time ASC, id ASC
          LIMIT ?`,
-        [Math.max(1, Math.floor(limit))],
-      );
+            [Math.max(1, Math.floor(limit))],
+          );
     return rows.map(mapReminderRow);
   }
 
@@ -217,25 +238,30 @@ export class RemindersRepository {
   }
 
   /** Count generated intents, including cancelled/consumed rows, for pressure budgets. */
-  async countAdaptiveNudgesForDate(localDate: string, taskId?: string): Promise<number> {
+  async countAdaptiveNudgesForDate(
+    localDate: string,
+    taskId?: string,
+  ): Promise<number> {
     const row = await this.db.getFirstAsync<{ c: number }>(
       `SELECT COUNT(*) AS c
        FROM reminders
        WHERE kind = 'adaptive_followup'
-         AND scheduled_date = ?${taskId ? ' AND task_id = ?' : ''}`,
+         AND scheduled_date = ?${taskId ? " AND task_id = ?" : ""}`,
       taskId ? [localDate, taskId] : [localDate],
     );
     return row?.c ?? 0;
   }
 
   /** Idempotent desired-state write for one adaptive policy slot. */
-  async upsertAdaptiveNudge(input: CreateReminderInput & {
-    kind: 'adaptive_followup';
-    idempotencyKey: string;
-    reason: string;
-    generationSource?: string | null;
-    policyVersion?: string | null;
-  }): Promise<Reminder> {
+  async upsertAdaptiveNudge(
+    input: CreateReminderInput & {
+      kind: "adaptive_followup";
+      idempotencyKey: string;
+      reason: string;
+      generationSource?: string | null;
+      policyVersion?: string | null;
+    },
+  ): Promise<Reminder> {
     const existingRow = await this.db.getFirstAsync<ReminderRow>(
       `SELECT * FROM reminders WHERE idempotency_key = ?`,
       [input.idempotencyKey],
@@ -260,22 +286,26 @@ export class RemindersRepository {
           input.timezone ?? null,
           input.semantics ?? existing.semantics,
           input.reason,
-          input.generationSource ?? 'adaptive_nudge_engine',
-          input.policyVersion ?? 'adaptive-v1',
+          input.generationSource ?? "adaptive_nudge_engine",
+          input.policyVersion ?? "adaptive-v1",
           now,
           existing.id,
         ],
       );
       const refreshed = await this.getById(existing.id);
-      if (!refreshed) throw new DatabaseError('QUERY_FAILED', 'Adaptive nudge update verification failed.');
+      if (!refreshed)
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Adaptive nudge update verification failed.",
+        );
       return refreshed;
     }
 
     return this.create({
       ...input,
-      kind: 'adaptive_followup',
-      generationSource: input.generationSource ?? 'adaptive_nudge_engine',
-      policyVersion: input.policyVersion ?? 'adaptive-v1',
+      kind: "adaptive_followup",
+      generationSource: input.generationSource ?? "adaptive_nudge_engine",
+      policyVersion: input.policyVersion ?? "adaptive-v1",
     });
   }
 
@@ -342,7 +372,7 @@ export class RemindersRepository {
            projection_revision = projection_revision + 1,
            updated_at = ?
        WHERE id = ?`,
-      [new Date().toISOString(), id]
+      [new Date().toISOString(), id],
     );
     return result.changes > 0;
   }
@@ -358,19 +388,22 @@ export class RemindersRepository {
            projection_revision = projection_revision + 1,
            updated_at = ?
        WHERE task_id = ?`,
-      [new Date().toISOString(), taskId]
+      [new Date().toISOString(), taskId],
     );
     return result.changes;
   }
 
-  async recordProjectionAttempt(id: string, revision: number): Promise<boolean> {
+  async recordProjectionAttempt(
+    id: string,
+    revision: number,
+  ): Promise<boolean> {
     const now = new Date().toISOString();
     const result = await this.db.runAsync(
       `UPDATE reminders
        SET projection_attempt_count = projection_attempt_count + 1,
            projection_last_attempt_at = ?, updated_at = ?
        WHERE id = ? AND projection_revision = ? AND projection_dirty = 1`,
-      [now, now, id, revision]
+      [now, now, id, revision],
     );
     return result.changes > 0;
   }
@@ -379,7 +412,7 @@ export class RemindersRepository {
     id: string,
     revision: number,
     nativeId: string | null,
-    state: Extract<ReminderProjectionState, 'scheduled' | 'not_required'>,
+    state: Extract<ReminderProjectionState, "scheduled" | "not_required">,
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const result = await this.db.runAsync(
@@ -388,7 +421,7 @@ export class RemindersRepository {
            projection_error_code = NULL, projection_error = NULL,
            projection_last_success_at = ?, updated_at = ?
        WHERE id = ? AND projection_revision = ?`,
-      [nativeId, state, now, now, id, revision]
+      [nativeId, state, now, now, id, revision],
     );
     return result.changes > 0;
   }
@@ -404,21 +437,35 @@ export class RemindersRepository {
        SET projection_state = ?, projection_dirty = 1,
            projection_error_code = ?, projection_error = ?, updated_at = ?
        WHERE id = ? AND projection_revision = ?`,
-      [failure.state ?? 'failed', failure.code, failure.message, now, id, revision]
+      [
+        failure.state ?? "failed",
+        failure.code,
+        failure.message,
+        now,
+        id,
+        revision,
+      ],
     );
     return result.changes > 0;
   }
 
-  async recordProjectionMissing(id: string, revision: number): Promise<boolean> {
+  async recordProjectionMissing(
+    id: string,
+    revision: number,
+  ): Promise<boolean> {
     return this.recordProjectionFailure(id, revision, {
-      code: 'NATIVE_NOTIFICATION_MISSING',
-      message: 'The device notification is missing and will be repaired.',
-      state: 'missing',
+      code: "NATIVE_NOTIFICATION_MISSING",
+      message: "The device notification is missing and will be repaired.",
+      state: "missing",
     });
   }
 
   /** Compatibility helper for tests and existing callers that set projection metadata directly. */
-  async setProjection(id: string, nativeId: string | null, error: string | null): Promise<void> {
+  async setProjection(
+    id: string,
+    nativeId: string | null,
+    error: string | null,
+  ): Promise<void> {
     const now = new Date().toISOString();
     await this.db.runAsync(
       `UPDATE reminders
@@ -430,15 +477,15 @@ export class RemindersRepository {
        WHERE id = ?`,
       [
         nativeId,
-        error ? 'failed' : nativeId ? 'scheduled' : 'not_required',
+        error ? "failed" : nativeId ? "scheduled" : "not_required",
         error ? 1 : 0,
-        error ? 'PROJECTION_FAILED' : null,
+        error ? "PROJECTION_FAILED" : null,
         error,
         nativeId,
         now,
         now,
         id,
-      ]
+      ],
     );
   }
 
@@ -470,7 +517,7 @@ export class RemindersRepository {
          SUM(CASE WHEN projection_state = 'blocked' THEN 1 ELSE 0 END) AS blocked,
          SUM(CASE WHEN projection_state = 'scheduled' THEN 1 ELSE 0 END) AS scheduled,
          SUM(CASE WHEN projection_state = 'not_required' THEN 1 ELSE 0 END) AS not_required
-       FROM reminders`
+       FROM reminders`,
     );
     return {
       dirty: row?.dirty ?? 0,

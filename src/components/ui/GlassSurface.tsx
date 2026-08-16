@@ -1,26 +1,33 @@
-import React, { type RefObject } from 'react';
-import { Platform, StyleSheet, View, ViewProps, ViewStyle, StyleProp } from 'react-native';
-import type { BlurViewProps } from 'expo-blur';
-import { Colors, Hairline, Radius } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { AdaptiveGlass } from '@/motion';
+import React, { type RefObject } from "react";
+import {
+  Platform,
+  StyleSheet,
+  View,
+  ViewProps,
+  ViewStyle,
+  StyleProp,
+} from "react-native";
+import type { BlurViewProps } from "expo-blur";
+import { Colors, Hairline, Radius } from "@/theme/tokens";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { AdaptiveGlass } from "@/motion";
 
-export type GlassTier = 'A' | 'B' | 'C';
+export type GlassTier = "A" | "B" | "C";
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   intensity?: number;
-  tint?: BlurViewProps['tint'];
+  tint?: BlurViewProps["tint"];
   borderRadius?: number;
   borderWidth?: number;
   tier?: GlassTier;
   accessible?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
-  accessibilityRole?: ViewProps['accessibilityRole'];
-  pointerEvents?: ViewProps['pointerEvents'];
+  accessibilityRole?: ViewProps["accessibilityRole"];
+  pointerEvents?: ViewProps["pointerEvents"];
   blurTarget?: RefObject<View | null>;
 }
 
@@ -32,7 +39,7 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   tint,
   borderRadius = Radius.xl,
   borderWidth = Hairline.width,
-  tier = 'A',
+  tier = "A",
   accessible,
   accessibilityLabel,
   accessibilityHint,
@@ -42,13 +49,15 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 }) => {
   const isDark = useIsDark();
   const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-  const fallbackBg = isDark ? Colors.glassDarkFallback : Colors.glassLightFallback;
+  const fallbackBg = isDark
+    ? Colors.glassDarkFallback
+    : Colors.glassLightFallback;
   const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
 
   // Android's native blur requires a BlurTargetView outside the BlurView's own
   // hierarchy. Route-local surfaces intentionally fall back rather than target
   // an ancestor that contains them, which Dimezis BlurView explicitly forbids.
-  if (tier === 'C' || (Platform.OS === 'android' && !blurTarget)) {
+  if (tier === "C" || (Platform.OS === "android" && !blurTarget)) {
     return (
       <View
         style={[
@@ -72,7 +81,8 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
     );
   }
 
-  const blurIntensity = tier === 'B' ? Math.max(15, Math.round(intensity * 0.5)) : intensity;
+  const blurIntensity =
+    tier === "B" ? Math.max(15, Math.round(intensity * 0.5)) : intensity;
 
   return (
     <View
@@ -104,10 +114,10 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
 });

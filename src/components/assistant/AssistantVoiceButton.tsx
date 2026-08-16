@@ -1,19 +1,19 @@
-import React, { useEffect } from 'react';
-import { AlertCircle, Mic, Square } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect } from "react";
+import { AlertCircle, Mic, Square } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
-} from 'react-native-reanimated';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { useMotionProfile, useMotionPreset } from '@/motion';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import type { VoiceState } from './VoiceController';
-import { isVoiceFailureState } from './VoiceController';
+} from "react-native-reanimated";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { Colors, Radius, Spacing } from "@/theme/tokens";
+import { useMotionProfile, useMotionPreset } from "@/motion";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import type { VoiceState } from "./VoiceController";
+import { isVoiceFailureState } from "./VoiceController";
 
 interface AssistantVoiceButtonProps {
   voiceState: VoiceState;
@@ -34,7 +34,14 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
 }) => {
   const isDark = useIsDark();
   const isError = isVoiceFailureState(voiceState);
-  const isActive = ['checking_permission', 'connecting', 'listening', 'committing', 'finalizing', 'parsing'].includes(voiceState);
+  const isActive = [
+    "checking_permission",
+    "connecting",
+    "listening",
+    "committing",
+    "finalizing",
+    "parsing",
+  ].includes(voiceState);
   const Icon = isError ? AlertCircle : isActive ? Square : Mic;
   const iconColor = isError
     ? isDark
@@ -50,8 +57,18 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
       disabled={disabled}
       scaleTo={0.92}
       accessibilityRole="button"
-      accessibilityLabel={isError ? 'Retry voice input' : isActive ? 'Voice input in progress' : 'Start voice input'}
-      accessibilityHint={isActive ? 'Use the voice controls to cancel or send' : 'Speak naturally to create a reminder'}
+      accessibilityLabel={
+        isError
+          ? "Retry voice input"
+          : isActive
+            ? "Voice input in progress"
+            : "Start voice input"
+      }
+      accessibilityHint={
+        isActive
+          ? "Use the voice controls to cancel or send"
+          : "Speak naturally to create a reminder"
+      }
       accessibilityState={{ disabled, busy: isActive }}
       style={[
         styles.button,
@@ -87,14 +104,27 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
   );
 };
 
-function VoiceBar({ active, delay, color }: { active: boolean; delay: number; color: string }) {
+function VoiceBar({
+  active,
+  delay,
+  color,
+}: {
+  active: boolean;
+  delay: number;
+  color: string;
+}) {
   const reduceMotion = useReducedMotion();
   const profile = useMotionProfile();
-  const listenPreset = useMotionPreset('orb.listen');
+  const listenPreset = useMotionPreset("orb.listen");
   const scale = useSharedValue(0.55);
 
   useEffect(() => {
-    if (!active || reduceMotion || !listenPreset.continuous || !profile.budget.allowContinuousDecorativeMotion) {
+    if (
+      !active ||
+      reduceMotion ||
+      !listenPreset.continuous ||
+      !profile.budget.allowContinuousDecorativeMotion
+    ) {
       scale.value = listenPreset.scale > 1 ? 0.85 : 0.7;
       return;
     }
@@ -103,24 +133,36 @@ function VoiceBar({ active, delay, color }: { active: boolean; delay: number; co
       -1,
       true,
     );
-  }, [active, delay, listenPreset.continuous, listenPreset.scale, profile.budget.allowContinuousDecorativeMotion, reduceMotion, scale]);
+  }, [
+    active,
+    delay,
+    listenPreset.continuous,
+    listenPreset.scale,
+    profile.budget.allowContinuousDecorativeMotion,
+    reduceMotion,
+    scale,
+  ]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scaleY: scale.value }],
   }));
 
-  return <Animated.View style={[styles.waveBar, { backgroundColor: color }, animatedStyle]} />;
+  return (
+    <Animated.View
+      style={[styles.waveBar, { backgroundColor: color }, animatedStyle]}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
   button: {
     width: 42,
     height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
     marginBottom: 1,
   },
   disabled: {
@@ -129,9 +171,9 @@ const styles = StyleSheet.create({
   waveform: {
     width: 18,
     height: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 2,
   },
   waveBar: {

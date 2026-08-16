@@ -8,11 +8,11 @@ EAS Observe collects app-startup performance metrics (cold launch, warm launch, 
 
 The library exports differ between SDK versions. Pick the right one for the project's SDK before copying any snippet below.
 
-| Concern | SDK 55 | SDK 56 and later |
-|---|---|---|
-| Root layout HOC | `AppMetricsRoot.wrap(...)` | `ObserveRoot.wrap(...)` |
+| Concern                 | SDK 55                                 | SDK 56 and later                                 |
+| ----------------------- | -------------------------------------- | ------------------------------------------------ |
+| Root layout HOC         | `AppMetricsRoot.wrap(...)`             | `ObserveRoot.wrap(...)`                          |
 | `markInteractive()` API | Global: `AppMetrics.markInteractive()` | Hook: `const { markInteractive } = useObserve()` |
-| Import source | `expo-observe` | `expo-observe` (same package) |
+| Import source           | `expo-observe`                         | `expo-observe` (same package)                    |
 
 Everything else — package name, build process, dashboard, debug-mode behavior — is the same across versions.
 
@@ -41,8 +41,8 @@ The HOC automatically measures **Time to First Render (TTR)**. Apply it to the f
 
 ```tsx
 // app/_layout.tsx
-import { Stack } from 'expo-router';
-import { AppMetricsRoot } from 'expo-observe';
+import { Stack } from "expo-router";
+import { AppMetricsRoot } from "expo-observe";
 
 function RootLayout() {
   return <Stack />;
@@ -55,8 +55,8 @@ export default AppMetricsRoot.wrap(RootLayout);
 
 ```tsx
 // app/_layout.tsx
-import { Stack } from 'expo-router';
-import { ObserveRoot } from 'expo-observe';
+import { Stack } from "expo-router";
+import { ObserveRoot } from "expo-observe";
 
 function RootLayout() {
   return <Stack />;
@@ -75,10 +75,10 @@ TTI is **not** collected automatically. Signal it once the screen is genuinely r
 
 ```tsx
 // app/_layout.tsx
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { AppMetrics, AppMetricsRoot } from 'expo-observe';
-import { useEffect, useState } from 'react';
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { AppMetrics, AppMetricsRoot } from "expo-observe";
+import { useEffect, useState } from "react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -117,10 +117,10 @@ export default AppMetricsRoot.wrap(RootLayout);
 
 ```tsx
 // app/_layout.tsx
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { ObserveRoot, useObserve } from 'expo-observe';
-import { useEffect, useState } from 'react';
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { ObserveRoot, useObserve } from "expo-observe";
+import { useEffect, useState } from "react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -192,10 +192,10 @@ Docs: https://docs.expo.dev/eas/observe/integrations/expo-router/
 
    ```tsx
    // app/_layout.tsx
-   import { Observe } from 'expo-observe';
+   import { Observe } from "expo-observe";
 
    Observe.configure({
-     integrations: { 'expo-router': true },
+     integrations: { "expo-router": true },
    });
    ```
 
@@ -226,20 +226,24 @@ Requires `@react-navigation/native` 7.0.0 or later. Same `useObserve()` screen u
 
    ```tsx
    // App.tsx
-   import { Observe } from 'expo-observe';
+   import { Observe } from "expo-observe";
 
    Observe.configure({
-     integrations: { 'react-navigation': true },
+     integrations: { "react-navigation": true },
    });
    ```
 
 2. Replace the top-level `<NavigationContainer>` with `<ObserveNavigationContainer>` — a drop-in replacement that accepts the same props and forwards the same ref. If you pass a `linking` config it is used to resolve a human-readable screen path; otherwise the metric falls back to `route.name`.
 
    ```tsx
-   import { ObserveNavigationContainer } from 'expo-observe/integrations/react-navigation';
+   import { ObserveNavigationContainer } from "expo-observe/integrations/react-navigation";
 
    export default function App() {
-     return <ObserveNavigationContainer>{/* navigators */}</ObserveNavigationContainer>;
+     return (
+       <ObserveNavigationContainer>
+         {/* navigators */}
+       </ObserveNavigationContainer>
+     );
    }
    ```
 
@@ -252,10 +256,10 @@ Beyond the automatic startup and navigation metrics, you can record your own nam
 > Source: https://docs.expo.dev/eas/observe/events/ — consult this page for the latest guidance.
 
 ```tsx
-import { Observe } from 'expo-observe';
+import { Observe } from "expo-observe";
 
 function handleOnboardingComplete() {
-  Observe.logEvent('onboarding.completed');
+  Observe.logEvent("onboarding.completed");
 }
 ```
 
@@ -263,22 +267,22 @@ function handleOnboardingComplete() {
 
 ### Parameters
 
-| Parameter | Type | Required | Notes |
-|---|---|---|---|
-| `name` | `string` | yes | Stable, dot-separated identifier, e.g. `'report.exported'`. |
-| `options.attributes` | `Record<string, string \| number \| boolean \| array \| nested object>` | no | Structured context attached to the event. |
-| `options.body` | `string` | no | Free-form message complementing the structured attributes. |
-| `options.severity` | `'trace' \| 'debug' \| 'info' \| 'warn' \| 'error' \| 'fatal'` | no | Defaults to `'info'`. |
+| Parameter            | Type                                                                    | Required | Notes                                                       |
+| -------------------- | ----------------------------------------------------------------------- | -------- | ----------------------------------------------------------- |
+| `name`               | `string`                                                                | yes      | Stable, dot-separated identifier, e.g. `'report.exported'`. |
+| `options.attributes` | `Record<string, string \| number \| boolean \| array \| nested object>` | no       | Structured context attached to the event.                   |
+| `options.body`       | `string`                                                                | no       | Free-form message complementing the structured attributes.  |
+| `options.severity`   | `'trace' \| 'debug' \| 'info' \| 'warn' \| 'error' \| 'fatal'`          | no       | Defaults to `'info'`.                                       |
 
 **Attributes** are the primary way to make an event queryable — attach the identifiers and measurements you'll want to filter or break down by:
 
 ```tsx
-Observe.logEvent('report.exported', {
+Observe.logEvent("report.exported", {
   attributes: {
-    format: 'csv',
+    format: "csv",
     rowCount: 1248,
     durationMs: 532,
-    filters: ['status:active', 'region:us-west'],
+    filters: ["status:active", "region:us-west"],
   },
 });
 ```
@@ -286,9 +290,9 @@ Observe.logEvent('report.exported', {
 **Severity and body** may be used for operational events you may want to triage by level:
 
 ```tsx
-Observe.logEvent('cache.evicted', {
-  body: 'Cache evicted because disk pressure exceeded the configured threshold.',
-  severity: 'warn',
+Observe.logEvent("cache.evicted", {
+  body: "Cache evicted because disk pressure exceeded the configured threshold.",
+  severity: "warn",
   attributes: { evictedItemCount: 42, freedBytes: 1048576 },
 });
 ```

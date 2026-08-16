@@ -1,5 +1,5 @@
-import type { ActionReceipt } from '@/domain/receipts';
-import type { ModelCapabilities } from '@/services/ai/inference/types';
+import type { ActionReceipt } from "@/domain/receipts";
+import type { ModelCapabilities } from "@/services/ai/inference/types";
 
 /** Explicit UI-supplied context — never scraped from rendered views. */
 export interface ContextSnapshot {
@@ -12,30 +12,25 @@ export interface ContextSnapshot {
   locale: string;
   timezone: string;
   invocationSource:
-    | 'app'
-    | 'assistant'
-    | 'notification'
-    | 'widget'
-    | 'shortcut'
-    | 'voice';
+    "app" | "assistant" | "notification" | "widget" | "shortcut" | "voice";
 }
 
 export type AgentSemanticState =
-  | 'idle'
-  | 'contextualizing'
-  | 'thinking'
-  | 'executing'
-  | 'waiting_confirmation'
-  | 'responding'
-  | 'error';
+  | "idle"
+  | "contextualizing"
+  | "thinking"
+  | "executing"
+  | "waiting_confirmation"
+  | "responding"
+  | "error";
 
 export type ToolRisk =
-  | 'READ'
-  | 'REVERSIBLE_WRITE'
-  | 'SENSITIVE_WRITE'
-  | 'DESTRUCTIVE'
-  | 'EXTERNAL'
-  | 'BULK_MUTATION';
+  | "READ"
+  | "REVERSIBLE_WRITE"
+  | "SENSITIVE_WRITE"
+  | "DESTRUCTIVE"
+  | "EXTERNAL"
+  | "BULK_MUTATION";
 
 export interface SuggestedAction {
   id: string;
@@ -45,7 +40,7 @@ export interface SuggestedAction {
 }
 
 export interface EntityReference {
-  type: 'task' | 'reminder' | 'project';
+  type: "task" | "reminder" | "project";
   id: string;
   label?: string;
 }
@@ -98,39 +93,39 @@ export interface PendingAction {
 
 export type AgentEvent =
   | {
-      type: 'run.started';
+      type: "run.started";
       runId: string;
       sessionId: string;
       modelId: string;
       state: AgentSemanticState;
     }
   | {
-      type: 'context.ready';
+      type: "context.ready";
       runId: string;
       context: ContextSnapshot;
       state: AgentSemanticState;
     }
   | {
-      type: 'state.changed';
+      type: "state.changed";
       runId: string;
       state: AgentSemanticState;
       previous?: AgentSemanticState;
     }
   | {
-      type: 'model.started';
+      type: "model.started";
       runId: string;
       modelId: string;
       capabilities: ModelCapabilities;
       state: AgentSemanticState;
     }
   | {
-      type: 'response.delta';
+      type: "response.delta";
       runId: string;
       text: string;
       state: AgentSemanticState;
     }
   | {
-      type: 'tool.proposed';
+      type: "tool.proposed";
       runId: string;
       toolCallId: string;
       toolId: string;
@@ -139,7 +134,7 @@ export type AgentEvent =
       state: AgentSemanticState;
     }
   | {
-      type: 'tool.confirmation_required';
+      type: "tool.confirmation_required";
       runId: string;
       toolCallId: string;
       toolId: string;
@@ -150,14 +145,14 @@ export type AgentEvent =
       state: AgentSemanticState;
     }
   | {
-      type: 'tool.started';
+      type: "tool.started";
       runId: string;
       toolCallId: string;
       toolId: string;
       state: AgentSemanticState;
     }
   | {
-      type: 'tool.completed';
+      type: "tool.completed";
       runId: string;
       toolCallId: string;
       toolId: string;
@@ -166,7 +161,7 @@ export type AgentEvent =
       state: AgentSemanticState;
     }
   | {
-      type: 'tool.failed';
+      type: "tool.failed";
       runId: string;
       toolCallId: string;
       toolId: string;
@@ -174,18 +169,18 @@ export type AgentEvent =
       state: AgentSemanticState;
     }
   | {
-      type: 'response.completed';
+      type: "response.completed";
       runId: string;
       response: AgentResponse;
       state: AgentSemanticState;
     }
   | {
-      type: 'run.cancelled';
+      type: "run.cancelled";
       runId: string;
       state: AgentSemanticState;
     }
   | {
-      type: 'run.failed';
+      type: "run.failed";
       runId: string;
       code: string;
       message: string;
@@ -194,7 +189,10 @@ export type AgentEvent =
 
 export interface AgentRuntime {
   run(input: AgentInput): AsyncIterable<AgentEvent>;
-  confirm(action: PendingAction, input: Pick<AgentInput, 'context' | 'onNavigate'>): AsyncIterable<AgentEvent>;
+  confirm(
+    action: PendingAction,
+    input: Pick<AgentInput, "context" | "onNavigate">,
+  ): AsyncIterable<AgentEvent>;
   discard(action: PendingAction): Promise<void>;
   cancel(runId: string): Promise<void>;
 }

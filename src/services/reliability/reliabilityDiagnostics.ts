@@ -1,16 +1,16 @@
-import { getSchemaVersion } from '@/db/migrator';
-import type { AppMetaRepository } from '@/db/repositories/appMetaRepository';
+import { getSchemaVersion } from "@/db/migrator";
+import type { AppMetaRepository } from "@/db/repositories/appMetaRepository";
 import type {
   ProjectionCounts,
   RemindersRepository,
-} from '@/db/repositories/remindersRepository';
-import type { SqlDatabase } from '@/db/types';
-import { getDeviceTimeZone } from '@/temporal/localCalendar';
-import type { NotificationCapabilities } from '@/services/notifications/notificationCapabilities';
+} from "@/db/repositories/remindersRepository";
+import type { SqlDatabase } from "@/db/types";
+import { getDeviceTimeZone } from "@/temporal/localCalendar";
+import type { NotificationCapabilities } from "@/services/notifications/notificationCapabilities";
 import type {
   LocalNotificationAdapter,
   LocalNotificationProjection,
-} from '@/services/notifications/localNotificationProjection';
+} from "@/services/notifications/localNotificationProjection";
 
 export interface ReliabilityReconciliationSummary {
   mode: string | null;
@@ -31,8 +31,8 @@ export interface ReliabilityReconciliationSummary {
 export interface ReliabilityDiagnostics {
   databaseReady: boolean;
   schemaVersion: number | null;
-  quickCheck: 'ok' | 'failed' | 'unknown';
-  foreignKeyCheck: 'ok' | 'failed' | 'unknown';
+  quickCheck: "ok" | "failed" | "unknown";
+  foreignKeyCheck: "ok" | "failed" | "unknown";
   reminderCounts: ProjectionCounts & { active: number };
   notificationCapabilities: NotificationCapabilities;
   nativeScheduledCount: number | null;
@@ -58,16 +58,18 @@ const EMPTY_COUNTS: ProjectionCounts = {
 };
 
 function asNumber(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function parseReconciliationResult(value: string | null): ReliabilityReconciliationSummary | null {
+function parseReconciliationResult(
+  value: string | null,
+): ReliabilityReconciliationSummary | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value) as Record<string, unknown>;
     return {
-      mode: typeof parsed.mode === 'string' ? parsed.mode : null,
-      reason: typeof parsed.reason === 'string' ? parsed.reason : null,
+      mode: typeof parsed.mode === "string" ? parsed.mode : null,
+      reason: typeof parsed.reason === "string" ? parsed.reason : null,
       inspected: asNumber(parsed.inspected),
       dirtyProcessed: asNumber(parsed.dirtyProcessed),
       repaired: asNumber(parsed.repaired),
@@ -85,24 +87,29 @@ function parseReconciliationResult(value: string | null): ReliabilityReconciliat
   }
 }
 
-type IntegrityStatus = 'ok' | 'failed' | 'unknown';
+type IntegrityStatus = "ok" | "failed" | "unknown";
 
 async function quickCheckStatus(db: SqlDatabase): Promise<IntegrityStatus> {
   try {
-    const row = await db.getFirstAsync<Record<string, unknown>>('PRAGMA quick_check');
-    if (!row) return 'unknown';
-    return Object.values(row).some((value) => value === 'ok') ? 'ok' : 'failed';
+    const row =
+      await db.getFirstAsync<Record<string, unknown>>("PRAGMA quick_check");
+    if (!row) return "unknown";
+    return Object.values(row).some((value) => value === "ok") ? "ok" : "failed";
   } catch {
-    return 'unknown';
+    return "unknown";
   }
 }
 
-async function foreignKeyCheckStatus(db: SqlDatabase): Promise<IntegrityStatus> {
+async function foreignKeyCheckStatus(
+  db: SqlDatabase,
+): Promise<IntegrityStatus> {
   try {
-    const row = await db.getFirstAsync<Record<string, unknown>>('PRAGMA foreign_key_check');
-    return row ? 'failed' : 'ok';
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      "PRAGMA foreign_key_check",
+    );
+    return row ? "failed" : "ok";
   } catch {
-    return 'unknown';
+    return "unknown";
   }
 }
 
@@ -121,56 +128,80 @@ export class ReliabilityDiagnosticsService {
    * enumeration and full database integrity diagnostics on every Home refresh.
    */
   async collectAttentionState(): Promise<ReliabilityAttentionState> {
-    const [activeReminderCount, projectionCounts, lastErrorCategory, capabilities] = await Promise.all([
+    const [
+      activeReminderCount,
+      projectionCounts,
+      lastErrorCategory,
+      capabilities,
+    ] = await Promise.all([
       this.reminders.countActive().catch(() => 0),
       this.reminders.countActiveProjectionStates().catch(() => EMPTY_COUNTS),
-      this.appMeta.get('reliability.last_error_category').catch(() => null),
+      this.appMeta.get("reliability.last_error_category").catch(() => null),
       this.projection.getCapabilities().catch(() => ({
-        permission: 'unknown' as const,
-        channel: 'unknown' as const,
-        exactTiming: 'unknown' as const,
+        permission: "unknown" as const,
+        channel: "unknown" as const,
+        exactTiming: "unknown" as const,
       })),
     ]);
-    const degraded = activeReminderCount > 0 && (
-      projectionCounts.failed > 0
-      || projectionCounts.blocked > 0
-      || projectionCounts.missing > 0
-      || capabilities.permission === 'denied'
-      || capabilities.channel === 'unavailable'
-      || Boolean(lastErrorCategory && lastErrorCategory !== 'NONE')
-    );
+    const degraded =
+      activeReminderCount > 0 &&
+      (projectionCounts.failed > 0 ||
+        projectionCounts.blocked > 0 ||
+        projectionCounts.missing > 0 ||
+        capabilities.permission === "denied" ||
+        capabilities.channel === "unavailable" ||
+        Boolean(lastErrorCategory && lastErrorCategory !== "NONE"));
     return { degraded, activeReminderCount };
   }
 
   async collect(): Promise<ReliabilityDiagnostics> {
-    const [schemaVersion, quickCheck, foreignKeyCheck, reminderCounts, capabilities, nativeScheduledCount] =
-      await Promise.all([
-        getSchemaVersion(this.db).catch(() => null),
-        quickCheckStatus(this.db),
-        foreignKeyCheckStatus(this.db),
-        Promise.all([
-          this.reminders.countActive(),
-          this.reminders.countProjectionStates(),
-        ]).then(([active, counts]) => ({ active, ...counts })).catch(() => ({
+    const [
+      schemaVersion,
+      quickCheck,
+      foreignKeyCheck,
+      reminderCounts,
+      capabilities,
+      nativeScheduledCount,
+    ] = await Promise.all([
+      getSchemaVersion(this.db).catch(() => null),
+      quickCheckStatus(this.db),
+      foreignKeyCheckStatus(this.db),
+      Promise.all([
+        this.reminders.countActive(),
+        this.reminders.countProjectionStates(),
+      ])
+        .then(([active, counts]) => ({ active, ...counts }))
+        .catch(() => ({
           active: 0,
           ...EMPTY_COUNTS,
         })),
-        this.projection.getCapabilities().catch(() => ({
-          permission: 'unknown' as const,
-          channel: 'unknown' as const,
-          exactTiming: 'unknown' as const,
-        })),
-        this.adapter.list().then((items) => items.length).catch(() => null),
-      ]);
-
-    const [lastReconciliationAt, lastReconciliationResult, lastErrorCategory] = await Promise.all([
-      this.appMeta.get('reliability.last_reconciliation_at').catch(() => null),
-      this.appMeta.get('reliability.last_reconciliation_result').catch(() => null),
-      this.appMeta.get('reliability.last_error_category').catch(() => null),
+      this.projection.getCapabilities().catch(() => ({
+        permission: "unknown" as const,
+        channel: "unknown" as const,
+        exactTiming: "unknown" as const,
+      })),
+      this.adapter
+        .list()
+        .then((items) => items.length)
+        .catch(() => null),
     ]);
 
+    const [lastReconciliationAt, lastReconciliationResult, lastErrorCategory] =
+      await Promise.all([
+        this.appMeta
+          .get("reliability.last_reconciliation_at")
+          .catch(() => null),
+        this.appMeta
+          .get("reliability.last_reconciliation_result")
+          .catch(() => null),
+        this.appMeta.get("reliability.last_error_category").catch(() => null),
+      ]);
+
     return {
-      databaseReady: schemaVersion !== null && quickCheck === 'ok' && foreignKeyCheck === 'ok',
+      databaseReady:
+        schemaVersion !== null &&
+        quickCheck === "ok" &&
+        foreignKeyCheck === "ok",
       schemaVersion,
       quickCheck,
       foreignKeyCheck,
@@ -179,7 +210,9 @@ export class ReliabilityDiagnosticsService {
       nativeScheduledCount,
       deviceTimezone: getDeviceTimeZone() ?? null,
       lastReconciliationAt,
-      lastReconciliationResult: parseReconciliationResult(lastReconciliationResult),
+      lastReconciliationResult: parseReconciliationResult(
+        lastReconciliationResult,
+      ),
       lastErrorCategory,
     };
   }

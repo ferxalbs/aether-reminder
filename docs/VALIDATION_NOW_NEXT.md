@@ -27,7 +27,7 @@ Device/model and OS: _record before testing_
 - [ ] Large local task dataset keeps Home responsive and candidate retrieval bounded.
 - [ ] Android back behavior remains unchanged for Home, Recovery, and editor surfaces.
 - [ ] Capture `adb logcat` around `AndroidRuntime`, React Native, Hermes,
-  Reanimated, and the app process if any native process exit occurs.
+      Reanimated, and the app process if any native process exit occurs.
 
 ## iPhone
 

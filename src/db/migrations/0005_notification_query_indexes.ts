@@ -1,4 +1,4 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /**
  * Covers notification projection reads without changing the shipped schema:
@@ -11,7 +11,7 @@ import type { Migration } from './types';
  */
 export const migration0005NotificationQueryIndexes: Migration = {
   version: 5,
-  name: '0005_notification_query_indexes',
+  name: "0005_notification_query_indexes",
   async up(db) {
     await db.execAsync(`
       DROP INDEX IF EXISTS idx_reminders_enabled_date;

@@ -1,9 +1,9 @@
-import type { Migration } from './types';
+import type { Migration } from "./types";
 
 /** Durable adaptive nudge intent plus local-only behavioral learning state. */
 export const migration0008AdaptiveNudges: Migration = {
   version: 8,
-  name: '0008_adaptive_nudges',
+  name: "0008_adaptive_nudges",
   async up(db) {
     await db.execAsync(`
       ALTER TABLE reminders ADD COLUMN kind TEXT NOT NULL DEFAULT 'primary'

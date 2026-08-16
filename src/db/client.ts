@@ -1,32 +1,32 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
-import { DatabaseError } from './errors';
+import type { SQLiteDatabase } from "expo-sqlite";
+import { DatabaseError } from "./errors";
 import {
   applyPragmas,
   getSchemaVersion,
   runMigrations,
   type MigrationResult,
-} from './migrator';
-import { LATEST_SCHEMA_VERSION } from './migrations';
-import type { SqlBindParams, SqlDatabase, SqlRunResult } from './types';
+} from "./migrator";
+import { LATEST_SCHEMA_VERSION } from "./migrations";
+import type { SqlBindParams, SqlDatabase, SqlRunResult } from "./types";
 
-export const DATABASE_NAME = 'aether.db';
+export const DATABASE_NAME = "aether.db";
 
-export type DatabaseStatus = 'idle' | 'initializing' | 'ready' | 'error';
+export type DatabaseStatus = "idle" | "initializing" | "ready" | "error";
 
 export interface DatabaseHandle {
   db: SqlDatabase;
-  status: 'ready';
+  status: "ready";
   migration: MigrationResult;
 }
 
-export type DatabaseRecoveryMode = 'retry' | 'check' | 'recreate';
+export type DatabaseRecoveryMode = "retry" | "check" | "recreate";
 
 export type DatabaseRecoveryResult =
-  | { mode: 'retry' | 'recreate'; handle: DatabaseHandle }
-  | { mode: 'check'; integrity: 'ok' };
+  | { mode: "retry" | "recreate"; handle: DatabaseHandle }
+  | { mode: "check"; integrity: "ok" };
 
 /** Exact token required by the destructive recovery path. */
-export const RECREATE_DATABASE_CONFIRMATION = 'RECREATE_LOCAL_DATABASE';
+export const RECREATE_DATABASE_CONFIRMATION = "RECREATE_LOCAL_DATABASE";
 
 let readyHandle: DatabaseHandle | null = null;
 let initPromise: Promise<DatabaseHandle> | null = null;
@@ -43,7 +43,10 @@ export function wrapExpoDatabase(native: SQLiteDatabase): SqlDatabase {
           : Array.isArray(params)
             ? await native.runAsync(source, params)
             : await native.runAsync(source, params);
-      return { changes: result.changes, lastInsertRowId: result.lastInsertRowId };
+      return {
+        changes: result.changes,
+        lastInsertRowId: result.lastInsertRowId,
+      };
     },
     getFirstAsync: async <T>(source: string, params?: SqlBindParams) => {
       if (params === undefined) return native.getFirstAsync<T>(source);
@@ -71,12 +74,12 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
   initPromise = (async () => {
     let db: SqlDatabase | null = null;
     try {
-      const { openDatabaseAsync } = await import('expo-sqlite');
+      const { openDatabaseAsync } = await import("expo-sqlite");
       const native = await openDatabaseAsync(DATABASE_NAME);
       db = wrapExpoDatabase(native);
       await applyPragmas(db);
       const migration = await runMigrations(db);
-      readyHandle = { db, status: 'ready', migration };
+      readyHandle = { db, status: "ready", migration };
       lastError = null;
       return readyHandle;
     } catch (cause) {
@@ -84,7 +87,11 @@ export async function initializeDatabase(): Promise<DatabaseHandle> {
       lastError =
         cause instanceof DatabaseError
           ? cause
-          : new DatabaseError('INIT_FAILED', 'Failed to initialize SQLite database.', cause);
+          : new DatabaseError(
+              "INIT_FAILED",
+              "Failed to initialize SQLite database.",
+              cause,
+            );
       initPromise = null;
       throw lastError;
     }
@@ -97,21 +104,31 @@ export async function assertDatabaseIntegrity(db: SqlDatabase): Promise<void> {
   const schemaVersion = await getSchemaVersion(db);
   if (schemaVersion !== LATEST_SCHEMA_VERSION) {
     throw new DatabaseError(
-      'INTEGRITY_CHECK_FAILED',
+      "INTEGRITY_CHECK_FAILED",
       `SQLite schema is not at expected version ${LATEST_SCHEMA_VERSION}.`,
     );
   }
 
-  const quickCheck = await db.getFirstAsync<Record<string, unknown>>('PRAGMA quick_check');
-  if (!quickCheck || !Object.values(quickCheck).some((value) => value === 'ok')) {
-    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite quick check did not return ok.');
+  const quickCheck =
+    await db.getFirstAsync<Record<string, unknown>>("PRAGMA quick_check");
+  if (
+    !quickCheck ||
+    !Object.values(quickCheck).some((value) => value === "ok")
+  ) {
+    throw new DatabaseError(
+      "INTEGRITY_CHECK_FAILED",
+      "SQLite quick check did not return ok.",
+    );
   }
 
   const foreignKeyFailure = await db.getFirstAsync<Record<string, unknown>>(
-    'PRAGMA foreign_key_check',
+    "PRAGMA foreign_key_check",
   );
   if (foreignKeyFailure) {
-    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite foreign-key check found an orphan row.');
+    throw new DatabaseError(
+      "INTEGRITY_CHECK_FAILED",
+      "SQLite foreign-key check found an orphan row.",
+    );
   }
 
   const orphanReminder = await db.getFirstAsync<{ id: string }>(
@@ -122,7 +139,10 @@ export async function assertDatabaseIntegrity(db: SqlDatabase): Promise<void> {
      LIMIT 1`,
   );
   if (orphanReminder) {
-    throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'Reminder/task relationship check failed.');
+    throw new DatabaseError(
+      "INTEGRITY_CHECK_FAILED",
+      "Reminder/task relationship check failed.",
+    );
   }
 }
 
@@ -135,37 +155,45 @@ export async function recoverDatabase(
   confirmation?: string,
 ): Promise<DatabaseRecoveryResult> {
   if (recoveryInProgress) {
-    throw new DatabaseError('RECOVERY_IN_PROGRESS', 'Database recovery is already in progress.');
-  }
-  if (mode === 'recreate' && confirmation !== RECREATE_DATABASE_CONFIRMATION) {
     throw new DatabaseError(
-      'RECOVERY_CONFIRMATION_REQUIRED',
-      'Refusing to recreate the database without explicit confirmation.',
+      "RECOVERY_IN_PROGRESS",
+      "Database recovery is already in progress.",
+    );
+  }
+  if (mode === "recreate" && confirmation !== RECREATE_DATABASE_CONFIRMATION) {
+    throw new DatabaseError(
+      "RECOVERY_CONFIRMATION_REQUIRED",
+      "Refusing to recreate the database without explicit confirmation.",
     );
   }
 
   recoveryInProgress = true;
   try {
-    if (mode === 'check') {
+    if (mode === "check") {
       await initPromise?.catch(() => undefined);
       let transientDatabase: SqlDatabase | null = null;
       try {
         if (!readyHandle) {
-          const { openDatabaseAsync } = await import('expo-sqlite');
-          transientDatabase = wrapExpoDatabase(await openDatabaseAsync(DATABASE_NAME));
+          const { openDatabaseAsync } = await import("expo-sqlite");
+          transientDatabase = wrapExpoDatabase(
+            await openDatabaseAsync(DATABASE_NAME),
+          );
         }
         const db = readyHandle?.db ?? transientDatabase;
         if (!db) {
-          throw new DatabaseError('INTEGRITY_CHECK_FAILED', 'SQLite database is unavailable.');
+          throw new DatabaseError(
+            "INTEGRITY_CHECK_FAILED",
+            "SQLite database is unavailable.",
+          );
         }
         await assertDatabaseIntegrity(db);
       } finally {
         await transientDatabase?.closeAsync?.().catch(() => undefined);
       }
-      return { mode, integrity: 'ok' };
+      return { mode, integrity: "ok" };
     }
 
-    if (mode === 'retry') {
+    if (mode === "retry") {
       return { mode, handle: await initializeDatabase() };
     }
 
@@ -178,12 +206,16 @@ export async function recoverDatabase(
     lastError = null;
     await handleToClose?.db.closeAsync?.();
 
-    const { deleteDatabaseAsync } = await import('expo-sqlite');
+    const { deleteDatabaseAsync } = await import("expo-sqlite");
     await deleteDatabaseAsync(DATABASE_NAME);
     return { mode, handle: await initializeDatabase() };
   } catch (cause) {
     if (cause instanceof DatabaseError) throw cause;
-    const error = new DatabaseError('RECOVERY_FAILED', `Database ${mode} recovery failed.`, cause);
+    const error = new DatabaseError(
+      "RECOVERY_FAILED",
+      `Database ${mode} recovery failed.`,
+      cause,
+    );
     lastError = error;
     throw error;
   } finally {
@@ -193,7 +225,7 @@ export async function recoverDatabase(
 
 export function getDatabase(): SqlDatabase {
   if (!readyHandle) {
-    throw new DatabaseError('NOT_READY', 'Database has not been initialized.');
+    throw new DatabaseError("NOT_READY", "Database has not been initialized.");
   }
   return readyHandle.db;
 }
@@ -211,7 +243,7 @@ export function __setDatabaseForTests(db: SqlDatabase | null): void {
   if (db) {
     readyHandle = {
       db,
-      status: 'ready',
+      status: "ready",
       migration: { fromVersion: 0, toVersion: 0, applied: [] },
     };
     lastError = null;
@@ -223,10 +255,12 @@ export function __setDatabaseForTests(db: SqlDatabase | null): void {
 }
 
 /** Bootstrap for tests: run migrations on provided SqlDatabase. */
-export async function initializeDatabaseWith(db: SqlDatabase): Promise<DatabaseHandle> {
+export async function initializeDatabaseWith(
+  db: SqlDatabase,
+): Promise<DatabaseHandle> {
   await applyPragmas(db);
   const migration = await runMigrations(db);
-  readyHandle = { db, status: 'ready', migration };
+  readyHandle = { db, status: "ready", migration };
   lastError = null;
   return readyHandle;
 }
