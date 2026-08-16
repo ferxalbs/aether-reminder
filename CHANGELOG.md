@@ -2,6 +2,32 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (5) [Native Material 3 Alert Dialogs]
+
+### Canonical native alert migration
+
+- Added the typed `AetherAlertDialog` semantic adapter with a real Expo UI
+  Jetpack Compose Material 3 `AlertDialog` implementation on Android and a
+  native SwiftUI alert implementation across iOS/iPadOS.
+- Migrated application-owned alerts in `src/app/settings.tsx` and
+  `src/app/_layout.tsx`, preserving API-key, database-recovery, destructive
+  confirmation, Adaptive Nudges, haptic, and persistence behavior.
+- Added a scoped ESLint guard preventing new `react-native` `Alert` imports or
+  `Alert.alert(...)` calls in product source.
+- Preserved the centralized Material You bridge, bounded AETHER accent budget,
+  OLED canvas, native Compose Switch/DateTime/Sheet paths, and documented the
+  appearance-control decision in `docs/THEMING.md`.
+
+### Validation and remaining runtime gate
+
+- `bun run typecheck`, `bun run lint`, focused dialog tests (4 passed), and
+  `bunx expo export --platform android` passed.
+- Full `bun test` remains environment-blocked: cloud tests require an unset
+  `DATABASE_URL`, and the app scope retains existing React Native test-loader
+  errors in `Picker.test.tsx` and `AnimatedPressable.test.tsx`.
+- Android visual Material 3 validation remains open because no ADB device or
+  local emulator was available; no physical-device result is claimed.
+
 ## Unreleased - 2026.08.16 (4) [Unified Semantic Theme and Material You Resolver]
 
 ### Wallpaper-derived color source with AETHER-owned identity

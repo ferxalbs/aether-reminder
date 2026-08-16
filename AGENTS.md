@@ -308,3 +308,13 @@ honestly.
 ## Commit & Pull Request Guidelines
 
 Use concise Conventional Commit-style subjects matching history, such as `feat: ...`, `fix: ...`, or `chore: ...`. PRs should explain the behavior change, list validation commands, link relevant issues, and include screenshots or recordings for UI changes. Call out schema migrations, native permission changes, and configuration changes explicitly.
+
+## Agent Rules for This Repository
+
+This repository contains **AETHER Reminder only**. The following rules are mandatory:
+
+- **Scope:** Focus exclusively on AETHER Reminder code, issues, and documentation in this repository.
+- **Separation of Concerns:** AETHER Cloud is a separate project and ecosystem. Do not read, reference, import, or merge any AETHER Cloud code, files, or design patterns into this repository.
+- **No Cross-Project Contamination:** Do not assume patterns, APIs, or architecture from AETHER Cloud apply here. Each project has its own versioned dependencies, native platforms, and requirements.
+- **When in Doubt:** If you encounter AETHER Cloud references, file paths, or documentation in this repository, treat them as out-of-scope and notify the maintainer.
+- **Validation:** Before proposing architectural changes or new dependencies, verify they are scoped to AETHER Reminder and do not duplicate or conflict with AETHER Cloud infrastructure.

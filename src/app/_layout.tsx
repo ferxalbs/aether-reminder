@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   StyleSheet,
   View,
@@ -31,6 +30,10 @@ import { getDatabaseErrorMessage } from "@/db/errors";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { useAetherTheme } from "@/theme/useAetherTheme";
+import {
+  AetherAlertDialog,
+  type AetherAlertDialogState,
+} from "@/components/ui/AetherAlertDialog";
 import { Typography } from "@/components/ui/Typography";
 import { Button } from "@/components/ui/Button";
 import { NotificationSyncBanner } from "@/components/ui/NotificationSyncBanner";
@@ -75,6 +78,8 @@ export default function RootLayout() {
   const [nativeCaptureRevision, setNativeCaptureRevision] = useState(0);
   const [notificationSync, setNotificationSync] =
     useState<NotificationSyncState>({ phase: "idle" });
+  const [alertDialog, setAlertDialog] =
+    useState<AetherAlertDialogState | null>(null);
   const notificationSyncRef = useRef<Promise<void> | null>(null);
 
   const syncNotifications = useCallback(
@@ -230,20 +235,21 @@ export default function RootLayout() {
   );
 
   const confirmDatabaseRecreation = useCallback(() => {
-    Alert.alert(
-      "Recreate local database?",
-      "This permanently deletes all reminders and local history on this device. Saved provider credentials are not deleted.",
-      [
-        { text: "Cancel", style: "cancel" },
+    setAlertDialog({
+      title: "Recreate local database?",
+      message:
+        "This permanently deletes all reminders and local history on this device. Saved provider credentials are not deleted.",
+      actions: [
+        { label: "Cancel", role: "cancel" },
         {
-          text: "Delete and recreate",
-          style: "destructive",
+          label: "Delete and recreate",
+          role: "destructive",
           onPress: () => {
             void runDatabaseRecovery("recreate");
           },
         },
       ],
-    );
+    });
   }, [runDatabaseRecovery]);
 
   const checkDatabaseIntegrity = useCallback(async () => {
@@ -473,6 +479,15 @@ export default function RootLayout() {
               onRetry={() => {
                 void syncNotifications();
               }}
+            />
+          ) : null}
+
+          {alertDialog ? (
+            <AetherAlertDialog
+              {...alertDialog}
+              visible
+              onDismiss={() => setAlertDialog(null)}
+              testID={alertDialog.testID ?? "root-alert-dialog"}
             />
           ) : null}
         </View>

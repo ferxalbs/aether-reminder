@@ -99,6 +99,20 @@ AETHER monochrome semantic theme. Native surfaces that need a Compose palette us
 the deliberate AETHER accent seed described above; this is a seeded Material 3
 fallback/tint strategy, not Material You and not a wallpaper claim.
 
+## Native transient surfaces
+
+Application-owned alerts use the platform-aware `AetherAlertDialog` semantic
+adapter. Android renders its dialog through Expo UI's Jetpack Compose Material 3
+`AlertDialog`; it inherits the wallpaper scheme in true Material You mode and
+uses the existing AETHER accent seed only for the deterministic fallback. Apple
+platforms use the native SwiftUI alert path.
+
+The Settings appearance control remains a custom AETHER segmented control. It
+is not a Material 2 surface, and keeping it preserves the existing geometry,
+semantic colors, and shared Apple behavior. The existing Compose-backed switch,
+DateTime picker, and bottom sheet likewise remain in place because their Android
+implementations already use Material 3 primitives.
+
 ## Apple behavior
 
 iOS and iPadOS use the same semantic contract and AETHER palette. SwiftUI-native

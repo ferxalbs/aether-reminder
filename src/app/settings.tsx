@@ -1,4 +1,8 @@
 import { useAssistantSurface } from "@/components/assistant/AssistantHost";
+import {
+  AetherAlertDialog,
+  type AetherAlertDialogState,
+} from "@/components/ui/AetherAlertDialog";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -46,7 +50,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StatusBar,
@@ -143,6 +146,11 @@ export default function SettingsScreen() {
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [alertDialog, setAlertDialog] =
+    useState<AetherAlertDialogState | null>(null);
+
+  const dismissAlert = () => setAlertDialog(null);
+  const showAlert = (dialog: AetherAlertDialogState) => setAlertDialog(dialog);
 
   const aetherTheme = useAetherTheme();
   const { colors } = aetherTheme;
@@ -205,10 +213,11 @@ export default function SettingsScreen() {
   const saveKey = async (provider: ProviderName) => {
     const input = provider === "OpenRouter" ? openRouterInput : openAiInput;
     if (!input.trim()) {
-      Alert.alert(
-        "API Key Required",
-        `Enter an ${provider} API key before saving.`,
-      );
+      showAlert({
+        title: "API Key Required",
+        message: `Enter an ${provider} API key before saving.`,
+        actions: [{ label: "OK" }],
+      });
       return;
     }
     setSavingProvider(provider);
@@ -233,7 +242,11 @@ export default function SettingsScreen() {
         );
       }
     } catch (error) {
-      Alert.alert(`${provider} Key Not Saved`, getAIErrorMessage(error));
+      showAlert({
+        title: `${provider} Key Not Saved`,
+        message: getAIErrorMessage(error),
+        actions: [{ label: "OK" }],
+      });
     } finally {
       setSavingProvider(null);
     }
@@ -245,10 +258,11 @@ export default function SettingsScreen() {
       provider === "OpenRouter" ? openRouterApiKey : openAiApiKey;
     const keyToTest = input.trim() || savedKey;
     if (!keyToTest) {
-      Alert.alert(
-        "API Key Required",
-        `Save an ${provider} key or enter one to test.`,
-      );
+      showAlert({
+        title: "API Key Required",
+        message: `Save an ${provider} key or enter one to test.`,
+        actions: [{ label: "OK" }],
+      });
       return;
     }
     setTestingProvider(provider);
@@ -284,16 +298,17 @@ export default function SettingsScreen() {
       else setOpenAiInput("");
       return;
     }
-    Alert.alert(
-      `Delete ${provider} API Key?`,
-      provider === "OpenRouter"
-        ? "This disables AI reasoning and automated task actions until another OpenRouter key is saved."
-        : "This disables realtime voice transcription until another OpenAI key is saved.",
-      [
-        { text: "Cancel", style: "cancel" },
+    showAlert({
+      title: `Delete ${provider} API Key?`,
+      message:
+        provider === "OpenRouter"
+          ? "This disables AI reasoning and automated task actions until another OpenRouter key is saved."
+          : "This disables realtime voice transcription until another OpenAI key is saved.",
+      actions: [
+        { label: "Cancel", role: "cancel" },
         {
-          text: "Delete Key",
-          style: "destructive",
+          label: "Delete Key",
+          role: "destructive",
           onPress: () => {
             const deleteSavedKey =
               provider === "OpenRouter"
@@ -318,16 +333,17 @@ export default function SettingsScreen() {
                   });
                 }
               })
-              .catch((error: unknown) =>
-                Alert.alert(
-                  `${provider} Key Not Deleted`,
-                  getAIErrorMessage(error),
-                ),
-              );
+              .catch((error: unknown) => {
+                showAlert({
+                  title: `${provider} Key Not Deleted`,
+                  message: getAIErrorMessage(error),
+                  actions: [{ label: "OK" }],
+                });
+              });
           },
         },
       ],
-    );
+    });
   };
 
   const setAdaptiveNudges = async (enabled: boolean) => {
@@ -335,34 +351,44 @@ export default function SettingsScreen() {
       await persistAdaptiveNudges(enabled);
       setAdaptiveNudgesPreference(enabled);
     } catch (error) {
-      Alert.alert("Adaptive Nudges Not Updated", getAIErrorMessage(error));
+      showAlert({
+        title: "Adaptive Nudges Not Updated",
+        message: getAIErrorMessage(error),
+        actions: [{ label: "OK" }],
+      });
     }
   };
 
   const confirmResetAdaptiveLearning = () => {
-    Alert.alert(
-      "Reset learned nudge behavior?",
-      "This clears local completion and snooze learning. Tasks, recurrence rules, and ordinary reminders stay unchanged.",
-      [
-        { text: "Cancel", style: "cancel" },
+    showAlert({
+      title: "Reset learned nudge behavior?",
+      message:
+        "This clears local completion and snooze learning. Tasks, recurrence rules, and ordinary reminders stay unchanged.",
+      actions: [
+        { label: "Cancel", role: "cancel" },
         {
-          text: "Reset learning",
-          style: "destructive",
+          label: "Reset learning",
+          role: "destructive",
           onPress: () => {
             void resetAdaptiveNudgeLearning()
-              .then(() =>
-                Alert.alert(
-                  "Learning reset",
-                  "AETHER will use its conservative baseline again.",
-                ),
-              )
-              .catch((error: unknown) =>
-                Alert.alert("Learning Not Reset", getAIErrorMessage(error)),
-              );
+              .then(() => {
+                showAlert({
+                  title: "Learning reset",
+                  message: "AETHER will use its conservative baseline again.",
+                  actions: [{ label: "OK" }],
+                });
+              })
+              .catch((error: unknown) => {
+                showAlert({
+                  title: "Learning Not Reset",
+                  message: getAIErrorMessage(error),
+                  actions: [{ label: "OK" }],
+                });
+              });
           },
         },
       ],
-    );
+    });
   };
 
   const storageDescription = !keyStateLoaded
@@ -1277,6 +1303,14 @@ export default function SettingsScreen() {
         onSelectModel={(modelId) => setModel(modelId)}
         onRefresh={() => loadModels(true)}
       />
+      {alertDialog ? (
+        <AetherAlertDialog
+          {...alertDialog}
+          visible
+          onDismiss={dismissAlert}
+          testID={alertDialog.testID ?? "settings-alert-dialog"}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
