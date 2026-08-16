@@ -37,7 +37,8 @@ export function resolveAetherCloudConfig(
   const baseUrl = readAetherCloudBaseUrl(env);
   if (!baseUrl) return null;
 
-  const userId = env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim() || DEFAULT_E2E_USER_ID;
+  const userId =
+    env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim() || DEFAULT_E2E_USER_ID;
   const deviceId =
     env.EXPO_PUBLIC_AETHER_DEV_DEVICE_ID?.trim() || DEFAULT_E2E_DEVICE_ID;
 
@@ -55,7 +56,9 @@ export function publicCloudEnvSnapshot(): {
 } {
   return {
     configured: isAetherCloudConfigured(),
-    hasUserOverride: Boolean(process.env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim()),
+    hasUserOverride: Boolean(
+      process.env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim(),
+    ),
     hasDeviceOverride: Boolean(
       process.env.EXPO_PUBLIC_AETHER_DEV_DEVICE_ID?.trim(),
     ),

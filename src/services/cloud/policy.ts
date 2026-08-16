@@ -4,8 +4,11 @@ import type { CommercialPolicy, SubscriptionResponse } from "./types";
 
 const CACHE_TTL_MS = 30_000;
 
-let cached: { policy: CommercialPolicy; userId: string; fetchedAt: number } | null =
-  null;
+let cached: {
+  policy: CommercialPolicy;
+  userId: string;
+  fetchedAt: number;
+} | null = null;
 
 export async function getCommercialPolicy(
   signal?: AbortSignal,

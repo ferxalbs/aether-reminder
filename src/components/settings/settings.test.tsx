@@ -61,8 +61,20 @@ mock.module("react-native", () => ({
     flatten: (style: unknown) =>
       Array.isArray(style) ? Object.assign({}, ...style) : style || {},
     hairlineWidth: 1,
-    absoluteFill: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
-    absoluteFillObject: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+    absoluteFill: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    },
+    absoluteFillObject: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    },
   },
   View: MockView,
   Text: MockText,
@@ -184,7 +196,9 @@ mock.module("lucide-react-native", () => ({
 }));
 
 mock.module("@/stores/settings.store", () => ({
-  useSettingsStore: (selector?: (state: Record<string, unknown>) => unknown) => {
+  useSettingsStore: (
+    selector?: (state: Record<string, unknown>) => unknown,
+  ) => {
     const state = {
       hapticsEnabled: true,
       openRouterApiKey: "test-openrouter-key",
@@ -205,7 +219,11 @@ mock.module("@/stores/settings.store", () => ({
 }));
 
 mock.module("expo-haptics", () => ({
-  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
+  NotificationFeedbackType: {
+    Success: "success",
+    Warning: "warning",
+    Error: "error",
+  },
   ImpactFeedbackStyle: { Light: "light", Medium: "medium", Heavy: "heavy" },
   selectionAsync: mock(() => Promise.resolve()),
   notificationAsync: mock(() => Promise.resolve()),

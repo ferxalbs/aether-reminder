@@ -1,7 +1,4 @@
-export type AetherDialogActionRole =
-  | "default"
-  | "cancel"
-  | "destructive";
+export type AetherDialogActionRole = "default" | "cancel" | "destructive";
 
 export type AetherDialogAction = {
   label: string;
@@ -35,9 +32,7 @@ export type AetherAlertDialogState = Omit<
   "visible" | "onDismiss"
 >;
 
-export function splitAetherDialogActions(
-  actions: AetherDialogActions,
-): {
+export function splitAetherDialogActions(actions: AetherDialogActions): {
   confirm?: AetherDialogAction;
   dismiss?: AetherDialogAction;
 } {

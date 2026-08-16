@@ -8,8 +8,8 @@ export interface SettingsSectionHeaderProps {
   title: string;
 }
 
-export const SettingsSectionHeader: React.FC<SettingsSectionHeaderProps> = React.memo(
-  ({ title }) => {
+export const SettingsSectionHeader: React.FC<SettingsSectionHeaderProps> =
+  React.memo(({ title }) => {
     const colors = useSemanticColors();
 
     return (
@@ -23,8 +23,7 @@ export const SettingsSectionHeader: React.FC<SettingsSectionHeaderProps> = React
         </Typography>
       </View>
     );
-  },
-);
+  });
 
 SettingsSectionHeader.displayName = "SettingsSectionHeader";
 

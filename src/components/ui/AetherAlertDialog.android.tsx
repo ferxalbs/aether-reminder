@@ -1,10 +1,6 @@
 import React from "react";
 import { Host } from "@expo/ui";
-import {
-  AlertDialog,
-  Text,
-  TextButton,
-} from "@expo/ui/jetpack-compose";
+import { AlertDialog, Text, TextButton } from "@expo/ui/jetpack-compose";
 import { testID as composeTestID } from "@expo/ui/jetpack-compose/modifiers";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useAetherAlertDialogController } from "./AetherAlertDialogController";
@@ -18,7 +14,9 @@ function actionColor(
   action: AetherDialogAction,
   colors: ReturnType<typeof useAetherTheme>["colors"],
 ) {
-  return action.role === "destructive" ? colors.destructive : colors.interactive;
+  return action.role === "destructive"
+    ? colors.destructive
+    : colors.interactive;
 }
 
 export function AetherAlertDialog({
@@ -34,8 +32,7 @@ export function AetherAlertDialog({
 }: AetherAlertDialogProps): React.ReactElement | null {
   const theme = useAetherTheme();
   const { colors } = theme;
-  const { confirm, dismiss: dismissAction } =
-    splitAetherDialogActions(actions);
+  const { confirm, dismiss: dismissAction } = splitAetherDialogActions(actions);
   const controller = useAetherAlertDialogController(visible, onDismiss);
 
   if (!visible || !confirm) return null;
@@ -44,7 +41,8 @@ export function AetherAlertDialog({
   const dismissColor = dismissAction
     ? actionColor(dismissAction, colors)
     : colors.interactive;
-  const fallbackSeedColor = theme.source === "material-you" ? undefined : colors.accent;
+  const fallbackSeedColor =
+    theme.source === "material-you" ? undefined : colors.accent;
 
   return (
     <Host
@@ -70,13 +68,19 @@ export function AetherAlertDialog({
         modifiers={testID ? [composeTestID(testID)] : undefined}
       >
         <AlertDialog.Title>
-          <Text color={colors.textPrimary} style={{ typography: "headlineSmall" }}>
+          <Text
+            color={colors.textPrimary}
+            style={{ typography: "headlineSmall" }}
+          >
             {title}
           </Text>
         </AlertDialog.Title>
         {message ? (
           <AlertDialog.Text>
-            <Text color={colors.textSecondary} style={{ typography: "bodyMedium" }}>
+            <Text
+              color={colors.textSecondary}
+              style={{ typography: "bodyMedium" }}
+            >
               {message}
             </Text>
           </AlertDialog.Text>

@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { AetherCloudClient } from "./client";
 import { AetherCloudError } from "./errors";
 
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}) {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...headers },
@@ -84,7 +88,9 @@ describe("AetherCloudClient", () => {
       }
       return jsonResponse(200, { status: "ok" });
     });
-    await expect(client.getHealth({ signal: controller.signal })).rejects.toMatchObject({
+    await expect(
+      client.getHealth({ signal: controller.signal }),
+    ).rejects.toMatchObject({
       code: "CANCELLED",
     });
   });

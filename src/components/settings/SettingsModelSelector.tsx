@@ -18,8 +18,8 @@ export interface SettingsModelSelectorProps {
   onOpenModelCatalog: () => void;
 }
 
-export const SettingsModelSelector: React.FC<SettingsModelSelectorProps> = React.memo(
-  ({ models, onOpenModelCatalog }) => {
+export const SettingsModelSelector: React.FC<SettingsModelSelectorProps> =
+  React.memo(({ models, onOpenModelCatalog }) => {
     const { colors } = useAetherTheme();
     const selectedModel = useSettingsStore((s) => s.selectedModel);
     const setModel = useSettingsStore((s) => s.setModel);
@@ -144,8 +144,7 @@ export const SettingsModelSelector: React.FC<SettingsModelSelectorProps> = React
         </AnimatedPressable>
       </SettingsCard>
     );
-  },
-);
+  });
 
 SettingsModelSelector.displayName = "SettingsModelSelector";
 

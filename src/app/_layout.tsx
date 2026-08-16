@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  AppState,
-  StyleSheet,
-  View,
-} from "react-native";
+import { ActivityIndicator, AppState, StyleSheet, View } from "react-native";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { BlurTargetView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
@@ -78,8 +73,9 @@ export default function RootLayout() {
   const [nativeCaptureRevision, setNativeCaptureRevision] = useState(0);
   const [notificationSync, setNotificationSync] =
     useState<NotificationSyncState>({ phase: "idle" });
-  const [alertDialog, setAlertDialog] =
-    useState<AetherAlertDialogState | null>(null);
+  const [alertDialog, setAlertDialog] = useState<AetherAlertDialogState | null>(
+    null,
+  );
   const notificationSyncRef = useRef<Promise<void> | null>(null);
 
   const syncNotifications = useCallback(

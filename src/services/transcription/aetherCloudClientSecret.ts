@@ -13,7 +13,9 @@ import type {
 } from "./types";
 
 export class AetherCloudClientSecretProvider implements RealtimeClientSecretProvider {
-  constructor(private readonly client: AetherCloudClient = getAetherCloudClient()) {}
+  constructor(
+    private readonly client: AetherCloudClient = getAetherCloudClient(),
+  ) {}
 
   async create(
     config: RealtimeTranscriptionConfig,

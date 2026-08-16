@@ -26,8 +26,7 @@ export function AetherAlertDialog({
   testID,
 }: AetherAlertDialogProps): React.ReactElement | null {
   const theme = useAetherTheme();
-  const { confirm, dismiss: dismissAction } =
-    splitAetherDialogActions(actions);
+  const { confirm, dismiss: dismissAction } = splitAetherDialogActions(actions);
   const controller = useAetherAlertDialogController(visible, onDismiss);
 
   if (!visible || !confirm) return null;

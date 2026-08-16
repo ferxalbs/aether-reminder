@@ -16,12 +16,8 @@ import {
 import { reportNonFatalError } from "@/lib/nonFatalError";
 import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
-import {
-  type AIModel,
-} from "@/services/ai/models";
-import {
-  fetchAvailableModels,
-} from "@/services/ai/openrouter";
+import { type AIModel } from "@/services/ai/models";
+import { fetchAvailableModels } from "@/services/ai/openrouter";
 import { getAIErrorMessage } from "@/services/ai/providers";
 import { useSettingsStore } from "@/stores/settings.store";
 import { LayoutTokens, Spacing } from "@/theme/tokens";
@@ -68,8 +64,9 @@ export default function SettingsScreen() {
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
 
   // Alert Dialog State
-  const [alertDialog, setAlertDialog] =
-    useState<AetherAlertDialogState | null>(null);
+  const [alertDialog, setAlertDialog] = useState<AetherAlertDialogState | null>(
+    null,
+  );
 
   const dismissAlert = useCallback(() => setAlertDialog(null), []);
   const showAlert = useCallback(
@@ -94,14 +91,17 @@ export default function SettingsScreen() {
     });
   }, [loadCredentials]);
 
-  const loadModels = useCallback((forceRefresh = false) => {
-    setModelsLoading(true);
-    setModelsError(null);
-    void fetchAvailableModels(openRouterApiKey, forceRefresh)
-      .then(setModels)
-      .catch((error: unknown) => setModelsError(getAIErrorMessage(error)))
-      .finally(() => setModelsLoading(false));
-  }, [openRouterApiKey]);
+  const loadModels = useCallback(
+    (forceRefresh = false) => {
+      setModelsLoading(true);
+      setModelsError(null);
+      void fetchAvailableModels(openRouterApiKey, forceRefresh)
+        .then(setModels)
+        .catch((error: unknown) => setModelsError(getAIErrorMessage(error)))
+        .finally(() => setModelsLoading(false));
+    },
+    [openRouterApiKey],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -162,19 +162,13 @@ export default function SettingsScreen() {
         {/* Section 1: OpenRouter AI Reasoning */}
         <Animated.View entering={entering} style={styles.sectionContainer}>
           <SettingsSectionHeader title="AI Reasoning" />
-          <SettingsApiKeyCard
-            provider="OpenRouter"
-            onShowAlert={showAlert}
-          />
+          <SettingsApiKeyCard provider="OpenRouter" onShowAlert={showAlert} />
         </Animated.View>
 
         {/* Section 2: OpenAI Realtime Transcription */}
         <Animated.View entering={entering} style={styles.sectionContainer}>
           <SettingsSectionHeader title="OpenAI — Realtime Transcription" />
-          <SettingsApiKeyCard
-            provider="OpenAI"
-            onShowAlert={showAlert}
-          />
+          <SettingsApiKeyCard provider="OpenAI" onShowAlert={showAlert} />
         </Animated.View>
 
         {/* Section 3: OpenRouter Model Selection */}

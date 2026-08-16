@@ -1,8 +1,5 @@
 import { createTimeoutSignal } from "@/lib/retry";
-import {
-  resolveAetherCloudConfig,
-  type AetherCloudConfig,
-} from "./config";
+import { resolveAetherCloudConfig, type AetherCloudConfig } from "./config";
 import {
   AetherCloudError,
   decodeCloudErrorEnvelope,
@@ -39,7 +36,9 @@ export class AetherCloudClient {
     return this.config.userId;
   }
 
-  async getHealth(options: AetherCloudRequestOptions = {}): Promise<HealthResponse> {
+  async getHealth(
+    options: AetherCloudRequestOptions = {},
+  ): Promise<HealthResponse> {
     return this.requestJson<HealthResponse>("GET", "/health", undefined, {
       ...options,
       authenticated: false,
@@ -135,21 +134,33 @@ export class AetherCloudClient {
     } catch (error) {
       timeout.cleanup();
       if (options.signal?.aborted) {
-        throw new AetherCloudError("CANCELLED", "The Cloud request was cancelled.", {
-          requestId,
-          cause: error,
-        });
+        throw new AetherCloudError(
+          "CANCELLED",
+          "The Cloud request was cancelled.",
+          {
+            requestId,
+            cause: error,
+          },
+        );
       }
       if (timeout.didTimeout() || isAbortError(error)) {
-        throw new AetherCloudError("TIMEOUT", "AETHER Cloud did not respond in time.", {
+        throw new AetherCloudError(
+          "TIMEOUT",
+          "AETHER Cloud did not respond in time.",
+          {
+            requestId,
+            cause: error,
+          },
+        );
+      }
+      throw new AetherCloudError(
+        "NETWORK_ERROR",
+        "Could not reach AETHER Cloud.",
+        {
           requestId,
           cause: error,
-        });
-      }
-      throw new AetherCloudError("NETWORK_ERROR", "Could not reach AETHER Cloud.", {
-        requestId,
-        cause: error,
-      });
+        },
+      );
     } finally {
       timeout.cleanup();
     }
@@ -180,7 +191,10 @@ export class AetherCloudClient {
     response: Response,
     requestId: string,
   ): Promise<AetherCloudError> {
-    const retryAfter = Number.parseInt(response.headers.get("retry-after") ?? "", 10);
+    const retryAfter = Number.parseInt(
+      response.headers.get("retry-after") ?? "",
+      10,
+    );
     let body: unknown;
     try {
       body = await response.json();
@@ -201,7 +215,10 @@ export class AetherCloudClient {
 }
 
 function createRequestId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

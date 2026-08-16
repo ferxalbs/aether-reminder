@@ -37,8 +37,8 @@ const THEME_OPTIONS: {
   { value: "light", label: "Light" },
 ];
 
-export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProps> = React.memo(
-  ({ onShowAlert }) => {
+export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProps> =
+  React.memo(({ onShowAlert }) => {
     const aetherTheme = useAetherTheme();
     const { colors } = aetherTheme;
 
@@ -158,9 +158,7 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
                   style={[
                     styles.segmentedItem,
                     {
-                      backgroundColor: isActive
-                        ? colors.accent
-                        : "transparent",
+                      backgroundColor: isActive ? colors.accent : "transparent",
                     },
                   ]}
                   android_ripple={{
@@ -175,9 +173,7 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
                   <Typography
                     variant="caption"
                     style={{
-                      color: isActive
-                        ? colors.onAccent
-                        : colors.textSecondary,
+                      color: isActive ? colors.onAccent : colors.textSecondary,
                       fontWeight: isActive ? "600" : "500",
                     }}
                   >
@@ -209,8 +205,7 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
               trailing={
                 <ToggleSwitch
                   value={
-                    materialColorsEnabled &&
-                    aetherTheme.isDynamicColorAvailable
+                    materialColorsEnabled && aetherTheme.isDynamicColorAvailable
                   }
                   onValueChange={setMaterialColorsEnabled}
                   disabled={!aetherTheme.isDynamicColorAvailable}
@@ -287,8 +282,7 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
         </View>
       </SettingsCard>
     );
-  },
-);
+  });
 
 SettingsPreferencesSection.displayName = "SettingsPreferencesSection";
 

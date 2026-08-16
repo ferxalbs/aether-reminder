@@ -97,7 +97,9 @@ describe("Aether Cloud inference provider", () => {
       { role: "user", content: "Create a reminder to buy milk" },
     ]);
     expect(events.some((event) => event.type === "text.delta")).toBe(true);
-    expect(events.some((event) => event.type === "stream.completed")).toBe(true);
+    expect(events.some((event) => event.type === "stream.completed")).toBe(
+      true,
+    );
   });
 
   test("surfaces a bounded error when Cloud is unreachable", async () => {

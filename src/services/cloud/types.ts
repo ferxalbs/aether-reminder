@@ -1,11 +1,6 @@
 export type CommercialTier = "free" | "pro";
 export type CommercialSource =
-  | "monthly"
-  | "yearly"
-  | "lifetime"
-  | "promo"
-  | "free"
-  | "unknown";
+  "monthly" | "yearly" | "lifetime" | "promo" | "free" | "unknown";
 
 export type CommercialPolicy = {
   version: string;

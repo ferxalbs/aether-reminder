@@ -1,10 +1,5 @@
 import React, { useCallback, useState } from "react";
-import {
-  Platform,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, TextInput, View } from "react-native";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { Button } from "@/components/ui/Button";
 import { Typography } from "@/components/ui/Typography";
@@ -159,9 +154,7 @@ export const SettingsApiKeyCard: React.FC<SettingsApiKeyCardProps> = React.memo(
               void deleteApiKey()
                 .then(() => {
                   setInput("");
-                  setStatusMessage(
-                    `${provider} key deleted from SecureStore.`,
-                  );
+                  setStatusMessage(`${provider} key deleted from SecureStore.`);
                   if (hapticsEnabled) {
                     notificationAsync(
                       Haptics.NotificationFeedbackType.Warning,
@@ -181,7 +174,14 @@ export const SettingsApiKeyCard: React.FC<SettingsApiKeyCardProps> = React.memo(
           },
         ],
       });
-    }, [configured, provider, isRouter, deleteApiKey, onShowAlert, hapticsEnabled]);
+    }, [
+      configured,
+      provider,
+      isRouter,
+      deleteApiKey,
+      onShowAlert,
+      hapticsEnabled,
+    ]);
 
     const storageDescription = !keyLoaded
       ? "Checking secure hardware storage…"
@@ -216,9 +216,7 @@ export const SettingsApiKeyCard: React.FC<SettingsApiKeyCardProps> = React.memo(
           <View style={{ flex: 1 }}>
             <Typography
               variant="tiny"
-              color={
-                configured ? colors.textPrimary : colors.textSecondary
-              }
+              color={configured ? colors.textPrimary : colors.textSecondary}
               style={{ letterSpacing: 0.5 }}
             >
               KEY STATUS
@@ -293,10 +291,7 @@ export const SettingsApiKeyCard: React.FC<SettingsApiKeyCardProps> = React.memo(
             variant={configured ? "secondary" : "primary"}
             loading={isSaving}
             disabled={
-              !secureStoreAvailable ||
-              !keyLoaded ||
-              isTesting ||
-              !input.trim()
+              !secureStoreAvailable || !keyLoaded || isTesting || !input.trim()
             }
             fullWidth
           />

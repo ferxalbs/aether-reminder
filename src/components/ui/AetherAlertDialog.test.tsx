@@ -121,7 +121,9 @@ describe("AetherAlertDialog semantic controller", () => {
   test("invokes a destructive callback exactly once", () => {
     const onConfirm = mock(() => {});
     const { renderer, onDismiss } = renderDialog({
-      actions: [{ label: "Reset learning", role: "destructive", onPress: onConfirm }],
+      actions: [
+        { label: "Reset learning", role: "destructive", onPress: onConfirm },
+      ],
     });
     const contract = renderer.root.findByType("AetherDialogContract");
 

@@ -60,7 +60,9 @@ type StreamChunk = {
 export class AetherCloudInferenceProvider implements InferenceProvider {
   readonly id = "aether-cloud";
 
-  constructor(private readonly client: () => AetherCloudClient = getAetherCloudClient) {}
+  constructor(
+    private readonly client: () => AetherCloudClient = getAetherCloudClient,
+  ) {}
 
   async getCapabilities(): Promise<ModelCapabilities> {
     return HOSTED_CAPABILITIES;
@@ -81,7 +83,8 @@ export class AetherCloudInferenceProvider implements InferenceProvider {
         type: "stream.error",
         error: {
           code: "INVALID_REQUEST",
-          message: "A hosted turn requires at least one user, assistant, or tool message.",
+          message:
+            "A hosted turn requires at least one user, assistant, or tool message.",
         },
       };
       return;
@@ -132,7 +135,10 @@ export class AetherCloudInferenceProvider implements InferenceProvider {
         return;
       }
 
-      for await (const data of parseSseStream(response.body, streamTimeout.signal)) {
+      for await (const data of parseSseStream(
+        response.body,
+        streamTimeout.signal,
+      )) {
         if (signal.aborted) {
           yield { type: "stream.aborted" };
           return;
@@ -216,7 +222,10 @@ export class AetherCloudInferenceProvider implements InferenceProvider {
         }
       }
     } catch (error) {
-      if (signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+      if (
+        signal.aborted ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
         yield { type: "stream.aborted" };
         return;
       }
@@ -280,7 +289,9 @@ export function toCloudMessages(
       ...(typeof message.tool_call_id === "string"
         ? { tool_call_id: message.tool_call_id }
         : {}),
-      ...(Array.isArray(message.tool_calls) ? { tool_calls: message.tool_calls } : {}),
+      ...(Array.isArray(message.tool_calls)
+        ? { tool_calls: message.tool_calls }
+        : {}),
       ...(typeof message.name === "string" ? { name: message.name } : {}),
     });
   }

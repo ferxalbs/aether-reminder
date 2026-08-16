@@ -45,11 +45,11 @@ intentional one-off geometry.
 `materialColorsEnabled` controls the Android color source. The persisted boolean
 is retained for compatibility; it is not a light/dark setting.
 
-| Platform / capability | Appearance | Color source |
-| --- | --- | --- |
-| Android 12+ | OLED Dark, Light, or System | AETHER monochrome or wallpaper-derived Material You accents |
-| Android 11 and below | OLED Dark, Light, or System | AETHER monochrome; Dynamic Color is unavailable |
-| iOS / iPadOS | OLED Dark, Light, or System | AETHER semantic palette; no fake Android wallpaper palette |
+| Platform / capability | Appearance                  | Color source                                                |
+| --------------------- | --------------------------- | ----------------------------------------------------------- |
+| Android 12+           | OLED Dark, Light, or System | AETHER monochrome or wallpaper-derived Material You accents |
+| Android 11 and below  | OLED Dark, Light, or System | AETHER monochrome; Dynamic Color is unavailable             |
+| iOS / iPadOS          | OLED Dark, Light, or System | AETHER semantic palette; no fake Android wallpaper palette  |
 
 The Settings row is Android-only and is disabled below Android 12. It uses
 “Dynamic Colors” because that is the supported behavior; it does not claim that
@@ -66,13 +66,13 @@ to the foreground so wallpaper/system palette changes are not permanently cached
 The resolver consumes the same role values for React Native surfaces and native
 controls:
 
-| AETHER semantic | Material 3 input |
-| --- | --- |
-| `accent`, `interactive` | `primary` |
-| `onAccent`, `interactiveForeground` | `onPrimary` |
-| `accentContainer`, `selected`, navigation indicator | `primaryContainer` |
-| `onAccentContainer`, selected foreground | `onPrimaryContainer` |
-| `focus`, selected/focused border | `primary` |
+| AETHER semantic                                     | Material 3 input     |
+| --------------------------------------------------- | -------------------- |
+| `accent`, `interactive`                             | `primary`            |
+| `onAccent`, `interactiveForeground`                 | `onPrimary`          |
+| `accentContainer`, `selected`, navigation indicator | `primaryContainer`   |
+| `onAccentContainer`, selected foreground            | `onPrimaryContainer` |
+| `focus`, selected/focused border                    | `primary`            |
 
 The semantic mapper deliberately keeps `background`, `surface`, typography,
 structural borders, glass, and product status roles AETHER-owned. Dynamic colors
@@ -143,7 +143,7 @@ const theme = useAetherTheme();
   <Typography color={theme.components.button.primaryForeground}>
     Save
   </Typography>
-</Pressable>
+</Pressable>;
 ```
 
 Correct: `theme.colors.surfaceRaised`, `theme.colors.textSecondary`,

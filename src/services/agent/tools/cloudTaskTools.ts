@@ -1,5 +1,10 @@
 import { resolveToday } from "@/temporal/resolve";
-import { tasksComplete, tasksCreate, tasksList, tasksUpdate } from "./taskTools";
+import {
+  tasksComplete,
+  tasksCreate,
+  tasksList,
+  tasksUpdate,
+} from "./taskTools";
 import type { AgentTool, ToolResult } from "./types";
 
 function asString(value: unknown): string | undefined {
@@ -110,10 +115,7 @@ export const proposeTaskMutation: AgentTool<{
             "reschedule requires a local due date; hosted toolset only supplies title/taskId.",
         };
       }
-      const updated = await tasksUpdate.execute(
-        { id: taskId, title },
-        ctx,
-      );
+      const updated = await tasksUpdate.execute({ id: taskId, title }, ctx);
       if (!updated.ok || !updated.receipt) return updated;
       return {
         ...updated,
