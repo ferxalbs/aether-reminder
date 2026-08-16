@@ -1,5 +1,11 @@
 export type { AgentTool, ToolExecutionContext, ToolResult } from "./types";
-export { ToolRegistry, defaultToolRegistry, ALL_TOOLS } from "./registry";
+export {
+  ToolRegistry,
+  defaultToolRegistry,
+  cloudToolRegistry,
+  ALL_TOOLS,
+  CLOUD_TASK_TOOLS,
+} from "./registry";
 export { TASK_TOOLS } from "./taskTools";
 export { RECURRENCE_TOOLS } from "./recurrenceTools";
 export { REMINDER_TOOLS } from "./reminderTools";

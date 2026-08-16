@@ -18,7 +18,7 @@ export type AIProviderErrorCode =
   | "SECURE_STORAGE_UNAVAILABLE"
   | "UNKNOWN";
 
-export type AIProviderName = "OpenRouter" | "OpenAI";
+export type AIProviderName = "OpenRouter" | "OpenAI" | "AETHER Cloud";
 
 export class AIProviderError extends Error {
   readonly code: AIProviderErrorCode;

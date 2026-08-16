@@ -384,6 +384,17 @@ describe("VoiceSession orchestration", () => {
     expect(h.capture.starts).toBe(2);
   });
 
+  test("concurrent cancellation only transitions from cancelled to idle once", async () => {
+    const h = harness();
+    await h.session.start();
+
+    await Promise.all([h.session.cancel(), h.session.cancel()]);
+
+    expect(h.session.snapshot.state).toBe("idle");
+    expect(h.capture.stops).toBe(1);
+    expect(h.transports[0].cancels).toBe(1);
+  });
+
   test("cancel during audio-session activation cannot leak microphone ownership", async () => {
     let releaseActivation = () => undefined;
     const activationGate = new Promise<void>((resolve) => {

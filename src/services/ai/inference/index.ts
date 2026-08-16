@@ -24,4 +24,9 @@ export {
   openRouterInferenceProvider,
   __clearOpenRouterModelsCache,
 } from "./openRouterProvider";
+export {
+  AetherCloudInferenceProvider,
+  aetherCloudInferenceProvider,
+  toCloudMessages,
+} from "./aetherCloudProvider";
 export { parseSseStream } from "./sse";

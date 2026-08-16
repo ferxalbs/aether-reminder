@@ -1,6 +1,6 @@
 const SECRET_PATTERNS = [
   /Bearer\s+[^\s]+/gi,
-  /\b(?:sk|pk|rk)-[A-Za-z0-9_-]{8,}\b/g,
+  /\b(?:sk|pk|rk|ek)[-_][A-Za-z0-9_-]{8,}\b/g,
   /\b(?:api[_-]?key|authorization|secret|token)\s*[:=]\s*[^\s,]+/gi,
 ];
 

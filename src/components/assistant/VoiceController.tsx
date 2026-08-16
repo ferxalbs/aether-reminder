@@ -9,6 +9,7 @@ import {
 import { usePathname } from "expo-router";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import {
+  AetherCloudClientSecretProvider,
   OpenAIByokClientSecretProvider,
   OpenAIRealtimeWebSocketTransport,
   VoiceSession,
@@ -24,6 +25,7 @@ import {
   type VoiceSnapshot,
   type VoiceState,
 } from "@/services/transcription";
+import { isAetherCloudConfigured } from "@/services/cloud";
 import { useSettingsStore } from "@/stores/settings.store";
 import { reportNonFatalError } from "@/lib/nonFatalError";
 
@@ -60,6 +62,7 @@ export function useVoiceController({
   const pathname = usePathname();
   const openAiApiKey = useSettingsStore((state) => state.openAiApiKey);
   const openAiKeyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
+  const hostedCloud = isAetherCloudConfigured();
   const onTranscriptRef = useRef(onTranscript);
   const bufferListenerRef = useRef<
     ((buffer: AudioStreamBuffer) => void) | null
@@ -109,12 +112,15 @@ export function useVoiceController({
         },
         audioSession: expoAudioSession,
         capture,
-        clientSecrets: new OpenAIByokClientSecretProvider(
-          openAiKeyLoaded ? openAiApiKey : "",
-        ),
+        clientSecrets: hostedCloud
+          ? new AetherCloudClientSecretProvider()
+          : new OpenAIByokClientSecretProvider(
+              openAiKeyLoaded ? openAiApiKey : "",
+            ),
         createTransport: (diagnostics) =>
           new OpenAIRealtimeWebSocketTransport({
             diagnostics,
+            sessionUpdateMode: hostedCloud ? "server" : "client",
           }),
         config: defaultRealtimeTranscriptionConfig,
         onFinalTranscript: deliverTranscript,
@@ -122,7 +128,14 @@ export function useVoiceController({
         onTechnicalError: (error) =>
           reportNonFatalError("voice-cleanup", error),
       }),
-    [audioLevel, capture, deliverTranscript, openAiApiKey, openAiKeyLoaded],
+    [
+      audioLevel,
+      capture,
+      deliverTranscript,
+      hostedCloud,
+      openAiApiKey,
+      openAiKeyLoaded,
+    ],
   );
   /* eslint-enable react-hooks/refs */
 

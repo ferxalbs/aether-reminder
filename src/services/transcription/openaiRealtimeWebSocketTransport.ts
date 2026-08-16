@@ -56,6 +56,12 @@ export interface OpenAIRealtimeWebSocketTransportOptions {
   maxWebSocketBufferedBytes?: number;
   packetBytes?: number;
   diagnostics?: VoiceDiagnosticReporter;
+  /**
+   * `server` keeps the Cloud-issued transcription session fields.
+   * The client still validates PCM 24 kHz / gpt-live-transcribe locally
+   * but does not send session.update.
+   */
+  sessionUpdateMode?: "client" | "server";
 }
 
 const transitions: Record<
@@ -491,6 +497,15 @@ export class OpenAIRealtimeWebSocketTransport implements RealtimeTranscriptionTr
           : protocolError("Invalid realtime configuration.", error);
       this.fail(voiceError);
       throw voiceError;
+    }
+
+    if (this.options.sessionUpdateMode === "server") {
+      this.transition("ready");
+      this.options.diagnostics?.record("session_configuration_accepted", {
+        sessionConfiguration: "accepted",
+        requestedSampleRate: config.sampleRate,
+      });
+      return;
     }
 
     this.options.diagnostics?.record("session_configuration_sent", {

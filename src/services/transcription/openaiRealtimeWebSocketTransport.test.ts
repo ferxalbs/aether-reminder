@@ -510,4 +510,15 @@ describe("OpenAI Realtime WebSocket transport", () => {
     expect(serialized).not.toContain("Sensitive spoken reminder text");
     expect(serialized).not.toContain("AAECAw==");
   });
+
+  test("server-owned sessions do not send session.update", async () => {
+    const h = harness({ sessionUpdateMode: "server" });
+    const connecting = h.transport.connect("ephemeral-secret");
+    h.socket.open();
+    await connecting;
+    await h.transport.configure(defaultRealtimeTranscriptionConfig);
+    expect(parsedMessages(h)).toEqual([]);
+    expect(h.transport.currentState).toBe("ready");
+    h.transport.close();
+  });
 });

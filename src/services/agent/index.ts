@@ -23,6 +23,7 @@ export { evaluateToolPolicy, BULK_MUTATION_THRESHOLD } from "./policy";
 export {
   ToolRegistry,
   defaultToolRegistry,
+  cloudToolRegistry,
   ALL_TOOLS,
   type AgentTool,
   type ToolExecutionContext,

@@ -1,6 +1,7 @@
 import type { InferenceToolDefinition } from "@/services/ai/inference/types";
 import { ANALYTICS_TOOLS } from "./analyticsTools";
 import { APP_TOOLS } from "./appTools";
+import { CLOUD_TASK_TOOLS } from "./cloudTaskTools";
 import { RECURRENCE_TOOLS } from "./recurrenceTools";
 import { REMINDER_TOOLS } from "./reminderTools";
 import { TASK_TOOLS } from "./taskTools";
@@ -49,4 +50,6 @@ export class ToolRegistry {
 
 export const defaultToolRegistry = new ToolRegistry();
 
-export { ALL_TOOLS };
+export const cloudToolRegistry = new ToolRegistry(CLOUD_TASK_TOOLS);
+
+export { ALL_TOOLS, CLOUD_TASK_TOOLS };

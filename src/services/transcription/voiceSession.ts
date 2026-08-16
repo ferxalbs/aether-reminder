@@ -410,14 +410,16 @@ export class VoiceSession {
     this.reconciler.reset();
     this.dependencies.onAudioLevel?.(0);
     this.diagnostics?.complete({ terminalState: "cancelled" });
-    this.transition("idle", {
-      permission: this.snapshot.permission,
-      partialTranscript: "",
-      finalTranscript: "",
-      activeItemId: null,
-      error: null,
-      retryAttempt: 0,
-    });
+    if (this.snapshot.state === "cancelled") {
+      this.transition("idle", {
+        permission: this.snapshot.permission,
+        partialTranscript: "",
+        finalTranscript: "",
+        activeItemId: null,
+        error: null,
+        retryAttempt: 0,
+      });
+    }
   }
 
   async dispose(): Promise<void> {

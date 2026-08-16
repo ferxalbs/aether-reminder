@@ -11,4 +11,12 @@ describe("non-fatal error logging", () => {
     expect(message).not.toContain("pk_test_secret_value");
     expect(message).toContain("[redacted]");
   });
+
+  test("redacts ephemeral OpenAI client secrets", () => {
+    const message = sanitizeErrorForLogging(
+      new Error("clientSecret=ek_live_secret_value leftover"),
+    );
+    expect(message).not.toContain("ek_live_secret_value");
+    expect(message).toContain("[redacted]");
+  });
 });

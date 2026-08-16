@@ -20,7 +20,16 @@ owners.
 
 ## Provider boundary
 
-OpenRouter is the only conversational inference provider. The exact default
+When `EXPO_PUBLIC_AETHER_CLOUD_URL` is set, hosted assistant turns go through
+AETHER Cloud (`POST /v1/ai/turns`) and hosted live transcription asks Cloud
+for a short-lived OpenAI client secret (`POST /v1/voice/authorizations`).
+AETHER Cloud owns commercial policy and provider credentials. Mobile still
+owns tool execution, SQLite, confirmation, undo, PCM, and the OpenAI
+Realtime WebSocket.
+
+When that URL is unset, the existing user-owned BYOK path remains:
+
+OpenRouter is the conversational inference provider. The exact default
 model id is `deepseek/deepseek-v4-flash`. Before every run, the selected exact
 id is looked up in the current OpenRouter model catalog and its modalities,
 streaming, tools, tool-choice, and structured-output metadata are checked.
@@ -28,7 +37,7 @@ There is no catalog-order fallback and no fabricated model suffix.
 
 OpenAI is used only for realtime transcription with
 `gpt-live-transcribe`. It emits transcript deltas and a committed final
-transcript; only that final text is passed to the OpenRouter `AgentRuntime`.
+transcript; only that final text is passed to the `AgentRuntime`.
 OpenAI never receives agent prompts, task tools, or conversational reasoning
 requests.
 

@@ -11,6 +11,10 @@ import {
   isRetryableAIProviderError,
   isRetryableAIProviderErrorCode,
 } from "@/services/ai/providers";
+import {
+  AETHER_HOSTED_MODEL_ID,
+  isAetherCloudConfigured,
+} from "@/services/cloud";
 import { reportNonFatalError } from "@/lib/nonFatalError";
 import type {
   AssistantMessage,
@@ -87,13 +91,14 @@ export function useAgentSessionController({
     async (rawMessage: string, options: SubmitOptions = {}) => {
       const message = rawMessage.trim();
       if (!message || runningRef.current) return false;
-      if (!apiKeyLoaded) {
+      const hostedCloud = isAetherCloudConfigured();
+      if (!hostedCloud && !apiKeyLoaded) {
         setSemanticState("error");
         setError("Secure storage is still loading. Try again in a moment.");
         setCanRetry(false);
         return false;
       }
-      if (!apiKey) {
+      if (!hostedCloud && !apiKey) {
         setSemanticState("error");
         setError("Add an OpenRouter API key in Settings to ask AETHER.");
         setCanRetry(false);
@@ -106,7 +111,9 @@ export function useAgentSessionController({
       retrySubmissionRef.current = null;
       let modelId: string;
       try {
-        modelId = await resolveAgentModel(selectedModel, apiKey);
+        modelId = hostedCloud
+          ? AETHER_HOSTED_MODEL_ID
+          : await resolveAgentModel(selectedModel, apiKey);
       } catch (caught) {
         runningRef.current = false;
         setSemanticState("error");

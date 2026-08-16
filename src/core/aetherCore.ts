@@ -4,6 +4,9 @@ import {
   AetherAgentRuntime,
   type AetherAgentRuntimeOptions,
 } from "@/services/agent/runtime";
+import { cloudToolRegistry } from "@/services/agent/tools";
+import { aetherCloudInferenceProvider } from "@/services/ai/inference";
+import { isAetherCloudConfigured } from "@/services/cloud";
 import type { NotificationReconciliationOptions } from "@/services/notifications/notificationReconciliation";
 import { AetherCommandExecutor } from "./commands";
 
@@ -45,7 +48,16 @@ let appCoreDatabase: SqlDatabase | null = null;
 
 export function getAetherCore(db: SqlDatabase): AetherCore {
   if (!appCore || appCoreDatabase !== db) {
-    appCore = new AetherCore({ db });
+    const hosted = isAetherCloudConfigured();
+    appCore = new AetherCore({
+      db,
+      ...(hosted
+        ? {
+            provider: aetherCloudInferenceProvider,
+            tools: cloudToolRegistry,
+          }
+        : {}),
+    });
     appCoreDatabase = db;
   }
   return appCore;

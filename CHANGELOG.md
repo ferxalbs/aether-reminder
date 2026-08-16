@@ -2,6 +2,28 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (6) [AETHER Cloud Client Integration]
+
+### Hosted Cloud path without replacing local authority
+
+- Added one `AetherCloudClient` for health, commercial policy, voice
+  authorization, and hosted assistant SSE. UI components do not construct
+  Cloud requests.
+- Hosted voice asks Cloud for an ephemeral OpenAI client secret immediately
+  before the existing Realtime WebSocket opens. The secret stays in memory
+  and is not written to SQLite, SecureStore, or AsyncStorage.
+- Hosted assistant turns send `assistant.turn` / `aether.tasks.v1` and execute
+  `list_tasks` / `propose_task_mutation` locally. Cloud does not mutate SQLite.
+- User-owned BYOK OpenRouter and OpenAI keys remain when Cloud is not
+  configured. No AETHER-owned provider master key is added to Mobile.
+
+### Local development configuration
+
+- Public build-time URL: `EXPO_PUBLIC_AETHER_CLOUD_URL`.
+- Deterministic development identity: `e2e.mobile.physical.aether-reminder`.
+- Documented in `docs/AETHER_CLOUD_INTEGRATION.md`. Physical-device evidence
+  is still required to close the Cloud mobile E2E gate.
+
 ## Unreleased - 2026.08.16 (5) [Native Material 3 Alert Dialogs]
 
 ### Canonical native alert migration

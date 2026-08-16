@@ -108,7 +108,7 @@ export function getVoiceErrorMessage(error: VoiceError): string {
     case "RESAMPLE_FAILED":
       return "The microphone audio could not be prepared for transcription.";
     case "REALTIME_AUTH_FAILED":
-      return "OpenAI could not authorize realtime transcription.";
+      return "Live transcription could not be authorized. Try again.";
     case "INVALID_CREDENTIAL":
       return "The OpenAI API key was rejected. Check it in Settings.";
     case "ACCOUNT_NOT_AUTHORIZED":
