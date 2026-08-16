@@ -7,8 +7,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "@/components/ui/Typography";
 import { TaskList } from "@/components/ui/TaskList";
 import { TaskEditorSheet } from "@/components/ui/TaskEditorSheet";
@@ -31,7 +31,8 @@ import { canUndoTaskReceipt } from "@/stores/taskUndo";
 import type { TaskListItem } from "@/domain/entities";
 
 export default function TodayScreen() {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
   const reduceMotion = useReducedMotion();
   const enterPreset = useMotionPreset("navigation.push");
   const titleEntering =
@@ -203,13 +204,13 @@ export default function TodayScreen() {
       style={[
         styles.safeArea,
         {
-          backgroundColor: isDark
-            ? Colors.backgroundDark
-            : Colors.backgroundLight,
+          backgroundColor: colors.background,
         },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={theme.mode === "dark" ? "light-content" : "dark-content"}
+      />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -257,15 +258,13 @@ export default function TodayScreen() {
                   style={[
                     styles.errorToast,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
+                      backgroundColor: colors.surfaceRaised,
                     },
                   ]}
                 >
                   <Typography
                     variant="caption"
-                    color={isDark ? Colors.white : Colors.black}
+                    color={colors.textPrimary}
                     accessibilityRole="alert"
                   >
                     {error || quickError || attentionError}
@@ -277,14 +276,7 @@ export default function TodayScreen() {
           empty={
             status === "ready" && !attentionPlan ? (
               <Animated.View entering={fadeEntering} style={styles.emptyState}>
-                <Typography
-                  variant="body"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="body" color={colors.textSecondary}>
                   Your day is clear.
                 </Typography>
               </Animated.View>

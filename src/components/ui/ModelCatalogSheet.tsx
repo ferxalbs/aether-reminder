@@ -11,7 +11,7 @@ import { Check, RefreshCw, Search } from "lucide-react-native";
 import { canRunAsAgent } from "@/services/ai/inference";
 import type { AIModel } from "@/services/ai/models";
 import { Radius, Spacing } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Sheet } from "./Sheet";
 import { Typography } from "./Typography";
@@ -46,7 +46,10 @@ export function ModelCatalogSheet({
   onSelectModel,
   onRefresh,
 }: ModelCatalogSheetProps) {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const fieldTokens = theme.components.field;
+  const cardTokens = theme.components.card;
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredModels = useMemo(() => {
@@ -97,8 +100,8 @@ export function ModelCatalogSheet({
           style={[
             styles.searchBox,
             {
-              backgroundColor: colors.surfaceRaised,
-              borderColor: colors.borderDefault,
+              backgroundColor: fieldTokens.background,
+              borderColor: fieldTokens.border,
             },
           ]}
         >
@@ -175,11 +178,11 @@ export function ModelCatalogSheet({
                     styles.modelCardItem,
                     {
                       backgroundColor: isSelected
-                        ? colors.accentContainer
+                        ? colors.selected
                         : "transparent",
                       borderColor: isSelected
-                        ? colors.accent
-                        : colors.borderDefault,
+                        ? cardTokens.borderSelected
+                        : cardTokens.border,
                       opacity: isSelectable || isSelected ? 1 : 0.45,
                     },
                   ]}
@@ -197,8 +200,8 @@ export function ModelCatalogSheet({
                         style={[
                           styles.capabilityPill,
                           {
-                            backgroundColor: colors.surfaceRaised,
-                            borderColor: colors.borderDefault,
+                            backgroundColor: cardTokens.background,
+                            borderColor: cardTokens.border,
                             borderWidth: 1,
                           },
                         ]}

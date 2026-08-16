@@ -60,6 +60,25 @@ mock.module("@/theme/useResolvedTheme", () => ({
   useResolvedTheme: () => "dark",
 }));
 
+mock.module("@/theme/useAetherTheme", () => ({
+  useAetherTheme: () => ({
+    mode: "dark",
+    source: "aether",
+    isDynamicColorAvailable: false,
+    colors: {
+      textSecondary: "#8E8E93",
+    },
+    components: {
+      sheet: {
+        background: "#000000",
+        border: "rgba(255, 255, 255, 0.08)",
+        handle: "#52525B",
+      },
+    },
+    shape: { sheet: 36 },
+  }),
+}));
+
 // Import Sheet and test renderer
 const { Sheet } = await import("./Sheet");
 const ReactTestRenderer = (await import("react-test-renderer")).default;

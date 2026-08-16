@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useSettingsStore } from "@/stores/settings.store";
-import { useAndroidMaterialPalette } from "./materialYou";
+import {
+  isAndroidDynamicColorAvailable,
+  useAndroidMaterialPalette,
+} from "./materialYou";
 import { resolveAetherTheme } from "./resolveAetherTheme";
 import type { AetherTheme } from "./types";
 import { useResolvedTheme } from "./useResolvedTheme";
@@ -15,10 +18,17 @@ export function useAetherTheme(): AetherTheme {
   const materialColorsEnabled = useSettingsStore(
     (state) => state.materialColorsEnabled,
   );
+  const isDynamicColorAvailable = isAndroidDynamicColorAvailable();
   const dynamicPalette = useAndroidMaterialPalette(mode, materialColorsEnabled);
 
   return useMemo(
-    () => resolveAetherTheme(mode, materialColorsEnabled, dynamicPalette),
-    [mode, materialColorsEnabled, dynamicPalette],
+    () =>
+      resolveAetherTheme(
+        mode,
+        materialColorsEnabled,
+        dynamicPalette,
+        isDynamicColorAvailable,
+      ),
+    [mode, materialColorsEnabled, dynamicPalette, isDynamicColorAvailable],
   );
 }

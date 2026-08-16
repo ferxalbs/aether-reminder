@@ -111,6 +111,40 @@ mock.module("@/theme/useResolvedTheme", () => ({
   useResolvedTheme: () => "dark",
 }));
 
+mock.module("@/theme/useAetherTheme", () => ({
+  useAetherTheme: () => ({
+    mode: "dark",
+    source: "aether",
+    isDynamicColorAvailable: false,
+    colors: {
+      accent: "#FFFFFF",
+      onAccentContainer: "#FFFFFF",
+      ripple: "rgba(255, 255, 255, 0.12)",
+      selected: "#18181B",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#8E8E93",
+      textTertiary: "#52525B",
+    },
+    components: {
+      field: {
+        background: "#121215",
+        border: "rgba(255, 255, 255, 0.08)",
+      },
+      card: {
+        background: "#121215",
+        border: "rgba(255, 255, 255, 0.08)",
+        borderSelected: "#FFFFFF",
+      },
+      sheet: {
+        background: "#000000",
+        border: "rgba(255, 255, 255, 0.08)",
+        handle: "#52525B",
+      },
+    },
+    shape: { sheet: 36 },
+  }),
+}));
+
 mock.module("./AnimatedPressable", () => ({
   AnimatedPressable: (props: Record<string, unknown>) =>
     React.createElement("Pressable", props, props.children as React.ReactNode),

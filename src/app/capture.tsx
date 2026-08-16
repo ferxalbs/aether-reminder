@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { Typography } from "@/components/ui/Typography";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import {
   CaptureError,
   clearPendingNativeCaptureId,
@@ -42,7 +42,7 @@ function sourcesFrom(envelope: CaptureEnvelope): CaptureSource[] {
 }
 
 export default function CaptureRoute() {
-  const isDark = useIsDark();
+  const { colors } = useAetherTheme();
   const insets = useSafeAreaInsets();
   const [envelope, setEnvelope] = useState<CaptureEnvelope | null>(null);
   const [draft, setDraft] = useState<CaptureDraft | null>(null);
@@ -53,10 +53,8 @@ export default function CaptureRoute() {
     (state) => state.refreshAllSurfaces,
   );
   const refreshAttention = useTasksUiStore((state) => state.refreshAttention);
-  const background = isDark ? Colors.backgroundDark : Colors.backgroundLight;
-  const secondary = isDark
-    ? Colors.secondaryTextDark
-    : Colors.secondaryTextLight;
+  const background = colors.background;
+  const secondary = colors.textSecondary;
 
   useEffect(() => {
     let cancelled = false;
@@ -236,9 +234,7 @@ export default function CaptureRoute() {
               style={[
                 styles.image,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
+                  backgroundColor: colors.surfaceRaised,
                 },
               ]}
             />

@@ -2,8 +2,8 @@ import React from "react";
 import { Platform, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GlassSurface } from "./GlassSurface";
-import { getMinimumTouchTarget, Motion, Radius } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { getMinimumTouchTarget, Motion } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import * as Haptics from "expo-haptics";
 
 export interface IconButtonProps {
@@ -29,21 +29,23 @@ export const IconButton: React.FC<IconButtonProps> = ({
   style,
   hapticStyle = Haptics.ImpactFeedbackStyle.Light,
 }) => {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const buttonTokens = theme.components.button;
   const touchTarget = Math.max(size, getMinimumTouchTarget(Platform.OS));
 
   const getContainerStyle = () => {
     switch (variant) {
       case "solid":
         return {
-          backgroundColor: colors.surfaceRaised,
-          borderColor: colors.borderDefault,
+          backgroundColor: buttonTokens.secondaryBackground,
+          borderColor: buttonTokens.secondaryBorder,
           borderWidth: 1,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: colors.borderDefault,
+          borderColor: buttonTokens.secondaryBorder,
           borderWidth: 1,
         };
       case "ghost":
@@ -68,7 +70,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         color: colors.ripple,
         foreground: true,
       }}
-      interactionRadius={Radius.md}
+      interactionRadius={theme.shape.compact}
       hapticStyle={hapticStyle}
       scaleTo={Motion.iconPressScale}
       style={[
@@ -76,7 +78,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         {
           width: touchTarget,
           height: touchTarget,
-          borderRadius: Radius.md,
+          borderRadius: theme.shape.compact,
         },
         getContainerStyle(),
         disabled && styles.disabled,
@@ -86,7 +88,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
       {variant === "glass" ? (
         <GlassSurface
           pointerEvents="none"
-          borderRadius={Radius.md}
+          borderRadius={theme.shape.compact}
           style={StyleSheet.absoluteFill}
         />
       ) : null}

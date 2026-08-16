@@ -12,10 +12,9 @@ import {
 import {
   ControlTokens,
   getMinimumTouchTarget,
-  Radius,
   TypographyTokens,
 } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { GlassSurface } from "./GlassSurface";
 import { Typography } from "./Typography";
 
@@ -60,23 +59,25 @@ export const TextField: React.FC<TextFieldProps> = ({
   onFocus,
   ...inputProps
 }) => {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const fieldTokens = theme.components.field;
   const [focused, setFocused] = useState(false);
   const isDisabled = editable === false;
   const hasError = Boolean(error);
 
   const borderColor = hasError
-    ? colors.destructive
+    ? fieldTokens.borderError
     : focused
-      ? colors.borderFocused
-      : colors.borderDefault;
+      ? fieldTokens.borderFocused
+      : fieldTokens.border;
 
   const backgroundColor =
-    variant === "filled" ? colors.surfaceRaised : "transparent";
+    variant === "filled" ? fieldTokens.background : "transparent";
 
-  const textColor = colors.textPrimary;
-  const placeholderColor = colors.textTertiary;
-  const fieldRadius = Radius.md;
+  const textColor = fieldTokens.text;
+  const placeholderColor = fieldTokens.placeholder;
+  const fieldRadius = theme.shape.field;
 
   const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
     setFocused(true);

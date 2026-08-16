@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, TextProps } from "react-native";
-import { Colors, TypographyTokens } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { TypographyTokens } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface TypographyProps extends TextProps {
   variant?:
@@ -20,9 +20,8 @@ export const Typography: React.FC<TypographyProps> = ({
   children,
   ...rest
 }) => {
-  const isDark = useIsDark();
-
-  const defaultColor = color || (isDark ? Colors.textDark : Colors.textLight);
+  const colors = useSemanticColors();
+  const defaultColor = color || colors.textPrimary;
   const token = TypographyTokens[variant];
 
   return (

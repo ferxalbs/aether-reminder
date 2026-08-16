@@ -1,8 +1,7 @@
 import React, { type RefObject } from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { BlurView, type BlurViewProps } from "expo-blur";
-import { Colors } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useMotionProfile } from "../runtime/useMotionProfile";
 import { resolveAdaptiveBlurPolicy } from "./blurPolicy";
 
@@ -23,7 +22,7 @@ export function AdaptiveBlur({
   blurTarget,
   testID,
 }: AdaptiveBlurProps) {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
   const profile = useMotionProfile();
   const decision = resolveAdaptiveBlurPolicy({
     profile,
@@ -36,11 +35,9 @@ export function AdaptiveBlur({
     androidApiLevel: profile.androidApiLevel,
   });
 
-  const fallbackBg = isDark
-    ? Colors.glassDarkFallback
-    : Colors.glassLightFallback;
-  const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
-  const resolvedTint = tint ?? (isDark ? "dark" : "light");
+  const fallbackBg = theme.colors.glassChromeFallback;
+  const glassBg = theme.colors.glassChrome;
+  const resolvedTint = tint ?? theme.mode;
   const useNative =
     decision.mode === "native" &&
     (Platform.OS !== "android" || Boolean(blurTarget));

@@ -3,8 +3,8 @@ import { StyleSheet, View } from "react-native";
 import { AlertTriangle } from "lucide-react-native";
 import { Button } from "./Button";
 import { Typography } from "./Typography";
-import { Colors, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 
 export interface NotificationSyncBannerProps {
   message: string;
@@ -17,7 +17,7 @@ export const NotificationSyncBanner: React.FC<NotificationSyncBannerProps> = ({
   onRetry,
   retrying = false,
 }) => {
-  const isDark = useIsDark();
+  const { colors } = useAetherTheme();
 
   return (
     <View
@@ -27,18 +27,16 @@ export const NotificationSyncBanner: React.FC<NotificationSyncBannerProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: colors.surfaceRaised,
+          borderColor: colors.borderDefault,
         },
       ]}
     >
       <View style={styles.messageRow}>
-        <AlertTriangle size={18} color={isDark ? Colors.white : Colors.black} />
+        <AlertTriangle size={18} color={colors.textPrimary} />
         <Typography
           variant="caption"
-          color={isDark ? Colors.textDark : Colors.textLight}
+          color={colors.textPrimary}
           style={styles.message}
         >
           {message}

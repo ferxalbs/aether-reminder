@@ -6,8 +6,8 @@ import {
   AnimatedPressable,
   getMinimumTouchTargetHitSlop,
 } from "./AnimatedPressable";
-import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 
 export interface AetherComposerProps {
   value?: string;
@@ -33,7 +33,9 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   disabled = false,
 }) => {
   const [internalValue, setInternalValue] = useState("");
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const composerTokens = theme.components.composer;
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
@@ -54,7 +56,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   return (
     <View style={styles.host} pointerEvents="box-none">
       <GlassSurface
-        borderRadius={Radius.pill}
+        borderRadius={theme.shape.pill}
         intensity={Platform.OS === "ios" ? 65 : 45}
         tier={Platform.OS === "android" ? "A" : undefined}
         style={styles.glassContainer}
@@ -67,12 +69,12 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           accessibilityLabel="Open editor"
           android_ripple={{ color: colors.ripple, foreground: true }}
           hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
-          interactionRadius={Radius.pill}
+          interactionRadius={theme.shape.pill}
           minimumTouchTarget={false}
           scaleTo={Motion.iconPressScale}
-          style={styles.iconButton}
+          style={[styles.iconButton, { borderRadius: theme.shape.pill }]}
         >
-          <Plus size={20} color={colors.textPrimary} strokeWidth={2.2} />
+          <Plus size={20} color={composerTokens.icon} strokeWidth={2.2} />
         </AnimatedPressable>
 
         {/* Text Input */}
@@ -80,14 +82,14 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           value={textValue}
           onChangeText={setTextValue}
           placeholder="New reminder…"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={composerTokens.placeholder}
           editable={!disabled}
           returnKeyType="send"
           onSubmitEditing={handleSubmit}
           autoCapitalize="sentences"
           autoCorrect
           accessibilityLabel="New reminder"
-          style={[styles.input, { color: colors.textPrimary }]}
+          style={[styles.input, { color: composerTokens.icon }]}
         />
 
         {/* Voice or Send Action */}
@@ -98,14 +100,18 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
             accessibilityLabel="Create reminder"
             android_ripple={{ color: colors.ripple, foreground: true }}
             hitSlop={getMinimumTouchTargetHitSlop(36, 36, Platform.OS)}
-            interactionRadius={Radius.pill}
+            interactionRadius={theme.shape.pill}
             minimumTouchTarget={false}
             scaleTo={Motion.iconPressScale}
-            style={[styles.sendButton, { backgroundColor: colors.interactive }]}
+            style={[
+              styles.sendButton,
+              { borderRadius: theme.shape.pill },
+              { backgroundColor: composerTokens.actionBackground },
+            ]}
           >
             <ArrowUp
               size={18}
-              color={colors.interactiveForeground}
+              color={composerTokens.actionForeground}
               strokeWidth={2.8}
             />
           </AnimatedPressable>
@@ -116,12 +122,12 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
             accessibilityLabel="Speak reminder"
             android_ripple={{ color: colors.ripple, foreground: true }}
             hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
-            interactionRadius={Radius.pill}
+            interactionRadius={theme.shape.pill}
             minimumTouchTarget={false}
             scaleTo={Motion.iconPressScale}
-            style={styles.iconButton}
+            style={[styles.iconButton, { borderRadius: theme.shape.pill }]}
           >
-            <Mic size={20} color={colors.textPrimary} strokeWidth={2} />
+            <Mic size={20} color={composerTokens.icon} strokeWidth={2} />
           </AnimatedPressable>
         )}
       </GlassSurface>
@@ -164,14 +170,12 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: Radius.pill,
     alignItems: "center",
     justifyContent: "center",
   },
   sendButton: {
     width: 36,
     height: 36,
-    borderRadius: Radius.pill,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 4,

@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "@/components/ui/Typography";
 import { TaskList } from "@/components/ui/TaskList";
 import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
@@ -25,7 +25,8 @@ import { canUndoTaskReceipt } from "@/stores/taskUndo";
 import { addLocalCalendarDays } from "@/temporal/recurrence";
 
 export default function ScheduleScreen() {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980
@@ -128,13 +129,13 @@ export default function ScheduleScreen() {
       style={[
         styles.safeArea,
         {
-          backgroundColor: isDark
-            ? Colors.backgroundDark
-            : Colors.backgroundLight,
+          backgroundColor: colors.background,
         },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={theme.mode === "dark" ? "light-content" : "dark-content"}
+      />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -169,15 +170,13 @@ export default function ScheduleScreen() {
                   style={[
                     styles.errorToast,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
+                      backgroundColor: colors.surfaceRaised,
                     },
                   ]}
                 >
                   <Typography
                     variant="caption"
-                    color={isDark ? Colors.white : Colors.black}
+                    color={colors.textPrimary}
                     accessibilityRole="alert"
                   >
                     {error}
@@ -189,14 +188,7 @@ export default function ScheduleScreen() {
           empty={
             status !== "loading" ? (
               <View style={styles.emptyState}>
-                <Typography
-                  variant="body"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="body" color={colors.textSecondary}>
                   Nothing scheduled ahead.
                 </Typography>
               </View>

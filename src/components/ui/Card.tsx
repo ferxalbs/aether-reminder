@@ -2,8 +2,8 @@ import React from "react";
 import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GlassSurface } from "./GlassSurface";
-import { Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { Hairline, Motion, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 
 interface CardBaseProps {
   children: React.ReactNode;
@@ -26,43 +26,50 @@ export const Card: React.FC<CardProps> = ({
   variant = "elevated",
   style,
   padding = Spacing.lg,
-  borderRadius = Radius.xl,
+  borderRadius,
   accessibilityLabel,
   accessibilityHint,
 }) => {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const cardTokens = theme.components.card;
+  const resolvedBorderRadius = borderRadius ?? theme.shape.card;
 
   const getVariantStyle = () => {
     switch (variant) {
       case "elevated":
         return {
-          backgroundColor: colors.surfaceRaised,
-          borderColor: colors.borderDefault,
+          backgroundColor: cardTokens.background,
+          borderColor: cardTokens.border,
           borderWidth: Hairline.width,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: colors.borderDefault,
+          borderColor: cardTokens.border,
           borderWidth: Hairline.width,
         };
       case "outline":
       default:
         return {
           backgroundColor: "transparent",
-          borderColor: colors.borderDefault,
+          borderColor: cardTokens.border,
           borderWidth: Hairline.width,
         };
     }
   };
 
-  const containerStyles = [getVariantStyle(), { borderRadius, padding }, style];
+  const containerStyles = [
+    getVariantStyle(),
+    { borderRadius: resolvedBorderRadius, padding },
+    style,
+  ];
   const content = (
     <>
       {variant === "glass" ? (
         <GlassSurface
           pointerEvents="none"
-          borderRadius={borderRadius}
+          borderRadius={resolvedBorderRadius}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
@@ -81,7 +88,7 @@ export const Card: React.FC<CardProps> = ({
           color: colors.ripple,
           foreground: true,
         }}
-        interactionRadius={borderRadius}
+        interactionRadius={resolvedBorderRadius}
         scaleTo={Motion.cardPressScale}
         style={containerStyles}
       >

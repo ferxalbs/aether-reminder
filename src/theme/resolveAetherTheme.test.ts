@@ -43,6 +43,9 @@ mock.module("react-native", () => ({
   useColorScheme: () => "dark",
   TurboModuleRegistry: { get: () => null, getEnforcing: () => null },
   NativeModules: {},
+  AppState: {
+    addEventListener: () => ({ remove: () => undefined }),
+  },
 }));
 
 const { resolveAetherTheme, resolveComponentTokens, resolveSemanticColors } =
@@ -92,6 +95,8 @@ describe("AETHER Theme & Design Token Resolver", () => {
       expect(theme.colors.interactiveForeground).toBe(Colors.black);
       expect(theme.colors.textPrimary).toBe(Colors.textDark);
       expect(theme.colors.destructive).toBe(Colors.destructiveTextDark);
+      expect(theme.shape.control).toBe(theme.radii.lg);
+      expect(theme.shape.card).toBe(theme.radii.xl);
     });
 
     test("Light mode: crisp light canvas with crisp black accents", () => {
@@ -108,6 +113,7 @@ describe("AETHER Theme & Design Token Resolver", () => {
       expect(theme.colors.interactiveForeground).toBe(Colors.white);
       expect(theme.colors.textPrimary).toBe(Colors.textLight);
       expect(theme.colors.destructive).toBe(Colors.destructiveTextLight);
+      expect(theme.shape.field).toBe(theme.radii.md);
     });
   });
 
@@ -173,6 +179,20 @@ describe("AETHER Theme & Design Token Resolver", () => {
       expect(theme.colors.accent).toBe(Colors.white);
       expect(theme.colors.onAccent).toBe(Colors.black);
     });
+
+    test("A palette is ignored when the platform reports dynamic colors unavailable", () => {
+      const theme = resolveAetherTheme(
+        "dark",
+        true,
+        sampleRedWallpaperDarkPalette,
+        false,
+      );
+
+      expect(theme.source).toBe("aether");
+      expect(theme.isDynamicColorAvailable).toBe(false);
+      expect(theme.colors.accent).toBe(Colors.white);
+      expect(theme.colors.background).toBe("#000000");
+    });
   });
 
   describe("Anti-Purple Baseline Regression Guards", () => {
@@ -208,12 +228,16 @@ describe("AETHER Theme & Design Token Resolver", () => {
       );
       expect(components.control.switchTrackActive).toBe(colors.accent);
       expect(components.control.switchThumbActive).toBe(colors.onAccent);
+      expect(components.control.switchTrackDisabled).toBe(
+        colors.surfacePressed,
+      );
       expect(components.field.borderFocused).toBe(colors.borderFocused);
       expect(components.navigation.indicatorActive).toBe(
         colors.accentContainer,
       );
       expect(components.pill.activeBackground).toBe(colors.accent);
       expect(components.pill.activeForeground).toBe(colors.onAccent);
+      expect(components.composer.actionBackground).toBe(colors.interactive);
     });
   });
 

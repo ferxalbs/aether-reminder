@@ -2,6 +2,7 @@ import type {
   ControlTokens,
   LayoutTokens,
   Radius,
+  ShapeTokens,
   Spacing,
   TypographyTokens,
 } from "./primitives";
@@ -131,6 +132,9 @@ export type ComponentTokens = {
     switchTrackInactive: string;
     switchThumbInactive: string;
     switchBorderInactive: string;
+    switchTrackDisabled: string;
+    switchThumbDisabled: string;
+    switchBorderDisabled: string;
   };
   sheet: {
     background: string;
@@ -144,14 +148,25 @@ export type ComponentTokens = {
     inactiveForeground: string;
     inactiveBorder: string;
   };
+  composer: {
+    background: string;
+    border: string;
+    actionBackground: string;
+    actionForeground: string;
+    icon: string;
+    placeholder: string;
+  };
 };
 
 export interface AetherTheme {
   mode: ResolvedTheme;
   source: ThemeSource;
+  /** True when Android 12+ wallpaper-derived Material You colors are available. */
+  isDynamicColorAvailable: boolean;
   colors: SemanticColors;
   components: ComponentTokens;
   radii: typeof Radius;
+  shape: typeof ShapeTokens;
   spacing: typeof Spacing;
   layout: typeof LayoutTokens;
   typography: typeof TypographyTokens;

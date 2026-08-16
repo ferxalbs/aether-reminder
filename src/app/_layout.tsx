@@ -30,8 +30,7 @@ import { getAetherCore } from "@/core";
 import { getDatabaseErrorMessage } from "@/db/errors";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { Colors } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "@/components/ui/Typography";
 import { Button } from "@/components/ui/Button";
 import { NotificationSyncBanner } from "@/components/ui/NotificationSyncBanner";
@@ -69,7 +68,8 @@ export default function RootLayout() {
   const refreshAllSurfaces = useTasksUiStore((s) => s.refreshAllSurfaces);
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const refreshAttention = useTasksUiStore((s) => s.refreshAttention);
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
   const blurTarget = useRef<View | null>(null);
   const [boot, setBoot] = useState<BootState>({ phase: "loading" });
   const [nativeCaptureRevision, setNativeCaptureRevision] = useState(0);
@@ -348,12 +348,12 @@ export default function RootLayout() {
     };
   }, [boot.phase, refreshAllSurfaces, refreshRecovery, syncNotifications]);
 
-  const bgColor = isDark ? Colors.backgroundDark : Colors.backgroundLight;
+  const bgColor = colors.background;
 
   return (
     <SafeAreaProvider>
       <MotionProvider>
-        <StatusBar style={isDark ? "light" : "dark"} />
+        <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
         <View style={[styles.root, { backgroundColor: bgColor }]}>
           {/* Always mount the Tabs navigator so Expo Router's useLinking can apply
             the initial URL state without the "state update before mount" warning.
@@ -409,10 +409,10 @@ export default function RootLayout() {
                 { backgroundColor: bgColor },
               ]}
             >
-              <ActivityIndicator color={isDark ? Colors.white : Colors.black} />
+              <ActivityIndicator color={colors.interactive} />
               <Typography
                 variant="caption"
-                color={Colors.zinc500}
+                color={colors.textSecondary}
                 style={styles.bootText}
               >
                 Preparing local data…
@@ -434,7 +434,7 @@ export default function RootLayout() {
               </Typography>
               <Typography
                 variant="body"
-                color={Colors.zinc500}
+                color={colors.textSecondary}
                 align="center"
                 style={styles.bootText}
               >

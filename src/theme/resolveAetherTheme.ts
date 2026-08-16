@@ -3,6 +3,7 @@ import {
   ControlTokens,
   LayoutTokens,
   Radius,
+  ShapeTokens,
   Spacing,
   TypographyTokens,
 } from "./primitives";
@@ -30,10 +31,11 @@ export function resolveSemanticColors(
   mode: ResolvedTheme,
   dynamicEnabled = false,
   dynamicPalette?: Material3ColorRoles | null,
+  dynamicColorAvailable = Boolean(dynamicPalette?.primary),
 ): SemanticColors {
   const isDark = mode === "dark";
   const hasDynamic = Boolean(
-    dynamicEnabled && dynamicPalette && dynamicPalette.primary,
+    dynamicEnabled && dynamicColorAvailable && dynamicPalette?.primary,
   );
 
   const baseSurfaceRaised = isDark
@@ -226,6 +228,9 @@ export function resolveComponentTokens(
       switchTrackInactive: colors.surfaceRaised,
       switchThumbInactive: colors.textSecondary,
       switchBorderInactive: colors.borderDefault,
+      switchTrackDisabled: colors.surfacePressed,
+      switchThumbDisabled: colors.textDisabled,
+      switchBorderDisabled: colors.borderSubtle,
     },
     sheet: {
       background: colors.surface,
@@ -239,6 +244,14 @@ export function resolveComponentTokens(
       inactiveForeground: colors.textSecondary,
       inactiveBorder: colors.borderDefault,
     },
+    composer: {
+      background: colors.glassChrome,
+      border: colors.borderDefault,
+      actionBackground: colors.interactive,
+      actionForeground: colors.interactiveForeground,
+      icon: colors.textPrimary,
+      placeholder: colors.textTertiary,
+    },
   };
 }
 
@@ -249,22 +262,28 @@ export function resolveAetherTheme(
   mode: ResolvedTheme,
   dynamicColorsEnabled = false,
   dynamicPalette?: Material3ColorRoles | null,
+  dynamicColorAvailable = Boolean(dynamicPalette?.primary),
 ): AetherTheme {
   const colors = resolveSemanticColors(
     mode,
     dynamicColorsEnabled,
     dynamicPalette,
+    dynamicColorAvailable,
   );
   const components = resolveComponentTokens(colors);
   const source: ThemeSource =
-    dynamicColorsEnabled && dynamicPalette?.primary ? "material-you" : "aether";
+    dynamicColorsEnabled && dynamicColorAvailable && dynamicPalette?.primary
+      ? "material-you"
+      : "aether";
 
   return {
     mode,
     source,
+    isDynamicColorAvailable: dynamicColorAvailable,
     colors,
     components,
     radii: Radius,
+    shape: ShapeTokens,
     spacing: Spacing,
     layout: LayoutTokens,
     typography: TypographyTokens,
@@ -280,6 +299,12 @@ export function getSemanticColors(
   theme: ResolvedTheme,
   materialColorsEnabled = false,
   dynamicPalette?: Material3ColorRoles | null,
+  dynamicColorAvailable = Boolean(dynamicPalette?.primary),
 ): SemanticColors {
-  return resolveSemanticColors(theme, materialColorsEnabled, dynamicPalette);
+  return resolveSemanticColors(
+    theme,
+    materialColorsEnabled,
+    dynamicPalette,
+    dynamicColorAvailable,
+  );
 }

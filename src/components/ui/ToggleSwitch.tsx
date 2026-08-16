@@ -13,9 +13,8 @@ import {
   tint,
   type ModifierConfig as SwiftUIModifierConfig,
 } from "@expo/ui/swift-ui/modifiers";
-import { Colors } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
 import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useResolvedTheme } from "@/theme/useResolvedTheme";
 import { useSettingsStore } from "@/stores/settings.store";
 import { selectionAsync } from "@/lib/haptics";
 import { reportNonFatalError } from "@/lib/nonFatalError";
@@ -39,8 +38,8 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   style,
   testID,
 }) => {
-  const isDark = useIsDark();
   const colors = useSemanticColors();
+  const mode = useResolvedTheme();
 
   const handleValueChange = useCallback(
     (nextValue: boolean) => {
@@ -56,41 +55,21 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   );
 
   const composeColors: SwitchColors = useMemo(() => {
-    const activeTrack = colors.accent;
-    const activeThumb = colors.onAccent;
-    const inactiveTrack = isDark
-      ? Colors.surfaceRaisedDark
-      : Colors.surfaceRaisedLight;
-    const inactiveThumb = isDark
-      ? Colors.secondaryTextDark
-      : Colors.secondaryTextLight;
-    const inactiveBorder = isDark ? Colors.borderDark : Colors.borderLight;
-
     return {
-      checkedTrackColor: activeTrack,
-      checkedThumbColor: activeThumb,
-      checkedBorderColor: activeTrack,
-      uncheckedTrackColor: inactiveTrack,
-      uncheckedThumbColor: inactiveThumb,
-      uncheckedBorderColor: inactiveBorder,
-      disabledCheckedTrackColor: isDark
-        ? "rgba(255, 255, 255, 0.12)"
-        : "rgba(0, 0, 0, 0.12)",
-      disabledCheckedThumbColor: isDark
-        ? "rgba(255, 255, 255, 0.38)"
-        : "rgba(0, 0, 0, 0.38)",
-      disabledCheckedBorderColor: isDark
-        ? "rgba(255, 255, 255, 0.12)"
-        : "rgba(0, 0, 0, 0.12)",
-      disabledUncheckedTrackColor: inactiveTrack,
-      disabledUncheckedThumbColor: isDark
-        ? "rgba(255, 255, 255, 0.38)"
-        : "rgba(0, 0, 0, 0.38)",
-      disabledUncheckedBorderColor: isDark
-        ? "rgba(255, 255, 255, 0.12)"
-        : "rgba(0, 0, 0, 0.12)",
+      checkedTrackColor: colors.accent,
+      checkedThumbColor: colors.onAccent,
+      checkedBorderColor: colors.accent,
+      uncheckedTrackColor: colors.surfaceRaised,
+      uncheckedThumbColor: colors.textSecondary,
+      uncheckedBorderColor: colors.borderDefault,
+      disabledCheckedTrackColor: colors.surfacePressed,
+      disabledCheckedThumbColor: colors.textDisabled,
+      disabledCheckedBorderColor: colors.borderSubtle,
+      disabledUncheckedTrackColor: colors.surfacePressed,
+      disabledUncheckedThumbColor: colors.textDisabled,
+      disabledUncheckedBorderColor: colors.borderSubtle,
     };
-  }, [colors.accent, colors.onAccent, isDark]);
+  }, [colors]);
 
   const swiftUIModifiers: SwiftUIModifierConfig[] = useMemo(() => {
     const mods: SwiftUIModifierConfig[] = [tint(colors.accent), labelsHidden()];
@@ -105,7 +84,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   return (
     <Host
       matchContents
-      colorScheme={isDark ? "dark" : "light"}
+      colorScheme={mode}
       style={style}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}

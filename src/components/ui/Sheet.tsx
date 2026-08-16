@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { BottomSheet } from "@expo/ui/community/bottom-sheet";
 import { ControlTokens, getMinimumTouchTarget, Spacing } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "./Typography";
 
 export interface SheetProps {
@@ -40,7 +40,9 @@ export const Sheet: React.FC<SheetProps> = ({
   contentStyle,
   testID,
 }) => {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const sheetTokens = theme.components.sheet;
   const dialogLabel = accessibilityLabel ?? title ?? "Sheet";
 
   const handleDismiss = useCallback(() => {
@@ -59,8 +61,10 @@ export const Sheet: React.FC<SheetProps> = ({
       backgroundStyle={[
         styles.sheetBackground,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.borderDefault,
+          backgroundColor: sheetTokens.background,
+          borderColor: sheetTokens.border,
+          borderTopLeftRadius: theme.shape.sheet,
+          borderTopRightRadius: theme.shape.sheet,
         },
         surfaceStyle,
       ]}

@@ -1,8 +1,8 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import type { ActionReceipt } from "@/domain/receipts";
-import { Colors, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Button } from "./Button";
 import { Typography } from "./Typography";
 
@@ -21,8 +21,7 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
   onUndo,
   onDismiss,
 }) => {
-  const isDark = useIsDark();
-  const textColor = isDark ? Colors.textDark : Colors.textLight;
+  const { colors } = useAetherTheme();
 
   return (
     <View
@@ -33,14 +32,16 @@ export const TaskUndoBanner: React.FC<TaskUndoBannerProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
+          backgroundColor: colors.surfaceRaised,
         },
       ]}
     >
       <View style={styles.copy}>
-        <Typography variant="caption" color={textColor} numberOfLines={1}>
+        <Typography
+          variant="caption"
+          color={colors.textPrimary}
+          numberOfLines={1}
+        >
           {error ? `Undo failed: ${error}` : receipt.summary}
         </Typography>
       </View>

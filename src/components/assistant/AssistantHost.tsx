@@ -22,8 +22,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { useSettingsStore } from "@/stores/settings.store";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { Colors } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import type { ContextSnapshot } from "@/services/agent";
 import { getVoiceErrorTitle } from "@/services/transcription";
 import type { ActionReceipt } from "@/domain/receipts";
@@ -147,7 +146,7 @@ export function useAssistantActions(): {
 
 export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
   const router = useRouter();
-  const isDark = useIsDark();
+  const { colors } = useAetherTheme();
   const { snapshot, registerAssistantActions, setAssistantActive } = useContext(
     AssistantSurfaceContext,
   ) ?? {
@@ -376,10 +375,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
         <Pressable
           onPress={closeAssistant}
           accessibilityLabel="Dismiss assistant surface"
-          style={[
-            styles.scrim,
-            { backgroundColor: isDark ? Colors.scrimDark : Colors.scrimLight },
-          ]}
+          style={[styles.scrim, { backgroundColor: colors.scrim }]}
         />
       ) : null}
       <AssistantSheet

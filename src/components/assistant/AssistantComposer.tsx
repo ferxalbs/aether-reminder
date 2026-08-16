@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, TextInput, View } from "react-native";
 import { ArrowUp } from "lucide-react-native";
-import { Colors, Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import {
   AnimatedPressable,
   getMinimumTouchTargetHitSlop,
@@ -29,7 +29,10 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   voiceState,
   onVoicePress,
 }) => {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const fieldTokens = theme.components.field;
+  const composerTokens = theme.components.composer;
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -41,17 +44,15 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
   }, [autoFocus]);
 
   const hasText = value.trim().length > 0;
-  const foreground = isDark ? Colors.textDark : Colors.textLight;
+  const foreground = fieldTokens.text;
 
   return (
     <View
       style={[
         styles.composer,
         {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: fieldTokens.background,
+          borderColor: fieldTokens.border,
         },
       ]}
     >
@@ -65,9 +66,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder="Ask anything, or tap mic…"
-        placeholderTextColor={
-          isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-        }
+        placeholderTextColor={fieldTokens.placeholder}
         multiline
         maxLength={2000}
         editable={!disabled}
@@ -89,7 +88,7 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
           accessibilityLabel="Send message"
           accessibilityState={{ disabled }}
           android_ripple={{
-            color: isDark ? Colors.rippleDark : Colors.rippleLight,
+            color: colors.ripple,
             foreground: true,
           }}
           hitSlop={getMinimumTouchTargetHitSlop(38, 38, Platform.OS)}
@@ -98,13 +97,13 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
           scaleTo={Motion.iconPressScale}
           style={[
             styles.sendButton,
-            { backgroundColor: isDark ? Colors.white : Colors.black },
+            { backgroundColor: composerTokens.actionBackground },
             disabled && styles.disabled,
           ]}
         >
           <ArrowUp
             size={18}
-            color={isDark ? Colors.black : Colors.white}
+            color={composerTokens.actionForeground}
             strokeWidth={2.8}
           />
         </AnimatedPressable>

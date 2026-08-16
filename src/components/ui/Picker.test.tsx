@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import React from "react";
 
 (globalThis as unknown as { __DEV__: boolean }).__DEV__ = true;
@@ -65,6 +65,15 @@ mock.module("react-native", () => ({
   },
   TurboModuleRegistry: { get: () => null, getEnforcing: () => null },
   NativeModules: {},
+  AppRegistry: { registerComponent: () => {} },
+  AccessibilityInfo: {
+    isReduceMotionEnabled: () => Promise.resolve(false),
+    addEventListener: () => ({ remove: () => {} }),
+  },
+  AppState: {
+    currentState: "active",
+    addEventListener: () => ({ remove: () => {} }),
+  },
 }));
 
 mock.module("lucide-react-native", () => ({
@@ -109,11 +118,13 @@ mock.module("@expo/ui", () => ({
 mock.module("@expo/ui/jetpack-compose", () => ({
   isDynamicColorAvailable: true,
   getMaterialColors: () => null,
+  Switch: MockSwitch,
 }));
 
 mock.module("@expo/ui/swift-ui", () => ({}));
 
 let mockHapticsEnabled = true;
+let mockThemeSource: "aether" | "material-you" = "aether";
 mock.module("@/stores/settings.store", () => ({
   useSettingsStore: {
     getState: () => ({ hapticsEnabled: mockHapticsEnabled }),
@@ -122,6 +133,8 @@ mock.module("@/stores/settings.store", () => ({
 
 const mockSelectionAsync = mock(() => Promise.resolve());
 mock.module("@/lib/haptics", () => ({
+  impactAsync: mock(() => Promise.resolve()),
+  notificationAsync: mock(() => Promise.resolve()),
   selectionAsync: mockSelectionAsync,
 }));
 
@@ -130,12 +143,19 @@ mock.module("@/theme/useResolvedTheme", () => ({
   useResolvedTheme: () => "dark",
 }));
 
-mock.module("@/theme/useSemanticColors", () => ({
-  useSemanticColors: () => ({
-    accent: "#3b82f6",
-    onAccent: "#ffffff",
-    elevatedSurface: "#18181b",
-    textSecondary: "#a1a1aa",
+mock.module("@/theme/useAetherTheme", () => ({
+  useAetherTheme: () => ({
+    mode: "dark",
+    source: mockThemeSource,
+    isDynamicColorAvailable: false,
+    colors: {
+      accent: "#3b82f6",
+      onAccent: "#ffffff",
+      surfaceRaised: "#18181b",
+      textSecondary: "#a1a1aa",
+      textTertiary: "#71717a",
+      destructive: "#ff453a",
+    },
   }),
 }));
 
@@ -144,6 +164,11 @@ const ReactTestRenderer = (await import("react-test-renderer")).default;
 const { act } = await import("react-test-renderer");
 
 describe("Picker Universal native-backed adapter", () => {
+  beforeEach(() => {
+    mockHapticsEnabled = true;
+    mockThemeSource = "aether";
+  });
+
   test("renders AETHER label and delegates options to UniversalPicker.Item children", () => {
     const onValueChange = mock(() => {});
     const options = [
@@ -188,6 +213,26 @@ describe("Picker Universal native-backed adapter", () => {
     expect(host).toBeDefined();
     expect(host.props.matchContents).toBe(true);
     expect(host.props.colorScheme).toBe("dark");
+    expect(host.props.seedColor).toBe("#3b82f6");
+  });
+
+  test("omits Host seedColor when the resolved source is wallpaper-derived Material You", () => {
+    mockThemeSource = "material-you";
+    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <Picker
+          label="Theme"
+          value="system"
+          options={[{ value: "system", label: "System" }]}
+          onValueChange={() => undefined}
+        />,
+      );
+    });
+
+    const host = renderer!.root.findByType("ExpoHost");
+    expect(host.props.seedColor).toBeUndefined();
   });
 
   test("maps typed value on selection change and fires haptics once when enabled", () => {

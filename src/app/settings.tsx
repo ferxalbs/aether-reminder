@@ -19,12 +19,11 @@ import { getAIErrorMessage } from "@/services/ai/providers";
 import { testOpenAIRealtimeConnection } from "@/services/transcription";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
 import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import type { UserSettings } from "@/types";
 import * as Haptics from "expo-haptics";
 import {
@@ -145,8 +144,8 @@ export default function SettingsScreen() {
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const isDark = useIsDark();
-  const colors = useSemanticColors();
+  const aetherTheme = useAetherTheme();
+  const { colors } = aetherTheme;
   const keyStateLoaded = openRouterKeyLoaded && openAiKeyLoaded;
 
   const assistantContext = useMemo(
@@ -378,13 +377,15 @@ export default function SettingsScreen() {
       style={[
         styles.safeArea,
         {
-          backgroundColor: isDark
-            ? Colors.backgroundDark
-            : Colors.backgroundLight,
+          backgroundColor: colors.background,
         },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={
+          aetherTheme.mode === "dark" ? "light-content" : "dark-content"
+        }
+      />
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -406,9 +407,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             AI Reasoning
@@ -419,28 +418,17 @@ export default function SettingsScreen() {
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                     borderWidth: 1,
                   },
                 ]}
               >
-                <Key size={18} color={isDark ? Colors.white : Colors.black} />
+                <Key size={18} color={colors.textPrimary} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">OpenRouter API Key</Typography>
-                <Typography
-                  variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="caption" color={colors.textSecondary}>
                   Powers AETHER’s tool reasoning agent.
                 </Typography>
               </View>
@@ -450,10 +438,8 @@ export default function SettingsScreen() {
               style={[
                 styles.statusBanner,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.borderDefault,
                   borderWidth: 1,
                 },
               ]}
@@ -463,19 +449,15 @@ export default function SettingsScreen() {
                   variant="tiny"
                   color={
                     openRouterConfigured
-                      ? isDark
-                        ? Colors.white
-                        : Colors.black
-                      : isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
+                      ? colors.textPrimary
+                      : colors.textSecondary
                   }
                 >
                   KEY STATUS
                 </Typography>
                 <Typography
                   variant="bodyBold"
-                  style={{ color: isDark ? Colors.white : Colors.black }}
+                  style={{ color: colors.textPrimary }}
                 >
                   {openRouterKeyLoaded
                     ? openRouterConfigured
@@ -485,10 +467,7 @@ export default function SettingsScreen() {
                 </Typography>
               </View>
               {openRouterConfigured && (
-                <Shield
-                  size={18}
-                  color={isDark ? Colors.white : Colors.black}
-                />
+                <Shield size={18} color={colors.textPrimary} />
               )}
             </View>
 
@@ -501,22 +480,16 @@ export default function SettingsScreen() {
                     ? "••••••••••••••••••••••••"
                     : "Enter OpenRouter API Key"
                 }
-                placeholderTextColor={
-                  isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                }
+                placeholderTextColor={colors.textTertiary}
                 secureTextEntry={!showOpenRouterKey}
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={[
                   styles.textInput,
                   {
-                    color: isDark ? Colors.white : Colors.black,
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    color: colors.textPrimary,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                   },
                 ]}
               />
@@ -528,32 +501,16 @@ export default function SettingsScreen() {
                 accessibilityLabel={showOpenRouterKey ? "Hide key" : "Show key"}
               >
                 {showOpenRouterKey ? (
-                  <EyeOff
-                    size={18}
-                    color={
-                      isDark
-                        ? Colors.tertiaryTextDark
-                        : Colors.tertiaryTextLight
-                    }
-                  />
+                  <EyeOff size={18} color={colors.textTertiary} />
                 ) : (
-                  <Eye
-                    size={18}
-                    color={
-                      isDark
-                        ? Colors.tertiaryTextDark
-                        : Colors.tertiaryTextLight
-                    }
-                  />
+                  <Eye size={18} color={colors.textTertiary} />
                 )}
               </AnimatedPressable>
             </View>
 
             <Typography
               variant="caption"
-              color={
-                isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-              }
+              color={colors.textTertiary}
               style={styles.storageNote}
             >
               {storageDescription}
@@ -586,12 +543,7 @@ export default function SettingsScreen() {
                   label="Delete Key"
                   onPress={() => deleteKey("OpenRouter")}
                   variant="destructive"
-                  icon={
-                    <Trash2
-                      size={16}
-                      color={isDark ? Colors.white : Colors.black}
-                    />
-                  }
+                  icon={<Trash2 size={16} color={colors.textPrimary} />}
                   disabled={
                     !openRouterKeyLoaded ||
                     savingProvider !== null ||
@@ -605,7 +557,7 @@ export default function SettingsScreen() {
             {openRouterMessage ? (
               <Typography
                 variant="caption"
-                color={isDark ? Colors.white : Colors.black}
+                color={colors.textPrimary}
                 style={styles.statusMessage}
               >
                 {openRouterMessage}
@@ -618,9 +570,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             OPENAI — REALTIME TRANSCRIPTION
@@ -631,28 +581,17 @@ export default function SettingsScreen() {
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                     borderWidth: 1,
                   },
                 ]}
               >
-                <Mic size={18} color={isDark ? Colors.white : Colors.black} />
+                <Mic size={18} color={colors.textPrimary} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">OpenAI API Key</Typography>
-                <Typography
-                  variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="caption" color={colors.textSecondary}>
                   Used strictly for realtime voice transcription.
                 </Typography>
               </View>
@@ -662,10 +601,8 @@ export default function SettingsScreen() {
               style={[
                 styles.statusBanner,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.borderDefault,
                   borderWidth: 1,
                 },
               ]}
@@ -674,20 +611,14 @@ export default function SettingsScreen() {
                 <Typography
                   variant="tiny"
                   color={
-                    openAiConfigured
-                      ? isDark
-                        ? Colors.white
-                        : Colors.black
-                      : isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
+                    openAiConfigured ? colors.textPrimary : colors.textSecondary
                   }
                 >
                   KEY STATUS
                 </Typography>
                 <Typography
                   variant="bodyBold"
-                  style={{ color: isDark ? Colors.white : Colors.black }}
+                  style={{ color: colors.textPrimary }}
                 >
                   {openAiKeyLoaded
                     ? openAiConfigured
@@ -697,10 +628,7 @@ export default function SettingsScreen() {
                 </Typography>
               </View>
               {openAiConfigured && (
-                <Shield
-                  size={18}
-                  color={isDark ? Colors.white : Colors.black}
-                />
+                <Shield size={18} color={colors.textPrimary} />
               )}
             </View>
 
@@ -713,22 +641,16 @@ export default function SettingsScreen() {
                     ? "••••••••••••••••••••••••"
                     : "Enter OpenAI API Key"
                 }
-                placeholderTextColor={
-                  isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                }
+                placeholderTextColor={colors.textTertiary}
                 secureTextEntry={!showOpenAiKey}
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={[
                   styles.textInput,
                   {
-                    color: isDark ? Colors.white : Colors.black,
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    color: colors.textPrimary,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                   },
                 ]}
               />
@@ -740,32 +662,16 @@ export default function SettingsScreen() {
                 accessibilityLabel={showOpenAiKey ? "Hide key" : "Show key"}
               >
                 {showOpenAiKey ? (
-                  <EyeOff
-                    size={18}
-                    color={
-                      isDark
-                        ? Colors.tertiaryTextDark
-                        : Colors.tertiaryTextLight
-                    }
-                  />
+                  <EyeOff size={18} color={colors.textTertiary} />
                 ) : (
-                  <Eye
-                    size={18}
-                    color={
-                      isDark
-                        ? Colors.tertiaryTextDark
-                        : Colors.tertiaryTextLight
-                    }
-                  />
+                  <Eye size={18} color={colors.textTertiary} />
                 )}
               </AnimatedPressable>
             </View>
 
             <Typography
               variant="caption"
-              color={
-                isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-              }
+              color={colors.textTertiary}
               style={styles.storageNote}
             >
               {storageDescription}
@@ -798,12 +704,7 @@ export default function SettingsScreen() {
                   label="Delete Key"
                   onPress={() => deleteKey("OpenAI")}
                   variant="destructive"
-                  icon={
-                    <Trash2
-                      size={16}
-                      color={isDark ? Colors.white : Colors.black}
-                    />
-                  }
+                  icon={<Trash2 size={16} color={colors.textPrimary} />}
                   disabled={
                     !openAiKeyLoaded ||
                     savingProvider !== null ||
@@ -817,7 +718,7 @@ export default function SettingsScreen() {
             {openAiMessage ? (
               <Typography
                 variant="caption"
-                color={isDark ? Colors.white : Colors.black}
+                color={colors.textPrimary}
                 style={styles.statusMessage}
               >
                 {openAiMessage}
@@ -830,9 +731,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             MODEL SELECTION
@@ -843,28 +742,17 @@ export default function SettingsScreen() {
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                     borderWidth: 1,
                   },
                 ]}
               >
-                <Cpu size={18} color={isDark ? Colors.white : Colors.black} />
+                <Cpu size={18} color={colors.textPrimary} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="title">Tool-Enabled Model</Typography>
-                <Typography
-                  variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="caption" color={colors.textSecondary}>
                   Active: {activeModelDetails.name}
                 </Typography>
               </View>
@@ -875,21 +763,15 @@ export default function SettingsScreen() {
               style={[
                 styles.activeModelCard,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.borderDefault,
                 },
               ]}
             >
               <View style={{ flex: 1 }}>
                 <Typography
                   variant="tiny"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
+                  color={colors.textSecondary}
                   style={{ letterSpacing: 0.5 }}
                 >
                   SELECTED MODEL ID
@@ -899,9 +781,7 @@ export default function SettingsScreen() {
                 </Typography>
                 <Typography
                   variant="tiny"
-                  color={
-                    isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                  }
+                  color={colors.textTertiary}
                   style={{ marginTop: 2 }}
                 >
                   Provider: {activeModelDetails.provider}
@@ -916,22 +796,17 @@ export default function SettingsScreen() {
                   style={[
                     styles.resetButton,
                     {
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      borderColor: colors.borderDefault,
                     },
                   ]}
                   android_ripple={{ color: colors.ripple, foreground: true }}
                   interactionRadius={Radius.pill}
                   accessibilityLabel="Reset model to default"
                 >
-                  <RotateCcw
-                    size={14}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <RotateCcw size={14} color={colors.textPrimary} />
                   <Typography
                     variant="tiny"
-                    style={{ color: isDark ? Colors.white : Colors.black }}
+                    style={{ color: colors.textPrimary }}
                   >
                     Reset
                   </Typography>
@@ -941,16 +816,11 @@ export default function SettingsScreen() {
                   style={[
                     styles.defaultBadge,
                     {
-                      backgroundColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.borderDefault,
                     },
                   ]}
                 >
-                  <Typography
-                    variant="tiny"
-                    color={isDark ? Colors.white : Colors.black}
-                  >
+                  <Typography variant="tiny" color={colors.textPrimary}>
                     Default
                   </Typography>
                 </View>
@@ -965,10 +835,8 @@ export default function SettingsScreen() {
               style={[
                 styles.pullDownButton,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.borderDefault,
                 },
               ]}
               android_ripple={{ color: colors.ripple, foreground: true }}
@@ -977,12 +845,7 @@ export default function SettingsScreen() {
               <Typography variant="bodyBold" style={{ flex: 1 }}>
                 Change Reasoning Model…
               </Typography>
-              <ChevronDown
-                size={18}
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
-              />
+              <ChevronDown size={18} color={colors.textSecondary} />
             </AnimatedPressable>
           </Card>
         </Animated.View>
@@ -991,9 +854,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             APP PREFERENCES
@@ -1006,20 +867,13 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <Moon
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <Moon size={18} color={colors.textPrimary} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
                   Theme Preference
@@ -1030,12 +884,8 @@ export default function SettingsScreen() {
                 style={[
                   styles.segmentedContainer,
                   {
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                   },
                 ]}
               >
@@ -1074,9 +924,7 @@ export default function SettingsScreen() {
                           style={{
                             color: isActive
                               ? colors.onAccent
-                              : isDark
-                                ? Colors.secondaryTextDark
-                                : Colors.secondaryTextLight,
+                              : colors.textSecondary,
                             fontWeight: isActive ? "600" : "500",
                           }}
                         >
@@ -1093,61 +941,54 @@ export default function SettingsScreen() {
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? Colors.borderDark
-                    : Colors.borderLight,
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />
 
-            {/* Material Colors Switch */}
-            <View style={styles.rowBetween}>
-              <View style={styles.rowLeftGroup}>
-                <View
-                  style={[
-                    styles.iconCircle,
-                    {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
-                      borderWidth: 1,
-                    },
-                  ]}
-                >
-                  <Palette size={18} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Typography variant="bodyBold">Material Colors</Typography>
-                  <Typography
-                    variant="tiny"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+            {/* Android-only Material You preference */}
+            {Platform.OS === "android" ? (
+              <View style={styles.rowBetween}>
+                <View style={styles.rowLeftGroup}>
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      {
+                        backgroundColor: colors.surfaceRaised,
+                        borderColor: colors.borderDefault,
+                        borderWidth: 1,
+                      },
+                    ]}
                   >
-                    Use dynamic Material 3 wallpaper colors on Android 12+
-                  </Typography>
+                    <Palette size={18} color={colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Typography variant="bodyBold">Dynamic Colors</Typography>
+                    <Typography variant="tiny" color={colors.textSecondary}>
+                      {aetherTheme.isDynamicColorAvailable
+                        ? "Use wallpaper-derived Material You accents"
+                        : "Material You requires Android 12; AETHER monochrome is active"}
+                    </Typography>
+                  </View>
                 </View>
+                <ToggleSwitch
+                  value={
+                    materialColorsEnabled &&
+                    aetherTheme.isDynamicColorAvailable
+                  }
+                  onValueChange={setMaterialColorsEnabled}
+                  disabled={!aetherTheme.isDynamicColorAvailable}
+                  accessibilityLabel="Dynamic colors"
+                  accessibilityHint="Use wallpaper-derived Material You accents on Android 12 and later"
+                />
               </View>
-              <ToggleSwitch
-                value={materialColorsEnabled}
-                onValueChange={setMaterialColorsEnabled}
-                accessibilityLabel="Material colors"
-                accessibilityHint="Use dynamic Material 3 wallpaper colors on Android 12+"
-              />
-            </View>
+            ) : null}
 
             <View
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? Colors.borderDark
-                    : Colors.borderLight,
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />
@@ -1159,31 +1000,17 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <Vibrate
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <Vibrate size={18} color={colors.textPrimary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">Haptic Feedback</Typography>
-                  <Typography
-                    variant="tiny"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
-                  >
+                  <Typography variant="tiny" color={colors.textSecondary}>
                     Tactile touch responses on actions
                   </Typography>
                 </View>
@@ -1199,9 +1026,7 @@ export default function SettingsScreen() {
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? Colors.borderDark
-                    : Colors.borderLight,
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />
@@ -1213,33 +1038,19 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <Sparkles
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <Sparkles size={18} color={colors.textPrimary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">
                     Auto Task Summarize
                   </Typography>
-                  <Typography
-                    variant="tiny"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
-                  >
+                  <Typography variant="tiny" color={colors.textSecondary}>
                     Automatically suggest task details with AI
                   </Typography>
                 </View>
@@ -1255,9 +1066,7 @@ export default function SettingsScreen() {
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? Colors.borderDark
-                    : Colors.borderLight,
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />
@@ -1269,31 +1078,17 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <RefreshCw
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <RefreshCw size={18} color={colors.textPrimary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Typography variant="bodyBold">Adaptive Nudges</Typography>
-                  <Typography
-                    variant="tiny"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
-                  >
+                  <Typography variant="tiny" color={colors.textSecondary}>
                     AETHER can learn from completion and snooze patterns to
                     choose better follow-up times.
                   </Typography>
@@ -1319,9 +1114,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             SECURITY INTEGRITY
@@ -1332,30 +1125,19 @@ export default function SettingsScreen() {
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: isDark
-                      ? Colors.surfaceRaisedDark
-                      : Colors.surfaceRaisedLight,
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.surfaceRaised,
+                    borderColor: colors.borderDefault,
                     borderWidth: 1,
                   },
                 ]}
               >
-                <Lock size={18} color={isDark ? Colors.white : Colors.black} />
+                <Lock size={18} color={colors.textPrimary} />
               </View>
               <View style={styles.headerTextGroup}>
                 <Typography variant="bodyBold">
                   Expo SecureStore Encrypted
                 </Typography>
-                <Typography
-                  variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="caption" color={colors.textSecondary}>
                   API keys are stored strictly in hardware Keychain / Keystore
                   and never written to AsyncStorage or cloud backups.
                 </Typography>
@@ -1370,9 +1152,7 @@ export default function SettingsScreen() {
         <Animated.View entering={entering}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionHeader}
           >
             ABOUT & LEGAL
@@ -1390,20 +1170,13 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <Info
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <Info size={18} color={colors.textPrimary} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
                   About AETHER
@@ -1416,11 +1189,7 @@ export default function SettingsScreen() {
                 >
                   <Typography
                     variant="body"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+                    color={colors.textSecondary}
                     style={styles.accordionText}
                   >
                     AETHER is a local-first, privacy-respecting task assistant.
@@ -1435,9 +1204,7 @@ export default function SettingsScreen() {
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? Colors.borderDark
-                    : Colors.borderLight,
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />
@@ -1454,20 +1221,13 @@ export default function SettingsScreen() {
                   style={[
                     styles.iconCircle,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
+                      backgroundColor: colors.surfaceRaised,
+                      borderColor: colors.borderDefault,
                       borderWidth: 1,
                     },
                   ]}
                 >
-                  <Shield
-                    size={18}
-                    color={isDark ? Colors.white : Colors.black}
-                  />
+                  <Shield size={18} color={colors.textPrimary} />
                 </View>
                 <Typography variant="bodyBold" style={{ flex: 1 }}>
                   Privacy Information
@@ -1480,11 +1240,7 @@ export default function SettingsScreen() {
                 >
                   <Typography
                     variant="body"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+                    color={colors.textSecondary}
                     style={styles.accordionText}
                   >
                     API keys remain isolated in SecureStore and are never
@@ -1502,7 +1258,7 @@ export default function SettingsScreen() {
           <Typography
             variant="tiny"
             align="center"
-            color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+            color={colors.textTertiary}
             style={styles.versionFooter}
           >
             AETHER v1.0.0 • Expo SDK 57

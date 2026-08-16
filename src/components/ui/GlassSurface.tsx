@@ -8,8 +8,8 @@ import {
   StyleProp,
 } from "react-native";
 import type { BlurViewProps } from "expo-blur";
-import { Colors, Hairline, Radius } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Hairline, Radius } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { AdaptiveGlass } from "@/motion";
 
 export type GlassTier = "A" | "B" | "C";
@@ -47,12 +47,10 @@ export const GlassSurface: React.FC<GlassSurfaceProps> = ({
   pointerEvents,
   blurTarget,
 }) => {
-  const isDark = useIsDark();
-  const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-  const fallbackBg = isDark
-    ? Colors.glassDarkFallback
-    : Colors.glassLightFallback;
-  const glassBg = isDark ? Colors.glassDark : Colors.glassLight;
+  const colors = useSemanticColors();
+  const borderColor = colors.borderDefault;
+  const fallbackBg = colors.glassChromeFallback;
+  const glassBg = colors.glassChrome;
 
   // Android's native blur requires a BlurTargetView outside the BlurView's own
   // hierarchy. Route-local surfaces intentionally fall back rather than target

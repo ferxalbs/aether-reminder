@@ -1,7 +1,7 @@
 import React, { type RefObject } from "react";
 import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
-import { Colors, Hairline } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Hairline } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 
 interface AssistantMaterialProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
   style,
   borderRadius = 24,
 }) => {
-  const isDark = useIsDark();
+  const { colors } = useAetherTheme();
 
   return (
     <View
@@ -25,10 +25,8 @@ export const AssistantMaterial: React.FC<AssistantMaterialProps> = ({
         styles.fallback,
         {
           borderRadius,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-          backgroundColor: isDark
-            ? "rgba(20, 20, 24, 0.96)"
-            : "rgba(248, 248, 250, 0.96)",
+          borderColor: colors.borderDefault,
+          backgroundColor: colors.glassChromeFallback,
         },
         style,
       ]}

@@ -135,6 +135,16 @@ export const ControlTokens = {
   sheetMaxHeight: "90%",
 } as const;
 
+/** Semantic shape roles. Primitive radii remain available for intentional geometry. */
+export const ShapeTokens = {
+  compact: Radius.md,
+  control: Radius.lg,
+  field: Radius.md,
+  card: Radius.xl,
+  sheet: ControlTokens.sheetTopRadius,
+  pill: Radius.pill,
+} as const;
+
 export const TouchTargets = {
   ios: 44,
   android: 48,

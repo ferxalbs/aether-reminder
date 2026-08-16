@@ -16,9 +16,8 @@ import Animated, {
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { Typography } from "@/components/ui/Typography";
 import { GlassSurface } from "@/components/ui/GlassSurface";
-import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import { useAssistantActive } from "./AssistantHost";
 
@@ -38,7 +37,7 @@ interface AppBottomNavigationProps {
 export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
   const geometry = useBottomChromeGeometry();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const assistantActive = useAssistantActive();
@@ -69,7 +68,7 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
     >
       <GlassSurface
         blurTarget={blurTarget}
-        borderRadius={Radius.pill}
+        borderRadius={theme.shape.pill}
         intensity={Platform.OS === "ios" ? 65 : 45}
         tier={Platform.OS === "android" ? "A" : undefined}
         style={styles.capsule}
@@ -82,7 +81,6 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
             key={item.destination}
             item={item}
             active={isActive(item.destination)}
-            isDark={isDark}
             onPress={() => {
               if (!isActive(item.destination))
                 router.navigate(item.destination);
@@ -97,15 +95,15 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
 function NavigationButton({
   item,
   active,
-  isDark,
   onPress,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
-  isDark: boolean;
   onPress: () => void;
 }) {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const navigationTokens = theme.components.navigation;
   const reduceMotion = useReducedMotion();
   const selected = useSharedValue(active ? 1 : 0);
 
@@ -120,7 +118,7 @@ function NavigationButton({
   const indicatorStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
   const Icon = item.icon;
 
-  const highlightBg = colors.accentContainer;
+  const highlightBg = navigationTokens.indicatorActive;
 
   return (
     <AnimatedPressable
@@ -129,26 +127,31 @@ function NavigationButton({
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
       android_ripple={{ color: colors.ripple, foreground: true }}
-      interactionRadius={Radius.pill}
+      interactionRadius={theme.shape.pill}
       scaleTo={Motion.pressScale}
-      style={styles.item}
+      style={[styles.item, { borderRadius: theme.shape.pill }]}
     >
       <Animated.View
         pointerEvents="none"
         style={[
           styles.selected,
+          { borderRadius: theme.shape.pill },
           { backgroundColor: highlightBg },
           indicatorStyle,
         ]}
       />
       <Icon
         size={19}
-        color={active ? colors.accent : colors.textSecondary}
+        color={
+          active ? navigationTokens.iconActive : navigationTokens.iconInactive
+        }
         strokeWidth={active ? 2.3 : 1.8}
       />
       <Typography
         variant="tiny"
-        color={active ? colors.accent : colors.textSecondary}
+        color={
+          active ? navigationTokens.labelActive : navigationTokens.labelInactive
+        }
         style={styles.label}
         numberOfLines={1}
       >
@@ -190,7 +193,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
-    borderRadius: Radius.pill,
   },
   selected: {
     position: "absolute",
@@ -198,7 +200,6 @@ const styles = StyleSheet.create({
     right: 4,
     bottom: 4,
     left: 4,
-    borderRadius: Radius.pill,
   },
   label: {
     fontSize: 10,

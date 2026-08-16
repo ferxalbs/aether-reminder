@@ -2,6 +2,39 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (4) [Unified Semantic Theme and Material You Resolver]
+
+### Wallpaper-derived color source with AETHER-owned identity
+
+- Replaced the incomplete Material 3 baseline-color path with a centralized
+  `@expo/ui/jetpack-compose` bridge that calls `getMaterialColors({ scheme })`
+  without `seedColor` when Android 12+ Dynamic Color is enabled.
+- Added capability-aware Android fallback behavior: below Android 12, AETHER
+  remains monochrome and does not label the SDK static baseline as Material You.
+- Kept OLED dark background, neutral raised surfaces, typography, structural
+  borders, glass, and product status colors AETHER-owned while mapping dynamic
+  `primary` / `onPrimary` and container roles into the bounded accent budget.
+
+### Semantic and component-token migration
+
+- Expanded the resolved `AetherTheme` contract with semantic border, focus,
+  selected, disabled-control, composer, and shape roles.
+- Migrated reusable controls, cards, fields, sheets, pills, navigation,
+  composers, assistant surfaces, capture/settings surfaces, motion/glass
+  adapters, and native Picker/Switch/DateTime adapters to the shared resolver.
+- Preserved native-first behavior and kept native Host palettes aligned with the
+  resolved source; wallpaper mode omits Host seeds, while AETHER fallback mode
+  uses an explicit AETHER accent seed only where the native Host requires one.
+
+### Theme documentation and validation coverage
+
+- Added [`docs/THEMING.md`](docs/THEMING.md) and synchronized token/Material You
+  guidance in `AGENTS.md` and `CLAUDE.md`.
+- Added deterministic resolver and native palette-bridge tests for appearance,
+  capability fallback, role mapping, OLED invariants, status colors, shape and
+  anti-purple regressions. Physical Android/iOS/iPadOS validation remains
+  user-owned and was not performed.
+
 ## Unreleased - 2026.08.16 (3) [Interaction Feedback Shape Consistency]
 
 ### Shape-aware Pressable feedback across AETHER surfaces

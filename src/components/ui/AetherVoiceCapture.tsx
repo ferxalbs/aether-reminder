@@ -5,9 +5,9 @@ import Animated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 import { Typography } from "./Typography";
-import { Colors, Hairline, Spacing } from "@/theme/tokens";
+import { Hairline, Spacing } from "@/theme/tokens";
 import { useMotionProfile } from "@/motion";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export type VoiceCaptureState =
   "listening" | "processing" | "review" | "committed";
@@ -20,6 +20,7 @@ export interface AetherVoiceCaptureProps {
 
 function MeterLine({ level }: { level?: SharedValue<number> }) {
   const profile = useMotionProfile();
+  const colors = useSemanticColors();
   const allowMeter = profile.budget.allowContinuousDecorativeMotion;
   const animatedStyle = useAnimatedStyle(() => {
     if (!allowMeter) {
@@ -31,7 +32,15 @@ function MeterLine({ level }: { level?: SharedValue<number> }) {
     };
   });
 
-  return <Animated.View style={[styles.meterLine, animatedStyle]} />;
+  return (
+    <Animated.View
+      style={[
+        styles.meterLine,
+        { backgroundColor: colors.accent },
+        animatedStyle,
+      ]}
+    />
+  );
 }
 
 export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
@@ -39,7 +48,7 @@ export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
   transcript,
   audioLevel,
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
 
   const stateLabel =
     state === "listening"
@@ -52,10 +61,7 @@ export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
 
   return (
     <View style={styles.container}>
-      <Typography
-        variant="caption"
-        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-      >
+      <Typography variant="caption" color={colors.textSecondary}>
         {stateLabel}
       </Typography>
 
@@ -66,7 +72,12 @@ export const AetherVoiceCapture: React.FC<AetherVoiceCaptureProps> = ({
       ) : null}
 
       {state === "listening" ? (
-        <View style={styles.meterContainer}>
+        <View
+          style={[
+            styles.meterContainer,
+            { backgroundColor: colors.borderSubtle },
+          ]}
+        >
           <MeterLine level={audioLevel} />
         </View>
       ) : null}
@@ -86,13 +97,11 @@ const styles = StyleSheet.create({
   meterContainer: {
     height: 2,
     width: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
     marginTop: Spacing.xs,
   },
   meterLine: {
     height: Hairline.width * 2,
     width: "100%",
-    backgroundColor: Colors.white,
   },
 });

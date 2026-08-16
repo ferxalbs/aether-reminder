@@ -9,8 +9,8 @@ import {
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search } from "lucide-react-native";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "@/components/ui/Typography";
 import { TaskList } from "@/components/ui/TaskList";
 import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
@@ -32,7 +32,9 @@ import { canUndoTaskReceipt } from "@/stores/taskUndo";
 type TaskFilter = "all" | "active" | "completed";
 
 export default function RemindersScreen() {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const fieldTokens = theme.components.field;
   const { width } = useWindowDimensions();
   const horizontalPadding =
     width >= 980
@@ -149,13 +151,13 @@ export default function RemindersScreen() {
       style={[
         styles.safeArea,
         {
-          backgroundColor: isDark
-            ? Colors.backgroundDark
-            : Colors.backgroundLight,
+          backgroundColor: colors.background,
         },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={theme.mode === "dark" ? "light-content" : "dark-content"}
+      />
       {undoReceipt && canUndoTaskReceipt(undoReceipt) ? (
         <TaskUndoBanner
           receipt={undoReceipt}
@@ -190,40 +192,25 @@ export default function RemindersScreen() {
                   style={[
                     styles.searchField,
                     {
-                      borderColor: isDark
-                        ? Colors.borderDark
-                        : Colors.borderLight,
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
+                      borderColor: fieldTokens.border,
+                      backgroundColor: fieldTokens.background,
                     },
                   ]}
                 >
                   <Search
                     size={17}
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+                    color={colors.textSecondary}
                     strokeWidth={2}
                   />
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Search reminders…"
-                    placeholderTextColor={
-                      isDark
-                        ? Colors.tertiaryTextDark
-                        : Colors.tertiaryTextLight
-                    }
+                    placeholderTextColor={fieldTokens.placeholder}
                     returnKeyType="search"
                     clearButtonMode="while-editing"
                     accessibilityLabel="Search all reminders"
-                    style={[
-                      styles.searchInput,
-                      { color: isDark ? Colors.textDark : Colors.textLight },
-                    ]}
+                    style={[styles.searchInput, { color: fieldTokens.text }]}
                   />
                 </View>
               ) : null}
@@ -233,15 +220,13 @@ export default function RemindersScreen() {
                   style={[
                     styles.errorToast,
                     {
-                      backgroundColor: isDark
-                        ? Colors.surfaceRaisedDark
-                        : Colors.surfaceRaisedLight,
+                      backgroundColor: colors.surfaceRaised,
                     },
                   ]}
                 >
                   <Typography
                     variant="caption"
-                    color={isDark ? Colors.white : Colors.black}
+                    color={colors.textPrimary}
                     accessibilityRole="alert"
                   >
                     {error}
@@ -253,14 +238,7 @@ export default function RemindersScreen() {
           empty={
             status !== "loading" ? (
               <View style={styles.emptyState}>
-                <Typography
-                  variant="body"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="body" color={colors.textSecondary}>
                   {query.trim()
                     ? "No reminders found."
                     : "Your library is empty."}

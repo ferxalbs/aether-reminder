@@ -1,7 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { Colors } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 interface AetherMarkProps {
   size?: number;
@@ -13,22 +12,9 @@ export const AetherMark: React.FC<AetherMarkProps> = ({
   size = 32,
   muted = false,
 }) => {
-  const isDark = useIsDark();
-  const ringColor = muted
-    ? isDark
-      ? Colors.tertiaryTextDark
-      : Colors.tertiaryTextLight
-    : isDark
-      ? Colors.white
-      : Colors.black;
-
-  const coreColor = muted
-    ? isDark
-      ? Colors.secondaryTextDark
-      : Colors.secondaryTextLight
-    : isDark
-      ? Colors.white
-      : Colors.black;
+  const colors = useSemanticColors();
+  const ringColor = muted ? colors.textTertiary : colors.textPrimary;
+  const coreColor = muted ? colors.textSecondary : colors.textPrimary;
 
   return (
     <View
@@ -40,7 +26,7 @@ export const AetherMark: React.FC<AetherMarkProps> = ({
           height: size,
           borderRadius: size / 2,
           borderColor: ringColor,
-          backgroundColor: isDark ? Colors.black : Colors.white,
+          backgroundColor: colors.background,
         },
       ]}
     >

@@ -5,8 +5,7 @@ import {
   isGlassEffectAPIAvailable,
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
-import { Colors } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useMotionProfile } from "../runtime/useMotionProfile";
 import { AdaptiveBlur } from "./AdaptiveBlur";
 import { resolveAdaptiveGlassPolicy } from "./blurPolicy";
@@ -34,7 +33,7 @@ export function AdaptiveGlass({
   blurTarget,
   testID,
 }: AdaptiveGlassProps) {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
   const profile = useMotionProfile();
   const decision = resolveAdaptiveGlassPolicy({
     profile,
@@ -54,7 +53,7 @@ export function AdaptiveGlass({
         <GlassView
           style={StyleSheet.absoluteFill}
           glassEffectStyle="regular"
-          colorScheme={isDark ? "dark" : "light"}
+          colorScheme={theme.mode}
         />
         {children}
       </View>
@@ -68,9 +67,7 @@ export function AdaptiveGlass({
         style={[
           styles.fill,
           {
-            backgroundColor: isDark
-              ? Colors.glassDarkFallback
-              : Colors.glassLightFallback,
+            backgroundColor: theme.colors.glassChromeFallback,
           },
           style,
         ]}

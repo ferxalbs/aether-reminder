@@ -2,14 +2,14 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Card } from "@/components/ui/Card";
 import { Typography } from "@/components/ui/Typography";
-import { Colors, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { useMotionDiagnostics } from "./useMotionDiagnostics";
 
 export function MotionDiagnosticsCard() {
   const diagnostics = useMotionDiagnostics();
-  const isDark = useIsDark();
-  const color = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
+  const colors = useSemanticColors();
+  const color = colors.textSecondary;
   const rows: [string, string][] = [
     ["Tier", diagnostics.profile.tier],
     ["Ceiling", diagnostics.profile.effectiveCeiling],

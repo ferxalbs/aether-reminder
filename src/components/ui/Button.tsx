@@ -14,10 +14,9 @@ import {
   ControlTokens,
   getMinimumTouchTarget,
   Motion,
-  Radius,
   Spacing,
 } from "@/theme/tokens";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 
 export interface ButtonProps {
   label: string;
@@ -48,30 +47,32 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const buttonTokens = theme.components.button;
   const isDisabled = disabled || loading;
 
   const getContainerStyle = () => {
     switch (variant) {
       case "primary":
         return {
-          backgroundColor: colors.interactive,
-          borderColor: colors.interactive,
+          backgroundColor: buttonTokens.primaryBackground,
+          borderColor: buttonTokens.primaryBackground,
         };
       case "secondary":
         return {
-          backgroundColor: colors.surfaceRaised,
-          borderColor: colors.borderDefault,
+          backgroundColor: buttonTokens.secondaryBackground,
+          borderColor: buttonTokens.secondaryBorder,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: colors.borderDefault,
+          borderColor: buttonTokens.secondaryBorder,
         };
       case "destructive":
         return {
-          backgroundColor: colors.destructiveContainer,
-          borderColor: colors.destructiveBorder,
+          backgroundColor: buttonTokens.destructiveBackground,
+          borderColor: buttonTokens.destructiveBorder,
         };
       case "ghost":
       default:
@@ -84,21 +85,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getTextColor = () => {
     if (isDisabled) return colors.textDisabled;
-    if (variant === "primary") return colors.interactiveForeground;
-    if (variant === "secondary") return colors.textPrimary;
-    if (variant === "destructive") return colors.destructive;
-    if (variant === "ghost") return colors.textSecondary;
-    return colors.textPrimary;
+    if (variant === "primary") return buttonTokens.primaryForeground;
+    if (variant === "secondary") return buttonTokens.secondaryForeground;
+    if (variant === "destructive") return buttonTokens.destructiveForeground;
+    if (variant === "ghost") return buttonTokens.ghostForeground;
+    return buttonTokens.secondaryForeground;
   };
 
   const getSizeStyle = () => {
-    const baseRadius = pill
-      ? Radius.pill
-      : size === "sm"
-        ? Radius.md
-        : size === "lg"
-          ? Radius.xl
-          : Radius.lg;
+    const baseRadius = pill ? theme.shape.pill : theme.shape.control;
     switch (size) {
       case "sm":
         return {

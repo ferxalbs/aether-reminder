@@ -259,6 +259,15 @@ The Native-First Platform Architecture, platform-parity, and native-presentation
 rules above apply to all product code. Keep domain and service behavior portable and
 place inherently native details behind platform adapters.
 
+### Theme token architecture
+
+Product UI consumes `useAetherTheme()`/`useSemanticColors()` and component tokens;
+new components must not select light/dark raw colors when a semantic role exists.
+Android Material You acquisition is centralized in `src/theme/materialYou.ts`.
+Wallpaper mode omits native `Host.seedColor`; a seed is valid only for an explicit
+AETHER fallback or native tint strategy. Appearance and color source stay separate,
+and Apple does not emulate Android Material You.
+
 ## Known Tradeoff & Validation Debt Checkpoint
 
 Before and near the end of work that intersects Universal Capture, native Android,

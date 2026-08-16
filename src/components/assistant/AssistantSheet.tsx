@@ -3,8 +3,8 @@ import { SimpleMarkdown } from "@/components/ui/SimpleMarkdown";
 import { Typography } from "@/components/ui/Typography";
 import { useMotionPreset, useMotionProfile } from "@/motion";
 import type { AgentSemanticState } from "@/services/agent";
-import { Colors, Hairline, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Hairline, Radius, Spacing } from "@/theme/tokens";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import {
   AlertCircle,
   Check,
@@ -195,7 +195,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
   blurTarget,
   onVoicePress,
 }) => {
-  const isDark = useIsDark();
+  const { colors } = useAetherTheme();
   const sheetPreset = useMotionPreset("sheet.present");
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
@@ -269,7 +269,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
         animatedBottomStyle,
         animatedStyle,
         {
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.borderDefault,
         },
       ]}
       pointerEvents="box-none"
@@ -292,7 +292,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 <View
                   style={[
                     styles.statusMark,
-                    { backgroundColor: isDark ? Colors.white : Colors.black },
+                    { backgroundColor: colors.textPrimary },
                   ]}
                 />
                 <View>
@@ -301,11 +301,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   </Typography>
                   <Typography
                     variant="tiny"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+                    color={colors.textSecondary}
                     accessibilityLiveRegion="polite"
                   >
                     {voiceFailed
@@ -330,21 +326,13 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   {surface === "full" ? (
                     <ChevronDown
                       size={19}
-                      color={
-                        isDark
-                          ? Colors.secondaryTextDark
-                          : Colors.secondaryTextLight
-                      }
+                      color={colors.textSecondary}
                       strokeWidth={2.2}
                     />
                   ) : (
                     <ChevronUp
                       size={19}
-                      color={
-                        isDark
-                          ? Colors.secondaryTextDark
-                          : Colors.secondaryTextLight
-                      }
+                      color={colors.textSecondary}
                       strokeWidth={2.2}
                     />
                   )}
@@ -355,15 +343,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                   accessibilityLabel="Close assistant"
                   style={styles.headerButton}
                 >
-                  <X
-                    size={19}
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
-                    strokeWidth={2.2}
-                  />
+                  <X size={19} color={colors.textSecondary} strokeWidth={2.2} />
                 </Pressable>
               </View>
             </View>
@@ -394,14 +374,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
 
                 return (
                   <View style={styles.userMessageRow}>
-                    <Typography
-                      variant="body"
-                      color={
-                        isDark
-                          ? Colors.secondaryTextDark
-                          : Colors.secondaryTextLight
-                      }
-                    >
+                    <Typography variant="body" color={colors.textSecondary}>
                       {message.text}
                     </Typography>
                   </View>
@@ -410,11 +383,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
               ListEmptyComponent={
                 <Typography
                   variant="body"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
+                  color={colors.textSecondary}
                   style={styles.welcome}
                 >
                   Ask about your tasks, or tell me what to change.
@@ -428,9 +397,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       style={[
                         styles.receipt,
                         {
-                          borderColor: isDark
-                            ? Colors.borderDark
-                            : Colors.borderLight,
+                          borderColor: colors.borderDefault,
                         },
                       ]}
                     >
@@ -438,18 +405,14 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                         style={[
                           styles.receiptIcon,
                           {
-                            backgroundColor: isDark
-                              ? Colors.surfaceRaisedDark
-                              : Colors.surfaceRaisedLight,
-                            borderColor: isDark
-                              ? Colors.borderDark
-                              : Colors.borderLight,
+                            backgroundColor: colors.surfaceRaised,
+                            borderColor: colors.borderDefault,
                           },
                         ]}
                       >
                         <Check
                           size={14}
-                          color={isDark ? Colors.white : Colors.black}
+                          color={colors.textPrimary}
                           strokeWidth={2.8}
                         />
                       </View>
@@ -457,14 +420,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                         <Typography variant="bodyBold">
                           {receipt.summary}
                         </Typography>
-                        <Typography
-                          variant="tiny"
-                          color={
-                            isDark
-                              ? Colors.secondaryTextDark
-                              : Colors.secondaryTextLight
-                          }
-                        >
+                        <Typography variant="tiny" color={colors.textSecondary}>
                           {toolId}
                         </Typography>
                       </View>
@@ -476,12 +432,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       style={[
                         styles.confirmation,
                         {
-                          backgroundColor: isDark
-                            ? Colors.surfaceRaisedDark
-                            : Colors.surfaceRaisedLight,
-                          borderColor: isDark
-                            ? Colors.borderDark
-                            : Colors.borderLight,
+                          backgroundColor: colors.surfaceRaised,
+                          borderColor: colors.borderDefault,
                         },
                       ]}
                     >
@@ -490,11 +442,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       </Typography>
                       <Typography
                         variant="caption"
-                        color={
-                          isDark
-                            ? Colors.secondaryTextDark
-                            : Colors.secondaryTextLight
-                        }
+                        color={colors.textSecondary}
                         style={styles.confirmationReason}
                       >
                         {pendingConfirmation.reason}
@@ -529,7 +477,7 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                       <Text
                         style={[
                           styles.errorText,
-                          { color: isDark ? Colors.white : Colors.black },
+                          { color: colors.textPrimary },
                         ]}
                       >
                         {error}
@@ -558,12 +506,8 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 style={[
                   styles.voiceControls,
                   {
-                    backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.05)"
-                      : "rgba(0, 0, 0, 0.04)",
-                    borderColor: isDark
-                      ? Colors.borderDark
-                      : Colors.borderLight,
+                    backgroundColor: colors.glassChromeFallback,
+                    borderColor: colors.borderDefault,
                     borderWidth: Hairline.width,
                   },
                 ]}
@@ -583,30 +527,19 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                               ? "Understanding reminder…"
                               : "Finalizing…"}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      color={
-                        isDark
-                          ? Colors.secondaryTextDark
-                          : Colors.secondaryTextLight
-                      }
-                    >
+                    <Typography variant="caption" color={colors.textSecondary}>
                       Say the reminder, date, and time in one sentence.
                     </Typography>
                   </View>
                   <VoiceMeter
                     level={voiceAudioLevel}
-                    color={isDark ? Colors.white : Colors.black}
+                    color={colors.textPrimary}
                   />
                 </View>
                 {voiceTranscript ? (
                   <Typography
                     variant="caption"
-                    color={
-                      isDark
-                        ? Colors.secondaryTextDark
-                        : Colors.secondaryTextLight
-                    }
+                    color={colors.textSecondary}
                     numberOfLines={3}
                   >
                     {voiceTranscript}
@@ -644,18 +577,14 @@ export const AssistantSheet: React.FC<AssistantSheetProps> = ({
                 <View style={styles.voiceErrorHeader}>
                   <AlertCircle
                     size={17}
-                    color={isDark ? Colors.white : Colors.black}
+                    color={colors.textPrimary}
                     strokeWidth={2.2}
                   />
                   <Typography variant="bodyBold">{voiceErrorTitle}</Typography>
                 </View>
                 <Typography
                   variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
+                  color={colors.textSecondary}
                   style={styles.errorText}
                 >
                   {voiceError}

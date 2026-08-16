@@ -12,9 +12,9 @@ import {
   AnimatedPressable,
   getMinimumTouchTargetHitSlop,
 } from "@/components/ui/AnimatedPressable";
-import { Colors, Radius } from "@/theme/tokens";
+import { Radius } from "@/theme/tokens";
 import { useMotionProfile, useMotionPreset } from "@/motion";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import type { VoiceState } from "./VoiceController";
 import { isVoiceFailureState } from "./VoiceController";
 
@@ -35,7 +35,8 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
   disabled = false,
   onPress,
 }) => {
-  const isDark = useIsDark();
+  const theme = useAetherTheme();
+  const { colors } = theme;
   const isError = isVoiceFailureState(voiceState);
   const isActive = [
     "checking_permission",
@@ -46,13 +47,7 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
     "parsing",
   ].includes(voiceState);
   const Icon = isError ? AlertCircle : isActive ? Square : Mic;
-  const iconColor = isError
-    ? isDark
-      ? Colors.destructiveTextDark
-      : Colors.destructiveTextLight
-    : isDark
-      ? Colors.white
-      : Colors.black;
+  const iconColor = isError ? colors.destructive : colors.textPrimary;
 
   return (
     <AnimatedPressable
@@ -74,7 +69,7 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
       }
       accessibilityState={{ disabled, busy: isActive }}
       android_ripple={{
-        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+        color: colors.ripple,
         foreground: true,
       }}
       hitSlop={getMinimumTouchTargetHitSlop(42, 42, Platform.OS)}
@@ -84,19 +79,11 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
         styles.button,
         {
           backgroundColor: isError
-            ? isDark
-              ? Colors.destructiveBackgroundDark
-              : Colors.destructiveBackgroundLight
-            : isDark
-              ? Colors.rippleDark
-              : Colors.rippleLight,
+            ? colors.destructiveContainer
+            : colors.surfacePressed,
           borderColor: isError
-            ? isDark
-              ? Colors.destructiveBorderDark
-              : Colors.destructiveBorderLight
-            : isDark
-              ? Colors.borderDark
-              : Colors.borderLight,
+            ? colors.destructiveBorder
+            : colors.borderDefault,
         },
         disabled && styles.disabled,
       ]}

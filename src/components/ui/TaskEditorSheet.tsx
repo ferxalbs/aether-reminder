@@ -29,6 +29,7 @@ import type {
 } from "@/domain/entities";
 import { ControlTokens, Radius, Spacing } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import {
   getDeviceTimeZone,
   getLocalDateString,
@@ -103,7 +104,9 @@ function ChoicePill({
   onPress: () => void;
   group: string;
 }) {
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const colors = theme.colors;
+  const pill = theme.components.pill;
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -112,18 +115,20 @@ function ChoicePill({
       accessibilityLabel={`${group}: ${label}`}
       accessibilityState={{ selected }}
       android_ripple={{ color: colors.ripple, foreground: true }}
-      interactionRadius={Radius.pill}
+      interactionRadius={theme.radii.pill}
       style={[
         styles.choice,
         {
-          backgroundColor: selected ? colors.accent : colors.surfaceRaised,
-          borderColor: selected ? colors.accent : colors.borderDefault,
+          backgroundColor: selected
+            ? pill.activeBackground
+            : pill.inactiveBackground,
+          borderColor: selected ? pill.activeBackground : pill.inactiveBorder,
         },
       ]}
     >
       <Typography
         variant="caption"
-        color={selected ? colors.onAccent : colors.textSecondary}
+        color={selected ? pill.activeForeground : pill.inactiveForeground}
         style={styles.choiceLabel}
       >
         {label}

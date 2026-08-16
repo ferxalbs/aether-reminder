@@ -8,8 +8,8 @@ import type {
 import { Card } from "./Card";
 import { Button } from "./Button";
 import { Typography } from "./Typography";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface AttentionSurfaceProps {
   plan: AttentionPlan | null;
@@ -42,11 +42,9 @@ function itemExplanation(item: AttentionItem): string {
 }
 
 function ItemMeta({ item }: { item: AttentionItem }) {
+  const colors = useSemanticColors();
   return (
-    <Typography
-      variant="caption"
-      color={useIsDark() ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-    >
+    <Typography variant="caption" color={colors.textSecondary}>
       {itemExplanation(item)}
     </Typography>
   );
@@ -89,6 +87,7 @@ function AlertRow({
   onSwitchFocus: (taskId: string) => void;
   onOpenSettings: () => void;
 }) {
+  const colors = useSemanticColors();
   const action =
     alert.action === "review_recovery"
       ? onReviewRecovery
@@ -108,12 +107,7 @@ function AlertRow({
     <Card variant="outline" padding={Spacing.md} style={styles.alertCard}>
       <View style={styles.alertText}>
         <Typography variant="bodyBold">{alert.title}</Typography>
-        <Typography
-          variant="caption"
-          color={
-            useIsDark() ? Colors.secondaryTextDark : Colors.secondaryTextLight
-          }
-        >
+        <Typography variant="caption" color={colors.textSecondary}>
           {alert.message}
         </Typography>
       </View>
@@ -133,7 +127,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
   onOpenSettings,
 }) => {
   const { width } = useWindowDimensions();
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   if (!plan) return null;
 
   const isWide = width >= 720;
@@ -145,9 +139,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
         <View style={isWide ? styles.nowColumn : undefined}>
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.sectionLabel}
           >
             {plan.selectionMode === "choose" ? "CHOOSE YOUR FOCUS" : "NOW"}
@@ -213,12 +205,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
               <Typography variant="headline">
                 You&apos;re clear for now.
               </Typography>
-              <Typography
-                variant="body"
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
-              >
+              <Typography variant="body" color={colors.textSecondary}>
                 Nothing else needs your attention yet.
               </Typography>
             </Card>
@@ -229,9 +216,7 @@ export const AttentionSurface: React.FC<AttentionSurfaceProps> = ({
           <View style={isWide ? styles.nextColumn : styles.nextSection}>
             <Typography
               variant="caption"
-              color={
-                isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-              }
+              color={colors.textSecondary}
               style={styles.sectionLabel}
             >
               NEXT

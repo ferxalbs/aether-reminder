@@ -1,5 +1,22 @@
-import { Platform } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { AppState, Platform } from "react-native";
 import type { Material3ColorRoles } from "./types";
+
+type ComposeMaterialColorsModule = {
+  isDynamicColorAvailable?: boolean;
+  getMaterialColors?: (options: {
+    scheme: "light" | "dark";
+  }) => Material3ColorRoles;
+};
+
+function getComposeMaterialColorsModule(): ComposeMaterialColorsModule | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("@expo/ui/jetpack-compose") as ComposeMaterialColorsModule;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Checks whether Android Material You dynamic wallpaper colors are available.
@@ -7,13 +24,7 @@ import type { Material3ColorRoles } from "./types";
  */
 export function isAndroidDynamicColorAvailable(): boolean {
   if (Platform.OS !== "android") return false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const compose = require("@expo/ui/jetpack-compose");
-    return Boolean(compose?.isDynamicColorAvailable);
-  } catch {
-    return false;
-  }
+  return Boolean(getComposeMaterialColorsModule()?.isDynamicColorAvailable);
 }
 
 /**
@@ -26,16 +37,17 @@ export function isAndroidDynamicColorAvailable(): boolean {
 export function getAndroidMaterialColors(
   scheme: "light" | "dark",
 ): Material3ColorRoles | null {
-  if (Platform.OS !== "android") return null;
+  // The SDK returns the static Material 3 baseline when dynamic colors are
+  // unavailable. Do not accept that baseline as Material You.
+  if (!isAndroidDynamicColorAvailable()) return null;
+
+  const compose = getComposeMaterialColorsModule();
+  if (!compose?.getMaterialColors) return null;
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const compose = require("@expo/ui/jetpack-compose");
-    if (!compose?.getMaterialColors) return null;
     const colors = compose.getMaterialColors({ scheme });
-    if (!colors || typeof colors !== "object" || !colors.primary) {
-      return null;
-    }
-    return colors as Material3ColorRoles;
+    if (!colors || typeof colors !== "object" || !colors.primary) return null;
+    return colors;
   } catch {
     return null;
   }
@@ -48,8 +60,27 @@ export function useAndroidMaterialPalette(
   scheme: "light" | "dark",
   enabled: boolean,
 ): Material3ColorRoles | null {
-  if (!enabled || Platform.OS !== "android") {
-    return null;
-  }
-  return getAndroidMaterialColors(scheme);
+  const [foregroundRevision, setForegroundRevision] = useState(0);
+
+  useEffect(() => {
+    if (!enabled || Platform.OS !== "android") return undefined;
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        // Wallpaper and system palette changes can happen while AETHER is
+        // backgrounded. Re-read the native palette on the next foreground.
+        setForegroundRevision((revision) => revision + 1);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [enabled]);
+
+  const paletteReadKey = `${scheme}:${foregroundRevision}`;
+  return useMemo(() => {
+    const paletteScheme = paletteReadKey.startsWith("light:")
+      ? "light"
+      : "dark";
+    return enabled ? getAndroidMaterialColors(paletteScheme) : null;
+  }, [enabled, paletteReadKey]);
 }

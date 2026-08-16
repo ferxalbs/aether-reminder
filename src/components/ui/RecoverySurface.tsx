@@ -13,8 +13,8 @@ import type {
   RecoveryProposal,
   RecoverySchedule,
 } from "@/domain/recovery";
-import { Colors, LayoutTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { Sheet } from "./Sheet";
@@ -26,7 +26,7 @@ interface RecoverySummaryProps {
 }
 
 export function RecoverySummary({ count, onPress }: RecoverySummaryProps) {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   return (
     <Card
       variant="outline"
@@ -41,19 +41,11 @@ export function RecoverySummary({ count, onPress }: RecoverySummaryProps) {
           <Typography variant="bodyBold">
             {count} {count === 1 ? "thing slipped" : "things slipped"}
           </Typography>
-          <Typography
-            variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
-          >
+          <Typography variant="caption" color={colors.textSecondary}>
             Review a safe recovery plan
           </Typography>
         </View>
-        <Typography
-          variant="caption"
-          color={isDark ? Colors.white : Colors.black}
-        >
+        <Typography variant="caption" color={colors.textPrimary}>
           Recover your plan
         </Typography>
       </View>
@@ -108,7 +100,7 @@ export function RecoverySheet({
   onClose,
   onApply,
 }: RecoverySheetProps) {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const { width } = useWindowDimensions();
   const [choices, setChoices] = useState<Record<string, RecoveryChoice>>(() =>
     Object.fromEntries(
@@ -199,7 +191,7 @@ export function RecoverySheet({
         {message ? (
           <Typography
             variant="caption"
-            color={isDark ? Colors.warningDark : Colors.warningLight}
+            color={colors.warning}
             style={styles.message}
             accessibilityRole="alert"
           >
@@ -219,23 +211,11 @@ export function RecoverySheet({
                 <Typography variant="bodyBold" style={styles.proposalTitle}>
                   {proposal.taskTitle}
                 </Typography>
-                <Typography
-                  variant="tiny"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="tiny" color={colors.textSecondary}>
                   {proposal.priority}
                 </Typography>
               </View>
-              <Typography
-                variant="caption"
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
-              >
+              <Typography variant="caption" color={colors.textSecondary}>
                 {formatReason(proposal)}
               </Typography>
               <View style={styles.scheduleRows}>
@@ -247,14 +227,7 @@ export function RecoverySheet({
                 </Typography>
               </View>
               {proposal.recurrence ? (
-                <Typography
-                  variant="tiny"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
+                <Typography variant="tiny" color={colors.textSecondary}>
                   Current recurring occurrence only · future cadence stays
                   anchored
                 </Typography>
@@ -283,7 +256,7 @@ export function RecoverySheet({
         })}
         <Typography
           variant="tiny"
-          color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+          color={colors.textTertiary}
           style={styles.disclaimer}
         >
           Recovery is local and deterministic. It does not use an AI service or

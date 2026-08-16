@@ -3,14 +3,13 @@ import { Platform, StyleSheet, View } from "react-native";
 import ExpoDateTimePicker from "@expo/ui/community/datetime-picker";
 import { CalendarDays, Clock3 } from "lucide-react-native";
 import {
-  Colors,
   ControlTokens,
   getMinimumTouchTarget,
   Radius,
   Spacing,
 } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { useSemanticColors } from "@/theme/useSemanticColors";
+import { useResolvedTheme } from "@/theme/useResolvedTheme";
+import { useAetherTheme } from "@/theme/useAetherTheme";
 import { Typography } from "./Typography";
 import { AnimatedPressable } from "./AnimatedPressable";
 
@@ -59,8 +58,10 @@ export function NativeDateTimeControl({
   accessibilityLabel,
   testID,
 }: NativeDateTimeControlProps): React.ReactElement {
-  const isDark = useIsDark();
-  const colors = useSemanticColors();
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const fieldTokens = theme.components.field;
+  const resolvedMode = useResolvedTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
   const formatted = useMemo(() => formatValue(value, mode), [mode, value]);
   const accentColor = colors.accent;
@@ -72,7 +73,7 @@ export function NativeDateTimeControl({
       <View style={styles.container} testID={testID}>
         <Typography
           variant="caption"
-          color={isDark ? Colors.zinc300 : Colors.zinc700}
+          color={colors.textSecondary}
           accessible={false}
         >
           {label}
@@ -81,10 +82,8 @@ export function NativeDateTimeControl({
           style={[
             styles.iosControl,
             {
-              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              backgroundColor: isDark
-                ? Colors.surfaceRaisedDark
-                : Colors.surfaceRaisedLight,
+              borderColor: fieldTokens.border,
+              backgroundColor: fieldTokens.background,
             },
           ]}
         >
@@ -94,7 +93,7 @@ export function NativeDateTimeControl({
             mode={mode}
             display="compact"
             accentColor={accentColor}
-            themeVariant={isDark ? "dark" : "light"}
+            themeVariant={resolvedMode}
             minimumDate={minimumDate}
             maximumDate={maximumDate}
             onValueChange={(_event, selectedDate) => onChange(selectedDate)}
@@ -110,7 +109,7 @@ export function NativeDateTimeControl({
     <View style={styles.container} testID={testID}>
       <Typography
         variant="caption"
-        color={isDark ? Colors.zinc300 : Colors.zinc700}
+        color={colors.textSecondary}
         accessible={false}
       >
         {label}
@@ -126,15 +125,17 @@ export function NativeDateTimeControl({
           styles.androidTrigger,
           {
             minHeight: getMinimumTouchTarget(Platform.OS),
-            borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-            backgroundColor: isDark
-              ? Colors.surfaceRaisedDark
-              : Colors.surfaceRaisedLight,
+            borderColor: fieldTokens.border,
+            backgroundColor: fieldTokens.background,
           },
         ]}
       >
         <Icon size={18} color={secondary} />
-        <Typography variant="body" style={styles.triggerLabel}>
+        <Typography
+          variant="body"
+          color={fieldTokens.text}
+          style={styles.triggerLabel}
+        >
           {formatted}
         </Typography>
       </AnimatedPressable>

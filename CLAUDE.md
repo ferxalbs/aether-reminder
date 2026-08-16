@@ -255,6 +255,15 @@ Tests use Bun’s test runner and are colocated with the implementation, for exa
 Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
 NEVER use, invoke, install, reference, depend on, or run GStack/gstack for this repository.
 
+### Theme token architecture
+
+Product UI consumes `useAetherTheme()`/`useSemanticColors()` and component tokens;
+new components must not select light/dark raw colors when a semantic role exists.
+Android Material You acquisition is centralized in `src/theme/materialYou.ts`.
+Wallpaper mode omits native `Host.seedColor`; a seed is valid only for an explicit
+AETHER fallback or native tint strategy. Appearance and color source stay separate,
+and Apple does not emulate Android Material You.
+
 ## Known Tradeoff & Validation Debt Checkpoint
 
 Before and near the end of work involving native Android, native iOS/iPadOS,
