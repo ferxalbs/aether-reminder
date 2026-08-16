@@ -1,17 +1,20 @@
-import React, { useCallback } from "react";
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
-import { Host, Picker as UniversalPicker } from "@expo/ui";
-import { Colors, ControlTokens, getMinimumTouchTarget } from "@/theme/tokens";
-import { useSettingsStore } from "@/stores/settings.store";
-import { selectionAsync } from "@/lib/haptics";
-import { reportNonFatalError } from "@/lib/nonFatalError";
-import { useIsDark } from "@/theme/useResolvedTheme";
-import { useSemanticColors } from "@/theme/useSemanticColors";
-import { Typography } from "./Typography";
+import React, { useState } from 'react';
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
+import { Colors, ControlTokens, getMinimumTouchTarget, Radius } from '@/theme/tokens';
+import { useSettingsStore } from '@/stores/settings.store';
+import { selectionAsync } from '@/lib/haptics';
+import { reportNonFatalError } from '@/lib/nonFatalError';
+import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSemanticColors } from '@/theme/useSemanticColors';
+import { AnimatedPressable } from './AnimatedPressable';
+import { GlassSurface } from './GlassSurface';
+import { Typography } from './Typography';
 
 export interface PickerOption<Value extends string | number = string> {
   value: Value;
   label: string;
+  disabled?: boolean;
 }
 
 export interface PickerProps<Value extends string | number = string> {
@@ -23,8 +26,8 @@ export interface PickerProps<Value extends string | number = string> {
   error?: string;
   disabled?: boolean;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   containerStyle?: StyleProp<ViewStyle>;
-  testID?: string;
 }
 
 export function Picker<Value extends string | number>({
@@ -36,63 +39,152 @@ export function Picker<Value extends string | number>({
   error,
   disabled = false,
   accessibilityLabel,
+  accessibilityHint,
   containerStyle,
-  testID,
 }: PickerProps<Value>): React.ReactElement {
   const isDark = useIsDark();
   const colors = useSemanticColors();
+  const [open, setOpen] = useState(false);
+  const isIOS = Platform.OS === 'ios';
   const isDisabled = disabled || options.length === 0;
+  const isSegmented = isIOS && options.length > 0 && options.length <= 4;
+  const selectedOption = options.find((option) => option.value === value);
+  const selectedLabel = selectedOption?.label ?? String(value);
 
-  const handleValueChange = useCallback(
-    (nextValue: string | number) => {
-      if (isDisabled) return;
-      const matched = options.find((opt) => opt.value === nextValue);
-      if (!matched) return;
+  const controlBorderColor = error
+    ? isDark
+      ? Colors.white
+      : Colors.black
+    : isDark
+      ? Colors.borderDark
+      : Colors.borderLight;
 
-      const typedValue = matched.value;
-      if (typedValue !== value && useSettingsStore.getState().hapticsEnabled) {
-        selectionAsync().catch((err: unknown) => {
-          reportNonFatalError("haptics", err);
-        });
-      }
-      onValueChange(typedValue);
-    },
-    [isDisabled, options, value, onValueChange],
-  );
+  const controlBackgroundColor = colors.elevatedSurface;
+  const selectedBackgroundColor = colors.accent;
+  const selectedTextColor = colors.onAccent;
+
+  const selectValue = (nextValue: Value) => {
+    if (isDisabled) return;
+    const nextOption = options.find((option) => option.value === nextValue);
+    if (!nextOption || nextOption.disabled) return;
+
+    if (nextValue !== value && useSettingsStore.getState().hapticsEnabled) {
+      selectionAsync().catch((error: unknown) => {
+        reportNonFatalError('haptics', error);
+      });
+    }
+    onValueChange(nextValue);
+    setOpen(false);
+  };
+
+  const optionAccessibilityLabel = (option: PickerOption<Value>) =>
+    `${label}: ${option.label}`;
+
+  const renderOption = (option: PickerOption<Value>, segmented: boolean) => {
+    const isSelected = option.value === value;
+    const optionDisabled = isDisabled || option.disabled === true;
+
+    return (
+      <AnimatedPressable
+        key={String(option.value)}
+        onPress={() => selectValue(option.value)}
+        disabled={optionDisabled}
+        accessibilityRole="radio"
+        accessibilityLabel={optionAccessibilityLabel(option)}
+        accessibilityState={{ checked: isSelected, selected: isSelected, disabled: optionDisabled }}
+        accessibilityHint={optionDisabled ? undefined : `Selects ${option.label}`}
+        style={[
+          segmented ? styles.segment : styles.menuOption,
+          {
+            minHeight: getMinimumTouchTarget(Platform.OS),
+            backgroundColor: isSelected
+              ? selectedBackgroundColor
+              : 'transparent',
+            borderRadius: segmented ? Radius.pill : Radius.sm,
+          },
+          optionDisabled && styles.disabled,
+        ]}
+      >
+        <Typography
+          variant="caption"
+          color={isSelected ? selectedTextColor : colors.textSecondary}
+          style={styles.optionLabel}
+        >
+          {option.label}
+        </Typography>
+      </AnimatedPressable>
+    );
+  };
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <Typography
-        variant="caption"
-        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
-        accessible={false}
-      >
+      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessible={false}>
         {label}
       </Typography>
-
-      <Host
-        matchContents
-        colorScheme={isDark ? "dark" : "light"}
-        seedColor={colors.accent}
-        style={styles.host}
-      >
-        <UniversalPicker
-          selectedValue={value}
-          onValueChange={handleValueChange}
-          enabled={!isDisabled}
-          appearance="menu"
-          testID={testID ?? accessibilityLabel ?? label}
+      {isSegmented ? (
+        <View
+          style={[
+            styles.segmentedContainer,
+            {
+              borderColor: controlBorderColor,
+              borderRadius: Radius.pill,
+              backgroundColor: controlBackgroundColor,
+            },
+            isDisabled && styles.disabled,
+          ]}
         >
-          {options.map((option) => (
-            <UniversalPicker.Item
-              key={String(option.value)}
-              label={option.label}
-              value={option.value}
+          <GlassSurface
+            pointerEvents="none"
+            borderRadius={Radius.pill}
+            borderWidth={0}
+            style={StyleSheet.absoluteFill}
+          />
+          {options.map((option) => renderOption(option, true))}
+        </View>
+      ) : (
+        <>
+          <AnimatedPressable
+            onPress={() => setOpen((current) => !current)}
+            disabled={isDisabled}
+            accessibilityRole="combobox"
+            accessibilityLabel={accessibilityLabel ?? label}
+            accessibilityHint={accessibilityHint ?? 'Opens options'}
+            accessibilityState={{ disabled: isDisabled, expanded: open }}
+            accessibilityValue={{ text: selectedLabel }}
+            style={[
+              styles.trigger,
+              {
+                minHeight: getMinimumTouchTarget(Platform.OS),
+                borderColor: controlBorderColor,
+                borderRadius: Radius.md,
+                backgroundColor: controlBackgroundColor,
+              },
+              isDisabled && styles.disabled,
+            ]}
+          >
+            <Typography variant="body" color={isDark ? Colors.textDark : Colors.textLight} style={styles.triggerLabel}>
+              {selectedLabel}
+            </Typography>
+            <ChevronDown
+              size={ControlTokens.pickerChevronSize}
+              color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
             />
-          ))}
-        </UniversalPicker>
-      </Host>
-
+          </AnimatedPressable>
+          {open ? (
+            <View
+              style={[
+                styles.menu,
+                {
+                  borderColor: controlBorderColor,
+                  backgroundColor: controlBackgroundColor,
+                },
+              ]}
+            >
+              {options.map((option) => renderOption(option, false))}
+            </View>
+          ) : null}
+        </>
+      )}
       {error ? (
         <Typography
           variant="caption"
@@ -104,11 +196,7 @@ export function Picker<Value extends string | number>({
           {error}
         </Typography>
       ) : helperText ? (
-        <Typography
-          variant="caption"
-          color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
-          style={styles.message}
-        >
+        <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.message}>
           {helperText}
         </Typography>
       ) : null}
@@ -120,11 +208,49 @@ const styles = StyleSheet.create({
   container: {
     gap: ControlTokens.fieldLabelGap,
   },
-  host: {
-    minHeight: getMinimumTouchTarget(Platform.OS),
-    justifyContent: "center",
+  segmentedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 2,
+    borderWidth: ControlTokens.borderWidth,
+    overflow: 'hidden',
+  },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: ControlTokens.pickerOptionPaddingHorizontal,
+  },
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
+    borderWidth: ControlTokens.borderWidth,
+    overflow: 'hidden',
+  },
+  triggerLabel: {
+    flex: 1,
+  },
+  menu: {
+    marginTop: 4,
+    borderWidth: ControlTokens.borderWidth,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
+  menuOption: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: ControlTokens.pickerOptionPaddingHorizontal,
+    paddingVertical: ControlTokens.pickerOptionPaddingVertical,
+  },
+  optionLabel: {
+    flex: 1,
   },
   message: {
     marginTop: ControlTokens.fieldMessageGap,
+  },
+  disabled: {
+    opacity: ControlTokens.disabledOpacity,
   },
 });
