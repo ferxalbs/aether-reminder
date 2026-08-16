@@ -11,9 +11,9 @@ The audit identified 34 meaningful audit units. Some rows intentionally group a 
 | N0 | 5 | Native-backed / correct |
 | N1 | 7 | Semantic wrapper over native |
 | N2 | 4 | Generic React Native but acceptable |
-| N3 | 2 | Native migration candidate |
+| N3 | 1 | Native migration candidate |
 | N4 | 3 | Strong fake-native / architecture debt |
-| N5 | 12 | Genuinely custom product surface |
+| N5 | 13 | Genuinely custom product surface |
 | N6 | 1 | Insufficient evidence; runtime investigation required |
 
 There are no P0 hazards established by static inspection. The highest-value first migration is the reusable `Picker`, because it is a direct single-selection/menu reimplementation used throughout the task editor. The highest-risk candidate is the settings model catalog modal because it combines a custom sheet presentation with async loading, search keyboard behavior, settings state, navigation coupling, and iPadOS adaptation.
@@ -41,7 +41,7 @@ The audit did not treat the existence of an API as sufficient evidence for N3 or
 ## Primary audit table
 
 | Component / Surface | File | Current mechanism | Classification | Desired owner | Native candidate | Benefit | Risk | Priority |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `Alert.alert` confirmations and errors | `src/app/_layout.tsx:195-214`; `src/app/settings.tsx:225-374` | React Native `Alert` for destructive confirmation, validation, and error dialogs | N0 | Platform alert/dialog through React Native | Existing RN platform alert; no migration | System presentation, dismissal, accessibility, and destructive action semantics already belong to the platform | LOW | KEEP |
 | Expo Router tab routing | `src/app/_layout.tsx:317-337` | One Expo Router `Tabs` navigator; custom sibling chrome derives selection from pathname | N0 | Expo Router / native navigation stack | Existing Expo Router `Tabs` | Router owns route state and transitions; no duplicate navigator | MEDIUM | KEEP |
 | Status bar, safe area, and inset plumbing | `src/app/_layout.tsx:307-399`; route screens; `src/theme/useBottomChromeGeometry.ts` | Expo StatusBar and `react-native-safe-area-context` | N0 | OS system bars and safe-area provider | Existing Expo StatusBar / safe-area APIs | Platform supplies cutout and inset values instead of JS geometry emulation | LOW | KEEP |
@@ -59,7 +59,7 @@ The audit did not treat the existence of an API as sufficient evidence for N3 or
 | `AnimatedPressable` | `src/components/ui/AnimatedPressable.tsx:35-109` | RN Pressable with AETHER press-scale motion, reduced-motion policy, and Expo haptics | N2 | React Native for interaction; AETHER for branded feedback | No native system control matches this cross-product press-feedback contract | Shared product feedback primitive; not a fake button or menu | MEDIUM | KEEP |
 | `NumberStepper` | `src/components/ui/TaskEditorSheet.tsx:111-149` | Two AETHER `IconButton` actions with bounded numeric state | N2 | React Native / AETHER domain control | No suitable Universal Stepper is exposed in the inspected SDK 57 `@expo/ui` surface | Keeps recurrence interval, day, and occurrence semantics in a small bounded control | MEDIUM | KEEP |
 | `ToggleSwitch` | `src/components/ui/ToggleSwitch.tsx:28-109` | Hand-rendered switch: `AnimatedPressable`, Reanimated spring, interpolated track/thumb colors and translation, manual switch accessibility | N3 | Mixed through semantic adapter: AETHER setting semantics; Android Compose / Apple SwiftUI control | [`@expo/ui` Universal Switch](https://docs.expo.dev/versions/v57.0.0/sdk/ui/universal/switch/) | Removes custom track/thumb animation, press semantics, and manual switch state synchronization | MEDIUM | P1 |
-| Settings theme preference selector | `src/app/settings.tsx:1029-1086` | Three `AnimatedPressable` segments with a custom active pill for System, OLED Dark, and Light | N3 | Mixed through semantic adapter: AETHER theme values; Compose segmented control / SwiftUI segmented Picker | [`@expo/ui/community/segmented-control`](https://docs.expo.dev/versions/v57.0.0/sdk/ui/drop-in-replacements/segmentedcontrol/) | Removes individual segment hit targets, selected-state rendering, and hand-built single-choice semantics | MEDIUM | P2 |
+| Settings theme preference selector | `src/app/settings.tsx:1029-1086` | Three `AnimatedPressable` segments in a custom pill container for System, OLED Dark, and Light | N5 | AETHER | No native candidate preserves the branded OLED pill contract; SDK 57 community SegmentedControl would compromise monochrome contrast and pill geometry | Retains branded OLED mode selector hierarchy, high-contrast pill geometry, and OLED Dark identity | LOW | KEEP custom |
 | Reusable `Picker` | `src/components/ui/Picker.tsx:33-205` | JS `open` state, custom trigger, inline menu, radio semantics, per-item disabled logic, and an iOS hand-built segmented branch | N4 | Mixed through semantic adapter: AETHER field/validation semantics; native picker/menu | [`@expo/ui` Universal Picker](https://docs.expo.dev/versions/v57.0.0/sdk/ui/universal/picker/) with `appearance="menu"` | Removes manual menu lifecycle, option rendering, expanded state, radio semantics, and platform dropdown/rotor emulation | MEDIUM | P1 |
 | Settings model catalog modal | `src/app/settings.tsx:1508-1750` | React Native `Modal`, custom scrim, fixed 75% bottom sheet, close button, search field, async list, selection, and `onRequestClose` | N4 | Expo Router native presentation plus AETHER route/content state | Expo Router `presentation: "formSheet"` with native sheet options; existing `Sheet` is an alternate transient adapter | Removes custom presentation host, scrim, fixed sheet geometry, and modal lifecycle while retaining the searchable catalog content | HIGH | P1 |
 | `AetherContextMenu` / `AetherQuickActionsMenu` | `src/components/ui/AetherContextMenu.tsx`; `src/components/ui/AetherQuickActionsMenu.tsx` | Custom `AetherContextSurface`, animated entry/exit, separators, and Pressable action rows | N4 | Mixed through semantic adapter: AETHER action policy; native menu presentation | [`@expo/ui/community/menu`](https://docs.expo.dev/versions/v57.0.0/sdk/ui/drop-in-replacements/menu/) (`MenuView`): Compose `DropdownMenu` on Android, SwiftUI `Menu`/`ContextMenu` on Apple | Removes custom popup surface/list hierarchy and delegates anchoring, outside dismissal, back, and menu accessibility | MEDIUM | P2 if retained |
@@ -173,51 +173,19 @@ Runtime validation required:
 
 Physical Android and Apple devices for visual acceptance, TalkBack/VoiceOver role and state, disabled state, reduced motion, rapid toggles, persistence after leaving Settings, and iPad regular-width settings rows.
 
-### Settings theme preference segmented selector
+## Theme Preference Selector Decision
 
-Current architecture:
-
-Settings renders a three-item `View` with individually animated `AnimatedPressable` segments and a custom accent-colored active pill for System, OLED Dark, and Light. The selected value is persisted through the settings store.
-
-Why this is a candidate:
-
-This is an actual small single-choice segmented control, unlike the task editor’s wrapping recurrence/date presets. Its state and interaction are platform-control semantics rather than a free-form AETHER chip group.
-
-Existing product contract:
-
-Exactly one of three theme values is selected, the selection is immediately persisted, and the labels remain System, OLED Dark, and Light. The surrounding settings section and explanatory presentation remain AETHER-owned.
-
-Expo SDK 57 native candidate:
-
-The SDK 57 [`@expo/ui/community/segmented-control`](https://docs.expo.dev/versions/v57.0.0/sdk/ui/drop-in-replacements/segmentedcontrol/) uses Jetpack Compose `SingleChoiceSegmentedButtonRow` on Android and SwiftUI `Picker` with segmented style on Apple.
-
-Android implementation:
-
-Compose segmented buttons own segment selection, touch semantics, focus, and native Material behavior. AETHER maps the selected index/value to the settings store and supplies the approved accent policy where the native API supports it.
-
-Apple implementation:
-
-SwiftUI segmented Picker owns selection and accessibility. The same Apple implementation should adapt to iPhone and iPad width classes; no separate iPhone/iPad control is warranted.
-
-What AETHER should still own:
-
-Theme value mapping, labels, persistence, settings copy, and product approval of the visual difference from the current active pill.
-
-What the platform should own:
-
-Single-choice segment semantics, focus, hit targets, selection transitions, and platform-native segmented geometry.
-
-Expected complexity removed:
-
-Three manually managed Pressable controls, custom selected background rendering, per-segment state synchronization, and the related accessibility surface.
-
-Migration risk:
-
-MEDIUM. The value contract is simple, but the current OLED Dark label and brand accent treatment need visual/product acceptance. SDK 57 documents limitations around platform-specific segmented styling, including iOS tint behavior.
-
-Runtime validation required:
-
-Android Material appearance and TalkBack, iPhone VoiceOver and selected state, iPad regular-width settings layout, theme persistence, and reduced-motion behavior.
+- **Prior classification:** N3 — Native migration candidate
+- **Final classification:** N5 — Genuinely custom AETHER product control
+- **Product contract:** The Settings theme selector is a prominent, branded three-mode chooser across `"dark"` (`"OLED Dark"`), `"light"` (`"Light"`), and `"system"` (`"System"`). It provides immediate controlled theme switching and synchronous persistence through `useSettingsStore` without modal, sheet, or popup layers. Visually, it is embedded directly in the OLED Settings card as a full-width capsule (`Radius.pill: 9999`) with high-contrast active pill highlight (`colors.accent` on `#121215` raised surface).
+- **Native candidate considered:** `@expo/ui/community/segmented-control` (Jetpack Compose `SingleChoiceSegmentedButtonRow` on Android and SwiftUI `Picker` with `pickerStyle('segmented')` on Apple).
+- **Why migration is not justified:**
+  1. *Visual & Product Identity Compromise:* Physical Android runtime evidence confirms the selector operates as a hero mode chooser integrated into AETHER's monochrome OLED design language. Expo SDK 57 documentation explicitly documents that for `@expo/ui/community/segmented-control`, `momentary`, `backgroundColor`, `fontStyle`, and `activeFontStyle` props are not supported, and `tintColor` only works on Android while having no effect on iOS. Adopting the native control would force standard platform-default segmented button geometry (Material 3 rounded rectangles or iOS fixed-height gray segmented controls), destroy the high-contrast pitch-black/white capsule treatment, and dilute AETHER's signature "OLED Dark" visual prominence.
+  2. *Bounded Implementation with Zero Platform Lifecycle Debt:* The current component is ~55 lines of controlled React Native code mapping 3 `AnimatedPressable` instances. It owns no custom gesture pan physics, no sliding thumb math/interpolation, no dropdown/rotor menus, no system back handlers, no IME keyboard seams, and no focus lifecycle races.
+  3. *State & Accessibility Simplicity:* Theme state is synchronously read and controlled from `useSettingsStore`. Selection triggers standard AETHER press-scale motion and haptics. Labels are explicit and fully legible.
+  4. *False Economy of Native-First:* Replacing 3 simple pressable buttons with a native platform wrapper would sacrifice core brand identity and visual coherence for negligible architectural simplification.
+- **Runtime/visual evidence used:** Physical Android screenshot in OLED dark mode demonstrating full-width capsule geometry, high-contrast monochrome segment fill against `#121215` raised surface, visual grouping with the section header, and clear differentiation from the boolean switches below.
+- **Future reconsideration trigger:** Reconsider only if Expo UI introduces a universal segmented primitive supporting full custom container/segment background tokens, custom pill radii, and cross-platform tinting, or if AETHER adopts platform-standard settings styling across all platforms.
 
 ### Settings model catalog modal
 
@@ -326,6 +294,7 @@ These surfaces may contain native-backed child controls, but the surrounding pro
 - `AetherComposer`: the combined reminder input, voice entry, send action, and product add affordance are a branded composer, not a system control.
 - `TaskCard` completion: the checkbox-like affordance is coupled to task completion haptics, check animation, text opacity, and strike treatment. `@expo/ui` Checkbox is an available primitive, but its existence alone does not justify changing this product contract.
 - `ChoicePill` groups and recurrence/date/time presets: these include wrapping date presets, time presets, recurrence options, multi-select weekdays, and domain-specific state. They are not one generic segmented control.
+- Settings theme preference selector: a branded three-way mode chooser (`"OLED Dark"`, `"Light"`, `"System"`) rendered as an integrated full-width pill container with high-contrast active pill highlight. It has no gesture, modal, back, or IME lifecycle complexity, and native segmented control primitives in SDK 57 (Compose SegmentedButton / SwiftUI segmented Picker) would degrade monochrome contrast, pill geometry, and OLED Dark identity without architectural benefit.
 - `NumberStepper`: bounded recurrence values are a small domain control. SDK 57’s inspected Universal inventory does not provide a cross-platform Stepper primitive that materially improves this contract.
 - `Button`, `IconButton`, `AetherToolbarButton`, `AetherToolbar`, and `AetherToolbarGroup`: these own AETHER styling, touch target policy, loading/destructive states, glass policy, and toolbar layout. Native buttons/toolbars are not automatic replacements.
 - `Card`, `TaskList`, `AttentionSurface`, `RecoverySummary`, and recovery content: task/recovery information hierarchy and actions are product semantics, including adaptive width behavior.
@@ -354,7 +323,7 @@ The following reusable or system-facing pieces already follow the preferred dire
 - `Modal`: one active React Native modal was found, the Settings model catalog. It is classified N4 because the surrounding surface manually owns sheet presentation; this is not a claim that the React Native `Modal` host itself is pure JS.
 - `Switch`: there is no React Native `Switch` usage. `ToggleSwitch` is a custom semantic switch and is the N3 finding.
 - `Picker`: the reusable implementation is custom and is the N4 finding. The SDK 57 native Universal Picker is not currently used.
-- Segmented controls: the Settings theme selector is an N3 actual small-option segmented control. Task-editor choice pills remain N5 because their product contract includes wrapping presets and multi-select weekdays.
+- Segmented controls: the Settings theme selector is classified N5 as a branded AETHER mode chooser whose pill geometry and monochrome contrast are intentional product identity. Task-editor choice pills also remain N5 because their product contract includes wrapping presets and multi-select weekdays.
 - Context menus: the reusable AETHER menu files are not currently consumed according to graph and literal search. No active long-press/context-menu surface was found.
 - Date/time: `NativeDateTimeControl` is already native-backed. Surrounding date/time preset pills remain product-owned.
 - Gestures: no `GestureDetector`, `PanResponder`, or manual pan/responder physics were found in the audited product UI. Reanimated remains in product motion, the custom AssistantSheet, task completion feedback, navigation indicator, and custom switch.
@@ -378,7 +347,6 @@ This roadmap is conservative and audit-only. Each item is independently testable
 
 - `Picker`: introduce a semantic adapter around SDK 57 Universal Picker for the recurrence/priority fields, after approving the iOS menu-versus-segmented contract.
 - `ToggleSwitch`: evaluate the Universal Switch for the four Settings rows, preserving the AETHER settings row and haptic policy.
-- Settings theme preference segmented selector: evaluate SDK 57 community SegmentedControl after visual and accessibility acceptance.
 
 ### Wave 2 — moderate coupling
 
@@ -394,6 +362,7 @@ This roadmap is conservative and audit-only. Each item is independently testable
 
 - `AssistantSheet` Class C and its voice/conversation/confirmation internals.
 - `AppBottomNavigation`, `AetherComposer`, AETHER toolbars, cards, task cells, recovery/attention surfaces, task completion affordance, domain choice pills, banners, and voice meter.
+- Settings theme preference selector (branded OLED mode chooser).
 - `TextField` and normal-route `KeyboardAvoidingView` unless runtime evidence identifies a concrete duplication or defect.
 - `GlassSurface`, `AdaptiveBlur`, and `AdaptiveGlass` architecture; do not bypass their safety policy or introduce direct product `BlurView` usage.
 
