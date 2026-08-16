@@ -2,38 +2,41 @@
 
 All notable changes to AETHER are documented here.
 
-## Unreleased - 2026.08.15 (3) [Native Universal Switch Architecture]
+## Unreleased - 2026.08.15 (3) [Native Universal Switch Architecture and Visual Integration]
 
-### Native-backed Universal Switch in Expo SDK 57
+### Native-backed Switch with explicit semantic color integration in Expo SDK 57
 
-- Migrated the reusable AETHER `ToggleSwitch` primitive from a custom Reanimated/hand-drawn
-  track/thumb implementation to the Expo SDK 57 native-backed Universal Switch (`@expo/ui`
-  `Switch` and `Host`). [`ToggleSwitch.tsx`](src/components/ui/ToggleSwitch.tsx)
-- **Android**: Backed by Jetpack Compose `Switch` with platform-native Material 3 geometry,
-  state transitions, focus, touch targets, and accessibility semantics.
-- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `Toggle` with native Apple switch
-  geometry, smooth state animations, Dynamic Type, and VoiceOver integration.
-- Removed obsolete custom switch machinery from `ToggleSwitch.tsx`: deleted Reanimated
-  imports (`useSharedValue`, `useAnimatedStyle`, `withSpring`, `interpolateColor`,
-  `useReducedMotion`, `ReduceMotion`), `useEffect` progress synchronization, custom track/thumb
-  views, custom 51x31 / 52x32 track geometry, custom 25x25 thumb geometry, and the outer
-  `AnimatedPressable` used to simulate touch and ripple.
-- Preserved AETHER setting semantics, controlled state model, theme accent tint propagation
-  (`seedColor={colors.accent}` across base and Material 3 palettes), and selection haptics
-  gated by `useSettingsStore.getState().hapticsEnabled` without double-firing.
+- Migrated the reusable AETHER `ToggleSwitch` primitive to a native-first platform adapter
+  delegating directly to platform-native toolkits ([`ToggleSwitch.tsx`](src/components/ui/ToggleSwitch.tsx)):
+  - **Android**: Backed by `@expo/ui/jetpack-compose` `Switch` configured with explicit
+    `SwitchColors` mapped directly to AETHER semantic tokens (`colors.accent`, `colors.onAccent`,
+    `Colors.surfaceRaisedDark`/`Light`, `Colors.secondaryTextDark`/`Light`, `Colors.borderDark`/`Light`),
+    preventing derived `SchemeTonalSpot` cyan/teal palette drift from `Host` `seedColor`.
+  - **Apple (iOS & iPadOS)**: Backed by `@expo/ui/swift-ui` `Toggle` with native `tint(colors.accent)`,
+    `labelsHidden()`, and `disabled` modifier integration, preserving native SwiftUI switch
+    geometry, animations, Dynamic Type, and VoiceOver accessibility.
+  - **Fallback / Web**: Backed by `@expo/ui` Universal `Switch`.
+- Removed obsolete custom switch machinery: deleted Reanimated imports (`useSharedValue`,
+  `useAnimatedStyle`, `withSpring`, `interpolateColor`, `useReducedMotion`, `ReduceMotion`),
+  `useEffect` progress synchronization, custom track/thumb views, custom track/thumb geometry,
+  and the outer `AnimatedPressable`.
+- Preserved AETHER setting semantics, controlled state model, single-boundary haptics gated
+  by `useSettingsStore.getState().hapticsEnabled`, and dynamic Material 3 primary palette
+  support when `materialColorsEnabled` is active.
 - Added comprehensive unit test suite in [`ToggleSwitch.test.tsx`](src/components/ui/ToggleSwitch.test.tsx)
-  covering controlled value binding, `onValueChange` forwarding, disabled switch protection,
-  haptic feedback policy, `testID` fallback, and `Host` theme/accent propagation.
+  covering Android Compose `SwitchColors` mapping, iOS SwiftUI `tint`/`labelsHidden` modifiers,
+  fallback platform handling, controlled value binding, `onValueChange` forwarding, disabled switch
+  protection, and haptic feedback policy.
 
 ### Validation status and gates
 
 - Static checks: `bun run typecheck` (0 errors), `bun run lint` (0 errors), `bun test src/`
-  (343 passed, 2 skipped, 0 failed).
+  (345 passed, 2 skipped, 0 failed across 70 files).
 - Bundle exports: `bunx expo export --platform android` and `bunx expo export --platform ios`
   both succeeded cleanly with Hermes bytecode generation.
-- Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded.
+- Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded (413 tasks).
 - Device & runtime gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
-  Static contracts, setting bindings, and theme propagation are verified, but runtime behavior
+  Static contracts, setting bindings, and theme color mappings are verified, but runtime behavior
   (physical toggle interaction, TalkBack/VoiceOver role and state, rapid multi-toggles, and iPad layout)
   remains OPEN until tested on physical Android and Apple runtimes. Full iOS Xcode build and
   physical iPhone/iPad gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
