@@ -9,16 +9,16 @@ The audit identified 32 meaningful audit units. Some rows intentionally group a 
 | Classification | Count | Result |
 | --- | ---: | --- |
 | N0 | 5 | Native-backed / correct |
-| N1 | 9 | Semantic wrapper over native |
+| N1 | 10 | Semantic wrapper over native |
 | N2 | 4 | Generic React Native but acceptable |
 | N3 | 0 | Native migration candidate |
-| N4 | 1 | Strong fake-native / architecture debt |
+| N4 | 0 | Strong fake-native / architecture debt |
 | N5 | 12 | Genuinely custom product surface |
 | N6 | 1 | Insufficient evidence; runtime investigation required |
 
-There are no P0 hazards established by static inspection. The highest-value initial migrations (`Sheet`, `Picker`, and `ToggleSwitch`) have been completed as native-first semantic adapters. The remaining high-risk candidate is the settings model catalog modal because it combines a custom sheet presentation with async loading, search keyboard behavior, settings state, navigation coupling, and iPadOS adaptation.
+There are no P0 hazards established by static inspection. The highest-value initial migrations (`Sheet`, `Picker`, `ToggleSwitch`, and `ModelCatalogSheet`) have been completed as native-first semantic adapters. All N4 findings are now resolved (count: 0). The remaining open investigation is the N6 runtime seam for keyboard/IME and back handling across floating chrome and sheet surfaces.
 
-The existing `Sheet` migration is accepted as the reference architecture. `TaskEditorSheet` and `RecoverySheet` are treated as native transient-sheet consumers. `AssistantSheet` remains Class C and N5 as instructed.
+The existing `Sheet` migration is accepted as the reference architecture. `TaskEditorSheet`, `RecoverySheet`, and `ModelCatalogSheet` are treated as native transient-sheet consumers. `AssistantSheet` remains Class C and N5 as instructed.
 
 ## Authority and audit method
 
@@ -41,7 +41,7 @@ The audit did not treat the existence of an API as sufficient evidence for N3 or
 ## Primary audit table
 
 | Component / Surface | File | Current mechanism | Classification | Desired owner | Native candidate | Benefit | Risk | Priority |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `Alert.alert` confirmations and errors | `src/app/_layout.tsx:195-214`; `src/app/settings.tsx:225-374` | React Native `Alert` for destructive confirmation, validation, and error dialogs | N0 | Platform alert/dialog through React Native | Existing RN platform alert; no migration | System presentation, dismissal, accessibility, and destructive action semantics already belong to the platform | LOW | KEEP |
 | Expo Router tab routing | `src/app/_layout.tsx:317-337` | One Expo Router `Tabs` navigator; custom sibling chrome derives selection from pathname | N0 | Expo Router / native navigation stack | Existing Expo Router `Tabs` | Router owns route state and transitions; no duplicate navigator | MEDIUM | KEEP |
 | Status bar, safe area, and inset plumbing | `src/app/_layout.tsx:307-399`; route screens; `src/theme/useBottomChromeGeometry.ts` | Expo StatusBar and `react-native-safe-area-context` | N0 | OS system bars and safe-area provider | Existing Expo StatusBar / safe-area APIs | Platform supplies cutout and inset values instead of JS geometry emulation | LOW | KEEP |
@@ -56,12 +56,12 @@ The audit did not treat the existence of an API as sufficient evidence for N3 or
 | Haptic semantic adapter | `src/lib/haptics.ts:1-51` | Maps AETHER impact/selection/notification intents to Expo iOS and Android haptic APIs | N1 | Expo native adapter / OS haptics | Existing `expo-haptics` | Platform-specific haptic semantics without custom vibration code | MEDIUM | KEEP |
 | `ToggleSwitch` | `src/components/ui/ToggleSwitch.tsx` | Native platform adapter: `@expo/ui/jetpack-compose` `Switch` on Android (with semantic tokens), `@expo/ui/swift-ui` `Toggle` on Apple | N1 | Mixed through semantic adapter: AETHER setting semantics; Android Compose / Apple SwiftUI control | Existing native Switch adapter | Native switch physics, animations, VoiceOver/TalkBack role/state, and dynamic Material 3 palettes without Reanimated | MEDIUM | COMPLETED |
 | Reusable `Picker` | `src/components/ui/Picker.tsx` | Native platform adapter: `@expo/ui` Universal Picker (`ExposedDropdownMenuBox` on Android, SwiftUI `Picker(.menu)` on Apple) with typed domain value mapping | N1 | Mixed through semantic adapter: AETHER field/validation semantics; native picker/menu | Existing Universal Picker adapter | Native dropdown/menu presentation, outside/back dismissal, and accessibility without custom JS menu state | MEDIUM | COMPLETED |
+| Settings model catalog sheet | `src/components/ui/ModelCatalogSheet.tsx`; `src/app/settings.tsx` | Native `Sheet` adapter (`@expo/ui/community/bottom-sheet`) with AETHER search/capability/selection content | N1 | Mixed through semantic adapter: AETHER semantics; Compose/SwiftUI sheet presentation | Existing `Sheet` adapter | Native sheet physics, scrim, dismissal, detents, and system back are not duplicated in JS | MEDIUM | COMPLETED |
 | Text fields and assistant text input | `src/components/ui/TextField.tsx`; `src/components/assistant/AssistantComposer.tsx` | React Native `TextInput` with AETHER label, border, leading/trailing, multiline, and secure-entry composition | N2 | React Native native-backed input plus AETHER styling | `@expo/ui` Universal TextInput exists, but its API/layout tradeoffs do not establish a material contract win here | Preserves custom field composition, multiline behavior, focus callbacks, and keyboard integration | MEDIUM | KEEP |
 | Capture-route keyboard adaptation | `src/app/capture.tsx:157-219` | `KeyboardAvoidingView` around a normal route with one editable title field | N2 | React Native + OS IME insets | No better SDK 57 primitive established for this regular screen | One bounded keyboard adaptation with no custom sheet physics or gesture lifecycle | MEDIUM | KEEP pending device QA |
 | `AnimatedPressable` | `src/components/ui/AnimatedPressable.tsx:35-109` | RN Pressable with AETHER press-scale motion, reduced-motion policy, and Expo haptics | N2 | React Native for interaction; AETHER for branded feedback | No native system control matches this cross-product press-feedback contract | Shared product feedback primitive; not a fake button or menu | MEDIUM | KEEP |
 | `NumberStepper` | `src/components/ui/TaskEditorSheet.tsx:111-149` | Two AETHER `IconButton` actions with bounded numeric state | N2 | React Native / AETHER domain control | No suitable Universal Stepper is exposed in the inspected SDK 57 `@expo/ui` surface | Keeps recurrence interval, day, and occurrence semantics in a small bounded control | MEDIUM | KEEP |
 | Settings theme preference selector | `src/app/settings.tsx:1029-1086` | Three `AnimatedPressable` segments in a custom pill container for System, OLED Dark, and Light | N5 | AETHER | No native candidate preserves the branded OLED pill contract; SDK 57 community SegmentedControl would compromise monochrome contrast and pill geometry | Retains branded OLED mode selector hierarchy, high-contrast pill geometry, and OLED Dark identity | LOW | KEEP custom |
-| Settings model catalog modal | `src/app/settings.tsx:1508-1750` | React Native `Modal`, custom scrim, fixed 75% bottom sheet, close button, search field, async list, selection, and `onRequestClose` | N4 | Expo Router native presentation plus AETHER route/content state | Expo Router `presentation: "formSheet"` with native sheet options; existing `Sheet` is an alternate transient adapter | Removes custom presentation host, scrim, fixed sheet geometry, and modal lifecycle while retaining the searchable catalog content | HIGH | P1 |
 | `AssistantSheet` | `src/components/assistant/AssistantSheet.tsx:160-713` | AETHER-owned compact/medium/full assistant surface with chat history, receipts, voice meter, confirmation workflow, custom scrim, and Reanimated height/keyboard motion | N5 | Mixed through semantic adapter: AETHER owns the Class C surface and workflow; platform owns its child text input/audio/system APIs | No native candidate safely satisfies the multi-surface assistant contract; do not reopen the Class C decision | Custom surface geometry and state are the product; replacing it with a generic sheet would sacrifice conversation, voice, receipts, and embedded confirmation behavior | VERY HIGH | KEEP custom |
 | App bottom navigation and `NavigationButton` | `src/components/assistant/AppBottomNavigation.tsx:33-85` | Custom floating glass capsule, pathname-derived selection, keyboard/assistant visibility policy, and product-specific active indicator; Router remains the navigator | N5 | Mixed: Expo Router owns routing; AETHER owns visual chrome and visibility policy | `expo-router/ui` is a headless custom-tab API, not a native OS tab bar; native tabs would not preserve the floating AETHER dock contract | Retains the center-free floating layout, product material, and assistant-aware visibility without a second navigator | HIGH | KEEP custom |
 | `AetherComposer` | `src/components/ui/AetherComposer.tsx:27-121` | Branded glass composer combining text input, create action, voice action, and product entry affordance | N5 | AETHER | No native composer primitive preserves the combined reminder/voice contract | Product-owned composition and action policy; its input remains a normal RN native-backed text field | HIGH | KEEP custom |
@@ -77,53 +77,17 @@ The audit did not treat the existence of an API as sufficient evidence for N3 or
 
 ## Outstanding N4 Findings
 
-The following is the sole remaining candidate that passed the strict native-candidate test.
+All prior N4 findings have been resolved (N4 count: 0). The Settings model catalog has been migrated to AETHER's native-first `Sheet` architecture (`ModelCatalogSheet`).
 
-### Settings model catalog modal
+### Settings Model Catalog Decision
 
-Current architecture:
-
-`Settings` owns `modelPickerVisible`, renders a React Native `Modal` with `transparent` and `animationType="slide"`, adds a custom scrim and fixed-height bottom container, and owns close behavior. The modal also contains async loading/error states, a searchable `TextInput`, model capability filtering, refresh, selection, and a custom list.
-
-Why this is a candidate:
-
-The model catalog content is product-owned, but the presentation host is a custom modal sheet. The implementation manually owns the sheet geometry, scrim, modal close path, and presentation lifecycle. This is a navigable searchable selection surface, not merely a small inline dropdown.
-
-Existing product contract:
-
-Open the catalog from Settings, load and refresh available models, search by model/provider/id, show capability and availability status, select only an agent-capable model, close after selection, and support system back/cancel without losing the settings screen.
-
-Expo SDK 57 native candidate:
-
-Expo Router SDK 57 supports native stack presentations including `formSheet`, with `sheetAllowedDetents` and related native sheet options. The exact documentation states that `formSheet` maps to `UIModalPresentationFormSheet` on iOS and falls back to a native modal presentation on Android. The content can remain a route-owned React Native screen. The existing AETHER `Sheet` adapter is an alternate candidate only if the product decides this is a transient sheet rather than a navigable settings surface.
-
-Android implementation:
-
-Expo Router’s native stack owns modal presentation, scrim, system back, predictive-back integration, and IME/window behavior around the search field. AETHER owns the model list and search content inside the presented route.
-
-Apple implementation:
-
-The native stack owns `UIModalPresentationFormSheet` behavior, dismissal, focus, and adaptive sheet geometry. iPadOS should use the same Apple route with form-sheet/popover-adaptive layout as appropriate for the width class, not an iPhone-only custom overlay.
-
-What AETHER should still own:
-
-Model fetch/revalidation, search filtering, capability rules, loading/error copy, selection state, settings-store update, and route-level result handling.
-
-What the platform should own:
-
-Presentation host, scrim, modal lifecycle, system back/predictive back, focus/insets around the search field, dismissal gesture where supported, and iPadOS sheet geometry.
-
-Expected complexity removed:
-
-The React Native `Modal` presentation host, custom scrim, fixed 75% sheet geometry, custom `onRequestClose` lifecycle, and some modal-specific keyboard/back coordination. The async model list and search remain JS-owned by design.
-
-Migration risk:
-
-HIGH. The surface has async loading, a keyboard-driven search field, settings-store coupling, model eligibility rules, native back behavior, and iPadOS presentation choices. It also requires adding or exposing a route without creating a second navigator.
-
-Runtime validation required:
-
-Physical Android: open/close, predictive back, back during search, keyboard resize, refresh while open, selection, and process/lifecycle transitions. Physical iPhone: sheet dismissal, keyboard focus, VoiceOver, and selection persistence. Physical iPad: form-sheet/popover behavior in full screen, Split View, multitasking, and pointer/keyboard use.
+- **Prior classification:** N4 — Strong fake-native / architecture debt candidate
+- **Final classification:** N1 — Semantic wrapper over native presentation adapter (`Sheet`)
+- **Product contract:** Open the catalog from Settings, search models/providers, view context lengths and capability status, force-refresh the catalog, select an agent-ready model (`canRunAsAgent`), persist to `useSettingsStore`, and dismiss back directly to the Settings screen.
+- **Architectural comparison:**
+  1. *Candidate A (AETHER Native-Backed `Sheet`) [CHOSEN]:* Backed by `@expo/ui/community/bottom-sheet` (Jetpack Compose Material 3 `ModalBottomSheet` on Android, SwiftUI `sheet` on Apple platforms). Accurately matches the transient in-situ picker semantics of `TaskEditorSheet` and `RecoverySheet` without creating an artificial route identity or refactoring the single `Tabs` root layout into a nested stack.
+  2. *Candidate B (Expo Router `formSheet`) [REJECTED]:* Rejected because the catalog does not have or need route identity, deep-linking, independent navigation history, or nested route stack lifecycle.
+- **Implementation:** Created `src/components/ui/ModelCatalogSheet.tsx` which embeds model search, capability filtering, empty/error/loading states, and selection logic inside the native `Sheet` primitive with `snapPoints={['90%']}`. Removed custom React Native `Modal`, custom scrim, fixed 75% height container, and manual close button from `src/app/settings.tsx`.
 
 ## Theme Preference Selector Decision
 
@@ -179,6 +143,7 @@ The following reusable or system-facing pieces already follow the preferred dire
 
 - `Sheet` delegates modal bottom-sheet behavior to `@expo/ui/community/bottom-sheet`; AETHER owns semantic content and callbacks.
 - `TaskEditorSheet` and `RecoverySheet` delegate sheet presentation to `Sheet`.
+- `ModelCatalogSheet` delegates model catalog selection sheet presentation to `Sheet`.
 - `AddTaskModal` is a thin prop adapter delegating to `TaskEditorSheet` / `Sheet`.
 - `NativeDateTimeControl` delegates date/time selection to `@expo/ui/community/datetime-picker`.
 - `ToggleSwitch` delegates switch interaction directly to `@expo/ui/jetpack-compose` `Switch` on Android (with semantic tokens) and `@expo/ui/swift-ui` `Toggle` on Apple.
@@ -194,7 +159,7 @@ The following reusable or system-facing pieces already follow the preferred dire
 
 ## Coverage notes
 
-- `Modal`: one active React Native modal was found, the Settings model catalog. It is classified N4 because the surrounding surface manually owns sheet presentation; this is not a claim that the React Native `Modal` host itself is pure JS.
+- `Modal`: zero active React Native modals remain in application code (Settings model catalog migrated to native `Sheet` adapter).
 - `Switch`: `ToggleSwitch` is migrated to native-backed `@expo/ui/jetpack-compose` `Switch` on Android and `@expo/ui/swift-ui` `Toggle` on Apple (N1).
 - `Picker`: `Picker` is migrated to native-backed `@expo/ui` Universal Picker (N1).
 - Segmented controls: the Settings theme selector is classified N5 as a branded AETHER mode chooser whose pill geometry and monochrome contrast are intentional product identity. Task-editor choice pills also remain N5 because their product contract includes wrapping presets and multi-select weekdays.
@@ -209,7 +174,7 @@ The following reusable or system-facing pieces already follow the preferred dire
 
 ## Migration roadmap
 
-This roadmap is conservative and audit-only. Each item is independently testable and should be a separate commit. No item was implemented in this audit.
+This roadmap is conservative and audit-only. Each item is independently testable and should be a separate commit.
 
 ### Wave 0 — hazards and evidence only
 
@@ -226,10 +191,9 @@ This roadmap is conservative and audit-only. Each item is independently testable
 
 - Re-run the N6 keyboard/back checks after control changes because Settings and task-editor focus paths are shared with global chrome and AssistantHost.
 
-### Wave 3 — high-risk/platform-sensitive (ACTIVE)
+### Wave 3 — high-risk/platform-sensitive (COMPLETED)
 
-- Settings model catalog modal: evaluate a dedicated Expo Router `formSheet` route, preserving async catalog state, search, selection, and settings-store updates.
-- Validate iPadOS form-sheet/popover adaptation, Android predictive back, IME resize, route restoration, and native build behavior before any implementation decision.
+- Settings model catalog modal: COMPLETED — evaluated and migrated to AETHER's native-backed `Sheet` adapter (`ModelCatalogSheet`), removing custom React Native `Modal`, custom scrim, and fixed 75% height styling.
 
 ### Keep custom
 
@@ -241,11 +205,12 @@ This roadmap is conservative and audit-only. Each item is independently testable
 
 ## Validation
 
-Only the audit document was created. Application/runtime code, dependencies, configuration, migrations, and native modules were not modified.
+Validation performed:
 
-Validation required for this documentation-only task:
+- `bun test src/components/ui/ModelCatalogSheet.test.tsx` (all 8 tests pass)
+- `bun test src/` (all 353 unit tests pass)
+- `bun run typecheck` (0 errors)
+- `bun run lint` (0 errors)
+- `git diff --check` (0 whitespace issues)
 
-- `git diff --check`
-- Repository Markdown checks, if configured
-
-Physical Android/iPhone/iPad runtime validation was not performed as part of this audit. The report distinguishes statically established architecture from the N6 runtime seams and the existing device/build gates recorded in `docs/KNOWN_TRADEOFFS.md`.
+Physical Android/iPhone/iPad runtime validation was not performed in this session as no physical device was attached. The report distinguishes statically established architecture from the N6 runtime seams and the existing device/build gates recorded in `docs/KNOWN_TRADEOFFS.md`.

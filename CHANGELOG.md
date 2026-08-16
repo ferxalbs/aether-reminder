@@ -2,6 +2,35 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (2) [Native-First Settings Model Catalog Sheet Migration]
+
+### Migration of Settings model catalog to native-first Sheet architecture
+
+- Evaluated presentation options for the OpenRouter model catalog selection surface in Settings:
+  - **Candidate A (`Sheet`) [CHOSEN]**: Transient sheet presentation delegating to `@expo/ui/community/bottom-sheet` (Jetpack Compose Material 3 `ModalBottomSheet` on Android and SwiftUI `sheet` on iOS/iPadOS). Correctly preserves in-situ selection semantics without unnecessary navigation stack complexity.
+  - **Candidate B (`formSheet`) [REJECTED]**: Rejected as over-engineered because the catalog has no independent route identity, deep linking, history stack, or child routing needs.
+- Extracted and created [`ModelCatalogSheet.tsx`](src/components/ui/ModelCatalogSheet.tsx):
+  - Encapsulates OpenRouter catalog search, loading/error states, empty state, force refresh via `Sheet` `headerAction`, capability checking (`canRunAsAgent`), and model selection.
+  - Configures native detents using `snapPoints={['90%']}`.
+  - Respects AETHER semantic design tokens and accessibility guidelines.
+- Refactored [`src/app/settings.tsx`](src/app/settings.tsx):
+  - Completely removed React Native `Modal`, custom scrim overlay, fixed 75% height container, manual close button, and unused custom styling.
+  - Replaced inline modal hierarchy with `<ModelCatalogSheet />`.
+  - Cleaned up unused local state and helper utilities.
+- Added comprehensive unit test coverage in [`ModelCatalogSheet.test.tsx`](src/components/ui/ModelCatalogSheet.test.tsx) testing native sheet rendering, search filtering, error/loading states, agent capability enforcement, disabled non-agent model selection, and refresh callbacks.
+- Reconciled [`docs/NATIVE_FIRST_UI_AUDIT.md`](docs/NATIVE_FIRST_UI_AUDIT.md):
+  - Reclassified Settings model catalog from N4 to N1 (semantic wrapper over native).
+  - Reduced total N4 audit findings from 1 to 0 (all N4 findings resolved).
+  - Updated executive counts (N1: 10, N4: 0) and marked Wave 3 roadmap item as COMPLETED.
+
+### Validation status and gates
+
+- Unit tests: `bun test src/components/ui/ModelCatalogSheet.test.tsx` (8/8 pass), `bun test src/` (all 353 unit tests pass).
+- TypeScript: `bun run typecheck` (0 errors).
+- Linter: `bun run lint` (0 errors).
+- Platform export bundles: `bunx expo export --platform android` (clean), `bunx expo export --platform ios` (clean).
+- Device & runtime gates: No physical Android or iOS device attached. Full iOS Xcode build and physical device validation gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
+
 ## Unreleased - 2026.08.16 (1) [Dead Context Menu Architecture Cleanup]
 
 ### Deletion of orphaned context menu architecture and audit reconciliation

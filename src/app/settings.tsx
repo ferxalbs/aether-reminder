@@ -2,11 +2,11 @@ import { useAssistantSurface } from "@/components/assistant/AssistantHost";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ModelCatalogSheet } from "@/components/ui/ModelCatalogSheet";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Typography } from "@/components/ui/Typography";
 import { notificationAsync } from "@/lib/haptics";
 import { reportNonFatalError } from "@/lib/nonFatalError";
-import { canRunAsAgent } from "@/services/ai/inference";
 import {
   DEFAULT_OPENROUTER_MODEL_ID,
   type AIModel,
@@ -28,7 +28,6 @@ import { useSemanticColors } from "@/theme/useSemanticColors";
 import type { UserSettings } from "@/types";
 import * as Haptics from "expo-haptics";
 import {
-  Check,
   ChevronDown,
   Cpu,
   Eye,
@@ -41,19 +40,14 @@ import {
   Palette,
   RefreshCw,
   RotateCcw,
-  Search,
   Shield,
   Sparkles,
   Trash2,
   Vibrate,
-  X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  FlatList,
-  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -76,15 +70,6 @@ const settingsLayout =
   Platform.OS === "ios"
     ? Layout.springify().damping(20).stiffness(200)
     : undefined;
-
-function formatContextLength(contextLength?: number): string {
-  if (!contextLength) return "Context unknown";
-  if (contextLength >= 1000000)
-    return `${(contextLength / 1000000).toFixed(1)}M context`;
-  if (contextLength >= 1000)
-    return `${Math.round(contextLength / 1000)}k context`;
-  return `${contextLength} tokens`;
-}
 
 type ProviderName = "OpenRouter" | "OpenAI";
 
@@ -146,7 +131,6 @@ export default function SettingsScreen() {
   const [models, setModels] = useState<AIModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
-  const [modelSearch, setModelSearch] = useState("");
 
   // Model Picker Modal Sheet State
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
@@ -199,17 +183,6 @@ export default function SettingsScreen() {
       cancelled = true;
     };
   }, [openRouterApiKey]);
-
-  const filteredModels = useMemo(() => {
-    const query = modelSearch.trim().toLowerCase();
-    return query
-      ? models.filter((model) =>
-          `${model.name} ${model.provider} ${model.id}`
-            .toLowerCase()
-            .includes(query),
-        )
-      : models;
-  }, [modelSearch, models]);
 
   const activeModelDetails = useMemo(() => {
     const found = models.find((m) => m.id === selectedModel);
@@ -1505,246 +1478,17 @@ export default function SettingsScreen() {
         </Animated.View>
       </ScrollView>
 
-      {/* Model Selector Modal Sheet */}
-      <Modal
+      {/* Model Selector Native-First Sheet */}
+      <ModelCatalogSheet
         visible={modelPickerVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModelPickerVisible(false)}
-      >
-        <View
-          style={[
-            styles.sheetOverlay,
-            { backgroundColor: isDark ? Colors.scrimDark : Colors.scrimLight },
-          ]}
-        >
-          <View
-            style={[
-              styles.sheetContainer,
-              {
-                backgroundColor: isDark
-                  ? Colors.surfaceDark
-                  : Colors.surfaceLight,
-                borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-              },
-            ]}
-          >
-            <View style={styles.sheetHeader}>
-              <View style={{ flex: 1 }}>
-                <Typography variant="title">
-                  OpenRouter Model Catalog
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                >
-                  Select a tool-capable reasoning model
-                </Typography>
-              </View>
-
-              <AnimatedPressable
-                onPress={() => {
-                  loadModels(true);
-                }}
-                accessibilityLabel="Force refresh model catalog"
-                style={styles.iconPressable}
-              >
-                <RefreshCw
-                  size={18}
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                />
-              </AnimatedPressable>
-
-              <AnimatedPressable
-                onPress={() => setModelPickerVisible(false)}
-                style={styles.iconPressable}
-              >
-                <X
-                  size={20}
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
-                />
-              </AnimatedPressable>
-            </View>
-
-            <View
-              style={[
-                styles.searchBox,
-                {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
-                  borderColor: isDark ? Colors.borderDark : Colors.borderLight,
-                },
-              ]}
-            >
-              <Search
-                size={16}
-                color={
-                  isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                }
-              />
-              <TextInput
-                value={modelSearch}
-                onChangeText={setModelSearch}
-                placeholder="Search models or providers…"
-                placeholderTextColor={
-                  isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                }
-                style={[
-                  styles.searchInput,
-                  { color: isDark ? Colors.textDark : Colors.textLight },
-                ]}
-              />
-            </View>
-
-            {modelsLoading ? (
-              <ActivityIndicator
-                style={styles.centerLoader}
-                color={isDark ? Colors.white : Colors.black}
-              />
-            ) : modelsError ? (
-              <Typography
-                variant="caption"
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
-                style={styles.modelsErrorText}
-              >
-                {modelsError}
-              </Typography>
-            ) : filteredModels.length === 0 ? (
-              <Typography
-                variant="caption"
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
-                style={styles.modelsErrorText}
-              >
-                No models match &quot;{modelSearch}&quot;.
-              </Typography>
-            ) : (
-              <FlatList
-                style={styles.sheetScrollView}
-                data={filteredModels}
-                keyExtractor={(model) => model.id}
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={10}
-                windowSize={7}
-                renderItem={({ item: model }) => {
-                  const isSelected = selectedModel === model.id;
-                  const isSelectable =
-                    model.availability === "available" &&
-                    canRunAsAgent(model.capabilities);
-                  const statusLabel =
-                    model.availability !== "available"
-                      ? "Unavailable"
-                      : isSelectable
-                        ? "Agent-Ready"
-                        : "No Tool Support";
-
-                  return (
-                    <AnimatedPressable
-                      onPress={() => {
-                        if (isSelectable) {
-                          setModel(model.id);
-                          setModelPickerVisible(false);
-                        }
-                      }}
-                      disabled={!isSelectable}
-                      scaleTo={0.98}
-                      style={[
-                        styles.modelCardItem,
-                        {
-                          backgroundColor: isSelected
-                            ? isDark
-                              ? Colors.surfaceRaisedDark
-                              : Colors.surfaceRaisedLight
-                            : "transparent",
-                          borderColor: isSelected
-                            ? isDark
-                              ? Colors.white
-                              : Colors.black
-                            : isDark
-                              ? Colors.borderDark
-                              : Colors.borderLight,
-                          opacity: isSelectable || isSelected ? 1 : 0.45,
-                        },
-                      ]}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Typography variant="bodyBold">{model.name}</Typography>
-                        <View style={styles.modelMetadataRow}>
-                          <Typography
-                            variant="tiny"
-                            color={
-                              isDark
-                                ? Colors.secondaryTextDark
-                                : Colors.secondaryTextLight
-                            }
-                          >
-                            {model.provider}
-                          </Typography>
-                          <Typography
-                            variant="tiny"
-                            color={
-                              isDark
-                                ? Colors.tertiaryTextDark
-                                : Colors.tertiaryTextLight
-                            }
-                          >
-                            • {formatContextLength(model.contextLength)}
-                          </Typography>
-                          <View
-                            style={[
-                              styles.capabilityPill,
-                              {
-                                backgroundColor: isDark
-                                  ? Colors.surfaceRaisedDark
-                                  : Colors.surfaceRaisedLight,
-                                borderColor: isDark
-                                  ? Colors.borderDark
-                                  : Colors.borderLight,
-                                borderWidth: 1,
-                              },
-                            ]}
-                          >
-                            <Typography
-                              variant="tiny"
-                              style={{
-                                color: isDark ? Colors.white : Colors.black,
-                              }}
-                            >
-                              {statusLabel}
-                            </Typography>
-                          </View>
-                        </View>
-                      </View>
-                      {isSelected ? (
-                        <Check
-                          size={18}
-                          color={isDark ? Colors.white : Colors.black}
-                        />
-                      ) : null}
-                    </AnimatedPressable>
-                  );
-                }}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setModelPickerVisible(false)}
+        models={models}
+        loading={modelsLoading}
+        error={modelsError}
+        selectedModelId={selectedModel}
+        onSelectModel={(modelId) => setModel(modelId)}
+        onRefresh={() => loadModels(true)}
+      />
     </SafeAreaView>
   );
 }
@@ -1919,66 +1663,5 @@ const styles = StyleSheet.create({
   versionFooter: {
     marginTop: Spacing.md,
     marginBottom: Spacing.xl,
-  },
-  sheetOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  sheetContainer: {
-    height: "75%",
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    padding: Spacing.lg,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.sm,
-    marginBottom: Spacing.md,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  centerLoader: {
-    marginVertical: Spacing.xl,
-  },
-  modelsErrorText: {
-    marginVertical: Spacing.md,
-  },
-  sheetScrollView: {
-    flex: 1,
-  },
-  modelCardItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    marginBottom: Spacing.xs,
-  },
-  modelMetadataRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 4,
-  },
-  capabilityPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
   },
 });
