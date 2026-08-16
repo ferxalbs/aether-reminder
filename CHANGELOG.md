@@ -2,6 +2,26 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (1) [Dead Context Menu Architecture Cleanup]
+
+### Deletion of orphaned context menu architecture and audit reconciliation
+
+- Audited and deleted unconsumed fake-native context menu architecture:
+  - Deleted `src/components/ui/AetherContextMenu.tsx` (dead popup context menu).
+  - Deleted `src/components/ui/AetherQuickActionsMenu.tsx` (dead quick actions menu).
+  - Deleted `src/components/ui/AetherContextSurface.tsx` (orphaned internal popup surface with 0 consumers).
+- Reconciled [`docs/NATIVE_FIRST_UI_AUDIT.md`](docs/NATIVE_FIRST_UI_AUDIT.md) to reflect current repository architecture:
+  - Updated executive audit unit count to 32 (N0: 5, N1: 9, N2: 4, N3: 0, N4: 1, N5: 12, N6: 1).
+  - Reclassified completed native primitives `Picker` and `ToggleSwitch` from N4/N3 to N1 (semantic platform adapters).
+  - Removed deleted menu files and orphaned `AetherContextSurface` from audit tables.
+  - Confirmed `Settings model catalog modal` as the sole remaining N4 candidate.
+  - Updated Wave 1 roadmap to record `Picker` and `ToggleSwitch` migrations as completed.
+
+### Validation status and gates
+
+- Static checks: `bun run typecheck` (0 errors), `bun run lint` (0 errors), `bun test src/` (all tests passed).
+- Device & runtime gates: Documentation and dead-code deletion only; no physical Android or iOS device attached. Full iOS Xcode build and physical iPhone/iPad gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
+
 ## Unreleased - 2026.08.15 (3) [Native Universal Switch Architecture and Visual Integration]
 
 ### Native-backed Switch with explicit semantic color integration in Expo SDK 57
