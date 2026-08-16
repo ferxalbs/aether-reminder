@@ -1,6 +1,8 @@
 import {
   AetherCloudError,
   getAetherCloudClient,
+  getCommercialPolicy,
+  requireLiveTranscription,
   type AetherCloudClient,
 } from "@/services/cloud";
 import { VoiceError, type VoiceErrorCode } from "./errors";
@@ -22,6 +24,8 @@ export class AetherCloudClientSecretProvider implements RealtimeClientSecretProv
     );
     let authorization;
     try {
+      const { policy } = await getCommercialPolicy(signal, this.client);
+      requireLiveTranscription(policy);
       authorization = await this.client.createVoiceAuthorization(
         language ? { language: language.toLowerCase() } : {},
         { signal },

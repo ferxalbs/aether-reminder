@@ -1,10 +1,38 @@
-import { describe, expect, test } from "bun:test";
-import { AetherCloudClient } from "@/services/cloud";
+import { beforeEach, describe, expect, test } from "bun:test";
+import {
+  AetherCloudClient,
+  resetCommercialPolicyCacheForTests,
+} from "@/services/cloud";
 import { AetherCloudClientSecretProvider } from "./aetherCloudClientSecret";
 import { VoiceError } from "./errors";
 import { defaultRealtimeTranscriptionConfig } from "./types";
 
+function subscriptionResponse() {
+  return new Response(
+    JSON.stringify({
+      userId: "e2e.mobile.physical.aether-reminder",
+      policy: {
+        version: "v1",
+        tier: "pro",
+        source: "promo",
+        hostedInference: true,
+        liveTranscription: true,
+        cloudAutomations: true,
+        limits: {
+          voiceAuthorizations: 30,
+          inferenceBudget: 200000,
+          automationRuns: 100,
+        },
+      },
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 describe("AetherCloudClientSecretProvider", () => {
+  beforeEach(() => {
+    resetCommercialPolicyCacheForTests();
+  });
   test("requests authorization immediately and keeps the secret in memory", async () => {
     let calls = 0;
     const client = new AetherCloudClient(
@@ -13,7 +41,10 @@ describe("AetherCloudClientSecretProvider", () => {
         userId: "e2e.mobile.physical.aether-reminder",
         deviceId: "e2e.device.physical.dev",
       },
-      async (_input, init) => {
+      async (input, init) => {
+        if (String(input).endsWith("/v1/me/subscription")) {
+          return subscriptionResponse();
+        }
         calls += 1;
         expect(JSON.parse(String(init?.body))).toEqual({ language: "en" });
         return new Response(
@@ -41,15 +72,19 @@ describe("AetherCloudClientSecretProvider", () => {
         userId: "e2e.mobile.physical.aether-reminder",
         deviceId: "e2e.device.physical.dev",
       },
-      async () =>
-        new Response(
+      async (input) => {
+        if (String(input).endsWith("/v1/me/subscription")) {
+          return subscriptionResponse();
+        }
+        return new Response(
           JSON.stringify({
             authorizationId: "auth-expired",
             clientSecret: "ek_expired_secret",
             expiresAt: Math.floor(Date.now() / 1000) - 1,
           }),
           { status: 201, headers: { "Content-Type": "application/json" } },
-        ),
+        );
+      },
     );
     await expect(
       new AetherCloudClientSecretProvider(client).create(

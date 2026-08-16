@@ -4,6 +4,8 @@ import {
   AETHER_HOSTED_MODEL_ID,
   AetherCloudError,
   getAetherCloudClient,
+  getCommercialPolicy,
+  requireHostedInference,
   type AetherCloudClient,
 } from "@/services/cloud";
 import { reportNonFatalError } from "@/lib/nonFatalError";
@@ -87,7 +89,10 @@ export class AetherCloudInferenceProvider implements InferenceProvider {
 
     let response: Response;
     try {
-      response = await this.client().streamAssistantTurn(
+      const cloud = this.client();
+      const { policy } = await getCommercialPolicy(signal, cloud);
+      requireHostedInference(policy);
+      response = await cloud.streamAssistantTurn(
         {
           capability: AETHER_CLOUD_CAPABILITY,
           toolsetVersion: AETHER_CLOUD_TOOLSET_VERSION,

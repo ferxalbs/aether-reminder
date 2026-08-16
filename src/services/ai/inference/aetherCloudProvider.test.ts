@@ -1,5 +1,8 @@
-import { describe, expect, test } from "bun:test";
-import { AetherCloudClient } from "@/services/cloud";
+import { beforeEach, describe, expect, test } from "bun:test";
+import {
+  AetherCloudClient,
+  resetCommercialPolicyCacheForTests,
+} from "@/services/cloud";
 import {
   AetherCloudInferenceProvider,
   toCloudMessages,
@@ -7,6 +10,9 @@ import {
 import type { InferenceMessage } from "./types";
 
 describe("Aether Cloud inference provider", () => {
+  beforeEach(() => {
+    resetCommercialPolicyCacheForTests();
+  });
   test("drops system messages and never sends tools or credentials", async () => {
     const messages: InferenceMessage[] = [
       { role: "system", content: "local system prompt" },
@@ -23,7 +29,28 @@ describe("Aether Cloud inference provider", () => {
         userId: "e2e.mobile.physical.aether-reminder",
         deviceId: "e2e.device.physical.dev",
       },
-      async (_input, init) => {
+      async (input, init) => {
+        if (String(input).endsWith("/v1/me/subscription")) {
+          return new Response(
+            JSON.stringify({
+              userId: "e2e.mobile.physical.aether-reminder",
+              policy: {
+                version: "v1",
+                tier: "pro",
+                source: "promo",
+                hostedInference: true,
+                liveTranscription: true,
+                cloudAutomations: false,
+                limits: {
+                  voiceAuthorizations: 30,
+                  inferenceBudget: 200000,
+                  automationRuns: 0,
+                },
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
         body = String(init?.body ?? "");
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {

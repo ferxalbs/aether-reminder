@@ -22,6 +22,12 @@ export {
   resetAetherCloudClientForTests,
   type AetherCloudRequestOptions,
 } from "./client";
+export {
+  getCommercialPolicy,
+  requireHostedInference,
+  requireLiveTranscription,
+  resetCommercialPolicyCacheForTests,
+} from "./policy";
 export type {
   CommercialPolicy,
   HealthResponse,
