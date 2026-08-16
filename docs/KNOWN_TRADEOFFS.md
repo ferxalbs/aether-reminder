@@ -233,19 +233,16 @@ Telemetry correctness notes that remain in force:
 
 ### Gate A — TypeScript / lint / unit suite
 
-**Status:** PARTIALLY VERIFIED
+**Status:** PASS
 
-**Current evidence:** Telemetry patch: `bun run typecheck` exit 0.
-`bun test` 324 passed, 2 skipped, 0 failed. `bun test src/motion` 69
-passed. `bun run lint` fails on pre-existing `Sheet.tsx` hook-plugin
-errors (3 errors, 5 warnings). Touched motion files and
-`TaskUndoBanner.tsx` lint clean after removing unused `AlertTriangle`.
+**Current evidence:** `bun run typecheck` exit 0. `bun test` 330 passed,
+2 skipped, 0 failed. `bun run lint` exit 0 with 0 errors across the repository
+after migrating `Sheet.tsx` to native-first presentation.
 
-**Risk:** Policy tests cannot prove device smoothness. Repo-wide lint is
-not green because of `Sheet.tsx`.
+**Risk:** Policy tests cannot prove device smoothness.
 
 **Closure evidence required:** `bun run typecheck`, `bun run lint`, and
-`bun test` passing on the motion change.
+`bun test` passing on the motion and UI changes.
 
 **Can be addressed during unrelated work:** Yes, whenever the suite is run.
 

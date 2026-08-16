@@ -2,6 +2,38 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.15 (1) [Native Sheet Presentation Architecture]
+
+### Native-first sheet presentation in Expo SDK 57
+
+- Replaced the custom JavaScript/Reanimated/Gesture Handler physics layer in
+  `Sheet.tsx` with native-first sheet presentation via `@expo/ui/community/bottom-sheet`.
+  [`Sheet.tsx`](src/components/ui/Sheet.tsx)
+- **Android**: Backed by Jetpack Compose Material 3 `ModalBottomSheet` via `Host`
+  and `RNHostView`. Android system back gesture, native spring/dismiss physics, and
+  IME window insets are handled by the platform.
+- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `.sheet()` via `Host`, `Group`,
+  and `RNHostView`. Supports native presentation detents, native drag indicators,
+  interactive dismissal, and iPad-fitted sizing.
+- Removed obsolete sheet-only machinery from `Sheet.tsx`: deleted `project()`,
+  `rubberband()`, `SPRING_CONFIG`, manual `translateY` shared value, manual `opacity`
+  shared value, `Gesture.Pan`, and custom modal backdrop blur overlay.
+- Preserved AETHER visual identity: surface tokens (`Colors.surfaceDark`,
+  `Colors.surfaceLight`), typography tokens (`Typography`), header actions, and footer.
+- Added comprehensive unit tests in [`Sheet.test.tsx`](src/components/ui/Sheet.test.tsx)
+  covering open/close state mapping, dismiss callbacks, locked sheet handling,
+  header actions, footers, and custom snap points.
+
+### Validation status and gates
+
+- Static checks: `bun run typecheck` (0 errors), `bun run lint` (0 errors), `bun test`
+  (330 passed, 2 skipped, 0 failed).
+- Bundle exports: `bunx expo export --platform android` and `bunx expo export --platform ios`
+  both succeeded with Hermes bundling.
+- Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded.
+- Device gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
+  Physical device gates remain honestly documented and open in `docs/KNOWN_TRADEOFFS.md`.
+
 ## Unreleased - 2026.08.14 (2) [Adaptive Motion Telemetry Correctness]
 
 ### Android aggregator is thread-safe and atomically snapshotted
