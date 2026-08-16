@@ -148,7 +148,9 @@ const styles = StyleSheet.create({
     height: 44,
     fontSize: 17,
     letterSpacing: -0.4,
+    paddingVertical: Platform.OS === 'android' ? 0 : undefined,
     paddingHorizontal: Spacing.sm,
+    textAlignVertical: 'center',
   },
   iconButton: {
     width: 44,
