@@ -72,9 +72,7 @@ export const TextField: React.FC<TextFieldProps> = ({
       : colors.borderDefault;
 
   const backgroundColor =
-    variant === "filled"
-      ? colors.surfaceRaised
-      : "transparent";
+    variant === "filled" ? colors.surfaceRaised : "transparent";
 
   const textColor = colors.textPrimary;
   const placeholderColor = colors.textTertiary;

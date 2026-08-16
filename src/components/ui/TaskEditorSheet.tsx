@@ -3,7 +3,6 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -112,15 +111,13 @@ function ChoicePill({
       accessibilityRole="radio"
       accessibilityLabel={`${group}: ${label}`}
       accessibilityState={{ selected }}
+      android_ripple={{ color: colors.ripple, foreground: true }}
+      interactionRadius={Radius.pill}
       style={[
         styles.choice,
         {
-          backgroundColor: selected
-            ? colors.accent
-            : colors.surfaceRaised,
-          borderColor: selected
-            ? colors.accent
-            : colors.borderDefault,
+          backgroundColor: selected ? colors.accent : colors.surfaceRaised,
+          borderColor: selected ? colors.accent : colors.borderDefault,
         },
       ]}
     >
@@ -151,18 +148,10 @@ function NumberStepper({
   const colors = useSemanticColors();
   return (
     <View style={styles.stepperBlock}>
-      <Typography
-        variant="caption"
-        color={colors.textSecondary}
-      >
+      <Typography variant="caption" color={colors.textSecondary}>
         {label}
       </Typography>
-      <View
-        style={[
-          styles.stepper,
-          { borderColor: colors.borderDefault },
-        ]}
-      >
+      <View style={[styles.stepper, { borderColor: colors.borderDefault }]}>
         <IconButton
           icon={<Minus size={16} color={colors.textSecondary} />}
           onPress={() => onChange(Math.max(min, value - 1))}
@@ -529,11 +518,17 @@ export function TaskEditorForm({
               </Typography>
               {captureSources.map((source) =>
                 source.kind === "url" ? (
-                  <Pressable
+                  <AnimatedPressable
                     key={source.id}
                     accessibilityRole="link"
                     accessibilityLabel="Open captured web source"
                     onPress={() => void Linking.openURL(source.url)}
+                    android_ripple={{
+                      color: colors.ripple,
+                      foreground: true,
+                    }}
+                    hapticStyle={null}
+                    interactionRadius={Radius.md}
                     style={({ pressed }) => [
                       styles.sourceLink,
                       {
@@ -551,7 +546,7 @@ export function TaskEditorForm({
                     >
                       {source.url}
                     </Typography>
-                  </Pressable>
+                  </AnimatedPressable>
                 ) : (
                   <View
                     key={source.id}
@@ -733,10 +728,7 @@ export function TaskEditorForm({
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.inlineTitle}>
-                <Repeat2
-                  size={16}
-                  color={textColor}
-                />
+                <Repeat2 size={16} color={textColor} />
                 <Typography
                   variant="caption"
                   color={textColor}
@@ -825,10 +817,7 @@ export function TaskEditorForm({
                 {recurrence.preset === "custom" &&
                 recurrence.frequency === "weekly" ? (
                   <View style={styles.weekdayBlock}>
-                    <Typography
-                      variant="caption"
-                      color={secondaryTextColor}
-                    >
+                    <Typography variant="caption" color={secondaryTextColor}>
                       Days
                     </Typography>
                     <View style={styles.weekdayRow}>

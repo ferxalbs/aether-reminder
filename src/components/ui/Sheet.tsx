@@ -1,11 +1,7 @@
 import React, { useCallback } from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { BottomSheet } from "@expo/ui/community/bottom-sheet";
-import {
-  ControlTokens,
-  getMinimumTouchTarget,
-  Spacing,
-} from "@/theme/tokens";
+import { ControlTokens, getMinimumTouchTarget, Spacing } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Typography } from "./Typography";
 
@@ -83,10 +79,7 @@ export const Sheet: React.FC<SheetProps> = ({
             <View style={styles.headerCopy}>
               {title ? <Typography variant="title">{title}</Typography> : null}
               {subtitle ? (
-                <Typography
-                  variant="caption"
-                  color={colors.textSecondary}
-                >
+                <Typography variant="caption" color={colors.textSecondary}>
                   {subtitle}
                 </Typography>
               ) : null}

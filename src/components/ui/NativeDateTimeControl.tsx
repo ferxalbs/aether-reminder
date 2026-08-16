@@ -120,6 +120,8 @@ export function NativeDateTimeControl({
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? `Pick ${label.toLowerCase()}`}
         accessibilityValue={{ text: formatted }}
+        android_ripple={{ color: colors.ripple, foreground: true }}
+        interactionRadius={Radius.lg}
         style={[
           styles.androidTrigger,
           {

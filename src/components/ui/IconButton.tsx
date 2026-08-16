@@ -66,7 +66,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
       accessibilityState={{ disabled }}
       android_ripple={{
         color: colors.ripple,
+        foreground: true,
       }}
+      interactionRadius={Radius.md}
       hapticStyle={hapticStyle}
       scaleTo={Motion.iconPressScale}
       style={[
@@ -97,7 +99,6 @@ const styles = StyleSheet.create({
   base: {
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   },
   disabled: {
     opacity: 0.4,

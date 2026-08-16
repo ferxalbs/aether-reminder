@@ -45,11 +45,8 @@ mock.module("react-native", () => ({
   NativeModules: {},
 }));
 
-const {
-  resolveAetherTheme,
-  resolveComponentTokens,
-  resolveSemanticColors,
-} = await import("./resolveAetherTheme");
+const { resolveAetherTheme, resolveComponentTokens, resolveSemanticColors } =
+  await import("./resolveAetherTheme");
 const { resolveTheme } = await import("./resolveTheme");
 const { Colors } = await import("./primitives");
 

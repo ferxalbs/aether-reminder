@@ -1,12 +1,7 @@
 import React from "react";
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  StyleProp,
-  ViewStyle,
-} from "react-native";
+import { Platform, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { LucideIcon } from "lucide-react-native";
+import { AnimatedPressable } from "./AnimatedPressable";
 import { Hairline, Radius, TouchTargets } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 
@@ -32,11 +27,15 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
     Platform.OS === "android" ? TouchTargets.android : TouchTargets.ios;
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      android_ripple={
+        hasBackground ? { color: colors.ripple, foreground: true } : undefined
+      }
+      interactionRadius={hasBackground ? Radius.pill : undefined}
       style={({ pressed }) => [
         styles.button,
         { width: touchSize, height: touchSize },
@@ -52,7 +51,7 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
       ]}
     >
       <Icon size={20} color={colors.textPrimary} strokeWidth={1.9} />
-    </Pressable>
+    </AnimatedPressable>
   );
 };
 

@@ -921,6 +921,8 @@ export default function SettingsScreen() {
                         : Colors.borderLight,
                     },
                   ]}
+                  android_ripple={{ color: colors.ripple, foreground: true }}
+                  interactionRadius={Radius.pill}
                   accessibilityLabel="Reset model to default"
                 >
                   <RotateCcw
@@ -969,6 +971,8 @@ export default function SettingsScreen() {
                   borderColor: isDark ? Colors.borderDark : Colors.borderLight,
                 },
               ]}
+              android_ripple={{ color: colors.ripple, foreground: true }}
+              interactionRadius={Radius.md}
             >
               <Typography variant="bodyBold" style={{ flex: 1 }}>
                 Change Reasoning Model…
@@ -1059,6 +1063,11 @@ export default function SettingsScreen() {
                               : "transparent",
                           },
                         ]}
+                        android_ripple={{
+                          color: colors.ripple,
+                          foreground: true,
+                        }}
+                        interactionRadius={Radius.pill}
                       >
                         <Typography
                           variant="caption"

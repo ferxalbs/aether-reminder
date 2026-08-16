@@ -2,10 +2,11 @@
 import React from "react";
 import {
   GestureResponderEvent,
+  Insets,
   Platform,
   Pressable,
   PressableProps,
-  StyleProp,
+  PressableStateCallbackType,
   ViewStyle,
 } from "react-native";
 import Animated, {
@@ -24,12 +25,66 @@ import { useMotionPreset } from "@/motion";
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
-export interface AnimatedPressableProps extends PressableProps {
+export interface AnimatedPressableProps extends Omit<
+  PressableProps,
+  "children" | "style"
+> {
   scaleTo?: number;
   hapticStyle?: Haptics.ImpactFeedbackStyle | null;
   minimumTouchTarget?: boolean;
-  style?: StyleProp<ViewStyle>;
+  /**
+   * Radius of the AETHER visual surface that owns press/ripple feedback.
+   *
+   * This is deliberately separate from the minimum touch target. The
+   * Pressable remains the hit target, while this opt-in clip keeps feedback
+   * inside a rounded visual surface. Callers without a shaped surface retain
+   * their existing behavior.
+   */
+  interactionRadius?: number;
+  style?: PressableProps["style"];
   children: React.ReactNode;
+}
+
+/** Style applied only when a caller explicitly declares a feedback shape. */
+export function getFeedbackClipStyle(interactionRadius?: number): ViewStyle {
+  if (interactionRadius === undefined || !Number.isFinite(interactionRadius)) {
+    return {};
+  }
+
+  return {
+    borderRadius: interactionRadius,
+    overflow: "hidden",
+  };
+}
+
+/**
+ * Expand a visual control's hit rect without expanding its visual surface.
+ * Use this for compact controls whose visual bounds are intentionally below
+ * the platform minimum (for example, a 20dp checkbox or 36dp send action).
+ */
+export function getMinimumTouchTargetHitSlop(
+  visualWidth: number,
+  visualHeight: number,
+  platform: string,
+): Insets {
+  const minimum = getMinimumTouchTarget(platform);
+  const horizontal = Math.max(0, (minimum - visualWidth) / 2);
+  const vertical = Math.max(0, (minimum - visualHeight) / 2);
+
+  return {
+    top: vertical,
+    bottom: vertical,
+    left: horizontal,
+    right: horizontal,
+  };
+}
+
+export function getBoundedRippleConfig(
+  ripple: PressableProps["android_ripple"],
+  interactionRadius?: number,
+): PressableProps["android_ripple"] {
+  if (!ripple || interactionRadius === undefined) return ripple;
+  return { ...ripple, borderless: false };
 }
 
 export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
@@ -42,6 +97,8 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   children,
   disabled,
   minimumTouchTarget = true,
+  interactionRadius,
+  android_ripple,
   ...rest
 }) => {
   const scale = useSharedValue(1);
@@ -89,21 +146,32 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
     onPressOut?.(e);
   };
 
+  const minimumTouchTargetStyle = minimumTouchTarget
+    ? {
+        minWidth: getMinimumTouchTarget(Platform.OS),
+        minHeight: getMinimumTouchTarget(Platform.OS),
+      }
+    : undefined;
+  const feedbackClipStyle = getFeedbackClipStyle(interactionRadius);
+  const composedStyle =
+    typeof style === "function"
+      ? (state: PressableStateCallbackType) => [
+          animatedStyle,
+          minimumTouchTargetStyle,
+          style(state),
+          feedbackClipStyle,
+        ]
+      : [animatedStyle, minimumTouchTargetStyle, style, feedbackClipStyle];
+
   return (
     <AnimatedPressableBase
       {...rest}
+      android_ripple={getBoundedRippleConfig(android_ripple, interactionRadius)}
       disabled={disabled}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
-      style={[
-        animatedStyle,
-        minimumTouchTarget && {
-          minWidth: getMinimumTouchTarget(Platform.OS),
-          minHeight: getMinimumTouchTarget(Platform.OS),
-        },
-        style,
-      ]}
+      style={composedStyle}
     >
       {children}
     </AnimatedPressableBase>

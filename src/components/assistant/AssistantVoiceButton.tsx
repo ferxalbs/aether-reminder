@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { AlertCircle, Mic, Square } from "lucide-react-native";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -8,7 +8,10 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
 import { Colors, Radius } from "@/theme/tokens";
 import { useMotionProfile, useMotionPreset } from "@/motion";
 import { useIsDark } from "@/theme/useResolvedTheme";
@@ -70,6 +73,13 @@ export const AssistantVoiceButton: React.FC<AssistantVoiceButtonProps> = ({
           : "Speak naturally to create a reminder"
       }
       accessibilityState={{ disabled, busy: isActive }}
+      android_ripple={{
+        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+        foreground: true,
+      }}
+      hitSlop={getMinimumTouchTargetHitSlop(42, 42, Platform.OS)}
+      interactionRadius={Radius.pill}
+      minimumTouchTarget={false}
       style={[
         styles.button,
         {

@@ -3,7 +3,10 @@ import { Platform, StyleSheet, TextInput, View } from "react-native";
 import { ArrowUp } from "lucide-react-native";
 import { Colors, Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
 import { useIsDark } from "@/theme/useResolvedTheme";
-import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
 import { AssistantVoiceButton } from "./AssistantVoiceButton";
 import type { VoiceState } from "./VoiceController";
 
@@ -85,6 +88,13 @@ export const AssistantComposer: React.FC<AssistantComposerProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Send message"
           accessibilityState={{ disabled }}
+          android_ripple={{
+            color: isDark ? Colors.rippleDark : Colors.rippleLight,
+            foreground: true,
+          }}
+          hitSlop={getMinimumTouchTargetHitSlop(38, 38, Platform.OS)}
+          interactionRadius={Radius.pill}
+          minimumTouchTarget={false}
           scaleTo={Motion.iconPressScale}
           style={[
             styles.sendButton,

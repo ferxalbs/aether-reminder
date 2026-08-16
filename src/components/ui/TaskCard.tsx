@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
   ReduceMotion,
   useAnimatedStyle,
@@ -14,7 +14,10 @@ import { Motion, Radius, Spacing } from "@/theme/tokens";
 import { useMotionPreset } from "@/motion";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Typography } from "./Typography";
-import { AnimatedPressable } from "./AnimatedPressable";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "./AnimatedPressable";
 import { IconButton } from "./IconButton";
 import { useSettingsStore } from "@/stores/settings.store";
 import * as Haptics from "expo-haptics";
@@ -159,10 +162,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
                 },
               ]}
             >
-              <Sparkles
-                size={11}
-                color={colors.accent}
-              />
+              <Sparkles size={11} color={colors.accent} />
               <Typography
                 variant="tiny"
                 color={colors.textPrimary}
@@ -175,10 +175,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
 
           {task.dueDate && (
             <View style={styles.dateMeta}>
-              <Clock
-                size={11}
-                color={colors.textTertiary}
-              />
+              <Clock size={11} color={colors.textTertiary} />
               <Typography
                 variant="tiny"
                 color={colors.textSecondary}
@@ -220,6 +217,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
           accessibilityRole="checkbox"
           accessibilityLabel={`Mark ${task.title} as ${task.completed ? "incomplete" : "complete"}`}
           accessibilityState={{ checked: task.completed }}
+          android_ripple={{ color: colors.ripple, foreground: true }}
+          hitSlop={getMinimumTouchTargetHitSlop(20, 20, Platform.OS)}
+          interactionRadius={Radius.sm}
+          minimumTouchTarget={false}
           style={styles.checkboxTouchTarget}
         >
           <View
@@ -229,19 +230,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
                 borderColor: task.completed
                   ? colors.accent
                   : colors.borderDefault,
-                backgroundColor: task.completed
-                  ? colors.accent
-                  : "transparent",
+                backgroundColor: task.completed ? colors.accent : "transparent",
               },
             ]}
           >
             <Animated.View style={checkScaleStyle}>
               {task.completed && (
-                <Check
-                  size={13}
-                  color={colors.onAccent}
-                  strokeWidth={3}
-                />
+                <Check size={13} color={colors.onAccent} strokeWidth={3} />
               )}
             </Animated.View>
           </View>
@@ -264,12 +259,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
 
         {/* Delete action button */}
         <IconButton
-          icon={
-            <Trash2
-              size={16}
-              color={colors.textTertiary}
-            />
-          }
+          icon={<Trash2 size={16} color={colors.textTertiary} />}
           onPress={() => onDelete(task.id)}
           accessibilityLabel={`Delete ${task.title}`}
           variant="ghost"

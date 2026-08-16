@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { Keyboard, Platform, StyleSheet, TextInput, View } from "react-native";
 import { Mic, Plus, ArrowUp } from "lucide-react-native";
 import { GlassSurface } from "./GlassSurface";
-import { AnimatedPressable } from "./AnimatedPressable";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "./AnimatedPressable";
 import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 
@@ -62,6 +65,10 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           onPress={onAddDate}
           accessibilityRole="button"
           accessibilityLabel="Open editor"
+          android_ripple={{ color: colors.ripple, foreground: true }}
+          hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
+          interactionRadius={Radius.pill}
+          minimumTouchTarget={false}
           scaleTo={Motion.iconPressScale}
           style={styles.iconButton}
         >
@@ -89,6 +96,10 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
             onPress={handleSubmit}
             accessibilityRole="button"
             accessibilityLabel="Create reminder"
+            android_ripple={{ color: colors.ripple, foreground: true }}
+            hitSlop={getMinimumTouchTargetHitSlop(36, 36, Platform.OS)}
+            interactionRadius={Radius.pill}
+            minimumTouchTarget={false}
             scaleTo={Motion.iconPressScale}
             style={[styles.sendButton, { backgroundColor: colors.interactive }]}
           >
@@ -103,6 +114,10 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
             onPress={onVoicePress}
             accessibilityRole="button"
             accessibilityLabel="Speak reminder"
+            android_ripple={{ color: colors.ripple, foreground: true }}
+            hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
+            interactionRadius={Radius.pill}
+            minimumTouchTarget={false}
             scaleTo={Motion.iconPressScale}
             style={styles.iconButton}
           >

@@ -56,12 +56,7 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
-  const containerStyles = [
-    styles.base,
-    getVariantStyle(),
-    { borderRadius, padding },
-    style,
-  ];
+  const containerStyles = [getVariantStyle(), { borderRadius, padding }, style];
   const content = (
     <>
       {variant === "glass" ? (
@@ -84,7 +79,9 @@ export const Card: React.FC<CardProps> = ({
         accessibilityHint={accessibilityHint}
         android_ripple={{
           color: colors.ripple,
+          foreground: true,
         }}
+        interactionRadius={borderRadius}
         scaleTo={Motion.cardPressScale}
         style={containerStyles}
       >
@@ -95,9 +92,3 @@ export const Card: React.FC<CardProps> = ({
 
   return <View style={containerStyles}>{content}</View>;
 };
-
-const styles = StyleSheet.create({
-  base: {
-    overflow: "hidden",
-  },
-});

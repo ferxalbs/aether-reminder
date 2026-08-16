@@ -137,7 +137,9 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       android_ripple={{
         color: colors.accent,
+        foreground: true,
       }}
+      interactionRadius={sizeStyle.borderRadius}
       scaleTo={Motion.buttonPressScale}
       style={[
         styles.base,
@@ -177,7 +179,6 @@ const styles = StyleSheet.create({
   base: {
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
     borderWidth: 1,
     borderColor: "transparent",
   },

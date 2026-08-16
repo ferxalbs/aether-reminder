@@ -74,12 +74,11 @@ export function ModelCatalogSheet({
       onPress={onRefresh}
       accessibilityLabel="Force refresh model catalog"
       accessibilityRole="button"
+      android_ripple={{ color: colors.ripple, foreground: true }}
+      interactionRadius={Radius.md}
       style={styles.iconPressable}
     >
-      <RefreshCw
-        size={18}
-        color={colors.textSecondary}
-      />
+      <RefreshCw size={18} color={colors.textSecondary} />
     </AnimatedPressable>
   );
 
@@ -103,10 +102,7 @@ export function ModelCatalogSheet({
             },
           ]}
         >
-          <Search
-            size={16}
-            color={colors.textTertiary}
-          />
+          <Search size={16} color={colors.textTertiary} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -115,10 +111,7 @@ export function ModelCatalogSheet({
             autoCorrect={false}
             autoCapitalize="none"
             clearButtonMode="while-editing"
-            style={[
-              styles.searchInput,
-              { color: colors.textPrimary },
-            ]}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
           />
         </View>
 
@@ -176,6 +169,8 @@ export function ModelCatalogSheet({
                     selected: isSelected,
                     disabled: !isSelectable,
                   }}
+                  android_ripple={{ color: colors.ripple, foreground: true }}
+                  interactionRadius={Radius.md}
                   style={[
                     styles.modelCardItem,
                     {
@@ -192,16 +187,10 @@ export function ModelCatalogSheet({
                   <View style={styles.modelInfo}>
                     <Typography variant="bodyBold">{model.name}</Typography>
                     <View style={styles.modelMetadataRow}>
-                      <Typography
-                        variant="tiny"
-                        color={colors.textSecondary}
-                      >
+                      <Typography variant="tiny" color={colors.textSecondary}>
                         {model.provider}
                       </Typography>
-                      <Typography
-                        variant="tiny"
-                        color={colors.textTertiary}
-                      >
+                      <Typography variant="tiny" color={colors.textTertiary}>
                         • {formatContextLength(model.contextLength)}
                       </Typography>
                       <View
@@ -226,10 +215,7 @@ export function ModelCatalogSheet({
                     </View>
                   </View>
                   {isSelected ? (
-                    <Check
-                      size={18}
-                      color={colors.onAccentContainer}
-                    />
+                    <Check size={18} color={colors.onAccentContainer} />
                   ) : null}
                 </AnimatedPressable>
               );

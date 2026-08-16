@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { ChevronDown } from 'lucide-react-native';
-import { Colors, ControlTokens, getMinimumTouchTarget, Radius } from '@/theme/tokens';
-import { useSettingsStore } from '@/stores/settings.store';
-import { selectionAsync } from '@/lib/haptics';
-import { reportNonFatalError } from '@/lib/nonFatalError';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useSemanticColors } from '@/theme/useSemanticColors';
-import { AnimatedPressable } from './AnimatedPressable';
-import { GlassSurface } from './GlassSurface';
-import { Typography } from './Typography';
+import React, { useState } from "react";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { ChevronDown } from "lucide-react-native";
+import {
+  Colors,
+  ControlTokens,
+  getMinimumTouchTarget,
+  Radius,
+} from "@/theme/tokens";
+import { useSettingsStore } from "@/stores/settings.store";
+import { selectionAsync } from "@/lib/haptics";
+import { reportNonFatalError } from "@/lib/nonFatalError";
+import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { GlassSurface } from "./GlassSurface";
+import { Typography } from "./Typography";
 
 export interface PickerOption<Value extends string | number = string> {
   value: Value;
@@ -45,7 +50,7 @@ export function Picker<Value extends string | number>({
   const isDark = useIsDark();
   const colors = useSemanticColors();
   const [open, setOpen] = useState(false);
-  const isIOS = Platform.OS === 'ios';
+  const isIOS = Platform.OS === "ios";
   const isDisabled = disabled || options.length === 0;
   const isSegmented = isIOS && options.length > 0 && options.length <= 4;
   const selectedOption = options.find((option) => option.value === value);
@@ -70,7 +75,7 @@ export function Picker<Value extends string | number>({
 
     if (nextValue !== value && useSettingsStore.getState().hapticsEnabled) {
       selectionAsync().catch((error: unknown) => {
-        reportNonFatalError('haptics', error);
+        reportNonFatalError("haptics", error);
       });
     }
     onValueChange(nextValue);
@@ -91,15 +96,23 @@ export function Picker<Value extends string | number>({
         disabled={optionDisabled}
         accessibilityRole="radio"
         accessibilityLabel={optionAccessibilityLabel(option)}
-        accessibilityState={{ checked: isSelected, selected: isSelected, disabled: optionDisabled }}
-        accessibilityHint={optionDisabled ? undefined : `Selects ${option.label}`}
+        accessibilityState={{
+          checked: isSelected,
+          selected: isSelected,
+          disabled: optionDisabled,
+        }}
+        accessibilityHint={
+          optionDisabled ? undefined : `Selects ${option.label}`
+        }
+        android_ripple={{ color: colors.ripple, foreground: true }}
+        interactionRadius={segmented ? Radius.pill : Radius.sm}
         style={[
           segmented ? styles.segment : styles.menuOption,
           {
             minHeight: getMinimumTouchTarget(Platform.OS),
             backgroundColor: isSelected
               ? selectedBackgroundColor
-              : 'transparent',
+              : "transparent",
             borderRadius: segmented ? Radius.pill : Radius.sm,
           },
           optionDisabled && styles.disabled,
@@ -118,7 +131,11 @@ export function Picker<Value extends string | number>({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <Typography variant="caption" color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight} accessible={false}>
+      <Typography
+        variant="caption"
+        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+        accessible={false}
+      >
         {label}
       </Typography>
       {isSegmented ? (
@@ -148,9 +165,11 @@ export function Picker<Value extends string | number>({
             disabled={isDisabled}
             accessibilityRole="combobox"
             accessibilityLabel={accessibilityLabel ?? label}
-            accessibilityHint={accessibilityHint ?? 'Opens options'}
+            accessibilityHint={accessibilityHint ?? "Opens options"}
             accessibilityState={{ disabled: isDisabled, expanded: open }}
             accessibilityValue={{ text: selectedLabel }}
+            android_ripple={{ color: colors.ripple, foreground: true }}
+            interactionRadius={Radius.md}
             style={[
               styles.trigger,
               {
@@ -162,12 +181,18 @@ export function Picker<Value extends string | number>({
               isDisabled && styles.disabled,
             ]}
           >
-            <Typography variant="body" color={isDark ? Colors.textDark : Colors.textLight} style={styles.triggerLabel}>
+            <Typography
+              variant="body"
+              color={isDark ? Colors.textDark : Colors.textLight}
+              style={styles.triggerLabel}
+            >
               {selectedLabel}
             </Typography>
             <ChevronDown
               size={ControlTokens.pickerChevronSize}
-              color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+              color={
+                isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
+              }
             />
           </AnimatedPressable>
           {open ? (
@@ -196,7 +221,11 @@ export function Picker<Value extends string | number>({
           {error}
         </Typography>
       ) : helperText ? (
-        <Typography variant="caption" color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight} style={styles.message}>
+        <Typography
+          variant="caption"
+          color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+          style={styles.message}
+        >
           {helperText}
         </Typography>
       ) : null}
@@ -209,25 +238,25 @@ const styles = StyleSheet.create({
     gap: ControlTokens.fieldLabelGap,
   },
   segmentedContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 2,
     borderWidth: ControlTokens.borderWidth,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   segment: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: ControlTokens.pickerOptionPaddingHorizontal,
   },
   trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: ControlTokens.fieldPaddingHorizontal,
     borderWidth: ControlTokens.borderWidth,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   triggerLabel: {
     flex: 1,
@@ -236,11 +265,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderWidth: ControlTokens.borderWidth,
     borderRadius: Radius.md,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuOption: {
-    alignItems: 'flex-start',
-    justifyContent: 'center',
+    alignItems: "flex-start",
+    justifyContent: "center",
     paddingHorizontal: ControlTokens.pickerOptionPaddingHorizontal,
     paddingVertical: ControlTokens.pickerOptionPaddingVertical,
   },

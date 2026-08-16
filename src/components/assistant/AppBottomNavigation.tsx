@@ -128,6 +128,8 @@ function NavigationButton({
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
+      android_ripple={{ color: colors.ripple, foreground: true }}
+      interactionRadius={Radius.pill}
       scaleTo={Motion.pressScale}
       style={styles.item}
     >
@@ -189,7 +191,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 3,
     borderRadius: Radius.pill,
-    overflow: "hidden",
   },
   selected: {
     position: "absolute",

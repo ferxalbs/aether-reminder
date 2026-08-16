@@ -39,9 +39,7 @@ export function resolveSemanticColors(
   const baseSurfaceRaised = isDark
     ? Colors.surfaceRaisedDark
     : Colors.surfaceRaisedLight;
-  const baseElevatedSurface = isDark
-    ? Colors.zinc800
-    : Colors.zinc100;
+  const baseElevatedSurface = isDark ? Colors.zinc800 : Colors.zinc100;
 
   if (isDark) {
     const accent = hasDynamic
