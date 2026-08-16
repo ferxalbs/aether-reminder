@@ -66,9 +66,9 @@ class FrameAggregator(private val capacity: Int = 64) {
   fun percentileMs(percentile: Int): Double? {
     val copy: LongArray
     synchronized(lock) {
-      if (overrunCount == 0) return null
-      copy = LongArray(overrunCount)
-      System.arraycopy(overrunsNs, 0, copy, 0, overrunCount)
+      val count = overrunCount.coerceIn(0, overrunsNs.size)
+      if (count == 0) return null
+      copy = overrunsNs.copyOf(count)
     }
     return percentileFromCopy(copy, percentile)
   }
@@ -92,12 +92,11 @@ class FrameAggregator(private val capacity: Int = 64) {
   }
 
   private fun captureLocked(nowElapsedMs: Long): CapturedWindow {
-    val overruns = if (overrunCount == 0) {
+    val count = overrunCount.coerceIn(0, overrunsNs.size)
+    val overruns = if (count == 0) {
       LongArray(0)
     } else {
-      val copy = LongArray(overrunCount)
-      System.arraycopy(overrunsNs, 0, copy, 0, overrunCount)
-      copy
+      overrunsNs.copyOf(count)
     }
     return CapturedWindow(
       sampleWindowMs = (nowElapsedMs - windowStartElapsedMs).coerceAtLeast(0L),
