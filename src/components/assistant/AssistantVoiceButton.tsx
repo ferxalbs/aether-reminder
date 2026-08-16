@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
-import { Colors, Radius, Spacing } from "@/theme/tokens";
+import { Colors, Radius } from "@/theme/tokens";
 import { useMotionProfile, useMotionPreset } from "@/motion";
 import { useIsDark } from "@/theme/useResolvedTheme";
 import type { VoiceState } from "./VoiceController";

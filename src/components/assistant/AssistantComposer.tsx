@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import { Platform, StyleSheet, TextInput, View } from "react-native";
 import { ArrowUp } from "lucide-react-native";
 import { Colors, Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
 import { useIsDark } from "@/theme/useResolvedTheme";
-import { Platform } from "react-native";
 import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
 import { AssistantVoiceButton } from "./AssistantVoiceButton";
 import type { VoiceState } from "./VoiceController";

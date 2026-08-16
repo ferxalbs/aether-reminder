@@ -1120,7 +1120,7 @@ export default function SettingsScreen() {
                         : Colors.secondaryTextLight
                     }
                   >
-                    Use Material 3 accent colors for controls
+                    Use dynamic Material 3 wallpaper colors on Android 12+
                   </Typography>
                 </View>
               </View>
@@ -1128,7 +1128,7 @@ export default function SettingsScreen() {
                 value={materialColorsEnabled}
                 onValueChange={setMaterialColorsEnabled}
                 accessibilityLabel="Material colors"
-                accessibilityHint="Use Material 3 accent colors for controls"
+                accessibilityHint="Use dynamic Material 3 wallpaper colors on Android 12+"
               />
             </View>
 

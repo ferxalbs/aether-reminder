@@ -2,7 +2,7 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { GlassSurface } from "./GlassSurface";
 import { Hairline, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface AetherToolbarGroupProps {
   children: React.ReactNode;
@@ -11,7 +11,7 @@ export interface AetherToolbarGroupProps {
 export const AetherToolbarGroup: React.FC<AetherToolbarGroupProps> = ({
   children,
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const childrenArray = React.Children.toArray(children);
 
   if (Platform.OS === "ios") {
@@ -24,9 +24,7 @@ export const AetherToolbarGroup: React.FC<AetherToolbarGroupProps> = ({
                 style={[
                   styles.divider,
                   {
-                    backgroundColor: isDark
-                      ? "rgba(255, 255, 255, 0.12)"
-                      : "rgba(0, 0, 0, 0.08)",
+                    backgroundColor: colors.borderDefault,
                   },
                 ]}
               />
@@ -53,9 +51,7 @@ export const AetherToolbarGroup: React.FC<AetherToolbarGroupProps> = ({
               style={[
                 styles.divider,
                 {
-                  backgroundColor: isDark
-                    ? "rgba(255, 255, 255, 0.12)"
-                    : "rgba(0, 0, 0, 0.08)",
+                  backgroundColor: colors.borderDefault,
                 },
               ]}
             />

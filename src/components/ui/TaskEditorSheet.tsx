@@ -28,8 +28,8 @@ import type {
   TaskCaptureSource,
   UpdateTaskInput,
 } from "@/domain/entities";
-import { Colors, ControlTokens, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { ControlTokens, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import {
   getDeviceTimeZone,
   getLocalDateString,
@@ -104,7 +104,7 @@ function ChoicePill({
   onPress: () => void;
   group: string;
 }) {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -116,31 +116,17 @@ function ChoicePill({
         styles.choice,
         {
           backgroundColor: selected
-            ? isDark
-              ? Colors.surfaceRaisedLight
-              : Colors.brandInk
-            : isDark
-              ? Colors.surfaceRaisedDark
-              : Colors.surfaceRaisedLight,
+            ? colors.accent
+            : colors.surfaceRaised,
           borderColor: selected
-            ? "transparent"
-            : isDark
-              ? Colors.borderDark
-              : Colors.borderLight,
+            ? colors.accent
+            : colors.borderDefault,
         },
       ]}
     >
       <Typography
         variant="caption"
-        color={
-          selected
-            ? isDark
-              ? Colors.brandInk
-              : Colors.white
-            : isDark
-              ? Colors.secondaryTextDark
-              : Colors.secondaryTextLight
-        }
+        color={selected ? colors.onAccent : colors.textSecondary}
         style={styles.choiceLabel}
       >
         {label}
@@ -162,26 +148,23 @@ function NumberStepper({
   max?: number;
   onChange: (value: number) => void;
 }) {
-  const isDark = useIsDark();
-  const secondary = isDark
-    ? Colors.secondaryTextDark
-    : Colors.secondaryTextLight;
+  const colors = useSemanticColors();
   return (
     <View style={styles.stepperBlock}>
       <Typography
         variant="caption"
-        color={isDark ? Colors.zinc300 : Colors.zinc700}
+        color={colors.textSecondary}
       >
         {label}
       </Typography>
       <View
         style={[
           styles.stepper,
-          { borderColor: isDark ? Colors.borderDark : Colors.borderLight },
+          { borderColor: colors.borderDefault },
         ]}
       >
         <IconButton
-          icon={<Minus size={16} color={secondary} />}
+          icon={<Minus size={16} color={colors.textSecondary} />}
           onPress={() => onChange(Math.max(min, value - 1))}
           accessibilityLabel={`Decrease ${label.toLowerCase()}`}
           disabled={value <= min}
@@ -195,7 +178,7 @@ function NumberStepper({
           {value}
         </Typography>
         <IconButton
-          icon={<Plus size={16} color={secondary} />}
+          icon={<Plus size={16} color={colors.textSecondary} />}
           onPress={() => onChange(Math.min(max, value + 1))}
           accessibilityLabel={`Increase ${label.toLowerCase()}`}
           disabled={value >= max}
@@ -206,15 +189,15 @@ function NumberStepper({
   );
 }
 
-function TaskEditorForm({
+export function TaskEditorForm({
   visible,
   onClose,
   mode = "create",
-  task = null,
+  task,
   initialTitle = "",
 }: TaskEditorSheetProps) {
-  const isDark = useIsDark();
   const { startVoiceAssistant } = useAssistantActions();
+  const colors = useSemanticColors();
   const { width } = useWindowDimensions();
   const compact = width < 390;
   const today = useMemo(() => getLocalDateString(), []);
@@ -274,6 +257,9 @@ function TaskEditorForm({
       cancelled = true;
     };
   }, [getRecurrenceRule, mode, task, today]);
+
+  const textColor = colors.textPrimary;
+  const secondaryTextColor = colors.textSecondary;
 
   useEffect(() => {
     if (mode !== "edit" || !task) return;
@@ -433,10 +419,6 @@ function TaskEditorForm({
       .finally(() => setSaving(false));
   };
 
-  const textColor = isDark ? Colors.textDark : Colors.textLight;
-  const secondaryTextColor = isDark
-    ? Colors.secondaryTextDark
-    : Colors.secondaryTextLight;
   const titleLabel = mode === "edit" ? "Edit reminder" : "New reminder";
   const pickerDate = localPickerDate(dateText || today, timeText);
   const endPickerDate = localPickerDate(
@@ -555,9 +537,7 @@ function TaskEditorForm({
                     style={({ pressed }) => [
                       styles.sourceLink,
                       {
-                        borderColor: isDark
-                          ? Colors.borderDark
-                          : Colors.borderLight,
+                        borderColor: colors.borderDefault,
                       },
                       pressed && styles.sourcePressed,
                     ]}
@@ -580,9 +560,7 @@ function TaskEditorForm({
                     style={[
                       styles.imageSource,
                       {
-                        borderColor: isDark
-                          ? Colors.borderDark
-                          : Colors.borderLight,
+                        borderColor: colors.borderDefault,
                       },
                     ]}
                   >
@@ -757,7 +735,7 @@ function TaskEditorForm({
               <View style={styles.inlineTitle}>
                 <Repeat2
                   size={16}
-                  color={isDark ? Colors.white : Colors.black}
+                  color={textColor}
                 />
                 <Typography
                   variant="caption"
@@ -849,7 +827,7 @@ function TaskEditorForm({
                   <View style={styles.weekdayBlock}>
                     <Typography
                       variant="caption"
-                      color={isDark ? Colors.zinc300 : Colors.zinc700}
+                      color={secondaryTextColor}
                     >
                       Days
                     </Typography>
@@ -973,11 +951,7 @@ function TaskEditorForm({
           {formError && title.trim() ? (
             <Typography
               variant="caption"
-              color={
-                isDark
-                  ? Colors.destructiveTextDark
-                  : Colors.destructiveTextLight
-              }
+              color={colors.destructive}
               accessibilityRole="alert"
               accessibilityLiveRegion="polite"
             >

@@ -1,6 +1,5 @@
 import { describe, expect, mock, test, beforeEach } from "bun:test";
 import React from "react";
-import { getSemanticColors } from "@/theme/tokens";
 
 const MockView: React.FC<Record<string, unknown>> = (props) =>
   React.createElement("View", props, props.children as React.ReactNode);
@@ -135,9 +134,22 @@ mock.module("@/theme/useResolvedTheme", () => ({
 }));
 
 mock.module("@/theme/useSemanticColors", () => ({
-  useSemanticColors: () => getSemanticColors("dark", mockMaterialColorsEnabled),
+  useSemanticColors: () =>
+    resolveSemanticColors(
+      "dark",
+      mockMaterialColorsEnabled,
+      mockMaterialColorsEnabled
+        ? {
+            primary: "#FFB4AB",
+            onPrimary: "#690005",
+            primaryContainer: "#93000A",
+            onPrimaryContainer: "#FFDAD6",
+          }
+        : null,
+    ),
 }));
 
+const { resolveSemanticColors } = await import("@/theme/resolveAetherTheme");
 const { ToggleSwitch } = await import("./ToggleSwitch");
 const ReactTestRenderer = (await import("react-test-renderer")).default;
 const { act } = await import("react-test-renderer");
@@ -197,7 +209,7 @@ describe("ToggleSwitch Platform Native Adapter", () => {
       expect(colors.uncheckedBorderColor).toBe("rgba(255, 255, 255, 0.08)");
     });
 
-    test("renders ComposeSwitch with Material 3 primary palette when material colors enabled", () => {
+    test("renders ComposeSwitch with Material 3 dynamic primary palette when material colors enabled", () => {
       currentPlatform = "android";
       mockMaterialColorsEnabled = true;
       const onValueChange = mock(() => {});
@@ -215,10 +227,10 @@ describe("ToggleSwitch Platform Native Adapter", () => {
 
       const switchComp = renderer!.root.findByType("ExpoComposeSwitch");
       const colors = switchComp.props.colors;
-      // In dark mode with materialColorsEnabled: accent is #D0BCFF, onAccent is #381E72
-      expect(colors.checkedTrackColor).toBe("#D0BCFF");
-      expect(colors.checkedThumbColor).toBe("#381E72");
-      expect(colors.checkedBorderColor).toBe("#D0BCFF");
+      // In dark mode with dynamic Material You: accent is dynamic primary (#FFB4AB), onAccent is #690005
+      expect(colors.checkedTrackColor).toBe("#FFB4AB");
+      expect(colors.checkedThumbColor).toBe("#690005");
+      expect(colors.checkedBorderColor).toBe("#FFB4AB");
     });
 
     test("forwards onCheckedChange to onValueChange and fires haptics once when enabled", () => {

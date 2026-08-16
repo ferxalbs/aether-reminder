@@ -10,8 +10,8 @@ import {
 import { Check, RefreshCw, Search } from "lucide-react-native";
 import { canRunAsAgent } from "@/services/ai/inference";
 import type { AIModel } from "@/services/ai/models";
-import { Colors, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Sheet } from "./Sheet";
 import { Typography } from "./Typography";
@@ -46,7 +46,7 @@ export function ModelCatalogSheet({
   onSelectModel,
   onRefresh,
 }: ModelCatalogSheetProps) {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredModels = useMemo(() => {
@@ -78,7 +78,7 @@ export function ModelCatalogSheet({
     >
       <RefreshCw
         size={18}
-        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+        color={colors.textSecondary}
       />
     </AnimatedPressable>
   );
@@ -98,30 +98,26 @@ export function ModelCatalogSheet({
           style={[
             styles.searchBox,
             {
-              backgroundColor: isDark
-                ? Colors.surfaceRaisedDark
-                : Colors.surfaceRaisedLight,
-              borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+              backgroundColor: colors.surfaceRaised,
+              borderColor: colors.borderDefault,
             },
           ]}
         >
           <Search
             size={16}
-            color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+            color={colors.textTertiary}
           />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search models or providers…"
-            placeholderTextColor={
-              isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-            }
+            placeholderTextColor={colors.textTertiary}
             autoCorrect={false}
             autoCapitalize="none"
             clearButtonMode="while-editing"
             style={[
               styles.searchInput,
-              { color: isDark ? Colors.textDark : Colors.textLight },
+              { color: colors.textPrimary },
             ]}
           />
         </View>
@@ -129,14 +125,12 @@ export function ModelCatalogSheet({
         {loading ? (
           <ActivityIndicator
             style={styles.centerLoader}
-            color={isDark ? Colors.white : Colors.black}
+            color={colors.accent}
           />
         ) : error ? (
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.errorText}
           >
             {error}
@@ -144,9 +138,7 @@ export function ModelCatalogSheet({
         ) : filteredModels.length === 0 ? (
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             style={styles.errorText}
           >
             No models match &quot;{searchQuery}&quot;.
@@ -188,17 +180,11 @@ export function ModelCatalogSheet({
                     styles.modelCardItem,
                     {
                       backgroundColor: isSelected
-                        ? isDark
-                          ? Colors.surfaceRaisedDark
-                          : Colors.surfaceRaisedLight
+                        ? colors.accentContainer
                         : "transparent",
                       borderColor: isSelected
-                        ? isDark
-                          ? Colors.white
-                          : Colors.black
-                        : isDark
-                          ? Colors.borderDark
-                          : Colors.borderLight,
+                        ? colors.accent
+                        : colors.borderDefault,
                       opacity: isSelectable || isSelected ? 1 : 0.45,
                     },
                   ]}
@@ -208,21 +194,13 @@ export function ModelCatalogSheet({
                     <View style={styles.modelMetadataRow}>
                       <Typography
                         variant="tiny"
-                        color={
-                          isDark
-                            ? Colors.secondaryTextDark
-                            : Colors.secondaryTextLight
-                        }
+                        color={colors.textSecondary}
                       >
                         {model.provider}
                       </Typography>
                       <Typography
                         variant="tiny"
-                        color={
-                          isDark
-                            ? Colors.tertiaryTextDark
-                            : Colors.tertiaryTextLight
-                        }
+                        color={colors.textTertiary}
                       >
                         • {formatContextLength(model.contextLength)}
                       </Typography>
@@ -230,12 +208,8 @@ export function ModelCatalogSheet({
                         style={[
                           styles.capabilityPill,
                           {
-                            backgroundColor: isDark
-                              ? Colors.surfaceRaisedDark
-                              : Colors.surfaceRaisedLight,
-                            borderColor: isDark
-                              ? Colors.borderDark
-                              : Colors.borderLight,
+                            backgroundColor: colors.surfaceRaised,
+                            borderColor: colors.borderDefault,
                             borderWidth: 1,
                           },
                         ]}
@@ -243,7 +217,7 @@ export function ModelCatalogSheet({
                         <Typography
                           variant="tiny"
                           style={{
-                            color: isDark ? Colors.white : Colors.black,
+                            color: colors.textPrimary,
                           }}
                         >
                           {statusLabel}
@@ -254,7 +228,7 @@ export function ModelCatalogSheet({
                   {isSelected ? (
                     <Check
                       size={18}
-                      color={isDark ? Colors.white : Colors.black}
+                      color={colors.onAccentContainer}
                     />
                   ) : null}
                 </AnimatedPressable>

@@ -10,9 +10,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { Check, Trash2, Clock, Sparkles } from "lucide-react-native";
 import type { TaskListItem } from "@/domain/entities";
-import { Colors, Motion, Radius, Spacing } from "@/theme/tokens";
+import { Motion, Radius, Spacing } from "@/theme/tokens";
 import { useMotionPreset } from "@/motion";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Typography } from "./Typography";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { IconButton } from "./IconButton";
@@ -30,7 +30,7 @@ export interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = React.memo(
   ({ task, onToggle, onDelete, onPress }) => {
-    const isDark = useIsDark();
+    const colors = useSemanticColors();
     const reduceMotion = useReducedMotion();
     const completePreset = useMotionPreset("task.complete");
 
@@ -103,18 +103,16 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
     const getPriorityTag = () => {
       switch (task.priority) {
         case "high":
-          return { label: "High", color: isDark ? Colors.white : Colors.black };
+          return { label: "High", color: colors.textPrimary };
         case "medium":
           return {
             label: "Med",
-            color: isDark
-              ? Colors.secondaryTextDark
-              : Colors.secondaryTextLight,
+            color: colors.textSecondary,
           };
         case "low":
           return {
             label: "Low",
-            color: isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight,
+            color: colors.textTertiary,
           };
       }
     };
@@ -132,7 +130,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
         <View style={styles.headerLine}>
           <Typography
             variant="bodyBold"
-            color={isDark ? Colors.textDark : Colors.textLight}
+            color={colors.textPrimary}
             style={[styles.titleText, task.completed && styles.strikethrough]}
             numberOfLines={2}
           >
@@ -143,9 +141,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
         {task.notes ? (
           <Typography
             variant="caption"
-            color={
-              isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-            }
+            color={colors.textSecondary}
             numberOfLines={1}
             style={styles.notesText}
           >
@@ -159,19 +155,17 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
               style={[
                 styles.badge,
                 {
-                  backgroundColor: isDark
-                    ? Colors.surfaceRaisedDark
-                    : Colors.surfaceRaisedLight,
+                  backgroundColor: colors.surfaceRaised,
                 },
               ]}
             >
               <Sparkles
                 size={11}
-                color={isDark ? Colors.white : Colors.black}
+                color={colors.accent}
               />
               <Typography
                 variant="tiny"
-                color={isDark ? Colors.textDark : Colors.textLight}
+                color={colors.textPrimary}
                 style={styles.badgeText}
               >
                 AI Suggested
@@ -183,15 +177,11 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
             <View style={styles.dateMeta}>
               <Clock
                 size={11}
-                color={
-                  isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-                }
+                color={colors.textTertiary}
               />
               <Typography
                 variant="tiny"
-                color={
-                  isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight
-                }
+                color={colors.textSecondary}
                 style={styles.dateText}
               >
                 {task.dueDate}
@@ -204,9 +194,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
             style={[
               styles.priorityBadge,
               {
-                backgroundColor: isDark
-                  ? Colors.surfaceRaisedDark
-                  : Colors.surfaceRaisedLight,
+                backgroundColor: colors.surfaceRaised,
               },
             ]}
           >
@@ -239,16 +227,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
               styles.checkbox,
               {
                 borderColor: task.completed
-                  ? isDark
-                    ? Colors.white
-                    : Colors.black
-                  : isDark
-                    ? Colors.secondaryTextDark
-                    : Colors.secondaryTextLight,
+                  ? colors.accent
+                  : colors.borderDefault,
                 backgroundColor: task.completed
-                  ? isDark
-                    ? Colors.white
-                    : Colors.black
+                  ? colors.accent
                   : "transparent",
               },
             ]}
@@ -257,7 +239,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
               {task.completed && (
                 <Check
                   size={13}
-                  color={isDark ? Colors.black : Colors.white}
+                  color={colors.onAccent}
                   strokeWidth={3}
                 />
               )}
@@ -285,9 +267,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
           icon={
             <Trash2
               size={16}
-              color={
-                isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight
-              }
+              color={colors.textTertiary}
             />
           }
           onPress={() => onDelete(task.id)}

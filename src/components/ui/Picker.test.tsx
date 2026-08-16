@@ -1,6 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
 import React from "react";
 
+(globalThis as unknown as { __DEV__: boolean }).__DEV__ = true;
+
 const MockView: React.FC<Record<string, unknown>> = (props) =>
   React.createElement("View", props, props.children as React.ReactNode);
 
@@ -38,12 +40,48 @@ mock.module("react-native", () => ({
   TextInput: MockView,
   ActivityIndicator: MockView,
   FlatList: MockView,
+  ScrollView: MockView,
   Pressable: MockView,
   Modal: MockView,
+  Image: MockView,
   Touchable: { Mixin: {} },
   useColorScheme: () => "dark",
+  processColor: (c: unknown) => c,
+  PanResponder: { create: () => ({ panHandlers: {} }) },
+  findNodeHandle: () => null,
+  PixelRatio: {
+    get: () => 2,
+    roundToNearestPixel: (n: number) => n,
+  },
+  NativeEventEmitter: class {
+    addListener() {
+      return { remove: () => {} };
+    }
+    removeAllListeners() {}
+  },
+  LogBox: {
+    ignoreLogs: () => {},
+    ignoreAllLogs: () => {},
+  },
   TurboModuleRegistry: { get: () => null, getEnforcing: () => null },
   NativeModules: {},
+}));
+
+mock.module("lucide-react-native", () => ({
+  Check: MockView,
+  RefreshCw: MockView,
+  Search: MockView,
+  ChevronDown: MockView,
+  Flag: MockView,
+  Mic: MockView,
+  Minus: MockView,
+  Plus: MockView,
+  Repeat2: MockView,
+  X: MockView,
+  Clock: MockView,
+  Sparkles: MockView,
+  Trash2: MockView,
+  ArrowUp: MockView,
 }));
 
 // Mock @expo/ui Universal Picker & Host
@@ -67,6 +105,13 @@ mock.module("@expo/ui", () => ({
   Picker: MockPicker,
   Switch: MockSwitch,
 }));
+
+mock.module("@expo/ui/jetpack-compose", () => ({
+  isDynamicColorAvailable: true,
+  getMaterialColors: () => null,
+}));
+
+mock.module("@expo/ui/swift-ui", () => ({}));
 
 let mockHapticsEnabled = true;
 mock.module("@/stores/settings.store", () => ({

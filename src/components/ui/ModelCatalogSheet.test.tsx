@@ -84,6 +84,17 @@ mock.module("lucide-react-native", () => ({
   Check: MockView,
   RefreshCw: MockView,
   Search: MockView,
+  ChevronDown: MockView,
+  Flag: MockView,
+  Mic: MockView,
+  Minus: MockView,
+  Plus: MockView,
+  Repeat2: MockView,
+  X: MockView,
+  Clock: MockView,
+  Sparkles: MockView,
+  Trash2: MockView,
+  ArrowUp: MockView,
 }));
 
 mock.module("@expo/ui/community/bottom-sheet", () => ({

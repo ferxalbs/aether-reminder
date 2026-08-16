@@ -11,14 +11,12 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { GlassSurface } from "./GlassSurface";
 import { Typography } from "./Typography";
 import {
-  Colors,
   ControlTokens,
   getMinimumTouchTarget,
   Motion,
   Radius,
   Spacing,
 } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 
 export interface ButtonProps {
@@ -50,7 +48,6 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
-  const isDark = useIsDark();
   const colors = useSemanticColors();
   const isDisabled = disabled || loading;
 
@@ -58,27 +55,23 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case "primary":
         return {
-          backgroundColor: colors.accent,
-          borderColor: colors.accent,
+          backgroundColor: colors.interactive,
+          borderColor: colors.interactive,
         };
       case "secondary":
         return {
-          backgroundColor: colors.elevatedSurface,
-          borderColor: colors.border,
+          backgroundColor: colors.surfaceRaised,
+          borderColor: colors.borderDefault,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: colors.border,
+          borderColor: colors.borderDefault,
         };
       case "destructive":
         return {
-          backgroundColor: isDark
-            ? Colors.destructiveBackgroundDark
-            : Colors.destructiveBackgroundLight,
-          borderColor: isDark
-            ? Colors.destructiveBorderDark
-            : Colors.destructiveBorderLight,
+          backgroundColor: colors.destructiveContainer,
+          borderColor: colors.destructiveBorder,
         };
       case "ghost":
       default:
@@ -90,14 +83,12 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextColor = () => {
-    if (isDisabled)
-      return isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight;
-    if (variant === "primary") return colors.onAccent;
+    if (isDisabled) return colors.textDisabled;
+    if (variant === "primary") return colors.interactiveForeground;
     if (variant === "secondary") return colors.textPrimary;
-    if (variant === "destructive") return isDark ? Colors.white : Colors.black;
-    if (variant === "ghost")
-      return isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
-    return isDark ? Colors.white : Colors.black;
+    if (variant === "destructive") return colors.destructive;
+    if (variant === "ghost") return colors.textSecondary;
+    return colors.textPrimary;
   };
 
   const getSizeStyle = () => {

@@ -2,12 +2,11 @@ import React, { useCallback } from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { BottomSheet } from "@expo/ui/community/bottom-sheet";
 import {
-  Colors,
   ControlTokens,
   getMinimumTouchTarget,
   Spacing,
 } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Typography } from "./Typography";
 
 export interface SheetProps {
@@ -45,7 +44,7 @@ export const Sheet: React.FC<SheetProps> = ({
   contentStyle,
   testID,
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const dialogLabel = accessibilityLabel ?? title ?? "Sheet";
 
   const handleDismiss = useCallback(() => {
@@ -64,8 +63,8 @@ export const Sheet: React.FC<SheetProps> = ({
       backgroundStyle={[
         styles.sheetBackground,
         {
-          backgroundColor: isDark ? Colors.surfaceDark : Colors.surfaceLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: colors.surface,
+          borderColor: colors.borderDefault,
         },
         surfaceStyle,
       ]}
@@ -86,11 +85,7 @@ export const Sheet: React.FC<SheetProps> = ({
               {subtitle ? (
                 <Typography
                   variant="caption"
-                  color={
-                    isDark
-                      ? Colors.secondaryTextDark
-                      : Colors.secondaryTextLight
-                  }
+                  color={colors.textSecondary}
                 >
                   {subtitle}
                 </Typography>

@@ -2,8 +2,8 @@ import React from "react";
 import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GlassSurface } from "./GlassSurface";
-import { Colors, Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { Hairline, Motion, Radius, Spacing } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 
 interface CardBaseProps {
   children: React.ReactNode;
@@ -30,29 +30,27 @@ export const Card: React.FC<CardProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
 
   const getVariantStyle = () => {
     switch (variant) {
       case "elevated":
         return {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: colors.surfaceRaised,
+          borderColor: colors.borderDefault,
           borderWidth: Hairline.width,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.borderDefault,
           borderWidth: Hairline.width,
         };
       case "outline":
       default:
         return {
           backgroundColor: "transparent",
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.borderDefault,
           borderWidth: Hairline.width,
         };
     }
@@ -85,7 +83,7 @@ export const Card: React.FC<CardProps> = ({
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
         android_ripple={{
-          color: isDark ? Colors.rippleDark : Colors.rippleLight,
+          color: colors.ripple,
         }}
         scaleTo={Motion.cardPressScale}
         style={containerStyles}

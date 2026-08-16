@@ -2,8 +2,8 @@ import React from "react";
 import { Platform, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GlassSurface } from "./GlassSurface";
-import { Colors, getMinimumTouchTarget, Motion, Radius } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { getMinimumTouchTarget, Motion, Radius } from "@/theme/tokens";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import * as Haptics from "expo-haptics";
 
 export interface IconButtonProps {
@@ -29,23 +29,21 @@ export const IconButton: React.FC<IconButtonProps> = ({
   style,
   hapticStyle = Haptics.ImpactFeedbackStyle.Light,
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const touchTarget = Math.max(size, getMinimumTouchTarget(Platform.OS));
 
   const getContainerStyle = () => {
     switch (variant) {
       case "solid":
         return {
-          backgroundColor: isDark
-            ? Colors.surfaceRaisedDark
-            : Colors.surfaceRaisedLight,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          backgroundColor: colors.surfaceRaised,
+          borderColor: colors.borderDefault,
           borderWidth: 1,
         };
       case "glass":
         return {
           backgroundColor: "transparent",
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.borderDefault,
           borderWidth: 1,
         };
       case "ghost":
@@ -67,7 +65,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
       android_ripple={{
-        color: isDark ? Colors.rippleDark : Colors.rippleLight,
+        color: colors.ripple,
       }}
       hapticStyle={hapticStyle}
       scaleTo={Motion.iconPressScale}

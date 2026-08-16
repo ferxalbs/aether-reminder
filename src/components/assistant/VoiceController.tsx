@@ -99,8 +99,7 @@ export function useVoiceController({
     [audioStream.stream],
   );
 
-  // VoiceSession's constructor only stores these callbacks; it does not invoke ref-backed capture during render.
-  // eslint-disable-next-line react-hooks/refs
+  /* eslint-disable react-hooks/refs */
   const voiceSession = useMemo(
     () =>
       new VoiceSession({
@@ -125,6 +124,7 @@ export function useVoiceController({
       }),
     [audioLevel, capture, deliverTranscript, openAiApiKey, openAiKeyLoaded],
   );
+  /* eslint-enable react-hooks/refs */
 
   useEffect(
     () =>

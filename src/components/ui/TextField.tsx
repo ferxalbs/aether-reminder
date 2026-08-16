@@ -10,13 +10,12 @@ import {
   ViewStyle,
 } from "react-native";
 import {
-  Colors,
   ControlTokens,
   getMinimumTouchTarget,
   Radius,
   TypographyTokens,
 } from "@/theme/tokens";
-import { useIsDark } from "@/theme/useResolvedTheme";
+import { useSemanticColors } from "@/theme/useSemanticColors";
 import { GlassSurface } from "./GlassSurface";
 import { Typography } from "./Typography";
 
@@ -61,34 +60,24 @@ export const TextField: React.FC<TextFieldProps> = ({
   onFocus,
   ...inputProps
 }) => {
-  const isDark = useIsDark();
+  const colors = useSemanticColors();
   const [focused, setFocused] = useState(false);
   const isDisabled = editable === false;
   const hasError = Boolean(error);
 
   const borderColor = hasError
-    ? isDark
-      ? Colors.white
-      : Colors.black
+    ? colors.destructive
     : focused
-      ? isDark
-        ? Colors.white
-        : Colors.black
-      : isDark
-        ? Colors.borderDark
-        : Colors.borderLight;
+      ? colors.borderFocused
+      : colors.borderDefault;
 
   const backgroundColor =
     variant === "filled"
-      ? isDark
-        ? Colors.surfaceRaisedDark
-        : Colors.surfaceRaisedLight
+      ? colors.surfaceRaised
       : "transparent";
 
-  const textColor = isDark ? Colors.textDark : Colors.textLight;
-  const placeholderColor = isDark
-    ? Colors.tertiaryTextDark
-    : Colors.tertiaryTextLight;
+  const textColor = colors.textPrimary;
+  const placeholderColor = colors.textTertiary;
   const fieldRadius = Radius.md;
 
   const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
@@ -105,7 +94,7 @@ export const TextField: React.FC<TextFieldProps> = ({
     <View style={[styles.container, containerStyle]}>
       <Typography
         variant="caption"
-        color={isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight}
+        color={colors.textSecondary}
         accessible={false}
       >
         {label}
@@ -146,8 +135,8 @@ export const TextField: React.FC<TextFieldProps> = ({
           onBlur={handleBlur}
           onFocus={handleFocus}
           placeholderTextColor={placeholderColor}
-          selectionColor={isDark ? Colors.white : Colors.black}
-          cursorColor={isDark ? Colors.white : Colors.black}
+          selectionColor={colors.accent}
+          cursorColor={colors.accent}
           style={[
             styles.input,
             { color: textColor },
@@ -160,7 +149,7 @@ export const TextField: React.FC<TextFieldProps> = ({
       {error ? (
         <Typography
           variant="caption"
-          color={isDark ? Colors.white : Colors.black}
+          color={colors.destructive}
           style={styles.message}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
@@ -170,7 +159,7 @@ export const TextField: React.FC<TextFieldProps> = ({
       ) : helperText ? (
         <Typography
           variant="caption"
-          color={isDark ? Colors.tertiaryTextDark : Colors.tertiaryTextLight}
+          color={colors.textTertiary}
           style={styles.message}
         >
           {helperText}

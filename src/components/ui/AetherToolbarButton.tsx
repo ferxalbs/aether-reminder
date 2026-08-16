@@ -7,9 +7,8 @@ import {
   ViewStyle,
 } from "react-native";
 import { LucideIcon } from "lucide-react-native";
-import { Colors, Hairline, Radius, TouchTargets } from "@/theme/tokens";
+import { Hairline, Radius, TouchTargets } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
-import { useIsDark } from "@/theme/useResolvedTheme";
 
 export interface AetherToolbarButtonProps {
   icon: LucideIcon;
@@ -29,7 +28,6 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
   style,
 }) => {
   const colors = useSemanticColors();
-  const isDark = useIsDark();
   const touchSize =
     Platform.OS === "android" ? TouchTargets.android : TouchTargets.ios;
 
@@ -43,12 +41,10 @@ export const AetherToolbarButton: React.FC<AetherToolbarButtonProps> = ({
         styles.button,
         { width: touchSize, height: touchSize },
         hasBackground && {
-          backgroundColor: isDark
-            ? Colors.glassDarkFallback
-            : Colors.glassLightFallback,
+          backgroundColor: colors.surfaceRaised,
           borderRadius: Radius.pill,
           borderWidth: Hairline.width,
-          borderColor: isDark ? Colors.borderDark : Colors.borderLight,
+          borderColor: colors.borderDefault,
         },
         pressed && styles.pressed,
         disabled && styles.disabled,

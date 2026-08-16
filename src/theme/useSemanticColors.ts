@@ -1,11 +1,10 @@
-import { getSemanticColors } from "./tokens";
-import { useSettingsStore } from "@/stores/settings.store";
-import { useIsDark } from "./useResolvedTheme";
+import { useAetherTheme } from "./useAetherTheme";
+import type { SemanticColors } from "./types";
 
-export function useSemanticColors() {
-  const isDark = useIsDark();
-  const materialColorsEnabled = useSettingsStore(
-    (state) => state.materialColorsEnabled,
-  );
-  return getSemanticColors(isDark ? "dark" : "light", materialColorsEnabled);
+/**
+ * Returns the resolved semantic color palette for the current theme and color source.
+ * Fully compatible with existing call sites and enhanced with rich semantic tokens.
+ */
+export function useSemanticColors(): SemanticColors {
+  return useAetherTheme().colors;
 }
