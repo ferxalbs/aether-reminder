@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   DEFAULT_E2E_DEVICE_ID,
   DEFAULT_E2E_USER_ID,
+  assertProductionCloudConfig,
   isAetherCloudConfigured,
   readAetherCloudBaseUrl,
   resolveAetherCloudConfig,
+  validateAetherCloudUrl,
 } from "./config";
 
 describe("Aether Cloud configuration", () => {
@@ -20,9 +22,12 @@ describe("Aether Cloud configuration", () => {
   });
 
   test("accepts a public development URL and deterministic E2E identity", () => {
-    const config = resolveAetherCloudConfig({
-      EXPO_PUBLIC_AETHER_CLOUD_URL: "http://127.0.0.1:8080/",
-    });
+    const config = resolveAetherCloudConfig(
+      {
+        EXPO_PUBLIC_AETHER_CLOUD_URL: "http://127.0.0.1:8080/",
+      },
+      false,
+    );
     expect(config).toEqual({
       baseUrl: "http://127.0.0.1:8080",
       userId: DEFAULT_E2E_USER_ID,
@@ -31,12 +36,45 @@ describe("Aether Cloud configuration", () => {
     expect(config?.userId.startsWith("e2e.")).toBe(true);
   });
 
+  test("requires HTTPS in production builds", () => {
+    const httpValidation = validateAetherCloudUrl(
+      "http://api.aether.internal",
+      true,
+    );
+    expect(httpValidation.valid).toBe(false);
+    expect(httpValidation.reason).toContain("HTTPS");
+
+    const httpsValidation = validateAetherCloudUrl(
+      "https://api.aether.internal/",
+      true,
+    );
+    expect(httpsValidation.valid).toBe(true);
+    expect(httpsValidation.normalizedUrl).toBe("https://api.aether.internal");
+  });
+
+  test("assertProductionCloudConfig requires valid HTTPS URL", () => {
+    expect(() => assertProductionCloudConfig({})).toThrow("Missing");
+    expect(() =>
+      assertProductionCloudConfig({
+        EXPO_PUBLIC_AETHER_CLOUD_URL: "http://insecure.test",
+      }),
+    ).toThrow("Invalid production");
+
+    const config = assertProductionCloudConfig({
+      EXPO_PUBLIC_AETHER_CLOUD_URL: "https://cloud.aether.app/",
+    });
+    expect(config.cloudOrigin).toBe("https://cloud.aether.app");
+  });
+
   test("rejects an invalid development identity", () => {
     expect(() =>
-      resolveAetherCloudConfig({
-        EXPO_PUBLIC_AETHER_CLOUD_URL: "http://127.0.0.1:8080",
-        EXPO_PUBLIC_AETHER_DEV_USER_ID: "bad identity",
-      }),
+      resolveAetherCloudConfig(
+        {
+          EXPO_PUBLIC_AETHER_CLOUD_URL: "http://127.0.0.1:8080",
+          EXPO_PUBLIC_AETHER_DEV_USER_ID: "bad identity",
+        },
+        false,
+      ),
     ).toThrow("development identity is invalid");
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Minimal SSE line parser for OpenRouter / OpenAI-compatible streams.
+ * Minimal SSE line parser for AETHER Cloud streamed responses.
  * Emits data payloads only (ignores comments / event names).
  */
 

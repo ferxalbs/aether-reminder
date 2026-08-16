@@ -56,7 +56,6 @@ describe("agent runtime conformance", () => {
         message: "hello",
         context: baseContext(),
         modelId: "scripted/full",
-        apiKey: "test-key",
       }),
     ).rejects.toThrow(
       /could not initialize local run storage.*agent_sessions/i,
@@ -84,7 +83,6 @@ describe("agent runtime conformance", () => {
       message: "What do I have today?",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     expect(types(events)).toContain("tool.completed");
@@ -142,7 +140,6 @@ describe("agent runtime conformance", () => {
         message: "Run the gated read",
         context: baseContext(),
         modelId: "scripted/full",
-        apiKey: "test-key",
       })
       [Symbol.asyncIterator]();
     const observed: AgentEvent[] = [];
@@ -186,7 +183,6 @@ describe("agent runtime conformance", () => {
       message: "Create Review PR tomorrow",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     expect(types(events)).toContain("tool.completed");
@@ -233,7 +229,6 @@ describe("agent runtime conformance", () => {
       message: "Mark the first task complete",
       context: baseContext({ visibleTaskIds: [first.id] }),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     expect(
@@ -268,7 +263,6 @@ describe("agent runtime conformance", () => {
       message: "Delete everything",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
       // no confirmations
     });
 
@@ -298,7 +292,6 @@ describe("agent runtime conformance", () => {
       message: "Create Only once twice",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     const tasks = await services.tasks.searchTasks("Only once");
@@ -330,7 +323,6 @@ describe("agent runtime conformance", () => {
       message: "Delete everything I said by voice",
       context: baseContext({ invocationSource: "voice" }),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
     expect(types(first)).toContain("tool.confirmation_required");
     const pending = first.find(
@@ -362,29 +354,32 @@ describe("agent runtime conformance", () => {
     await db.closeAsync?.();
   });
 
-  test("OpenRouter timeout → run fails honestly", async () => {
+  test("AETHER Cloud network failure → run fails honestly", async () => {
     const db = await readyDb();
     const provider = new ScriptedInferenceProvider();
-    provider.pushErrorTurn("NETWORK_ERROR", "Could not reach OpenRouter.");
+    provider.pushErrorTurn(
+      "NETWORK_ERROR",
+      "Could not reach AETHER Cloud.",
+    );
 
     const runtime = createAgentRuntime({ db, provider });
     const events = await collect(runtime, {
       message: "hello",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     const failed = events.find((e) => e.type === "run.failed");
     expect(failed).toBeTruthy();
     if (failed?.type === "run.failed") {
       expect(failed.code).toBe("NETWORK_ERROR");
-      expect(failed.message).toContain("OpenRouter");
+      expect(failed.message).toContain("AETHER Cloud");
     }
     // Must not invent success
     expect(types(events)).not.toContain("response.completed");
     await db.closeAsync?.();
   });
+
 
   test("cancel during streamed response → cancellation propagates", async () => {
     const db = await readyDb();
@@ -399,7 +394,6 @@ describe("agent runtime conformance", () => {
       message: "stream please",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     const consumer = (async () => {
@@ -438,7 +432,6 @@ describe("agent runtime conformance", () => {
       message: "create a task",
       context: baseContext(),
       modelId: "scripted/chat-only",
-      apiKey: "test-key",
     });
 
     const failed = events.find((e) => e.type === "run.failed");
@@ -464,7 +457,6 @@ describe("agent runtime conformance", () => {
       message: "create something",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     expect(types(events)).toContain("tool.failed");
@@ -494,7 +486,6 @@ describe("agent runtime conformance", () => {
       message: "complete missing",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     expect(types(events)).toContain("tool.failed");
@@ -518,7 +509,6 @@ describe("agent runtime conformance", () => {
       message: "workload?",
       context: baseContext(),
       modelId: "scripted/full",
-      apiKey: "test-key",
     });
 
     const states = events

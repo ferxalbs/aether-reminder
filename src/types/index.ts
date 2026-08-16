@@ -30,17 +30,10 @@ export interface Reminder {
 export type ThemePreference = "system" | "dark" | "light";
 
 export interface UserSettings {
-  selectedModel: string;
   theme: ThemePreference;
   materialColorsEnabled: boolean;
   hapticsEnabled: boolean;
   autoSummarize: boolean;
   /** Conservative opt-in for local adaptive follow-up notifications. */
   adaptiveNudgesEnabled: boolean;
-}
-
-export interface OpenRouterModel {
-  id: string;
-  name: string;
-  description: string;
 }

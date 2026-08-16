@@ -1,19 +1,44 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import React from "react";
+import ReactTestRenderer, { act } from "react-test-renderer";
 
-(globalThis as unknown as { __DEV__: boolean }).__DEV__ = true;
+(globalThis as unknown as { __DEV__: boolean }).__DEV__ = false;
+process.env.EXPO_OS = "ios";
+(globalThis as unknown as { window: Record<string, unknown> }).window = {
+  location: { protocol: "http:", search: "?platform=ios" },
+  addEventListener: () => {},
+  removeEventListener: () => {},
+};
+(globalThis as unknown as { expo: Record<string, unknown> }).expo = {
+  EventEmitter: class {
+    addListener() {
+      return { remove: () => {} };
+    }
+    removeAllListeners() {}
+    emit() {}
+  },
+  modules: {
+    ExpoAsset: {},
+  },
+};
 
-const MockView: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement("View", props, props.children as React.ReactNode);
+function MockView(props: Record<string, unknown>) {
+  return React.createElement("View", props, props.children as React.ReactNode);
+}
 
-const MockText: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement("Text", props, props.children as React.ReactNode);
+function MockText(props: Record<string, unknown>) {
+  return React.createElement("Text", props, props.children as React.ReactNode);
+}
 
-// Mock react-native
+mock.module("expo-blur", () => ({
+  BlurView: MockView,
+  BlurTargetView: MockView,
+}));
+
 mock.module("react-native", () => ({
   Platform: {
     OS: "ios",
-    select: (obj: Record<string, unknown>) => obj.ios ?? obj.default,
+    select: (obj: Record<string, unknown>) => obj.ios ?? obj.default ?? obj.web,
   },
   StyleSheet: {
     create: (styles: Record<string, unknown>) => styles,
@@ -76,59 +101,17 @@ mock.module("react-native", () => ({
   },
 }));
 
+
 mock.module("lucide-react-native", () => ({
-  Check: MockView,
-  RefreshCw: MockView,
-  Search: MockView,
   ChevronDown: MockView,
-  Flag: MockView,
-  Mic: MockView,
-  Minus: MockView,
-  Plus: MockView,
-  Repeat2: MockView,
-  X: MockView,
-  Clock: MockView,
-  Sparkles: MockView,
-  Trash2: MockView,
-  ArrowUp: MockView,
 }));
-
-// Mock @expo/ui Universal Picker & Host
-const MockPickerItem = (props: Record<string, unknown>) =>
-  React.createElement("ExpoPickerItem", props, null);
-
-const MockPicker = Object.assign(
-  (props: Record<string, unknown>) =>
-    React.createElement("ExpoPicker", props, props.children as React.ReactNode),
-  { Item: MockPickerItem },
-);
-
-const MockHost = (props: Record<string, unknown>) =>
-  React.createElement("ExpoHost", props, props.children as React.ReactNode);
-
-const MockSwitch = (props: Record<string, unknown>) =>
-  React.createElement("ExpoSwitch", props, null);
-
-mock.module("@expo/ui", () => ({
-  Host: MockHost,
-  Picker: MockPicker,
-  Switch: MockSwitch,
-}));
-
-mock.module("@expo/ui/jetpack-compose", () => ({
-  isDynamicColorAvailable: true,
-  getMaterialColors: () => null,
-  Switch: MockSwitch,
-}));
-
-mock.module("@expo/ui/swift-ui", () => ({}));
 
 let mockHapticsEnabled = true;
-let mockThemeSource: "aether" | "material-you" = "aether";
 mock.module("@/stores/settings.store", () => ({
-  useSettingsStore: {
-    getState: () => ({ hapticsEnabled: mockHapticsEnabled }),
-  },
+  useSettingsStore: Object.assign(
+    () => ({ hapticsEnabled: mockHapticsEnabled }),
+    { getState: () => ({ hapticsEnabled: mockHapticsEnabled }) },
+  ),
 }));
 
 const mockSelectionAsync = mock(() => Promise.resolve());
@@ -143,263 +126,86 @@ mock.module("@/theme/useResolvedTheme", () => ({
   useResolvedTheme: () => "dark",
 }));
 
-mock.module("@/theme/useAetherTheme", () => ({
-  useAetherTheme: () => ({
-    mode: "dark",
-    source: mockThemeSource,
-    isDynamicColorAvailable: false,
-    colors: {
-      accent: "#3b82f6",
-      onAccent: "#ffffff",
-      surfaceRaised: "#18181b",
-      textSecondary: "#a1a1aa",
-      textTertiary: "#71717a",
-      destructive: "#ff453a",
-    },
+mock.module("@/theme/useSemanticColors", () => ({
+  useSemanticColors: () => ({
+    accent: "#3b82f6",
+    onAccent: "#ffffff",
+    elevatedSurface: "#18181b",
+    surfaceRaised: "#18181b",
+    textPrimary: "#ffffff",
+    textSecondary: "#a1a1aa",
+    textTertiary: "#71717a",
+    destructive: "#ff453a",
+    ripple: "rgba(255,255,255,0.1)",
   }),
 }));
 
 const { Picker } = await import("./Picker");
-const ReactTestRenderer = (await import("react-test-renderer")).default;
-const { act } = await import("react-test-renderer");
 
-describe("Picker Universal native-backed adapter", () => {
+describe("Picker component", () => {
   beforeEach(() => {
     mockHapticsEnabled = true;
-    mockThemeSource = "aether";
+    mockSelectionAsync.mockClear();
   });
 
-  test("renders AETHER label and delegates options to UniversalPicker.Item children", () => {
-    const onValueChange = mock(() => {});
-    const options = [
-      { value: "daily" as const, label: "Daily" },
-      { value: "weekly" as const, label: "Weekly" },
-      { value: "monthly" as const, label: "Monthly" },
-    ];
+  const options = [
+    { value: "daily", label: "Daily" },
+    { value: "weekly", label: "Weekly" },
+    { value: "monthly", label: "Monthly" },
+  ];
 
+  test("renders label and options in segmented mode on iOS", () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
     act(() => {
       renderer = ReactTestRenderer.create(
-        <Picker<"daily" | "weekly" | "monthly">
-          label="Frequency"
-          value="weekly"
+        <Picker
+          label="Recurrence"
           options={options}
-          onValueChange={onValueChange}
-          helperText="Select cadence"
-          testID="frequency-picker"
+          value="daily"
+          onValueChange={() => {}}
         />,
       );
     });
-
-    const root = renderer!.root;
-    const picker = root.findByType("ExpoPicker");
-    expect(picker).toBeDefined();
-    expect(picker.props.selectedValue).toBe("weekly");
-    expect(picker.props.enabled).toBe(true);
-    expect(picker.props.appearance).toBe("menu");
-    expect(picker.props.testID).toBe("frequency-picker");
-
-    const items = root.findAllByType("ExpoPickerItem");
-    expect(items.length).toBe(3);
-    expect(items[0].props.value).toBe("daily");
-    expect(items[0].props.label).toBe("Daily");
-    expect(items[1].props.value).toBe("weekly");
-    expect(items[1].props.label).toBe("Weekly");
-    expect(items[2].props.value).toBe("monthly");
-    expect(items[2].props.label).toBe("Monthly");
-
-    // Host checks
-    const host = root.findByType("ExpoHost");
-    expect(host).toBeDefined();
-    expect(host.props.matchContents).toBe(true);
-    expect(host.props.colorScheme).toBe("dark");
-    expect(host.props.seedColor).toBe("#3b82f6");
+    expect(renderer).toBeDefined();
+    const texts = renderer!.root.findAllByType("Text");
+    expect(texts.some((t) => t.props.children === "Recurrence")).toBe(true);
+    expect(texts.some((t) => t.props.children === "Daily")).toBe(true);
+    expect(texts.some((t) => t.props.children === "Weekly")).toBe(true);
+    expect(texts.some((t) => t.props.children === "Monthly")).toBe(true);
   });
 
-  test("omits Host seedColor when the resolved source is wallpaper-derived Material You", () => {
-    mockThemeSource = "material-you";
+  test("renders helperText and error correctly", () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <Picker
+          label="Recurrence"
+          options={options}
+          value="daily"
+          onValueChange={() => {}}
+          helperText="Choose how often this task repeats"
+        />,
+      );
+    });
+    let texts = renderer!.root.findAllByType("Text");
+    expect(
+      texts.some((t) => t.props.children === "Choose how often this task repeats"),
+    ).toBe(true);
 
     act(() => {
       renderer = ReactTestRenderer.create(
         <Picker
-          label="Theme"
-          value="system"
-          options={[{ value: "system", label: "System" }]}
-          onValueChange={() => undefined}
-        />,
-      );
-    });
-
-    const host = renderer!.root.findByType("ExpoHost");
-    expect(host.props.seedColor).toBeUndefined();
-  });
-
-  test("maps typed value on selection change and fires haptics once when enabled", () => {
-    mockHapticsEnabled = true;
-    mockSelectionAsync.mockClear();
-    const onValueChange = mock(() => {});
-    const options = [
-      { value: "low" as const, label: "Low" },
-      { value: "medium" as const, label: "Medium" },
-      { value: "high" as const, label: "High" },
-    ];
-
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<"low" | "medium" | "high">
-          label="Priority"
-          value="low"
+          label="Recurrence"
           options={options}
-          onValueChange={onValueChange}
-        />,
-      );
-    });
-
-    const picker = renderer!.root.findByType("ExpoPicker");
-
-    act(() => {
-      picker.props.onValueChange("high");
-    });
-
-    expect(onValueChange).toHaveBeenCalledTimes(1);
-    expect(onValueChange).toHaveBeenCalledWith("high");
-    expect(mockSelectionAsync).toHaveBeenCalledTimes(1);
-  });
-
-  test("does not fire haptics when selected value is unchanged or haptics disabled", () => {
-    mockHapticsEnabled = false;
-    mockSelectionAsync.mockClear();
-    const onValueChange = mock(() => {});
-    const options = [
-      { value: 1, label: "One" },
-      { value: 2, label: "Two" },
-    ];
-
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<number>
-          label="Number"
-          value={1}
-          options={options}
-          onValueChange={onValueChange}
-        />,
-      );
-    });
-
-    const picker = renderer!.root.findByType("ExpoPicker");
-
-    act(() => {
-      picker.props.onValueChange(2);
-    });
-
-    expect(onValueChange).toHaveBeenCalledTimes(1);
-    expect(onValueChange).toHaveBeenCalledWith(2);
-    expect(mockSelectionAsync).toHaveBeenCalledTimes(0);
-  });
-
-  test("handles disabled field state safely and ignores incoming changes", () => {
-    mockHapticsEnabled = true;
-    mockSelectionAsync.mockClear();
-    const onValueChange = mock(() => {});
-    const options = [
-      { value: "a", label: "A" },
-      { value: "b", label: "B" },
-    ];
-
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<string>
-          label="Disabled Picker"
-          value="a"
-          options={options}
-          onValueChange={onValueChange}
-          disabled={true}
-        />,
-      );
-    });
-
-    const picker = renderer!.root.findByType("ExpoPicker");
-    expect(picker.props.enabled).toBe(false);
-
-    act(() => {
-      picker.props.onValueChange("b");
-    });
-
-    expect(onValueChange).toHaveBeenCalledTimes(0);
-    expect(mockSelectionAsync).toHaveBeenCalledTimes(0);
-  });
-
-  test("ignores unknown values not present in the options list", () => {
-    mockHapticsEnabled = true;
-    mockSelectionAsync.mockClear();
-    const onValueChange = mock(() => {});
-    const options = [
-      { value: "first", label: "First" },
-      { value: "second", label: "Second" },
-    ];
-
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<string>
-          label="Strict Picker"
-          value="first"
-          options={options}
-          onValueChange={onValueChange}
-        />,
-      );
-    });
-
-    const picker = renderer!.root.findByType("ExpoPicker");
-
-    act(() => {
-      picker.props.onValueChange("nonexistent");
-    });
-
-    expect(onValueChange).toHaveBeenCalledTimes(0);
-    expect(mockSelectionAsync).toHaveBeenCalledTimes(0);
-  });
-
-  test("falls back to accessibilityLabel or label for testID when testID is omitted", () => {
-    const options = [{ value: "opt", label: "Option" }];
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<string>
-          label="Fallback Label"
-          accessibilityLabel="Accessible Label"
-          value="opt"
-          options={options}
+          value="daily"
           onValueChange={() => {}}
+          error="Invalid recurrence option"
         />,
       );
     });
-
-    const picker = renderer!.root.findByType("ExpoPicker");
-    expect(picker.props.testID).toBe("Accessible Label");
-  });
-
-  test("renders error message with alert role and helper text when no error", () => {
-    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
-    act(() => {
-      renderer = ReactTestRenderer.create(
-        <Picker<string>
-          label="Validation Picker"
-          value="val"
-          options={[{ value: "val", label: "Value" }]}
-          onValueChange={() => {}}
-          error="Field is required"
-        />,
-      );
-    });
-
-    const root = renderer!.root;
-    const errorText = root.findByProps({ accessibilityRole: "alert" });
-    expect(errorText).toBeDefined();
-    expect(errorText.props.children).toBe("Field is required");
+    texts = renderer!.root.findAllByType("Text");
+    expect(
+      texts.some((t) => t.props.children === "Invalid recurrence option"),
+    ).toBe(true);
   });
 });

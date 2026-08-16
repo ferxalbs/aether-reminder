@@ -15,12 +15,15 @@ implements. It is not a production deployment guide.
 EXPO_PUBLIC_AETHER_CLOUD_URL=http://127.0.0.1:8080
 ```
 
-3. On a physical Android device, a USB reverse such as
+1. On a physical Android device, a USB reverse such as
    `adb reverse tcp:8080 tcp:8080` can make that loopback URL reachable.
    The URL is not hardcoded in product code.
 
-Hosted Cloud calls are used only when that public URL is present. If it is
-absent, the existing user-owned BYOK OpenRouter / OpenAI path remains.
+Hosted capabilities require AETHER Cloud. When the public Cloud origin is
+absent in a development build, hosted AI and voice report an unavailable
+configuration state; local Reminder functionality continues to work. Release
+configuration must supply a valid HTTPS origin. This public origin is build
+configuration, not a secret.
 
 The application does not call `/ready` at boot and does not require Cloud to
 read local reminders.
@@ -93,10 +96,21 @@ Local adapters execute the server-owned tools:
 
 Confirmation, receipts, undo, and SQLite remain on the device.
 
-## Provider-secret boundary
+## Hosted credential boundary
 
 An AETHER-owned OpenAI or OpenRouter master key must not ship in the mobile
-app. User-owned BYOK keys in SecureStore remain a separate, optional path.
+app, and AETHER Reminder does not support BYOK. The only OpenAI credential on
+mobile is a short-lived `ek_*` voice authorization returned by AETHER Cloud;
+it remains memory-only and is never logged or persisted.
+
+## Usage
+
+`GET /v1/me/usage` is the server-authoritative consumer usage contract. It
+returns the current plan, billing-period reset, AI request usage, voice-second
+usage, optional automation usage, and capability flags. Mobile never derives
+quota from receipts or local counters, and an unavailable endpoint is shown as
+unavailable rather than as zero usage. The current plan remains sourced from
+`GET /v1/me/subscription` until Cloud consolidates the responses.
 
 ## Failure and recovery
 

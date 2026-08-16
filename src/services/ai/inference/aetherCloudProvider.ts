@@ -333,7 +333,7 @@ function inferenceCodeForCloud(
     case "NOT_READY":
       return "PROVIDER_UNAVAILABLE";
     case "UNAUTHORIZED":
-      return "INVALID_API_KEY";
+      return "AUTH_REQUIRED";
     default:
       return "INVALID_REQUEST";
   }

@@ -6,6 +6,8 @@ import {
   isAbortError,
 } from "./errors";
 import type {
+  AetherUsageSnapshot,
+  CommercialSource,
   HealthResponse,
   InferenceTurnRequest,
   SubscriptionResponse,
@@ -55,6 +57,19 @@ export class AetherCloudClient {
       options,
     );
   }
+
+  async getUsage(
+    options: AetherCloudRequestOptions = {},
+  ): Promise<AetherUsageSnapshot> {
+    const raw = await this.requestJson<unknown>(
+      "GET",
+      "/v1/me/usage",
+      undefined,
+      options,
+    );
+    return decodeUsageSnapshot(raw);
+  }
+
 
   async createVoiceAuthorization(
     body: VoiceAuthorizationRequest = {},
@@ -222,6 +237,135 @@ function createRequestId(): string {
     return crypto.randomUUID();
   }
   return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function decodeUsageSnapshot(payload: unknown): AetherUsageSnapshot {
+  if (!payload || typeof payload !== "object") {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "AETHER Cloud returned an invalid usage snapshot payload.",
+    );
+  }
+  const raw = payload as Record<string, unknown>;
+
+  const plan = raw.plan as Record<string, unknown> | undefined;
+  if (!plan || (plan.tier !== "free" && plan.tier !== "pro")) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "Usage snapshot contains an invalid plan tier.",
+    );
+  }
+
+  const period = (raw.period as Record<string, unknown> | undefined) ?? {};
+  const ai = raw.ai as Record<string, unknown> | undefined;
+  if (!ai || !isNonNegativeFiniteNumber(ai.used)) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "Usage snapshot contains invalid AI usage metrics.",
+    );
+  }
+
+  const voice = raw.voice as Record<string, unknown> | undefined;
+  if (!voice || !isNonNegativeFiniteNumber(voice.usedSeconds)) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "Usage snapshot contains invalid voice usage metrics.",
+    );
+  }
+
+  const automations = raw.automations as Record<string, unknown> | undefined;
+  const capabilities = raw.capabilities as Record<string, unknown> | undefined;
+  if (
+    !capabilities ||
+    typeof capabilities.hostedInference !== "boolean" ||
+    typeof capabilities.liveTranscription !== "boolean" ||
+    typeof capabilities.cloudAutomations !== "boolean"
+  ) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "Usage snapshot contains invalid capability flags.",
+    );
+  }
+
+  const aiMetric = decodeUsageMetric(ai, "AI");
+  const voiceMetric = decodeVoiceUsageMetric(voice);
+  const automationMetric = automations
+    ? decodeUsageMetric(automations, "automation")
+    : undefined;
+
+  return {
+    plan: {
+      tier: plan.tier,
+      source:
+        typeof plan.source === "string"
+          ? (plan.source as CommercialSource)
+          : undefined,
+      displayName:
+        typeof plan.displayName === "string" && plan.displayName.trim()
+          ? plan.displayName.trim()
+          : plan.tier === "pro"
+            ? "AETHER Pro"
+            : "AETHER Free",
+    },
+    period: {
+      startsAt:
+        typeof period.startsAt === "string" ? period.startsAt : undefined,
+      resetsAt:
+        typeof period.resetsAt === "string" ? period.resetsAt : undefined,
+    },
+    ai: aiMetric,
+    voice: voiceMetric,
+    ...(automationMetric ? { automations: automationMetric } : {}),
+    capabilities: {
+      hostedInference: capabilities.hostedInference,
+      liveTranscription: capabilities.liveTranscription,
+      cloudAutomations: capabilities.cloudAutomations,
+    },
+  };
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function decodeNullableMetricValue(value: unknown, label: string): number | null {
+  if (value === null || value === undefined) return null;
+  if (!isNonNegativeFiniteNumber(value)) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      `Usage snapshot contains an invalid ${label}.`,
+    );
+  }
+  return value;
+}
+
+function decodeUsageMetric(
+  raw: Record<string, unknown>,
+  label: string,
+): AetherUsageSnapshot["ai"] {
+  const used = raw.used;
+  if (!isNonNegativeFiniteNumber(used)) {
+    throw new AetherCloudError("INVALID_RESPONSE", `Usage snapshot contains invalid ${label} usage.`);
+  }
+  return {
+    used,
+    limit: decodeNullableMetricValue(raw.limit, `${label} limit`),
+    remaining: decodeNullableMetricValue(raw.remaining, `${label} remaining usage`),
+  };
+}
+
+function decodeVoiceUsageMetric(
+  raw: Record<string, unknown>,
+): AetherUsageSnapshot["voice"] {
+  const usedSeconds = raw.usedSeconds;
+  if (!isNonNegativeFiniteNumber(usedSeconds)) {
+    throw new AetherCloudError("INVALID_RESPONSE", "Usage snapshot contains invalid voice usage.");
+  }
+  return {
+    usedSeconds,
+    limitSeconds: decodeNullableMetricValue(raw.limitSeconds, "voice limit"),
+    remainingSeconds: decodeNullableMetricValue(raw.remainingSeconds, "voice remaining usage"),
+  };
 }
 
 let sharedClient: AetherCloudClient | null = null;

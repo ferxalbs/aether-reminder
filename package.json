@@ -49,6 +49,7 @@
     "@types/react": "~19.2.18",
     "eslint": "^10.8.1",
     "eslint-config-expo": "^57.0.1",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "3.9.6",
@@ -62,8 +63,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "expo lint",
-    "test": "bun test",
-    "test:voice:integration": "bun test src/services/transcription/voiceAccess.manual.test.ts",
+    "test": "bun test --isolate src",
+    "validate:release-config": "bun scripts/validate-cloud-release-config.mjs",
+    "eas-build-pre-install": "bun scripts/validate-cloud-release-config.mjs --eas",
     "typecheck": "tsc --noEmit"
   },
   "private": true

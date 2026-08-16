@@ -36,7 +36,6 @@ describe("AETHER Core execution boundary", () => {
         invocationSource: "assistant",
       },
       modelId: "scripted/full",
-      apiKey: "test-key",
     })) {
       events.push(event);
     }

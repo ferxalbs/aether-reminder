@@ -14,27 +14,85 @@ export type AetherCloudConfig = {
   deviceId: string;
 };
 
+export type AetherRuntimeConfig = {
+  cloudOrigin: string;
+};
+
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
+export function validateAetherCloudUrl(
+  url: string,
+  isProduction = process.env.NODE_ENV === "production" &&
+    typeof __DEV__ !== "undefined" &&
+    !__DEV__,
+): { valid: boolean; normalizedUrl: string; reason?: string } {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return { valid: false, normalizedUrl: "", reason: "Cloud URL is empty." };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return {
+      valid: false,
+      normalizedUrl: "",
+      reason: "Cloud URL is not a valid URL format.",
+    };
+  }
+
+  if (isProduction && parsed.protocol !== "https:") {
+    return {
+      valid: false,
+      normalizedUrl: "",
+      reason: "Production builds require HTTPS for AETHER Cloud.",
+    };
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return {
+      valid: false,
+      normalizedUrl: "",
+      reason: "Cloud URL protocol must be HTTPS (or HTTP in development).",
+    };
+  }
+
+  return {
+    valid: true,
+    normalizedUrl: stripTrailingSlash(trimmed),
+  };
+}
+
 export function readAetherCloudBaseUrl(
   env: Record<string, string | undefined> = process.env,
+  isProduction = process.env.NODE_ENV === "production" &&
+    typeof __DEV__ !== "undefined" &&
+    !__DEV__,
 ): string {
   const raw = env.EXPO_PUBLIC_AETHER_CLOUD_URL?.trim() ?? "";
-  return raw ? stripTrailingSlash(raw) : "";
+  if (!raw) return "";
+  const validation = validateAetherCloudUrl(raw, isProduction);
+  return validation.valid ? validation.normalizedUrl : "";
 }
 
 export function isAetherCloudConfigured(
   env: Record<string, string | undefined> = process.env,
+  isProduction = process.env.NODE_ENV === "production" &&
+    typeof __DEV__ !== "undefined" &&
+    !__DEV__,
 ): boolean {
-  return readAetherCloudBaseUrl(env).length > 0;
+  return readAetherCloudBaseUrl(env, isProduction).length > 0;
 }
 
 export function resolveAetherCloudConfig(
   env: Record<string, string | undefined> = process.env,
+  isProduction = process.env.NODE_ENV === "production" &&
+    typeof __DEV__ !== "undefined" &&
+    !__DEV__,
 ): AetherCloudConfig | null {
-  const baseUrl = readAetherCloudBaseUrl(env);
+  const baseUrl = readAetherCloudBaseUrl(env, isProduction);
   if (!baseUrl) return null;
 
   const userId =
@@ -47,6 +105,24 @@ export function resolveAetherCloudConfig(
   }
 
   return { baseUrl, userId, deviceId };
+}
+
+export function assertProductionCloudConfig(
+  env: Record<string, string | undefined> = process.env,
+): AetherRuntimeConfig {
+  const raw = env.EXPO_PUBLIC_AETHER_CLOUD_URL?.trim() ?? "";
+  if (!raw) {
+    throw new Error(
+      "Missing EXPO_PUBLIC_AETHER_CLOUD_URL in release/production configuration.",
+    );
+  }
+  const validation = validateAetherCloudUrl(raw, true);
+  if (!validation.valid) {
+    throw new Error(
+      `Invalid production AETHER Cloud URL: ${validation.reason}`,
+    );
+  }
+  return { cloudOrigin: validation.normalizedUrl };
 }
 
 export function publicCloudEnvSnapshot(): {

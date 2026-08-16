@@ -75,7 +75,6 @@ describe("Aether Cloud inference provider", () => {
     for await (const event of provider.stream(
       {
         modelId: "ignored",
-        apiKey: "should-not-be-sent",
         messages,
         tools: [
           {
@@ -118,7 +117,6 @@ describe("Aether Cloud inference provider", () => {
     for await (const event of provider.stream(
       {
         modelId: "hosted",
-        apiKey: "",
         messages: [{ role: "user", content: "hello" }],
       },
       new AbortController().signal,

@@ -127,7 +127,7 @@ export const SettingsAccordion: React.FC = React.memo(() => {
       <AccordionItem
         icon={<Info size={20} color={colors.accent} />}
         title="About AETHER"
-        content="AETHER is a local-first, privacy-respecting task assistant. OpenRouter powers reasoning and tool execution; OpenAI powers realtime voice transcription."
+        content="AETHER is a local-first, privacy-respecting task assistant. Reminders, tasks, and notifications run directly on your device. Hosted intelligence and voice are powered by AETHER Cloud."
         isExpanded={showAbout}
         onToggle={toggleAbout}
       />
@@ -140,13 +140,14 @@ export const SettingsAccordion: React.FC = React.memo(() => {
       <AccordionItem
         icon={<Shield size={20} color={colors.accent} />}
         title="Privacy Information"
-        content="API keys remain isolated in SecureStore and are never included in analytics, error logs, or AsyncStorage. Task content is sent to OpenRouter only when requested. Voice audio is streamed to OpenAI only during active transcription sessions."
+        content="Your tasks, reminders, and database remain strictly local on your device. When you ask AETHER or use voice capture, requests are processed securely through AETHER Cloud with zero permanent retention of personal task content. No user API keys required."
         isExpanded={showPrivacy}
         onToggle={togglePrivacy}
       />
     </SettingsCard>
   );
 });
+
 
 SettingsAccordion.displayName = "SettingsAccordion";
 

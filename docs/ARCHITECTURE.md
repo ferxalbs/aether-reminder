@@ -10,7 +10,7 @@ The app keeps five user-facing surfaces:
 - `/tasks` — Tasks
 - `/ai` — AETHER reasoning status and model overview
 - `/transcribe` — Realtime voice status and flow overview
-- `/settings` — independent provider credentials, model selection, and preferences
+- `/settings` — Usage, preferences, and privacy information
 
 `AssistantHost` is mounted once above the router. It owns the single composer,
 conversation sheet, Orb, voice controller, confirmation UI, and handoff into
@@ -27,27 +27,15 @@ AETHER Cloud owns commercial policy and provider credentials. Mobile still
 owns tool execution, SQLite, confirmation, undo, PCM, and the OpenAI
 Realtime WebSocket.
 
-When that URL is unset, the existing user-owned BYOK path remains:
-
-OpenRouter is the conversational inference provider. The exact default
-model id is `deepseek/deepseek-v4-flash`. Before every run, the selected exact
-id is looked up in the current OpenRouter model catalog and its modalities,
-streaming, tools, tool-choice, and structured-output metadata are checked.
-There is no catalog-order fallback and no fabricated model suffix.
-
-OpenAI is used only for realtime transcription with
-`gpt-live-transcribe`. It emits transcript deltas and a committed final
-transcript; only that final text is passed to the `AgentRuntime`.
-OpenAI never receives agent prompts, task tools, or conversational reasoning
-requests.
+When the URL is unset in development, hosted AI and voice are unavailable; no
+provider-key fallback exists. Local task and reminder behavior remains
+available. Release builds require a valid HTTPS Cloud origin.
 
 ## Credentials
 
-OpenRouter and OpenAI keys use separate Expo SecureStore entries and separate
-loaded/configured state. Zustand persistence serializes only selected model,
-theme, haptics, and summary preferences. Keys are not persisted to
-AsyncStorage, SQLite, analytics, logs, error payloads, source, or app config,
-and the settings UI displays only saved/not-saved status after a key is saved.
+AETHER Reminder contains no provider credential configuration. Cloud provider
+credentials remain server-side. The only voice credential held on mobile is a
+short-lived memory-only authorization issued by AETHER Cloud.
 
 ## Voice lifecycle
 
@@ -64,7 +52,7 @@ idle
   -> idle
 ```
 
-Permission denial, invalid keys, malformed events, network loss, app
+Permission denial, authorization failure, malformed events, network loss, app
 interruption, empty final transcripts, cancellation, duplicate completion
 events, and unmount all close the active session and microphone resources.
 Only one voice session can be active. Empty or cancelled sessions cannot submit
@@ -76,6 +64,6 @@ normalizer uses the actual native sample rate and channel count to produce mono
 `wss://api.openai.com/v1/realtime?intent=transcription` with a short-lived
 client secret in the documented WebSocket subprotocol, then sends bounded PCM
 append and manual commit events. `gpt-live-transcribe` is configured only at
-`session.audio.input.transcription.model`. The application-owned or BYOK
-standard key never enters that transport. Native capture and WebSocket
+`session.audio.input.transcription.model`. AETHER Cloud authorization never
+enters persistent storage. Native capture and WebSocket
 behavior still require user-driven validation in a new development build.

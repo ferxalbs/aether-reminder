@@ -133,8 +133,12 @@ export class ScriptedInferenceProvider implements InferenceProvider {
   ): AsyncIterable<ModelEvent> {
     const turn = this.turns[this.turnIndex++];
     if (!turn) {
-      yield { type: "stream.started", modelId: request.modelId };
+      yield {
+        type: "stream.started",
+        modelId: request.modelId ?? "scripted/model",
+      };
       yield { type: "text.delta", text: "No more scripted turns." };
+
       yield { type: "stream.completed", finishReason: "stop" };
       return;
     }

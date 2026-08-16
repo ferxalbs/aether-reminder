@@ -11,7 +11,11 @@ const MockPressable: React.FC<Record<string, unknown>> = (props) =>
   );
 
 mock.module("react-native", () => ({
-  Platform: { OS: "android" },
+  Platform: {
+    OS: "android",
+    select: (obj: Record<string, unknown>) =>
+      obj.android ?? obj.default ?? obj.web,
+  },
   Pressable: MockPressable,
   StyleSheet: {
     create: (styles: Record<string, unknown>) => styles,
@@ -20,6 +24,7 @@ mock.module("react-native", () => ({
     hairlineWidth: 1,
   },
 }));
+
 
 mock.module("react-native-reanimated", () => ({
   default: {

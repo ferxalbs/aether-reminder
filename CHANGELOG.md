@@ -2,6 +2,28 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (7) [Cloud-First Usage and BYOK Removal]
+
+### Hosted capabilities governed by AETHER Cloud
+
+- Removed all user-owned OpenAI/OpenRouter key setup, validation, provider
+  selection, direct provider fallback, and model-routing UI from Mobile.
+- Added bounded, replay-safe deletion of the two legacy AETHER provider-key
+  SecureStore entries without reading their values.
+- Added the server-authoritative Usage surface for plan, AI requests, voice
+  minutes, optional automations, reset timing, and unavailable/quota states.
+- Added strict Mobile decoding for the future `GET /v1/me/usage` Cloud
+  contract; until Cloud implements it, Mobile presents honest unavailable
+  usage rather than fabricated counters.
+- Added release-time HTTPS Cloud-origin validation while development keeps
+  local Reminder functionality available without Cloud configuration.
+
+### Verification
+
+- `bun run test` now isolates test files to prevent mock leakage; 379 tests
+  pass across 72 Mobile files. `bun run typecheck` passes and `bun run lint`
+  reports only the existing unreachable-code warning in agent runtime.
+
 ## Unreleased - 2026.08.16 (6) [AETHER Cloud Client Integration]
 
 ### Hosted Cloud path without replacing local authority

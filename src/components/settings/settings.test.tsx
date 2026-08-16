@@ -22,6 +22,14 @@ process.env.EXPO_OS = "ios";
   },
 };
 
+function MockView(props: Record<string, unknown>) {
+  return React.createElement("View", props, props.children as React.ReactNode);
+}
+
+function MockText(props: Record<string, unknown>) {
+  return React.createElement("Text", props, props.children as React.ReactNode);
+}
+
 mock.module("expo-blur", () => ({
   BlurView: MockView,
   BlurTargetView: MockView,
@@ -45,11 +53,6 @@ mock.module("react-native-svg", () => ({
   G: MockView,
 }));
 
-const MockView: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement("View", props, props.children as React.ReactNode);
-
-const MockText: React.FC<Record<string, unknown>> = (props) =>
-  React.createElement("Text", props, props.children as React.ReactNode);
 
 mock.module("react-native", () => ({
   Platform: {
@@ -193,7 +196,10 @@ mock.module("lucide-react-native", () => ({
   Shield: MockView,
   ShieldCheck: MockView,
   Vibrate: MockView,
+  AlertTriangle: MockView,
+  Zap: MockView,
 }));
+
 
 mock.module("@/stores/settings.store", () => ({
   useSettingsStore: (
@@ -201,14 +207,6 @@ mock.module("@/stores/settings.store", () => ({
   ) => {
     const state = {
       hapticsEnabled: true,
-      openRouterApiKey: "test-openrouter-key",
-      openAiApiKey: "test-openai-key",
-      openRouterKeyLoaded: true,
-      openAiKeyLoaded: true,
-      openRouterConfigured: true,
-      openAiConfigured: true,
-      secureStoreAvailable: true,
-      selectedModel: "anthropic/claude-3.5-sonnet",
       theme: "dark",
       materialColorsEnabled: false,
       autoSummarize: true,
@@ -216,6 +214,27 @@ mock.module("@/stores/settings.store", () => ({
     };
     return selector ? selector(state) : state;
   },
+}));
+
+mock.module("@/hooks/useAetherUsage", () => ({
+  useAetherUsage: () => ({
+    snapshot: {
+      plan: { tier: "free", displayName: "AETHER Free" },
+      period: { resetsAt: "2026-10-01T00:00:00Z" },
+      ai: { used: 42, limit: 75, remaining: 33 },
+      voice: { usedSeconds: 252, limitSeconds: 600, remainingSeconds: 348 },
+      automations: { used: 0, limit: 20, remaining: 20 },
+      capabilities: {
+        hostedInference: true,
+        liveTranscription: true,
+        cloudAutomations: false,
+      },
+    },
+    plan: { tier: "free", displayName: "AETHER Free" },
+    state: "loaded",
+    errorMessage: null,
+    refresh: () => Promise.resolve(),
+  }),
 }));
 
 mock.module("expo-haptics", () => ({
@@ -247,7 +266,7 @@ const { SettingsSectionHeader } = await import("./SettingsSectionHeader");
 const { SettingsCard } = await import("./SettingsCard");
 const { SettingsHeaderRow } = await import("./SettingsHeaderRow");
 const { SettingsRow } = await import("./SettingsRow");
-const { SettingsSecurityCard } = await import("./SettingsSecurityCard");
+const { UsageSection } = await import("./UsageSection");
 const { SettingsAccordion } = await import("./SettingsAccordion");
 
 describe("Settings Modular Components", () => {
@@ -255,12 +274,12 @@ describe("Settings Modular Components", () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
     act(() => {
       renderer = ReactTestRenderer.create(
-        <SettingsSectionHeader title="AI Reasoning" />,
+        <SettingsSectionHeader title="Hosted AI & Voice" />,
       );
     });
     expect(renderer).toBeDefined();
     const texts = renderer!.root.findAllByType("Text");
-    expect(texts.some((t) => t.props.children === "AI REASONING")).toBe(true);
+    expect(texts.some((t) => t.props.children === "HOSTED AI & VOICE")).toBe(true);
   });
 
   test("renders SettingsCard with children", () => {
@@ -283,17 +302,17 @@ describe("Settings Modular Components", () => {
       renderer = ReactTestRenderer.create(
         <SettingsHeaderRow
           icon={<MockText>Icon</MockText>}
-          title="OpenRouter API Key"
-          subtitle="Powers reasoning"
+          title="App Settings"
+          subtitle="Customize your experience"
         />,
       );
     });
     expect(renderer).toBeDefined();
     const texts = renderer!.root.findAllByType("Text");
-    expect(texts.some((t) => t.props.children === "OpenRouter API Key")).toBe(
+    expect(texts.some((t) => t.props.children === "App Settings")).toBe(
       true,
     );
-    expect(texts.some((t) => t.props.children === "Powers reasoning")).toBe(
+    expect(texts.some((t) => t.props.children === "Customize your experience")).toBe(
       true,
     );
   });
@@ -319,16 +338,17 @@ describe("Settings Modular Components", () => {
     ).toBe(true);
   });
 
-  test("renders SettingsSecurityCard", () => {
+  test("renders UsageSection with plan badge, metrics, and upgrade CTA", () => {
     let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
     act(() => {
-      renderer = ReactTestRenderer.create(<SettingsSecurityCard />);
+      renderer = ReactTestRenderer.create(<UsageSection />);
     });
     expect(renderer).toBeDefined();
     const texts = renderer!.root.findAllByType("Text");
-    expect(
-      texts.some((t) => t.props.children === "Expo SecureStore Encrypted"),
-    ).toBe(true);
+    expect(texts.some((t) => t.props.children === "AETHER Free")).toBe(true);
+    expect(texts.some((t) => t.props.children === "AI Assistant")).toBe(true);
+    expect(texts.some((t) => t.props.children === "Voice Capture")).toBe(true);
+    expect(texts.some((t) => t.props.children === "Upgrade to Pro")).toBe(true);
   });
 
   test("renders SettingsAccordion with About & Privacy sections", () => {

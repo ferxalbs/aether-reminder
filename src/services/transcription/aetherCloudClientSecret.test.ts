@@ -117,4 +117,34 @@ describe("AetherCloudClientSecretProvider", () => {
       expect((error as VoiceError).code).toBe("REALTIME_AUTH_FAILED");
     }
   });
+
+  test("returns an exhausted-usage error without receiving a client secret", async () => {
+    let authorizationRequested = false;
+    const client = new AetherCloudClient(
+      {
+        baseUrl: "http://cloud.test",
+        userId: "e2e.mobile.physical.aether-reminder",
+        deviceId: "e2e.device.physical.dev",
+      },
+      async (input) => {
+        if (String(input).endsWith("/v1/me/subscription")) {
+          return subscriptionResponse();
+        }
+        authorizationRequested = true;
+        return new Response(
+          JSON.stringify({
+            error: { code: "VOICE_QUOTA_EXCEEDED", message: "Usage exhausted" },
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    );
+
+    await expect(
+      new AetherCloudClientSecretProvider(client).create(
+        defaultRealtimeTranscriptionConfig,
+      ),
+    ).rejects.toMatchObject({ code: "HOSTED_USAGE_EXHAUSTED" });
+    expect(authorizationRequested).toBe(true);
+  });
 });

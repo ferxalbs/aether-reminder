@@ -10,14 +10,16 @@ import {
   type InferenceUsage,
   type ModelCapabilities,
 } from "@/services/ai/inference";
-import { openRouterInferenceProvider } from "@/services/ai/inference/openRouterProvider";
+import { aetherCloudInferenceProvider } from "@/services/ai/inference/aetherCloudProvider";
 import { AIProviderError, getAIErrorMessage } from "@/services/ai/providers";
 import { evaluateToolPolicy, isWriteRisk } from "./policy";
 import { AGENT_SYSTEM_PROMPT, buildContextMessage } from "./prompt";
 import { defaultToolRegistry, type ToolRegistry } from "./tools";
 import type { ToolExecutionContext } from "./tools/types";
 import { AetherCommandExecutor } from "@/core/commands";
+import { AETHER_HOSTED_MODEL_ID } from "@/services/cloud";
 import { reportNonFatalError } from "@/lib/nonFatalError";
+
 import type {
   AgentBudget,
   AgentEvent,
@@ -74,11 +76,12 @@ export class AetherAgentRuntime implements AgentRuntime {
     this.services = options.services ?? createDomainServices(options.db);
     this.commands =
       options.commands ?? new AetherCommandExecutor(this.services);
-    this.provider = options.provider ?? openRouterInferenceProvider;
+    this.provider = options.provider ?? aetherCloudInferenceProvider;
     this.tools = options.tools ?? defaultToolRegistry;
     this.persistence = new AgentRuntimeRepository(options.db);
     this.now = options.now ?? (() => Date.now());
   }
+
 
   async cancel(runId: string): Promise<void> {
     const controller = this.controllers.get(runId);
@@ -201,7 +204,6 @@ export class AetherAgentRuntime implements AgentRuntime {
               message: "",
               context: input.context,
               modelId: "",
-              apiKey: "",
               onNavigate: input.onNavigate,
             },
             capabilities: {
@@ -270,6 +272,7 @@ export class AetherAgentRuntime implements AgentRuntime {
 
   async *run(input: AgentInput): AsyncIterable<AgentEvent> {
     const budget = resolveBudget(input.budget, this.now);
+    const modelId = input.modelId ?? AETHER_HOSTED_MODEL_ID;
     let sessionId: string;
     let runId: string;
     try {
@@ -283,7 +286,7 @@ export class AetherAgentRuntime implements AgentRuntime {
 
       runId = await this.persistence.createRun({
         sessionId,
-        modelId: input.modelId,
+        modelId,
         invocationSource: input.context.invocationSource,
         userMessage: input.message,
         budget,
@@ -296,6 +299,7 @@ export class AetherAgentRuntime implements AgentRuntime {
         { cause: caught },
       );
     }
+
 
     const controller = new AbortController();
     this.controllers.set(runId, controller);
@@ -327,7 +331,7 @@ export class AetherAgentRuntime implements AgentRuntime {
         type: "run.started",
         runId,
         sessionId,
-        modelId: input.modelId,
+        modelId,
         state,
       });
 
@@ -338,43 +342,23 @@ export class AetherAgentRuntime implements AgentRuntime {
         state,
       });
 
-      if (this.now() > budget.deadlineMs) {
-        yield* setState("error");
-        yield* emit({
-          type: "run.failed",
-          runId,
-          code: "BUDGET_EXCEEDED",
-          message: "Run deadline exceeded before start.",
-          state: "error",
-        });
-        await this.persistence.updateRun(runId, {
-          status: "failed",
-          errorCode: "BUDGET_EXCEEDED",
-          errorMessage: "Run deadline exceeded before start.",
-          finished: true,
-        });
-        return;
-      }
-
       let capabilities: ModelCapabilities;
       try {
-        capabilities = await this.provider.getCapabilities(
-          input.modelId,
-          input.apiKey,
-        );
+        capabilities = await this.provider.getCapabilities(modelId);
       } catch (error) {
         const providerError =
           error instanceof AIProviderError
             ? error
             : new AIProviderError(
                 "NETWORK_ERROR",
-                "The OpenRouter model could not be validated.",
+                "AETHER Cloud could not validate model capabilities.",
               );
         const message =
           error instanceof AIProviderError
             ? getAIErrorMessage(error)
-            : "The OpenRouter model could not be validated.";
+            : "AETHER Cloud could not validate model capabilities.";
         yield* setState("error");
+
         yield* emit({
           type: "run.failed",
           runId,
@@ -392,17 +376,19 @@ export class AetherAgentRuntime implements AgentRuntime {
       }
       if (!canRunAsAgent(capabilities)) {
         yield* setState("error");
+        const message =
+          "AETHER Cloud cannot run this assistant request.";
         yield* emit({
           type: "run.failed",
           runId,
           code: "INCOMPATIBLE_MODEL",
-          message: `Model ${input.modelId} is ${capabilities.compatibility} and cannot operate as a full agent (tools required).`,
+          message,
           state: "error",
         });
         await this.persistence.updateRun(runId, {
           status: "failed",
           errorCode: "INCOMPATIBLE_MODEL",
-          errorMessage: `compatibility=${capabilities.compatibility}`,
+          errorMessage: message,
           finished: true,
         });
         return;
@@ -414,7 +400,9 @@ export class AetherAgentRuntime implements AgentRuntime {
           role: "user",
           content: buildContextMessage({
             ...input.context,
-            localDate: input.context.selectedDate ?? getLocalDateString(),
+            localDate:
+              input.context.selectedDate ??
+              getLocalDateString(new Date(this.now())),
           }),
         },
         { role: "user", content: input.message },
@@ -423,16 +411,8 @@ export class AetherAgentRuntime implements AgentRuntime {
       const inferenceTools = this.tools.toInferenceTools();
       let finalText = "";
 
-      while (modelTurns < budget.maxModelTurns) {
-        if (controller.signal.aborted) {
-          yield* emit({ type: "run.cancelled", runId, state: "idle" });
-          await this.persistence.updateRun(runId, {
-            status: "cancelled",
-            semanticState: "idle",
-            finished: true,
-          });
-          return;
-        }
+
+      while (true) {
         if (this.now() > budget.deadlineMs) {
           yield* setState("error");
           yield* emit({
@@ -452,11 +432,29 @@ export class AetherAgentRuntime implements AgentRuntime {
         }
 
         modelTurns += 1;
+        if (modelTurns > budget.maxModelTurns) {
+          yield* setState("error");
+          yield* emit({
+            type: "run.failed",
+            runId,
+            code: "BUDGET_EXCEEDED",
+            message: "Max model turns exceeded.",
+            state: "error",
+          });
+          await this.persistence.updateRun(runId, {
+            status: "failed",
+            errorCode: "BUDGET_EXCEEDED",
+            errorMessage: "Max model turns exceeded.",
+            finished: true,
+          });
+          return;
+        }
+
         yield* setState("thinking");
         yield* emit({
           type: "model.started",
           runId,
-          modelId: input.modelId,
+          modelId,
           capabilities,
           state,
         });
@@ -468,9 +466,8 @@ export class AetherAgentRuntime implements AgentRuntime {
 
         for await (const ev of this.provider.stream(
           {
-            modelId: input.modelId,
+            modelId,
             messages,
-            apiKey: input.apiKey,
             tools: inferenceTools,
             toolChoice: "auto",
             maxTokens: budget.maxOutputTokens,

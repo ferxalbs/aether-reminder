@@ -3,14 +3,13 @@ import { type AgentEvent, type ContextSnapshot } from "@/services/agent";
 import { getDatabase } from "@/db";
 import { getAetherCore } from "@/core";
 import type { ActionReceipt } from "@/domain/receipts";
-import { useSettingsStore } from "@/stores/settings.store";
-import { resolveAgentModel } from "@/services/ai/modelSelection";
 import {
   AIProviderError,
   getAIErrorMessage,
   isRetryableAIProviderError,
   isRetryableAIProviderErrorCode,
 } from "@/services/ai/providers";
+
 import {
   AETHER_HOSTED_MODEL_ID,
   isAetherCloudConfigured,
@@ -40,10 +39,8 @@ function messageId(prefix: string): string {
 
 function runStartErrorMessage(caught: unknown): string {
   if (caught instanceof AIProviderError) return getAIErrorMessage(caught);
-  return "AETHER could not start this run.";
+  return "AETHER AI is temporarily unavailable.";
 }
-
-export { resolveAgentModel } from "@/services/ai/modelSelection";
 
 export function useAgentSessionController({
   context,
@@ -51,9 +48,6 @@ export function useAgentSessionController({
   onMutation,
   onReceipt,
 }: AgentSessionControllerOptions) {
-  const apiKey = useSettingsStore((state) => state.openRouterApiKey);
-  const apiKeyLoaded = useSettingsStore((state) => state.openRouterKeyLoaded);
-  const selectedModel = useSettingsStore((state) => state.selectedModel);
   const core = useMemo(() => getAetherCore(getDatabase()), []);
   const runtime = core.agent;
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -91,47 +85,18 @@ export function useAgentSessionController({
     async (rawMessage: string, options: SubmitOptions = {}) => {
       const message = rawMessage.trim();
       if (!message || runningRef.current) return false;
-      const hostedCloud = isAetherCloudConfigured();
-      if (!hostedCloud && !apiKeyLoaded) {
+
+      if (!isAetherCloudConfigured()) {
         setSemanticState("error");
-        setError("Secure storage is still loading. Try again in a moment.");
-        setCanRetry(false);
-        return false;
-      }
-      if (!hostedCloud && !apiKey) {
-        setSemanticState("error");
-        setError("Add an OpenRouter API key in Settings to ask AETHER.");
+        setError("AETHER Cloud is not configured.");
         setCanRetry(false);
         return false;
       }
 
-      // Claim the single active submission before asynchronous model validation.
       runningRef.current = true;
       setCanRetry(false);
       retrySubmissionRef.current = null;
-      let modelId: string;
-      try {
-        modelId = hostedCloud
-          ? AETHER_HOSTED_MODEL_ID
-          : await resolveAgentModel(selectedModel, apiKey);
-      } catch (caught) {
-        runningRef.current = false;
-        setSemanticState("error");
-        reportNonFatalError("agent-model-validation", caught);
-        const retryable = isRetryableAIProviderError(caught);
-        setCanRetry(retryable);
-        if (retryable)
-          retrySubmissionRef.current = {
-            message,
-            options: { ...options, appendUserMessage: true },
-          };
-        setError(
-          caught instanceof AIProviderError
-            ? getAIErrorMessage(caught)
-            : "The selected OpenRouter model could not be validated.",
-        );
-        return false;
-      }
+      const modelId = AETHER_HOSTED_MODEL_ID;
 
       const appendUserMessage = options.appendUserMessage !== false;
       const assistantMessageId = messageId("assistant");
@@ -167,7 +132,6 @@ export function useAgentSessionController({
           context: runContext,
           sessionId: sessionIdRef.current,
           modelId,
-          apiKey,
           onNavigate,
         })) {
           handleEventRef.current(event, assistantMessageId);
@@ -195,8 +159,9 @@ export function useAgentSessionController({
       return true;
     },
     // The runtime is intentionally stable; the context is captured at send time.
-    [apiKey, apiKeyLoaded, context, onNavigate, runtime, selectedModel],
+    [context, onNavigate, runtime],
   );
+
 
   const handleEvent = useCallback(
     (event: AgentEvent, assistantMessageId: string) => {

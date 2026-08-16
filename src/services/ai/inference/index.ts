@@ -11,19 +11,8 @@ export type {
   InferenceErrorShape,
 } from "./types";
 
-export {
-  capabilitiesFromOpenRouterMetadata,
-  classifyCompatibility,
-  hasOpenRouterParameter,
-  unknownModelCapabilities,
-  canRunAsAgent,
-} from "./capabilities";
+export { classifyCompatibility, unknownModelCapabilities, canRunAsAgent } from "./capabilities";
 
-export {
-  OpenRouterProvider,
-  openRouterInferenceProvider,
-  __clearOpenRouterModelsCache,
-} from "./openRouterProvider";
 export {
   AetherCloudInferenceProvider,
   aetherCloudInferenceProvider,

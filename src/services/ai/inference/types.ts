@@ -1,6 +1,6 @@
 /**
  * Production inference abstraction (Slice 3).
- * OpenRouter is the only LLM backend — no local providers.
+ * AETHER Cloud is the only hosted inference boundary; no local provider path exists.
  */
 
 export type ModelCompatibilityClass =
@@ -47,12 +47,13 @@ export interface InferenceToolCall {
 }
 
 export interface InferenceRequest {
-  modelId: string;
+  modelId?: string;
   messages: InferenceMessage[];
-  apiKey: string;
   tools?: InferenceToolDefinition[];
   toolChoice?:
-    "auto" | "none" | { type: "function"; function: { name: string } };
+    | "auto"
+    | "none"
+    | { type: "function"; function: { name: string } };
   temperature?: number;
   maxTokens?: number;
   /** JSON schema response format when model supports structured outputs. */
@@ -108,7 +109,7 @@ export interface InferenceErrorShape {
 export interface InferenceProvider {
   readonly id: string;
 
-  getCapabilities(modelId: string, apiKey?: string): Promise<ModelCapabilities>;
+  getCapabilities(modelId?: string): Promise<ModelCapabilities>;
 
   stream(
     request: InferenceRequest,

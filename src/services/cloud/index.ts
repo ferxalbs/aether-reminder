@@ -4,11 +4,14 @@ export {
   AETHER_HOSTED_MODEL_ID,
   DEFAULT_E2E_DEVICE_ID,
   DEFAULT_E2E_USER_ID,
+  assertProductionCloudConfig,
   isAetherCloudConfigured,
   publicCloudEnvSnapshot,
   readAetherCloudBaseUrl,
   resolveAetherCloudConfig,
+  validateAetherCloudUrl,
   type AetherCloudConfig,
+  type AetherRuntimeConfig,
 } from "./config";
 export {
   AetherCloudError,
@@ -18,6 +21,7 @@ export {
 } from "./errors";
 export {
   AetherCloudClient,
+  decodeUsageSnapshot,
   getAetherCloudClient,
   resetAetherCloudClientForTests,
   type AetherCloudRequestOptions,
@@ -29,10 +33,15 @@ export {
   resetCommercialPolicyCacheForTests,
 } from "./policy";
 export type {
+  AetherUsageSnapshot,
   CommercialPolicy,
+  CommercialSource,
+  CommercialTier,
   HealthResponse,
   InferenceTurnRequest,
   SubscriptionResponse,
+  UsageMetric,
   VoiceAuthorizationRequest,
   VoiceAuthorizationResponse,
+  VoiceUsageMetric,
 } from "./types";

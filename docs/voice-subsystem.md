@@ -44,16 +44,9 @@ endpoint, data-channel names, and WebRTC diagnostics have been removed.
 
 ## Authentication
 
-The BYOK standard OpenAI API key remains in Expo SecureStore and is used only
-by `OpenAIByokClientSecretProvider` for the HTTPS request to:
-
-```text
-POST https://api.openai.com/v1/realtime/client_secrets
-```
-
-The request creates the same transcription session configuration used by the
-transport. OpenAI returns a short-lived client secret. Only that ephemeral
-value is passed to the WebSocket. The transport sends it using the documented
+AETHER Cloud authorizes voice through `POST /v1/voice/authorizations` and
+returns a short-lived `ek_*` client secret. Only that memory-only ephemeral
+value is passed to the direct OpenAI WebSocket transport using the documented
 WebSocket subprotocol:
 
 ```text
@@ -269,8 +262,8 @@ Current evidence is separated by gate:
 - **UNIT VERIFIED**: protocol-contract tests, Base64/packet boundaries,
   backpressure, errors, cancellation, stale events, diagnostics privacy, and
   parser handoff;
-- **LIVE PROVIDER VERIFIED**: only after the gated integration command runs
-  with `OPENAI_API_KEY=...`;
+- **LIVE PROVIDER VERIFIED**: only after a Cloud-authorized physical-device
+  session succeeds; mobile never receives an OpenAI master key;
 - **PHYSICAL ANDROID VERIFIED**: not claimed until a real Android development
   build and device exercise the native PCM stream, WebSocket, stop/commit,
   navigation, cancellation, and Android Back paths;

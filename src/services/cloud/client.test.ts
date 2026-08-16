@@ -136,4 +136,106 @@ describe("AetherCloudClient", () => {
     expect(parsed).not.toHaveProperty("model");
     expect(parsed.capability).toBe("assistant.turn");
   });
+
+  describe("getUsage", () => {
+    test("decodes authoritative Free plan usage snapshot", async () => {
+      const client = new AetherCloudClient(config, async (input) => {
+        expect(String(input)).toBe("http://cloud.test/v1/me/usage");
+        return jsonResponse(200, {
+          plan: { tier: "free", displayName: "AETHER Free" },
+          period: {
+            startsAt: "2026-08-01T00:00:00Z",
+            resetsAt: "2026-09-01T00:00:00Z",
+          },
+          ai: { used: 42, limit: 75, remaining: 33 },
+          voice: { usedSeconds: 252, limitSeconds: 600, remainingSeconds: 348 },
+          capabilities: {
+            hostedInference: true,
+            liveTranscription: true,
+            cloudAutomations: false,
+          },
+        });
+      });
+
+      const usage = await client.getUsage();
+      expect(usage.plan.tier).toBe("free");
+      expect(usage.plan.displayName).toBe("AETHER Free");
+      expect(usage.ai.used).toBe(42);
+      expect(usage.ai.limit).toBe(75);
+      expect(usage.voice.usedSeconds).toBe(252);
+      expect(usage.period.resetsAt).toBe("2026-09-01T00:00:00Z");
+      expect(usage.capabilities.hostedInference).toBe(true);
+    });
+
+    test("decodes Pro plan usage with automations", async () => {
+      const client = new AetherCloudClient(config, async () =>
+        jsonResponse(200, {
+          plan: { tier: "pro", displayName: "AETHER Pro", source: "monthly" },
+          period: {
+            startsAt: "2026-08-15T00:00:00Z",
+            resetsAt: "2026-09-15T00:00:00Z",
+          },
+          ai: { used: 120, limit: 1500, remaining: 1380 },
+          voice: {
+            usedSeconds: 1800,
+            limitSeconds: 7200,
+            remainingSeconds: 5400,
+          },
+          automations: { used: 15, limit: 500, remaining: 485 },
+          capabilities: {
+            hostedInference: true,
+            liveTranscription: true,
+            cloudAutomations: true,
+          },
+        }),
+      );
+
+      const usage = await client.getUsage();
+      expect(usage.plan.tier).toBe("pro");
+      expect(usage.plan.source).toBe("monthly");
+      expect(usage.automations?.used).toBe(15);
+      expect(usage.capabilities.cloudAutomations).toBe(true);
+    });
+
+    test("fails closed on malformed usage payload (e.g. negative values or invalid tier)", async () => {
+      const client = new AetherCloudClient(config, async () =>
+        jsonResponse(200, {
+          plan: { tier: "enterprise" },
+          ai: { used: -5 },
+        }),
+      );
+
+      await expect(client.getUsage()).rejects.toMatchObject({
+        name: "AetherCloudError",
+        code: "INVALID_RESPONSE",
+      });
+    });
+
+    test("returns typed NOT_READY / NOT_FOUND error when endpoint is not implemented on server", async () => {
+      const client = new AetherCloudClient(config, async () =>
+        jsonResponse(404, {
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Route not found",
+          },
+        }),
+      );
+
+      await expect(client.getUsage()).rejects.toMatchObject({
+        name: "AetherCloudError",
+        status: 404,
+      });
+    });
+
+    test("network error does not fabricate zero usage", async () => {
+      const client = new AetherCloudClient(config, async () => {
+        throw new TypeError("Failed to fetch");
+      });
+
+      await expect(client.getUsage()).rejects.toMatchObject({
+        name: "AetherCloudError",
+        code: "NETWORK_ERROR",
+      });
+    });
+  });
 });

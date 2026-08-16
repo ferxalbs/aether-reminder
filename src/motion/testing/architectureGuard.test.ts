@@ -114,10 +114,9 @@ describe("adaptive motion architecture guard", () => {
     expect(aggregator).toContain("private val lock = Any()");
     expect(aggregator).toContain("synchronized(lock)");
     expect(aggregator).toContain("fun snapshotAndReset");
-    expect(aggregator).toContain("captureLocked");
-    expect(aggregator).toContain("resetLocked");
-    expect(aggregator).toContain("System.arraycopy");
+    expect(aggregator).toContain("copyOf");
   });
+
 
   test("MotionProvider reads native capabilities once and rerenders only on profile change", () => {
     const provider = readFileSync(

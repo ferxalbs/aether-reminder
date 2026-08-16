@@ -213,7 +213,7 @@ Premium should sell leverage rather than basic reliability:
 - richer widgets and personalization
 - optional privacy features
 
-BYOK remains a power-user path, not the only usable commercial onboarding path.
+AETHER Cloud provides hosted capabilities; BYOK is not supported in AETHER Reminder.
 
 ## Validation gates
 

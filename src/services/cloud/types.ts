@@ -21,6 +21,38 @@ export type SubscriptionResponse = {
   policy: CommercialPolicy;
 };
 
+export type UsageMetric = {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+};
+
+export type VoiceUsageMetric = {
+  usedSeconds: number;
+  limitSeconds: number | null;
+  remainingSeconds: number | null;
+};
+
+export type AetherUsageSnapshot = {
+  plan: {
+    tier: CommercialTier;
+    source?: CommercialSource;
+    displayName: string;
+  };
+  period: {
+    startsAt?: string;
+    resetsAt?: string;
+  };
+  ai: UsageMetric;
+  voice: VoiceUsageMetric;
+  automations?: UsageMetric;
+  capabilities: {
+    hostedInference: boolean;
+    liveTranscription: boolean;
+    cloudAutomations: boolean;
+  };
+};
+
 export type VoiceAuthorizationRequest = {
   language?: string;
 };
@@ -35,7 +67,6 @@ export type InferenceTurnRequest = {
   capability: "assistant.turn";
   toolsetVersion: string;
   messages: Record<string, unknown>[];
-  modelPreference?: string;
 };
 
 export type HealthResponse = {

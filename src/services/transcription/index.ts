@@ -1,10 +1,5 @@
-export {
-  OpenAIByokClientSecretProvider,
-  buildRealtimeSessionPayload,
-  classifyOpenAIModelAccessError,
-  testOpenAIRealtimeConnection,
-} from "./auth";
 export { AetherCloudClientSecretProvider } from "./aetherCloudClientSecret";
+
 export {
   Pcm16StreamNormalizer,
   pcm16AudioLevel,

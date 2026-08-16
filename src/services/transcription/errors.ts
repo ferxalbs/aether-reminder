@@ -7,6 +7,7 @@ export type VoiceErrorCode =
   | "REALTIME_AUTH_FAILED"
   | "INVALID_CREDENTIAL"
   | "ACCOUNT_NOT_AUTHORIZED"
+  | "HOSTED_USAGE_EXHAUSTED"
   | "TIER_NOT_SUPPORTED"
   | "SESSION_CONFIGURATION_INVALID"
   | "MODEL_TEMPORARILY_UNAVAILABLE"
@@ -110,27 +111,29 @@ export function getVoiceErrorMessage(error: VoiceError): string {
     case "REALTIME_AUTH_FAILED":
       return "Live transcription could not be authorized. Try again.";
     case "INVALID_CREDENTIAL":
-      return "The OpenAI API key was rejected. Check it in Settings.";
+      return "Live transcription authorization was rejected by AETHER Cloud.";
     case "ACCOUNT_NOT_AUTHORIZED":
-      return "This OpenAI project is not authorized to use realtime transcription.";
+      return "Your account is not authorized to use hosted live transcription.";
+    case "HOSTED_USAGE_EXHAUSTED":
+      return "Hosted voice usage is exhausted for this period.";
     case "TIER_NOT_SUPPORTED":
-      return "GPT Live Transcribe requires a supported OpenAI API usage tier.";
+      return "Hosted live transcription is unavailable for this account.";
     case "SESSION_CONFIGURATION_INVALID":
-      return "OpenAI rejected the realtime transcription session configuration.";
+      return "AETHER voice could not configure this transcription session.";
     case "MODEL_TEMPORARILY_UNAVAILABLE":
-      return "GPT Live Transcribe is temporarily unavailable. Try again shortly.";
+      return "AETHER voice is temporarily unavailable. Try again shortly.";
     case "REALTIME_CONNECT_FAILED":
-      return "Could not connect to OpenAI realtime transcription. Check your connection.";
+      return "Could not connect to AETHER voice. Check your connection.";
     case "REALTIME_CONNECTION_LOST":
       return "The realtime transcription connection was interrupted.";
     case "REALTIME_TIMEOUT":
-      return "OpenAI realtime transcription did not respond in time. Try again.";
+      return "AETHER voice did not respond in time. Try again.";
     case "REALTIME_BACKPRESSURE":
       return "Realtime transcription could not keep up with microphone audio. Try again.";
     case "REALTIME_PROTOCOL_ERROR":
-      return "OpenAI returned an unexpected realtime protocol response.";
+      return "AETHER voice returned an unexpected response.";
     case "TRANSCRIPTION_FAILED":
-      return "OpenAI could not transcribe this voice turn.";
+      return "AETHER voice could not transcribe this voice turn.";
     case "TRANSCRIPTION_TIMEOUT":
       return "The final transcript took too long to arrive. Try again.";
     case "EMPTY_TRANSCRIPT":

@@ -93,6 +93,8 @@ function voiceCodeForCloud(code: AetherCloudError["code"]): VoiceErrorCode {
     case "VOICE_NOT_ENTITLED":
     case "UNAUTHORIZED":
       return "ACCOUNT_NOT_AUTHORIZED";
+    case "VOICE_QUOTA_EXCEEDED":
+      return "HOSTED_USAGE_EXHAUSTED";
     case "PROVIDER_UNAUTHORIZED":
       return "INVALID_CREDENTIAL";
     case "PROVIDER_TIMEOUT":
@@ -111,7 +113,7 @@ function voiceMessageForCloud(error: AetherCloudError): string {
     case "VOICE_NOT_ENTITLED":
       return "Hosted live transcription is unavailable for this plan.";
     case "VOICE_QUOTA_EXCEEDED":
-      return "Hosted live transcription quota is exhausted.";
+      return "Hosted voice usage is exhausted for this period.";
     case "NETWORK_ERROR":
       return "Could not reach AETHER Cloud to authorize live transcription.";
     case "CANCELLED":

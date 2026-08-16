@@ -59,7 +59,7 @@ type NotificationSyncState = {
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
-  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
   const setAdaptiveNudgesPreference = useSettingsStore(
     (s) => s.setAdaptiveNudgesEnabled,
   );
@@ -234,7 +234,7 @@ export default function RootLayout() {
     setAlertDialog({
       title: "Recreate local database?",
       message:
-        "This permanently deletes all reminders and local history on this device. Saved provider credentials are not deleted.",
+        "This permanently deletes all reminders and local history on this device.",
       actions: [
         { label: "Cancel", role: "cancel" },
         {
@@ -264,10 +264,10 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    void loadCredentials().catch((error: unknown) => {
-      reportNonFatalError("credentials-load", error);
+    void loadSettings().catch((error: unknown) => {
+      reportNonFatalError("settings-load", error);
     });
-  }, [loadCredentials]);
+  }, [loadSettings]);
 
   useEffect(() => {
     let cancelled = false;

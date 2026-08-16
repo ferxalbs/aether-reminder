@@ -1,10 +1,7 @@
-# Manual GPT Live Transcribe integration test
+# Manual hosted voice validation
 
-This test is intentionally gated and must not run in CI. It exercises the real
-OpenAI endpoint from the Bun test process; it requires network access and an
-explicitly supplied OpenAI API key. It does not use SecureStore and does not
-claim native-device evidence. The separate checklist below covers physical
-Expo development builds.
+This checklist validates the AETHER Cloud-authorized voice path on a physical
+development build. Mobile does not accept or use an OpenAI API key.
 
 ## Development diagnostic output
 
@@ -28,23 +25,6 @@ voice-session id, stage names, format metadata, counters, safe error codes, and 
 request ids. It does not include the OpenAI key, ephemeral credential, authorization
 headers, SecureStore values, PCM/audio bytes, item ids, or transcript text.
 
-## Account/session gate
-
-Run only when intentionally testing the configured OpenAI account:
-
-```bash
-OPENAI_API_KEY=... bun test src/services/transcription/voiceAccess.manual.test.ts
-```
-
-The test is skipped when `OPENAI_API_KEY` is absent. When present, it mints a
-transcription client secret, connects with `?intent=transcription` (never
-`?model=gpt-live-transcribe`), sends the minimum `gpt-live-transcribe`
-`session.update`, streams deterministic PCM, commits, and waits for a real
-completion. Failures name the stage: `CLIENT_SECRET`, `WEBSOCKET`,
-`SESSION_CONFIGURATION`, `AUDIO_APPEND`, `COMMIT`, or `TRANSCRIPTION`. It does
-not record microphone audio. Never put the key in a committed file or an
-`EXPO_PUBLIC_` variable.
-
 ## Physical-device microphone flow
 
 1. Wait for the current Android development EAS build to finish, then install that
@@ -52,7 +32,8 @@ not record microphone audio. Never put the key in a committed file or an
 2. Start the project with `bun start`, connect the development build to Metro, and
    keep the Metro terminal visible.
 3. Filter or search the terminal for `[AETHER_VOICE_DIAGNOSTIC]` and clear older output.
-4. Launch AETHER, save the BYOK OpenAI key in Settings, and run its connection check.
+4. Launch AETHER with a configured development AETHER Cloud origin. Do not add
+   provider credentials anywhere in the app.
 5. Tap the microphone. Confirm the OS prompt appears only if permission is not
    already decided.
 6. Confirm the surface progresses through permission, connecting, and listening.

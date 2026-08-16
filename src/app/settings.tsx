@@ -3,27 +3,19 @@ import {
   AetherAlertDialog,
   type AetherAlertDialogState,
 } from "@/components/ui/AetherAlertDialog";
-import { ModelCatalogSheet } from "@/components/ui/ModelCatalogSheet";
 import { Typography } from "@/components/ui/Typography";
 import {
   SettingsAccordion,
-  SettingsApiKeyCard,
-  SettingsModelSelector,
   SettingsPreferencesSection,
   SettingsSectionHeader,
-  SettingsSecurityCard,
+  UsageSection,
 } from "@/components/settings";
-import { reportNonFatalError } from "@/lib/nonFatalError";
 import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
-import { type AIModel } from "@/services/ai/models";
-import { fetchAvailableModels } from "@/services/ai/openrouter";
-import { getAIErrorMessage } from "@/services/ai/providers";
-import { useSettingsStore } from "@/stores/settings.store";
 import { LayoutTokens, Spacing } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -52,17 +44,6 @@ export default function SettingsScreen() {
   const aetherTheme = useAetherTheme();
   const { colors } = aetherTheme;
 
-  const openRouterApiKey = useSettingsStore((s) => s.openRouterApiKey);
-  const selectedModel = useSettingsStore((s) => s.selectedModel);
-  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
-  const setModel = useSettingsStore((s) => s.setModel);
-
-  // Model catalog state
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(true);
-  const [modelsError, setModelsError] = useState<string | null>(null);
-  const [modelPickerVisible, setModelPickerVisible] = useState(false);
-
   // Alert Dialog State
   const [alertDialog, setAlertDialog] = useState<AetherAlertDialogState | null>(
     null,
@@ -84,41 +65,6 @@ export default function SettingsScreen() {
     [],
   );
   useAssistantSurface(assistantContext);
-
-  useEffect(() => {
-    void loadCredentials().catch((error: unknown) => {
-      reportNonFatalError("settings-credentials-load", error);
-    });
-  }, [loadCredentials]);
-
-  const loadModels = useCallback(
-    (forceRefresh = false) => {
-      setModelsLoading(true);
-      setModelsError(null);
-      void fetchAvailableModels(openRouterApiKey, forceRefresh)
-        .then(setModels)
-        .catch((error: unknown) => setModelsError(getAIErrorMessage(error)))
-        .finally(() => setModelsLoading(false));
-    },
-    [openRouterApiKey],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchAvailableModels(openRouterApiKey, false)
-      .then((availableModels) => {
-        if (!cancelled) setModels(availableModels);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) setModelsError(getAIErrorMessage(error));
-      })
-      .finally(() => {
-        if (!cancelled) setModelsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [openRouterApiKey]);
 
   return (
     <SafeAreaView
@@ -155,54 +101,32 @@ export default function SettingsScreen() {
             color={colors.textSecondary}
             style={styles.headerSubtitle}
           >
-            Configure intelligence, appearances, and preferences.
+            Preferences, hosted intelligence usage, and about.
           </Typography>
         </Animated.View>
 
-        {/* Section 1: OpenRouter AI Reasoning */}
+        {/* Section 1: Hosted AI & Voice Usage */}
         <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="AI Reasoning" />
-          <SettingsApiKeyCard provider="OpenRouter" onShowAlert={showAlert} />
+          <UsageSection />
         </Animated.View>
 
-        {/* Section 2: OpenAI Realtime Transcription */}
+        {/* Section 2: App Preferences */}
         <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="OpenAI — Realtime Transcription" />
-          <SettingsApiKeyCard provider="OpenAI" onShowAlert={showAlert} />
-        </Animated.View>
-
-        {/* Section 3: OpenRouter Model Selection */}
-        <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="Model Selection" />
-          <SettingsModelSelector
-            models={models}
-            onOpenModelCatalog={() => setModelPickerVisible(true)}
-          />
-        </Animated.View>
-
-        {/* Section 4: App Preferences */}
-        <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="App Preferences" />
+          <SettingsSectionHeader title="APP PREFERENCES" />
           <SettingsPreferencesSection onShowAlert={showAlert} />
-        </Animated.View>
-
-        {/* Section 5: Hardware Security & Storage */}
-        <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="Security Integrity" />
-          <SettingsSecurityCard />
         </Animated.View>
 
         {/* Dev Diagnostics */}
         {__DEV__ ? (
           <Animated.View entering={entering} style={styles.sectionContainer}>
-            <SettingsSectionHeader title="Diagnostics" />
+            <SettingsSectionHeader title="DIAGNOSTICS" />
             <MotionDiagnosticsCard />
           </Animated.View>
         ) : null}
 
-        {/* Section 6: About & Privacy Accordions */}
+        {/* Section 3: About & Privacy Accordions */}
         <Animated.View entering={entering} style={styles.sectionContainer}>
-          <SettingsSectionHeader title="About & Legal" />
+          <SettingsSectionHeader title="ABOUT & PRIVACY" />
           <SettingsAccordion />
         </Animated.View>
 
@@ -214,22 +138,10 @@ export default function SettingsScreen() {
             color={colors.textTertiary}
             style={{ letterSpacing: 0.3 }}
           >
-            AETHER v1.0.0 • Expo SDK 57
+            AETHER v • Powered by AETHER Cloud • © 2026 Enosis Labs, Inc.
           </Typography>
         </View>
       </ScrollView>
-
-      {/* Model Selector Native-First Sheet */}
-      <ModelCatalogSheet
-        visible={modelPickerVisible}
-        onClose={() => setModelPickerVisible(false)}
-        models={models}
-        loading={modelsLoading}
-        error={modelsError}
-        selectedModelId={selectedModel}
-        onSelectModel={(modelId) => setModel(modelId)}
-        onRefresh={() => loadModels(true)}
-      />
 
       {/* Alert Dialog */}
       {alertDialog ? (
@@ -243,6 +155,7 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {

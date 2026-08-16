@@ -74,12 +74,12 @@ export interface AgentInput {
   message: string;
   context: ContextSnapshot;
   sessionId?: string;
-  modelId: string;
-  apiKey: string;
+  modelId?: string;
   /** App-owned navigation callback. Runtime never accepts arbitrary route strings. */
   onNavigate?: (destination: string, entityId?: string) => void;
   budget?: Partial<AgentBudget>;
 }
+
 
 /** Exact app-validated mutation held while user confirmation is pending. */
 export interface PendingAction {

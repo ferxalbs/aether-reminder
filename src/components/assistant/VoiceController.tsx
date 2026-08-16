@@ -10,7 +10,6 @@ import { usePathname } from "expo-router";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import {
   AetherCloudClientSecretProvider,
-  OpenAIByokClientSecretProvider,
   OpenAIRealtimeWebSocketTransport,
   VoiceSession,
   defaultRealtimeTranscriptionConfig,
@@ -25,8 +24,6 @@ import {
   type VoiceSnapshot,
   type VoiceState,
 } from "@/services/transcription";
-import { isAetherCloudConfigured } from "@/services/cloud";
-import { useSettingsStore } from "@/stores/settings.store";
 import { reportNonFatalError } from "@/lib/nonFatalError";
 
 export type { VoiceState } from "@/services/transcription";
@@ -60,9 +57,6 @@ export function useVoiceController({
   onTranscript,
 }: VoiceControllerOptions): VoiceControllerResult {
   const pathname = usePathname();
-  const openAiApiKey = useSettingsStore((state) => state.openAiApiKey);
-  const openAiKeyLoaded = useSettingsStore((state) => state.openAiKeyLoaded);
-  const hostedCloud = isAetherCloudConfigured();
   const onTranscriptRef = useRef(onTranscript);
   const bufferListenerRef = useRef<
     ((buffer: AudioStreamBuffer) => void) | null
@@ -112,15 +106,11 @@ export function useVoiceController({
         },
         audioSession: expoAudioSession,
         capture,
-        clientSecrets: hostedCloud
-          ? new AetherCloudClientSecretProvider()
-          : new OpenAIByokClientSecretProvider(
-              openAiKeyLoaded ? openAiApiKey : "",
-            ),
+        clientSecrets: new AetherCloudClientSecretProvider(),
         createTransport: (diagnostics) =>
           new OpenAIRealtimeWebSocketTransport({
             diagnostics,
-            sessionUpdateMode: hostedCloud ? "server" : "client",
+            sessionUpdateMode: "server",
           }),
         config: defaultRealtimeTranscriptionConfig,
         onFinalTranscript: deliverTranscript,
@@ -128,16 +118,10 @@ export function useVoiceController({
         onTechnicalError: (error) =>
           reportNonFatalError("voice-cleanup", error),
       }),
-    [
-      audioLevel,
-      capture,
-      deliverTranscript,
-      hostedCloud,
-      openAiApiKey,
-      openAiKeyLoaded,
-    ],
+    [audioLevel, capture, deliverTranscript],
   );
   /* eslint-enable react-hooks/refs */
+
 
   useEffect(
     () =>

@@ -1,39 +1,44 @@
 import { describe, expect, test } from "bun:test";
 import {
-  OPENAI_API_KEY_STORAGE_KEY,
-  OPENROUTER_API_KEY_STORAGE_KEY,
+  LEGACY_OPENAI_API_KEY_STORAGE_KEY,
+  LEGACY_OPENROUTER_API_KEY_STORAGE_KEY,
   persistedSettingsSnapshot,
 } from "./settingsPersistence";
 import {
-  deleteProviderCredential,
-  loadProviderCredentials,
-  saveProviderCredential,
-  storageKeyForProvider,
+  KNOWN_LEGACY_BYOK_KEYS,
+  cleanupLegacyProviderCredentials,
+  resetLegacyCredentialMigrationForTests,
   type SecureStoreAdapter,
 } from "./secureCredentials";
-import { DEFAULT_OPENROUTER_MODEL_ID } from "@/services/ai/models";
 
-describe("independent provider credentials", () => {
-  test("uses distinct SecureStore keys and never persists either secret", () => {
-    expect(OPENROUTER_API_KEY_STORAGE_KEY).not.toBe(OPENAI_API_KEY_STORAGE_KEY);
+describe("settings preferences and legacy cleanup", () => {
+  test("legacy storage keys are distinct and identified for cleanup", () => {
+    expect(LEGACY_OPENROUTER_API_KEY_STORAGE_KEY).not.toBe(
+      LEGACY_OPENAI_API_KEY_STORAGE_KEY,
+    );
+    expect(KNOWN_LEGACY_BYOK_KEYS).toContain(
+      LEGACY_OPENROUTER_API_KEY_STORAGE_KEY,
+    );
+    expect(KNOWN_LEGACY_BYOK_KEYS).toContain(LEGACY_OPENAI_API_KEY_STORAGE_KEY);
+  });
+
+  test("persisted snapshot contains preferences only without provider secrets", () => {
     const snapshot = persistedSettingsSnapshot({
-      selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
       theme: "dark",
       hapticsEnabled: true,
       autoSummarize: true,
-      openRouterApiKey: "or-secret",
-      openAiApiKey: "oa-secret",
+      materialColorsEnabled: true,
+      adaptiveNudgesEnabled: false,
     });
     const serialized = JSON.stringify(snapshot);
-    expect(serialized).not.toContain("or-secret");
-    expect(serialized).not.toContain("oa-secret");
     expect(serialized).not.toContain("ApiKey");
-    expect(snapshot.selectedModel).toBe(DEFAULT_OPENROUTER_MODEL_ID);
+    expect(serialized).not.toContain("secret");
+    expect(snapshot.theme).toBe("dark");
+    expect(snapshot.materialColorsEnabled).toBe(true);
   });
 
   test("material colors remain opt-in and persist when enabled", () => {
     const defaults = persistedSettingsSnapshot({
-      selectedModel: DEFAULT_OPENROUTER_MODEL_ID,
       theme: "system",
       hapticsEnabled: true,
       autoSummarize: true,
@@ -47,46 +52,38 @@ describe("independent provider credentials", () => {
     expect(enabled.materialColorsEnabled).toBe(true);
   });
 
-  test("blank persisted model data resolves to the deterministic default", () => {
-    const snapshot = persistedSettingsSnapshot({
-      theme: "dark",
-      hapticsEnabled: true,
-      autoSummarize: true,
-      selectedModel: "",
-    });
-    expect(snapshot.selectedModel).toBe(DEFAULT_OPENROUTER_MODEL_ID);
-  });
-
-  test("save, load, and delete keep OpenRouter and OpenAI credentials isolated", async () => {
-    const values = new Map<string, string>();
-    const writes: string[] = [];
+  test("cleanupLegacyProviderCredentials deletes known legacy keys idempotently and never reads values", async () => {
+    resetLegacyCredentialMigrationForTests();
+    const deletedKeys: string[] = [];
     const adapter: SecureStoreAdapter = {
       isAvailableAsync: async () => true,
-      getItemAsync: async (key) => values.get(key) ?? null,
-      setItemAsync: async (key, value) => {
-        writes.push(key);
-        values.set(key, value);
-      },
       deleteItemAsync: async (key) => {
-        writes.push(`delete:${key}`);
-        values.delete(key);
+        deletedKeys.push(key);
       },
     };
-    await saveProviderCredential(adapter, "OpenRouter", " or-key ");
-    await saveProviderCredential(adapter, "OpenAI", " oa-key ");
-    expect(await loadProviderCredentials(adapter)).toEqual({
-      openRouterApiKey: "or-key",
-      openAiApiKey: "oa-key",
-    });
-    await deleteProviderCredential(adapter, "OpenAI");
-    expect(await loadProviderCredentials(adapter)).toEqual({
-      openRouterApiKey: "or-key",
-      openAiApiKey: "",
-    });
-    expect(writes).toEqual([
-      storageKeyForProvider("OpenRouter"),
-      storageKeyForProvider("OpenAI"),
-      `delete:${storageKeyForProvider("OpenAI")}`,
+
+    await cleanupLegacyProviderCredentials(adapter);
+    expect(deletedKeys).toEqual([
+      LEGACY_OPENROUTER_API_KEY_STORAGE_KEY,
+      LEGACY_OPENAI_API_KEY_STORAGE_KEY,
     ]);
+
+    // Second call is a no-op (idempotent migration)
+    await cleanupLegacyProviderCredentials(adapter);
+    expect(deletedKeys).toHaveLength(2);
+  });
+
+  test("cleanup is safe when SecureStore is unavailable", async () => {
+    resetLegacyCredentialMigrationForTests();
+    const deletedKeys: string[] = [];
+    const adapter: SecureStoreAdapter = {
+      isAvailableAsync: async () => false,
+      deleteItemAsync: async (key) => {
+        deletedKeys.push(key);
+      },
+    };
+
+    await cleanupLegacyProviderCredentials(adapter);
+    expect(deletedKeys).toHaveLength(0);
   });
 });
