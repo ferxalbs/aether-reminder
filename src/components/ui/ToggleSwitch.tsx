@@ -1,20 +1,11 @@
-import React, { useEffect } from 'react';
-import { Platform, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import Animated, {
-  ReduceMotion,
-  interpolateColor,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-import { AnimatedPressable } from './AnimatedPressable';
-import { Colors, getMinimumTouchTarget, Motion } from '@/theme/tokens';
-import { useIsDark } from '@/theme/useResolvedTheme';
-import { useSemanticColors } from '@/theme/useSemanticColors';
+import React, { useCallback } from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
+import { Host, Switch as UniversalSwitch } from '@expo/ui';
+import { useSettingsStore } from '@/stores/settings.store';
 import { selectionAsync } from '@/lib/haptics';
 import { reportNonFatalError } from '@/lib/nonFatalError';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useIsDark } from '@/theme/useResolvedTheme';
+import { useSemanticColors } from '@/theme/useSemanticColors';
 
 export interface ToggleSwitchProps {
   value: boolean;
@@ -23,6 +14,7 @@ export interface ToggleSwitchProps {
   accessibilityHint?: string;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -32,110 +24,39 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   accessibilityHint,
   disabled = false,
   style,
+  testID,
 }) => {
   const isDark = useIsDark();
   const colors = useSemanticColors();
-  const progress = useSharedValue(value ? 1 : 0);
-  const reduceMotion = useReducedMotion();
 
-  useEffect(() => {
-    const target = value ? 1 : 0;
-    progress.value = reduceMotion
-      ? target
-      : withSpring(target, {
-          ...Motion.toggleSpring,
-          reduceMotion: ReduceMotion.Never,
+  const handleValueChange = useCallback(
+    (nextValue: boolean) => {
+      if (disabled) return;
+      if (nextValue !== value && useSettingsStore.getState().hapticsEnabled) {
+        selectionAsync().catch((error: unknown) => {
+          reportNonFatalError('haptics', error);
         });
-  }, [reduceMotion, value, progress]);
-
-  const handlePress = () => {
-    if (disabled) return;
-    if (useSettingsStore.getState().hapticsEnabled) {
-      selectionAsync().catch((error: unknown) => {
-        reportNonFatalError('haptics', error);
-      });
-    }
-    onValueChange(!value);
-  };
-
-  const animatedTrackStyle = useAnimatedStyle(() => {
-    const activeColor = colors.accent;
-    const inactiveColor = isDark ? Colors.surfaceRaisedDark : Colors.surfaceRaisedLight;
-    const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]);
-    const borderColor = isDark ? Colors.borderDark : Colors.borderLight;
-    return { backgroundColor, borderColor };
-  });
-
-  const animatedThumbStyle = useAnimatedStyle(() => {
-    const activeThumbColor = colors.onAccent;
-    const inactiveThumbColor = isDark ? Colors.secondaryTextDark : Colors.secondaryTextLight;
-    const backgroundColor = interpolateColor(progress.value, [0, 1], [inactiveThumbColor, activeThumbColor]);
-    const translateX = progress.value * 20;
-
-    return {
-      backgroundColor,
-      transform: [{ translateX }],
-    };
-  });
+      }
+      onValueChange(nextValue);
+    },
+    [disabled, value, onValueChange]
+  );
 
   return (
-    <AnimatedPressable
-      hapticStyle={null}
-      onPress={handlePress}
-      disabled={disabled}
-      accessibilityRole="switch"
+    <Host
+      matchContents
+      colorScheme={isDark ? 'dark' : 'light'}
+      seedColor={colors.accent}
+      style={style}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ checked: value, disabled }}
-      android_ripple={{ color: colors.accent }}
-      scaleTo={Motion.pressScale}
-      style={[
-        styles.touchTarget,
-        disabled && styles.disabled,
-        style,
-      ]}
     >
-      <Animated.View
-        style={[
-          styles.track,
-          Platform.OS === 'android' && styles.androidTrack,
-          animatedTrackStyle,
-        ]}
-      >
-        <Animated.View style={[styles.thumb, animatedThumbStyle]} />
-      </Animated.View>
-    </AnimatedPressable>
+      <UniversalSwitch
+        value={value}
+        onValueChange={handleValueChange}
+        disabled={disabled}
+        testID={testID ?? accessibilityLabel}
+      />
+    </Host>
   );
 };
-
-const styles = StyleSheet.create({
-  touchTarget: {
-    minWidth: getMinimumTouchTarget(Platform.OS),
-    minHeight: getMinimumTouchTarget(Platform.OS),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  track: {
-    width: 51,
-    height: 31,
-    borderRadius: 15.5,
-    padding: 2,
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  androidTrack: {
-    width: 52,
-    height: 32,
-    borderRadius: 16,
-  },
-  thumb: {
-    width: 25,
-    height: 25,
-    borderRadius: 12.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabled: {
-    opacity: 0.45,
-  },
-});

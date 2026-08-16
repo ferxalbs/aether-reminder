@@ -2,6 +2,42 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.15 (3) [Native Universal Switch Architecture]
+
+### Native-backed Universal Switch in Expo SDK 57
+
+- Migrated the reusable AETHER `ToggleSwitch` primitive from a custom Reanimated/hand-drawn
+  track/thumb implementation to the Expo SDK 57 native-backed Universal Switch (`@expo/ui`
+  `Switch` and `Host`). [`ToggleSwitch.tsx`](src/components/ui/ToggleSwitch.tsx)
+- **Android**: Backed by Jetpack Compose `Switch` with platform-native Material 3 geometry,
+  state transitions, focus, touch targets, and accessibility semantics.
+- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `Toggle` with native Apple switch
+  geometry, smooth state animations, Dynamic Type, and VoiceOver integration.
+- Removed obsolete custom switch machinery from `ToggleSwitch.tsx`: deleted Reanimated
+  imports (`useSharedValue`, `useAnimatedStyle`, `withSpring`, `interpolateColor`,
+  `useReducedMotion`, `ReduceMotion`), `useEffect` progress synchronization, custom track/thumb
+  views, custom 51x31 / 52x32 track geometry, custom 25x25 thumb geometry, and the outer
+  `AnimatedPressable` used to simulate touch and ripple.
+- Preserved AETHER setting semantics, controlled state model, theme accent tint propagation
+  (`seedColor={colors.accent}` across base and Material 3 palettes), and selection haptics
+  gated by `useSettingsStore.getState().hapticsEnabled` without double-firing.
+- Added comprehensive unit test suite in [`ToggleSwitch.test.tsx`](src/components/ui/ToggleSwitch.test.tsx)
+  covering controlled value binding, `onValueChange` forwarding, disabled switch protection,
+  haptic feedback policy, `testID` fallback, and `Host` theme/accent propagation.
+
+### Validation status and gates
+
+- Static checks: `bun run typecheck` (0 errors), `bun run lint` (0 errors), `bun test src/`
+  (343 passed, 2 skipped, 0 failed).
+- Bundle exports: `bunx expo export --platform android` and `bunx expo export --platform ios`
+  both succeeded cleanly with Hermes bytecode generation.
+- Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded.
+- Device & runtime gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
+  Static contracts, setting bindings, and theme propagation are verified, but runtime behavior
+  (physical toggle interaction, TalkBack/VoiceOver role and state, rapid multi-toggles, and iPad layout)
+  remains OPEN until tested on physical Android and Apple runtimes. Full iOS Xcode build and
+  physical iPhone/iPad gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
+
 ## Unreleased - 2026.08.15 (2) [Native Universal Picker Architecture]
 
 ### Native-backed Universal Picker in Expo SDK 57

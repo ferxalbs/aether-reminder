@@ -37,9 +37,13 @@ const MockPicker = Object.assign(
 const MockHost = (props: Record<string, unknown>) =>
   React.createElement('ExpoHost', props, props.children as React.ReactNode);
 
+const MockSwitch = (props: Record<string, unknown>) =>
+  React.createElement('ExpoSwitch', props, null);
+
 mock.module('@expo/ui', () => ({
   Host: MockHost,
   Picker: MockPicker,
+  Switch: MockSwitch,
 }));
 
 let mockHapticsEnabled = true;
