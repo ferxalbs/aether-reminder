@@ -21,6 +21,7 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "src/db/bunSqliteAdapter.ts",
-    "node_modules"
+    "node_modules",
+    "aether-reminder-cloud"
   ]
 }

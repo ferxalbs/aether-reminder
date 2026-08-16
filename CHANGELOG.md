@@ -2,6 +2,44 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.15 (2) [Native Universal Picker Architecture]
+
+### Native-backed Universal Picker in Expo SDK 57
+
+- Migrated the reusable AETHER `Picker` primitive from a custom/fake-native single-selection
+  implementation to the Expo SDK 57 Universal Picker (`@expo/ui` `Picker` & `Host`).
+  [`Picker.tsx`](src/components/ui/Picker.tsx)
+- **Android**: Backed by Jetpack Compose Material 3 `ExposedDropdownMenuBox` with
+  platform-native dropdown menu presentation, outside and back-press dismissal, and
+  accessibility semantics.
+- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `Picker` with `.pickerStyle(.menu)`
+  within a sizing `Host`, providing native compact menu presentation, VoiceOver semantics,
+  and keyboard/pointer support.
+- Removed obsolete fake-native machinery from `Picker.tsx`: deleted `open` React state,
+  custom trigger button, custom chevron icon, custom inline menu container, per-option
+  `AnimatedPressable` rows, manual radio/combobox accessibility states, and hand-built
+  iOS segmented control branch.
+- Preserved AETHER field semantics and typed API: strongly-typed generics across callers
+  (`RecurrenceFrequency`, `RecurrenceMode`, `'never' | 'date' | 'count'`, `TaskPriority`),
+  field label, helper text, error text with alert live region, disabled field handling,
+  and selection change haptics via `src/lib/haptics.ts`.
+- Added unit tests in [`Picker.test.tsx`](src/components/ui/Picker.test.tsx) covering
+  typed value bridge, option item delegation, haptic firing policy, disabled handling,
+  unknown value safety, and error/helper text rendering.
+
+### Validation status and gates
+
+- Static checks: `bun run typecheck` (0 errors), `bun run lint` (0 errors), `bun test`
+  (336 passed, 2 skipped, 0 failed).
+- Bundle exports: `bunx expo export --platform android` and `bunx expo export --platform ios`
+  both succeeded with Hermes bundling.
+- Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded.
+- Device & runtime gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
+  `TaskEditorSheet` static contract and field bindings are verified, but runtime behavior
+  (popup menu presentation, focus, TalkBack/VoiceOver, rapid selection, and dismissal)
+  remains OPEN until tested on physical Android and Apple runtimes. Full iOS Xcode build and
+  physical iPhone/iPad gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
+
 ## Unreleased - 2026.08.15 (1) [Native Sheet Presentation Architecture]
 
 ### Native-first sheet presentation in Expo SDK 57
