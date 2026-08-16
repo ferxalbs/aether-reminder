@@ -12,7 +12,6 @@ import { Typography } from './Typography';
 export interface PickerOption<Value extends string | number = string> {
   value: Value;
   label: string;
-  disabled?: boolean;
 }
 
 export interface PickerProps<Value extends string | number = string> {
@@ -24,7 +23,6 @@ export interface PickerProps<Value extends string | number = string> {
   error?: string;
   disabled?: boolean;
   accessibilityLabel?: string;
-  accessibilityHint?: string;
   containerStyle?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -38,7 +36,6 @@ export function Picker<Value extends string | number>({
   error,
   disabled = false,
   accessibilityLabel,
-  accessibilityHint: _accessibilityHint,
   containerStyle,
   testID,
 }: PickerProps<Value>): React.ReactElement {

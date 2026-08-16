@@ -185,6 +185,7 @@ describe('Picker Universal native-backed adapter', () => {
   });
 
   test('handles disabled field state safely and ignores incoming changes', () => {
+    mockHapticsEnabled = true;
     mockSelectionAsync.mockClear();
     const onValueChange = mock(() => {});
     const options = [
@@ -217,6 +218,7 @@ describe('Picker Universal native-backed adapter', () => {
   });
 
   test('ignores unknown values not present in the options list', () => {
+    mockHapticsEnabled = true;
     mockSelectionAsync.mockClear();
     const onValueChange = mock(() => {});
     const options = [
@@ -244,6 +246,25 @@ describe('Picker Universal native-backed adapter', () => {
 
     expect(onValueChange).toHaveBeenCalledTimes(0);
     expect(mockSelectionAsync).toHaveBeenCalledTimes(0);
+  });
+
+  test('falls back to accessibilityLabel or label for testID when testID is omitted', () => {
+    const options = [{ value: 'opt', label: 'Option' }];
+    let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <Picker<string>
+          label="Fallback Label"
+          accessibilityLabel="Accessible Label"
+          value="opt"
+          options={options}
+          onValueChange={() => {}}
+        />
+      );
+    });
+
+    const picker = renderer!.root.findByType('ExpoPicker');
+    expect(picker.props.testID).toBe('Accessible Label');
   });
 
   test('renders error message with alert role and helper text when no error', () => {
