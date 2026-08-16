@@ -2,6 +2,47 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.16 (3) [Interaction Feedback Shape Consistency]
+
+### Shape-aware Pressable feedback across AETHER surfaces
+
+- Fixed the systemic mismatch where rounded controls could receive rectangular
+  pressed or Android ripple feedback across the larger touch target.
+- Extended [`AnimatedPressable`](src/components/ui/AnimatedPressable.tsx) with
+  optional `interactionRadius` support and bounded ripple configuration.
+- Added `getMinimumTouchTargetHitSlop` so compact visual controls can preserve
+  44/48dp platform touch targets without enlarging their feedback surface.
+- Kept clipping opt-in and shape-specific; no blanket `overflow: "hidden"`
+  behavior was added to all `AnimatedPressable` instances.
+- Preserved scale motion, haptics, reduced-motion behavior, accessibility,
+  native control mechanics, and externally-owned focus-ring behavior.
+
+### Rounded control and surface migrations
+
+- Migrated shape-aware feedback for Buttons, IconButtons, Cards, TaskCard's
+  completion checkbox, ChoicePill, toolbar actions, composer actions, assistant
+  voice/send actions, bottom navigation, model catalog rows, Picker/date controls,
+  and Settings selectors.
+- Kept TaskCard completion/product animation unchanged and left native sheets,
+  toggles, pickers, and presentation architecture intact.
+- Documented the design-system rule that interaction feedback shape must match
+  visual surface shape while touch-target and feedback geometry remain separate.
+- Added focused shared-contract coverage for minimum touch targets, pill and
+  rounded feedback radii, bounded ripples, compact hit slop, no global clipping,
+  and external focus-ring preservation.
+
+### Validation status and gates
+
+- Focused interaction tests: 6 passed.
+- TypeScript: `bun run typecheck` passed.
+- Linter: `bun run lint` passed.
+- Source test suite: 354 passed, 2 skipped; two existing React Native mock-export
+  harness errors remain in `Picker.test.tsx` and `ModelCatalogSheet.test.tsx`.
+- Platform exports: `bunx expo export --platform android` and
+  `bunx expo export --platform ios` passed.
+- No native dependency or configuration changes were made, so no EAS build was
+  required. No physical-device validation was performed by request.
+
 ## Unreleased - 2026.08.16 (2) [Native-First Settings Model Catalog Sheet Migration]
 
 ### Migration of Settings model catalog to native-first Sheet architecture
