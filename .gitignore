@@ -49,3 +49,6 @@ modules/**/android/.gradle/
 
 # code base mcp
 .codebase-memory
+
+#AETHER Reminder Cloud
+aether-reminder-cloud
