@@ -9,12 +9,12 @@ All notable changes to AETHER are documented here.
 - Replaced the custom JavaScript/Reanimated/Gesture Handler physics layer in
   `Sheet.tsx` with native-first sheet presentation via `@expo/ui/community/bottom-sheet`.
   [`Sheet.tsx`](src/components/ui/Sheet.tsx)
-- **Android**: Backed by Jetpack Compose Material 3 `ModalBottomSheet` via `Host`
-  and `RNHostView`. Android system back gesture, native spring/dismiss physics, and
-  IME window insets are handled by the platform.
-- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `.sheet()` via `Host`, `Group`,
-  and `RNHostView`. Supports native presentation detents, native drag indicators,
-  interactive dismissal, and iPad-fitted sizing.
+- **Android**: Backed by Jetpack Compose Material 3 native `ModalBottomSheet` via
+  `Host` and `RNHostView`. Compose owns M3 sheet spring/dismiss physics,
+  back-press dismissal, and IME layout coordination.
+- **Apple (iOS & iPadOS)**: Backed by native SwiftUI `.sheet()` presentation via
+  `Host`, `Group`, and `RNHostView`. Supports SwiftUI presentation detents, native
+  drag indicators, interactive dismissal, and iPad fitted presentation sizing.
 - Removed obsolete sheet-only machinery from `Sheet.tsx`: deleted `project()`,
   `rubberband()`, `SPRING_CONFIG`, manual `translateY` shared value, manual `opacity`
   shared value, `Gesture.Pan`, and custom modal backdrop blur overlay.
@@ -31,8 +31,11 @@ All notable changes to AETHER are documented here.
 - Bundle exports: `bunx expo export --platform android` and `bunx expo export --platform ios`
   both succeeded with Hermes bundling.
 - Native build: Android native Gradle Kotlin compilation (`:app:compileDebugKotlin`) succeeded.
-- Device gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
-  Physical device gates remain honestly documented and open in `docs/KNOWN_TRADEOFFS.md`.
+- Device & runtime gates: No physical Android or iOS device was attached during this session (`adb devices` empty).
+  `TaskEditorSheet` static contract and code-path compatibility are verified, but runtime behavior
+  (IME/keyboard, focus, scrolling, native drag dismissal, Android Back, rapid reopen, and navigation)
+  remains OPEN until tested on an Android runtime. Full iOS Xcode build and physical iPhone/iPad gates
+  remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
 
 ## Unreleased - 2026.08.14 (2) [Adaptive Motion Telemetry Correctness]
 
