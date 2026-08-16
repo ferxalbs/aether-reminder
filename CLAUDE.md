@@ -30,21 +30,182 @@ Android development EAS build before considering the change validated:
 eas build --platform android --profile development
 ```
 
+## Native-First Platform Architecture
+
+AETHER targets Android, iOS, and iPadOS. Android is the primary runtime-validation
+and visual-polish target for the current phase, while iOS and iPadOS remain parallel
+architectural and development targets. Native-first applies to both mobile families.
+
+For UI or platform functionality, use this hierarchy in order:
+
+1. Native system behavior exposed by an existing Expo SDK 57 API.
+2. An Expo module or component backed by native SwiftUI/UIKit on Apple platforms or
+   Jetpack Compose/Android APIs on Android.
+3. An Expo Router native presentation or navigation primitive when the semantics fit.
+4. A small AETHER semantic adapter around those platform-native implementations.
+5. A React Native custom implementation only when native/Expo primitives cannot
+   satisfy a documented product requirement.
+
+A custom implementation must not be chosen merely to make Android and iOS
+pixel-identical, reuse one JavaScript animation everywhere, avoid writing a platform
+adapter, preserve an existing custom component, imitate another platform's
+appearance, or obtain arbitrary styling control that the product does not require.
+When a suitable native primitive is intentionally rejected, add a short code comment
+or architecture note naming the concrete missing capability and the product
+requirement it supports.
+
+### Native primitive check
+
+Before implementing or maintaining any of the following, check the exact Expo SDK 57
+documentation and the operating-system APIs for a suitable native primitive:
+
+- sheets and modal presentations;
+- context menus;
+- date/time pickers;
+- switches and toggles;
+- segmented controls;
+- menus;
+- toolbars;
+- share sheets;
+- system pickers;
+- navigation transitions;
+- haptics;
+- keyboard and inset behavior;
+- notification actions;
+- back navigation and predictive back;
+- shortcuts and intents;
+- Android Quick Settings surfaces where applicable;
+- iOS App Intents and Shortcuts where applicable;
+- accessibility semantics; and
+- blur, glass, and material surfaces.
+
+Native-first means preferring the native primitive when it satisfies the product
+contract; it does not require using a native API that cannot satisfy that contract.
+
+### AETHER semantic adapters
+
+Public product-facing APIs may remain cross-platform (`Sheet`, `DateTimeControl`,
+`ContextMenu`, `Toggle`, `ShareAction`), but these components are adapters or
+orchestrators rather than JavaScript reimplementations of operating-system behavior:
+
+```
+AETHER semantic component
+        |
+        v
+platform-native adapter
+   /                     \
+Android native       Apple native
+Compose/system       SwiftUI/UIKit/system
+```
+
+Adapters may own AETHER domain semantics, titles and copy, state binding, callbacks,
+product-specific validation, accessibility labels, and feature policy. When the
+platform already provides the behavior, they should not own drag physics,
+rubberbanding, modal-presentation physics, gesture-velocity projection, system
+dismissal thresholds, platform transitions, or native back/predictive-back mechanics.
+
+### Android-first does not mean Android-only
+
+Android is the primary runtime-validation and visual-polish target. When hardware is
+available, physical Android behavior is the main acceptance gate. Android-specific
+crashes, native-view hierarchy, back behavior, keyboards, blur, gestures, overlays,
+and performance require Android runtime evidence; typecheck, lint, unit tests, and a
+bundle alone do not establish those claims.
+
+Every architectural decision must leave a real iOS implementation path at the same
+time. Do not create Android-specific domain contracts that later require redesigning
+the feature for iOS. Keep platform-specific implementation details behind adapters
+or platform-specific files/modules. TODO-only fake iOS branches are not a substitute
+for designing the cross-platform contract. Android may receive deeper runtime
+validation first, but iOS architecture must not be deferred to an unspecified future
+port.
+
+### iOS and iPadOS are one Apple mobile family
+
+For architecture, iOS and iPadOS use a shared Apple implementation unless a real
+platform capability or adaptive layout requires divergence. Prefer:
+
+```
+shared Apple implementation
+        |
+        v
+adaptive layout / presentation decisions
+   /                         \
+compact iPhone          regular / resizable iPad
+```
+
+iPadOS adaptations may include width-class or resizable-layout behavior, Split View
+and multitasking, Stage Manager or other resizable windows where applicable,
+sidebars, popovers instead of phone-style sheets, pointer and keyboard input, and
+larger detents or different presentation geometry. Do not create parallel iPhone and
+iPad implementations by default, and do not assume `Platform.OS === 'ios'` means
+iPhone.
+
+macOS is outside AETHER Reminder's supported platform scope. Do not design iPadOS as
+though it were macOS, and do not make current architectural compromises for
+hypothetical macOS support. If macOS becomes a target, it requires an explicit
+architecture review because windowing, navigation, menus, keyboard and pointer
+expectations, lifecycle, and desktop conventions can materially differ.
+
+### Platform parity
+
+Require behavioral and product parity across supported platforms in:
+
+- domain capability;
+- user intent;
+- data and state behavior;
+- persistence;
+- core interactions; and
+- accessibility outcome.
+
+Do not require identical geometry, transitions, modal styles, controls, materials,
+gestures, or navigation presentation. Each platform should feel native to itself
+while remaining recognizably AETHER.
+
+### Native presentation rule
+
+For a new sheet or modal, and whenever an existing one is modified, first classify the
+interaction as:
+
+- **A.** a transient native sheet or control;
+- **B.** a navigable screen presented as a sheet or form sheet; or
+- **C.** a genuinely custom overlay requiring behavior unavailable from native
+  presentation APIs.
+
+Prefer native Expo/UI sheet primitives for A, Expo Router native presentation such as
+`formSheet` when the interaction is fundamentally a route for B, and a custom React
+Native/Reanimated overlay only for C. Do not build custom drag-to-dismiss physics
+merely to resemble iOS or Android. Adding this rule does not require migrating an
+existing component; when one is later changed, apply this decision tree.
+
+### Motion ownership
+
+The Adaptive Motion Engine governs product-owned motion. It must not replace or
+reimplement operating-system presentation physics when a UI is delegated to a native
+system primitive. Native sheet, modal, menu, and navigation physics remain owned by
+the platform unless a demonstrated product requirement requires an override.
+Reduced Motion and other accessibility settings must continue to be respected by
+native platform behavior and by AETHER-owned animations where applicable.
+
 ## Cross-Platform UI Design Rules
 
-Every UI feature must maintain product and interaction parity on iOS and Android; do
-not require pixel-perfect visual equivalence, since each platform has different native
-capabilities. Use the iOS 26+ / 27 design direction as the shared product reference:
-Liquid Glass on iOS where supported, using `expo-glass-effect`'s `GlassView` or
-`GlassContainer`, and account for its documented fallback to a regular `View` on
-unsupported platforms. On Android, translate that same direction into a practical
-Android version rather than copying iOS code or omitting the pattern. This includes
-floating buttons, floating tab bars, segmented controls, rounded surfaces, and floating
-composers or input bars; their Android implementations may use flatter surfaces,
-native Android spacing and interaction conventions, and different exact geometry.
-Use `expo-blur` only when blur is needed, following its Android API requirements
-(`BlurTargetView` and an appropriate `blurMethod`) and its documented performance
-limitations on older Android versions.
+Use the iOS 26+ / 27 design direction as the shared product reference: Liquid Glass on
+iOS where supported, using `expo-glass-effect`'s `GlassView` or `GlassContainer`, and
+account for its documented fallback to a regular `View` on unsupported platforms. On
+Android, translate that direction into a practical Android version rather than
+copying iOS code or omitting the pattern. This includes floating buttons, floating
+tab bars, segmented controls, rounded surfaces, and floating composers or input bars;
+their Android implementations may use flatter surfaces, native Android spacing and
+interaction conventions, and different exact geometry.
+
+Global blur rule: every new and existing component that needs a blurred or glass
+surface must use `AdaptiveBlur` from `@/motion` (or a component that delegates to
+it) on every platform. Do not import or render `BlurView` directly in product
+components, and do not bypass `AdaptiveBlur` for one-off visual treatments. Pass an
+explicit `blurTarget` only when the Android capture hierarchy is safe; otherwise let
+`AdaptiveBlur` render its approved native fallback. `expo-blur` remains subject to
+its Android API requirements (`BlurTargetView` and an appropriate `blurMethod`) and
+its documented performance limitations on older Android versions.
 
 ## Android Runtime & Native-View Safety
 
@@ -93,6 +254,16 @@ Tests use Bun’s test runner and are colocated with the implementation, for exa
 
 Never edit a shipped SQLite migration; add the next numbered migration. Keep API keys in Expo SecureStore, never AsyncStorage, logs, or committed configuration. Do not add fake-success, demo-data, or mock-production behavior; failures should be typed and user-visible.
 NEVER use, invoke, install, reference, depend on, or run GStack/gstack for this repository.
+
+## Known Tradeoff & Validation Debt Checkpoint
+
+Before and near the end of work involving native Android, native iOS/iPadOS,
+Share Extensions, App Intents, App Groups, Quick Settings, system sharing, native
+builds, release/build size, Android 16/API 36, or beta/GA readiness, inspect
+`docs/KNOWN_TRADEOFFS.md`. Do not close a physical-device, native-build, signing,
+iPhone, or iPad validation gate without the evidence required there. If a gate is
+still blocked by unavailable hardware, tooling, credentials, or build quota, state
+that limitation rather than treating static checks as runtime evidence.
 
 ## Changelog Guidelines
 
