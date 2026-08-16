@@ -132,7 +132,7 @@ export default function SettingsScreen() {
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
-  // Model Picker Modal Sheet State
+  // Model Catalog Sheet State
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);

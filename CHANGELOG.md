@@ -29,6 +29,7 @@ All notable changes to AETHER are documented here.
 - TypeScript: `bun run typecheck` (0 errors).
 - Linter: `bun run lint` (0 errors).
 - Platform export bundles: `bunx expo export --platform android` (clean), `bunx expo export --platform ios` (clean).
+- Native compile: `./gradlew :app:compileDebugKotlin` (BUILD SUCCESSFUL).
 - Device & runtime gates: No physical Android or iOS device attached. Full iOS Xcode build and physical device validation gates remain OPEN in `docs/KNOWN_TRADEOFFS.md`.
 
 ## Unreleased - 2026.08.16 (1) [Dead Context Menu Architecture Cleanup]

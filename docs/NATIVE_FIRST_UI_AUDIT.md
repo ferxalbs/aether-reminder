@@ -212,5 +212,8 @@ Validation performed:
 - `bun run typecheck` (0 errors)
 - `bun run lint` (0 errors)
 - `git diff --check` (0 whitespace issues)
+- `bunx expo export --platform android` (clean bundle export)
+- `bunx expo export --platform ios` (clean bundle export)
+- `./gradlew :app:compileDebugKotlin` (BUILD SUCCESSFUL)
 
 Physical Android/iPhone/iPad runtime validation was not performed in this session as no physical device was attached. The report distinguishes statically established architecture from the N6 runtime seams and the existing device/build gates recorded in `docs/KNOWN_TRADEOFFS.md`.
