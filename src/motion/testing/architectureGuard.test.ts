@@ -117,7 +117,6 @@ describe("adaptive motion architecture guard", () => {
     expect(aggregator).toContain("copyOf");
   });
 
-
   test("MotionProvider reads native capabilities once and rerenders only on profile change", () => {
     const provider = readFileSync(
       join(SRC, "motion/runtime/MotionProvider.tsx"),

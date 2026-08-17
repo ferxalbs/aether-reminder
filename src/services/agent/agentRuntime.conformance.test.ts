@@ -357,10 +357,7 @@ describe("agent runtime conformance", () => {
   test("AETHER Cloud network failure → run fails honestly", async () => {
     const db = await readyDb();
     const provider = new ScriptedInferenceProvider();
-    provider.pushErrorTurn(
-      "NETWORK_ERROR",
-      "Could not reach AETHER Cloud.",
-    );
+    provider.pushErrorTurn("NETWORK_ERROR", "Could not reach AETHER Cloud.");
 
     const runtime = createAgentRuntime({ db, provider });
     const events = await collect(runtime, {
@@ -379,7 +376,6 @@ describe("agent runtime conformance", () => {
     expect(types(events)).not.toContain("response.completed");
     await db.closeAsync?.();
   });
-
 
   test("cancel during streamed response → cancellation propagates", async () => {
     const db = await readyDb();

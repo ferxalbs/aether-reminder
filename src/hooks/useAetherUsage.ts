@@ -9,12 +9,7 @@ import {
 import { reportNonFatalError } from "@/lib/nonFatalError";
 
 export type UsageFetchState =
-  | "loading"
-  | "loaded"
-  | "offline"
-  | "unconfigured"
-  | "unauthorized"
-  | "error";
+  "loading" | "loaded" | "offline" | "unconfigured" | "unauthorized" | "error";
 
 export type UsagePlanPreview = {
   tier: "free" | "pro";
@@ -64,7 +59,10 @@ export function useAetherUsage(): UseAetherUsageResult {
     } catch (caught) {
       reportNonFatalError("fetch-usage", caught);
       setSnapshot(null);
-      if (caught instanceof AetherCloudError && caught.code === "UNAUTHORIZED") {
+      if (
+        caught instanceof AetherCloudError &&
+        caught.code === "UNAUTHORIZED"
+      ) {
         setState("unauthorized");
         setErrorMessage("Sign in is required to refresh hosted usage.");
       } else if (

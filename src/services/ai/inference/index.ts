@@ -11,7 +11,11 @@ export type {
   InferenceErrorShape,
 } from "./types";
 
-export { classifyCompatibility, unknownModelCapabilities, canRunAsAgent } from "./capabilities";
+export {
+  classifyCompatibility,
+  unknownModelCapabilities,
+  canRunAsAgent,
+} from "./capabilities";
 
 export {
   AetherCloudInferenceProvider,

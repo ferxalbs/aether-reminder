@@ -156,7 +156,6 @@ export default function SettingsScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

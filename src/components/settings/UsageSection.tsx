@@ -1,9 +1,5 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import {
   Sparkles,
   Mic,
@@ -42,9 +38,7 @@ const UsageProgressBar: React.FC<ProgressBarProps> = ({
 }) => {
   const { colors } = useAetherTheme();
   const percentage =
-    limit && limit > 0
-      ? Math.min(100, Math.max(0, (used / limit) * 100))
-      : 0;
+    limit && limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
   const isNearLimit = percentage >= 85;
   const isExhausted = remaining !== null && remaining <= 0;
 
@@ -139,7 +133,11 @@ export const UsageSection: React.FC = () => {
           <AlertTriangle size={20} color={colors.warning} />
           <Typography
             variant="body"
-            style={{ color: colors.textPrimary, textAlign: "center", marginTop: Spacing.xs }}
+            style={{
+              color: colors.textPrimary,
+              textAlign: "center",
+              marginTop: Spacing.xs,
+            }}
           >
             {errorMessage ?? "Sign in is required to refresh hosted usage."}
           </Typography>
@@ -153,7 +151,11 @@ export const UsageSection: React.FC = () => {
           <AlertTriangle size={20} color={colors.warning} />
           <Typography
             variant="body"
-            style={{ color: colors.textPrimary, textAlign: "center", marginTop: Spacing.xs }}
+            style={{
+              color: colors.textPrimary,
+              textAlign: "center",
+              marginTop: Spacing.xs,
+            }}
           >
             {errorMessage ?? "Could not refresh usage."}
           </Typography>
@@ -269,12 +271,14 @@ export const UsageSection: React.FC = () => {
             />
           ) : null}
 
-          {snapshot.ai.remaining === 0 || snapshot.voice.remainingSeconds === 0 ? (
+          {snapshot.ai.remaining === 0 ||
+          snapshot.voice.remainingSeconds === 0 ? (
             <Typography
               variant="caption"
               style={{ color: colors.warning, marginTop: Spacing.sm }}
             >
-              A hosted allowance is exhausted. It will be available again when your period resets.
+              A hosted allowance is exhausted. It will be available again when
+              your period resets.
             </Typography>
           ) : null}
 
@@ -330,7 +334,11 @@ export const UsageSection: React.FC = () => {
           </Typography>
           <Typography
             variant="caption"
-            style={{ color: colors.textPrimary, textAlign: "center", marginTop: Spacing.xs }}
+            style={{
+              color: colors.textPrimary,
+              textAlign: "center",
+              marginTop: Spacing.xs,
+            }}
           >
             Usage unavailable. Your plan is still available to view.
           </Typography>

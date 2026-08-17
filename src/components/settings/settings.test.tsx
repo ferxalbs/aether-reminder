@@ -53,7 +53,6 @@ mock.module("react-native-svg", () => ({
   G: MockView,
 }));
 
-
 mock.module("react-native", () => ({
   Platform: {
     OS: "ios",
@@ -200,7 +199,6 @@ mock.module("lucide-react-native", () => ({
   Zap: MockView,
 }));
 
-
 mock.module("@/stores/settings.store", () => ({
   useSettingsStore: (
     selector?: (state: Record<string, unknown>) => unknown,
@@ -279,7 +277,9 @@ describe("Settings Modular Components", () => {
     });
     expect(renderer).toBeDefined();
     const texts = renderer!.root.findAllByType("Text");
-    expect(texts.some((t) => t.props.children === "HOSTED AI & VOICE")).toBe(true);
+    expect(texts.some((t) => t.props.children === "HOSTED AI & VOICE")).toBe(
+      true,
+    );
   });
 
   test("renders SettingsCard with children", () => {
@@ -309,12 +309,10 @@ describe("Settings Modular Components", () => {
     });
     expect(renderer).toBeDefined();
     const texts = renderer!.root.findAllByType("Text");
-    expect(texts.some((t) => t.props.children === "App Settings")).toBe(
-      true,
-    );
-    expect(texts.some((t) => t.props.children === "Customize your experience")).toBe(
-      true,
-    );
+    expect(texts.some((t) => t.props.children === "App Settings")).toBe(true);
+    expect(
+      texts.some((t) => t.props.children === "Customize your experience"),
+    ).toBe(true);
   });
 
   test("renders SettingsRow with title, description and trailing control", () => {

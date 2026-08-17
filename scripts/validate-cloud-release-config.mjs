@@ -1,5 +1,6 @@
 const isEasBuild = process.argv.includes("--eas");
-const mustValidate = !isEasBuild || process.env.EAS_BUILD_PROFILE === "production";
+const mustValidate =
+  !isEasBuild || process.env.EAS_BUILD_PROFILE === "production";
 
 if (!mustValidate) process.exit(0);
 

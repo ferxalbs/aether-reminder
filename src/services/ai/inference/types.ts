@@ -51,9 +51,7 @@ export interface InferenceRequest {
   messages: InferenceMessage[];
   tools?: InferenceToolDefinition[];
   toolChoice?:
-    | "auto"
-    | "none"
-    | { type: "function"; function: { name: string } };
+    "auto" | "none" | { type: "function"; function: { name: string } };
   temperature?: number;
   maxTokens?: number;
   /** JSON schema response format when model supports structured outputs. */

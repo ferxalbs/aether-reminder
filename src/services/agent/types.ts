@@ -80,7 +80,6 @@ export interface AgentInput {
   budget?: Partial<AgentBudget>;
 }
 
-
 /** Exact app-validated mutation held while user confirmation is pending. */
 export interface PendingAction {
   id: string;

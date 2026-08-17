@@ -101,7 +101,6 @@ mock.module("react-native", () => ({
   },
 }));
 
-
 mock.module("lucide-react-native", () => ({
   ChevronDown: MockView,
 }));
@@ -189,7 +188,9 @@ describe("Picker component", () => {
     });
     let texts = renderer!.root.findAllByType("Text");
     expect(
-      texts.some((t) => t.props.children === "Choose how often this task repeats"),
+      texts.some(
+        (t) => t.props.children === "Choose how often this task repeats",
+      ),
     ).toBe(true);
 
     act(() => {

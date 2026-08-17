@@ -148,7 +148,6 @@ export const SettingsAccordion: React.FC = React.memo(() => {
   );
 });
 
-
 SettingsAccordion.displayName = "SettingsAccordion";
 
 const styles = StyleSheet.create({

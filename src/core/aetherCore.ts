@@ -57,8 +57,6 @@ export function getAetherCore(db: SqlDatabase): AetherCore {
   return appCore;
 }
 
-
-
 export function resetAetherCoreForTests(): void {
   appCore = null;
   appCoreDatabase = null;

@@ -122,7 +122,6 @@ export function useVoiceController({
   );
   /* eslint-enable react-hooks/refs */
 
-
   useEffect(
     () =>
       voiceSession.subscribe((next) => {

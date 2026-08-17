@@ -70,7 +70,6 @@ export class AetherCloudClient {
     return decodeUsageSnapshot(raw);
   }
 
-
   async createVoiceAuthorization(
     body: VoiceAuthorizationRequest = {},
     options: AetherCloudRequestOptions = {},
@@ -328,7 +327,10 @@ function isNonNegativeFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
-function decodeNullableMetricValue(value: unknown, label: string): number | null {
+function decodeNullableMetricValue(
+  value: unknown,
+  label: string,
+): number | null {
   if (value === null || value === undefined) return null;
   if (!isNonNegativeFiniteNumber(value)) {
     throw new AetherCloudError(
@@ -345,12 +347,18 @@ function decodeUsageMetric(
 ): AetherUsageSnapshot["ai"] {
   const used = raw.used;
   if (!isNonNegativeFiniteNumber(used)) {
-    throw new AetherCloudError("INVALID_RESPONSE", `Usage snapshot contains invalid ${label} usage.`);
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      `Usage snapshot contains invalid ${label} usage.`,
+    );
   }
   return {
     used,
     limit: decodeNullableMetricValue(raw.limit, `${label} limit`),
-    remaining: decodeNullableMetricValue(raw.remaining, `${label} remaining usage`),
+    remaining: decodeNullableMetricValue(
+      raw.remaining,
+      `${label} remaining usage`,
+    ),
   };
 }
 
@@ -359,12 +367,18 @@ function decodeVoiceUsageMetric(
 ): AetherUsageSnapshot["voice"] {
   const usedSeconds = raw.usedSeconds;
   if (!isNonNegativeFiniteNumber(usedSeconds)) {
-    throw new AetherCloudError("INVALID_RESPONSE", "Usage snapshot contains invalid voice usage.");
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "Usage snapshot contains invalid voice usage.",
+    );
   }
   return {
     usedSeconds,
     limitSeconds: decodeNullableMetricValue(raw.limitSeconds, "voice limit"),
-    remainingSeconds: decodeNullableMetricValue(raw.remainingSeconds, "voice remaining usage"),
+    remainingSeconds: decodeNullableMetricValue(
+      raw.remainingSeconds,
+      "voice remaining usage",
+    ),
   };
 }
 

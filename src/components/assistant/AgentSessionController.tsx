@@ -162,7 +162,6 @@ export function useAgentSessionController({
     [context, onNavigate, runtime],
   );
 
-
   const handleEvent = useCallback(
     (event: AgentEvent, assistantMessageId: string) => {
       setSemanticState(event.state);

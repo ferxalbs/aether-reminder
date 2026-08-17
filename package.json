@@ -66,7 +66,9 @@
     "test": "bun test --isolate src",
     "validate:release-config": "bun scripts/validate-cloud-release-config.mjs",
     "eas-build-pre-install": "bun scripts/validate-cloud-release-config.mjs --eas",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "private": true
 }

@@ -82,7 +82,6 @@ export class AetherAgentRuntime implements AgentRuntime {
     this.now = options.now ?? (() => Date.now());
   }
 
-
   async cancel(runId: string): Promise<void> {
     const controller = this.controllers.get(runId);
     if (controller) {
@@ -300,7 +299,6 @@ export class AetherAgentRuntime implements AgentRuntime {
       );
     }
 
-
     const controller = new AbortController();
     this.controllers.set(runId, controller);
 
@@ -376,8 +374,7 @@ export class AetherAgentRuntime implements AgentRuntime {
       }
       if (!canRunAsAgent(capabilities)) {
         yield* setState("error");
-        const message =
-          "AETHER Cloud cannot run this assistant request.";
+        const message = "AETHER Cloud cannot run this assistant request.";
         yield* emit({
           type: "run.failed",
           runId,
@@ -410,7 +407,6 @@ export class AetherAgentRuntime implements AgentRuntime {
 
       const inferenceTools = this.tools.toInferenceTools();
       let finalText = "";
-
 
       while (true) {
         if (this.now() > budget.deadlineMs) {

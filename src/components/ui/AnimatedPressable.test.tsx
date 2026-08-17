@@ -25,7 +25,6 @@ mock.module("react-native", () => ({
   },
 }));
 
-
 mock.module("react-native-reanimated", () => ({
   default: {
     createAnimatedComponent: (component: unknown) => component,
