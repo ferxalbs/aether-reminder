@@ -14,7 +14,8 @@ import type {
 
 export class AetherCloudClientSecretProvider implements RealtimeClientSecretProvider {
   constructor(
-    private readonly client: AetherCloudClient = getAetherCloudClient(),
+    private readonly client?: AetherCloudClient,
+    private readonly resolveClient: () => AetherCloudClient = getAetherCloudClient,
   ) {}
 
   async create(
@@ -26,9 +27,12 @@ export class AetherCloudClientSecretProvider implements RealtimeClientSecretProv
     );
     let authorization;
     try {
-      const { policy } = await getCommercialPolicy(signal, this.client);
+      // Cloud configuration is intentionally resolved only when the user starts
+      // voice. AssistantHost must stay mountable for local-first development.
+      const client = this.client ?? this.resolveClient();
+      const { policy } = await getCommercialPolicy(signal, client);
       requireLiveTranscription(policy);
-      authorization = await this.client.createVoiceAuthorization(
+      authorization = await client.createVoiceAuthorization(
         language ? { language: language.toLowerCase() } : {},
         { signal },
       );

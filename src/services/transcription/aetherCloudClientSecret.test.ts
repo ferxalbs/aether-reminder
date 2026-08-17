@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import {
   AetherCloudClient,
+  AetherCloudError,
   resetCommercialPolicyCacheForTests,
 } from "@/services/cloud";
 import { AetherCloudClientSecretProvider } from "./aetherCloudClientSecret";
@@ -33,6 +34,24 @@ describe("AetherCloudClientSecretProvider", () => {
   beforeEach(() => {
     resetCommercialPolicyCacheForTests();
   });
+
+  test("defers Cloud configuration until the user starts voice", async () => {
+    let resolved = false;
+    const provider = new AetherCloudClientSecretProvider(undefined, () => {
+      resolved = true;
+      throw new AetherCloudError(
+        "NETWORK_ERROR",
+        "AETHER Cloud is not configured.",
+      );
+    });
+
+    expect(resolved).toBe(false);
+    await expect(
+      provider.create(defaultRealtimeTranscriptionConfig),
+    ).rejects.toMatchObject({ code: "REALTIME_AUTH_FAILED" });
+    expect(resolved).toBe(true);
+  });
+
   test("requests authorization immediately and keeps the secret in memory", async () => {
     let calls = 0;
     const client = new AetherCloudClient(
