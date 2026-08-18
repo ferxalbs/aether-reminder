@@ -1,16 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  Platform,
   StatusBar,
   StyleSheet,
   TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search } from "lucide-react-native";
-import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { Search, Settings } from "lucide-react-native";
+import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
 import { Typography } from "@/components/ui/Typography";
 import { TaskList } from "@/components/ui/TaskList";
 import { TaskUndoBanner } from "@/components/ui/TaskUndoBanner";
@@ -40,6 +45,7 @@ export default function RemindersScreen() {
     width >= 980
       ? LayoutTokens.screenHorizontalWide
       : LayoutTokens.screenHorizontal;
+  const router = useRouter();
   const [filter] = useState<TaskFilter>("all");
   const [query, setQuery] = useState("");
   const [editorVisible, setEditorVisible] = useState(false);
@@ -183,8 +189,23 @@ export default function RemindersScreen() {
           ]}
           header={
             <View style={styles.headerContent}>
-              <View style={styles.header}>
-                <Typography variant="display">Reminders</Typography>
+              <View style={styles.headerRow}>
+                <View style={styles.header}>
+                  <Typography variant="display">Reminders</Typography>
+                </View>
+                <AnimatedPressable
+                  onPress={() => router.push("/settings")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Settings"
+                  accessibilityHint="Open app settings and preferences"
+                  android_ripple={{ color: colors.ripple, foreground: true }}
+                  interactionRadius={theme.shape.pill}
+                  scaleTo={Motion.iconPressScale}
+                  hitSlop={getMinimumTouchTargetHitSlop(40, 40, Platform.OS)}
+                  style={[styles.headerAction, { borderRadius: theme.shape.pill }]}
+                >
+                  <Settings size={20} color={colors.textSecondary} strokeWidth={2} />
+                </AnimatedPressable>
               </View>
 
               {allTasks.length > 0 ? (
@@ -297,9 +318,21 @@ const styles = StyleSheet.create({
   headerContent: {
     width: "100%",
   },
-  header: {
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
+  },
+  header: {
+    flex: 1,
+  },
+  headerAction: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchField: {
     minHeight: 44,

@@ -386,7 +386,7 @@ export default function RootLayout() {
                   <Tabs.Screen name="all" options={{ title: "Reminders" }} />
                   <Tabs.Screen
                     name="settings"
-                    options={{ title: "Settings" }}
+                    options={{ title: "Settings", href: null }}
                   />
                   <Tabs.Screen name="ai" options={{ href: null }} />
                   <Tabs.Screen name="transcribe" options={{ href: null }} />

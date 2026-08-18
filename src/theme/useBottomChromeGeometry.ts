@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Keyboard, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LayoutTokens } from "@/theme/tokens";
+import { LayoutTokens, Spacing } from "@/theme/tokens";
 
 export function useBottomChromeGeometry() {
   const insets = useSafeAreaInsets();
@@ -42,7 +42,7 @@ export function useBottomChromeGeometry() {
     composerNavigationGap +
     composerHeight +
     16;
-  const settingsContentBottomInset = navigationBottom + navigationHeight + 16;
+  const settingsContentBottomInset = systemBottomInset + Spacing.lg;
 
   return {
     systemBottomInset,

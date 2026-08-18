@@ -12,7 +12,13 @@ import {
 } from "@/components/settings";
 import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
-import { LayoutTokens, Spacing } from "@/theme/tokens";
+import { useRouter } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
+import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import React, { useCallback, useMemo, useState } from "react";
@@ -40,6 +46,7 @@ export default function SettingsScreen() {
   const entering =
     reduceMotion || enterPreset.mode === "none" ? undefined : settingsEntering;
 
+  const router = useRouter();
   const geometry = useBottomChromeGeometry();
   const aetherTheme = useAetherTheme();
   const { colors } = aetherTheme;
@@ -93,6 +100,27 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <Animated.View entering={entering} style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <AnimatedPressable
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace("/");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              accessibilityHint="Return to previous screen"
+              android_ripple={{ color: colors.ripple, foreground: true }}
+              interactionRadius={aetherTheme.shape.pill}
+              scaleTo={Motion.iconPressScale}
+              hitSlop={getMinimumTouchTargetHitSlop(40, 40, Platform.OS)}
+              style={[
+                styles.backButton,
+                { borderRadius: aetherTheme.shape.pill },
+              ]}
+            >
+              <ArrowLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+            </AnimatedPressable>
+          </View>
           <Typography variant="display" style={styles.headerTitle}>
             Settings
           </Typography>
@@ -171,6 +199,16 @@ const styles = StyleSheet.create({
     maxWidth: LayoutTokens.readingMaxWidth,
     marginBottom: Spacing.xl,
     paddingHorizontal: Spacing.xs,
+  },
+  headerTopRow: {
+    marginBottom: Spacing.sm,
+    marginLeft: -Spacing.xs,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     letterSpacing: -0.8,

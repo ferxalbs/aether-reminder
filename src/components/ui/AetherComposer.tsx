@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Keyboard, Platform, StyleSheet, TextInput, View } from "react-native";
-import { Mic, Plus, ArrowUp } from "lucide-react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useReducedMotion,
+} from "react-native-reanimated";
+import { ArrowUp, Plus } from "lucide-react-native";
 import { GlassSurface } from "./GlassSurface";
 import {
   AnimatedPressable,
@@ -25,17 +30,14 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   value: externalValue,
   onChangeText: externalOnChangeText,
   onSubmit,
-  onVoicePress,
   onAddDate,
-  onSetPriority,
-  onAddLocation,
-  onAttachFile,
   disabled = false,
 }) => {
   const [internalValue, setInternalValue] = useState("");
   const theme = useAetherTheme();
   const { colors } = theme;
   const composerTokens = theme.components.composer;
+  const reduceMotion = useReducedMotion();
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
@@ -92,44 +94,35 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           style={[styles.input, { color: composerTokens.icon }]}
         />
 
-        {/* Voice or Send Action */}
+        {/* Send Action (only visible when text is present) */}
         {hasText ? (
-          <AnimatedPressable
-            onPress={handleSubmit}
-            accessibilityRole="button"
-            accessibilityLabel="Create reminder"
-            android_ripple={{ color: colors.ripple, foreground: true }}
-            hitSlop={getMinimumTouchTargetHitSlop(36, 36, Platform.OS)}
-            interactionRadius={theme.shape.pill}
-            minimumTouchTarget={false}
-            scaleTo={Motion.iconPressScale}
-            style={[
-              styles.sendButton,
-              { borderRadius: theme.shape.pill },
-              { backgroundColor: composerTokens.actionBackground },
-            ]}
+          <Animated.View
+            entering={reduceMotion ? undefined : FadeIn.duration(150)}
+            exiting={reduceMotion ? undefined : FadeOut.duration(100)}
           >
-            <ArrowUp
-              size={18}
-              color={composerTokens.actionForeground}
-              strokeWidth={2.8}
-            />
-          </AnimatedPressable>
-        ) : (
-          <AnimatedPressable
-            onPress={onVoicePress}
-            accessibilityRole="button"
-            accessibilityLabel="Speak reminder"
-            android_ripple={{ color: colors.ripple, foreground: true }}
-            hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
-            interactionRadius={theme.shape.pill}
-            minimumTouchTarget={false}
-            scaleTo={Motion.iconPressScale}
-            style={[styles.iconButton, { borderRadius: theme.shape.pill }]}
-          >
-            <Mic size={20} color={composerTokens.icon} strokeWidth={2} />
-          </AnimatedPressable>
-        )}
+            <AnimatedPressable
+              onPress={handleSubmit}
+              accessibilityRole="button"
+              accessibilityLabel="Create reminder"
+              android_ripple={{ color: colors.ripple, foreground: true }}
+              hitSlop={getMinimumTouchTargetHitSlop(36, 36, Platform.OS)}
+              interactionRadius={theme.shape.pill}
+              minimumTouchTarget={false}
+              scaleTo={Motion.iconPressScale}
+              style={[
+                styles.sendButton,
+                { borderRadius: theme.shape.pill },
+                { backgroundColor: composerTokens.actionBackground },
+              ]}
+            >
+              <ArrowUp
+                size={18}
+                color={composerTokens.actionForeground}
+                strokeWidth={2.8}
+              />
+            </AnimatedPressable>
+          </Animated.View>
+        ) : null}
       </GlassSurface>
     </View>
   );

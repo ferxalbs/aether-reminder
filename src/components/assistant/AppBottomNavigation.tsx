@@ -1,33 +1,30 @@
 import React, { type RefObject, useEffect, useState } from "react";
 import { Keyboard, Platform, StyleSheet, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
-import {
-  CalendarDays,
-  CheckCircle2,
-  ListTodo,
-  Settings,
-} from "lucide-react-native";
+import { CalendarDays, CheckCircle2, ListTodo, Mic } from "lucide-react-native";
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
 import { Typography } from "@/components/ui/Typography";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
-import { useAssistantActive } from "./AssistantHost";
+import { useAssistantActions, useAssistantActive } from "./AssistantHost";
 
-type Destination = "/" | "/tasks" | "/all" | "/settings";
+type Destination = "/" | "/tasks" | "/all";
 
 const navigationItems = [
   { destination: "/" as const, label: "Today", icon: CheckCircle2 },
   { destination: "/tasks" as const, label: "Schedule", icon: CalendarDays },
   { destination: "/all" as const, label: "Reminders", icon: ListTodo },
-  { destination: "/settings" as const, label: "Settings", icon: Settings },
 ];
 
 interface AppBottomNavigationProps {
@@ -38,7 +35,9 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const theme = useAetherTheme();
+  const { colors } = theme;
   const geometry = useBottomChromeGeometry();
+  const { startVoiceAssistant } = useAssistantActions();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const assistantActive = useAssistantActive();
 
@@ -56,7 +55,14 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
     };
   }, []);
 
-  if (keyboardVisible || assistantActive) return null;
+  if (
+    keyboardVisible ||
+    assistantActive ||
+    pathname === "/settings" ||
+    pathname === "/capture"
+  ) {
+    return null;
+  }
 
   const isActive = (destination: Destination) =>
     pathname === destination || (destination === "/" && pathname === "/index");
@@ -87,6 +93,33 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
             }}
           />
         ))}
+      </GlassSurface>
+
+      <GlassSurface
+        blurTarget={blurTarget}
+        borderRadius={theme.shape.pill}
+        intensity={Platform.OS === "ios" ? 65 : 45}
+        tier={Platform.OS === "android" ? "A" : undefined}
+        style={styles.voiceCapsule}
+        contentStyle={styles.voiceContent}
+      >
+        <AnimatedPressable
+          onPress={startVoiceAssistant}
+          accessibilityRole="button"
+          accessibilityLabel="Start voice input"
+          accessibilityHint="Speak naturally to create or manage reminders"
+          android_ripple={{ color: colors.ripple, foreground: true }}
+          interactionRadius={theme.shape.pill}
+          scaleTo={Motion.iconPressScale}
+          hitSlop={getMinimumTouchTargetHitSlop(
+            LayoutTokens.navigationHeight,
+            LayoutTokens.navigationHeight,
+            Platform.OS,
+          )}
+          style={[styles.voiceButton, { borderRadius: theme.shape.pill }]}
+        >
+          <Mic size={22} color={colors.accent} strokeWidth={2} />
+        </AnimatedPressable>
       </GlassSurface>
     </View>
   );
@@ -164,14 +197,19 @@ function NavigationButton({
 const styles = StyleSheet.create({
   host: {
     position: "absolute",
-    left: 16,
-    right: 16,
+    left: Spacing.lg,
+    right: Spacing.lg,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: Spacing.sm,
+    maxWidth: LayoutTokens.navigationMaxWidth,
+    alignSelf: "center",
     zIndex: 100,
   },
   capsule: {
-    width: "100%",
-    maxWidth: LayoutTokens.navigationMaxWidth,
+    flex: 1,
+    height: LayoutTokens.navigationHeight,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -179,12 +217,33 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   navigation: {
-    width: "100%",
+    flex: 1,
     height: LayoutTokens.navigationHeight,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     paddingHorizontal: Spacing.xs,
+  },
+  voiceCapsule: {
+    width: LayoutTokens.navigationHeight,
+    height: LayoutTokens.navigationHeight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  voiceContent: {
+    width: LayoutTokens.navigationHeight,
+    height: LayoutTokens.navigationHeight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceButton: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   item: {
     flex: 1,

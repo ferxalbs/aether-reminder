@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Platform, StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -7,8 +7,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
+import { Settings } from "lucide-react-native";
+import { LayoutTokens, Motion, Radius, Spacing } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
+import {
+  AnimatedPressable,
+  getMinimumTouchTargetHitSlop,
+} from "@/components/ui/AnimatedPressable";
 import { Typography } from "@/components/ui/Typography";
 import { TaskList } from "@/components/ui/TaskList";
 import { TaskEditorSheet } from "@/components/ui/TaskEditorSheet";
@@ -238,9 +243,24 @@ export default function TodayScreen() {
           ]}
           header={
             <View style={styles.headerContent}>
-              <Animated.View entering={titleEntering} style={styles.titleBlock}>
-                <Typography variant="display">Today</Typography>
-              </Animated.View>
+              <View style={styles.headerRow}>
+                <Animated.View entering={titleEntering} style={styles.titleBlock}>
+                  <Typography variant="display">Today</Typography>
+                </Animated.View>
+                <AnimatedPressable
+                  onPress={() => router.push("/settings")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Settings"
+                  accessibilityHint="Open app settings and preferences"
+                  android_ripple={{ color: colors.ripple, foreground: true }}
+                  interactionRadius={theme.shape.pill}
+                  scaleTo={Motion.iconPressScale}
+                  hitSlop={getMinimumTouchTargetHitSlop(40, 40, Platform.OS)}
+                  style={[styles.headerAction, { borderRadius: theme.shape.pill }]}
+                >
+                  <Settings size={20} color={colors.textSecondary} strokeWidth={2} />
+                </AnimatedPressable>
+              </View>
 
               <AttentionSurface
                 plan={attentionPlan}
@@ -344,9 +364,21 @@ const styles = StyleSheet.create({
   headerContent: {
     width: "100%",
   },
-  titleBlock: {
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
+  },
+  titleBlock: {
+    flex: 1,
+  },
+  headerAction: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorToast: {
     marginVertical: Spacing.sm,
