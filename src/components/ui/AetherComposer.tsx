@@ -11,8 +11,14 @@ import {
   AnimatedPressable,
   getMinimumTouchTargetHitSlop,
 } from "./AnimatedPressable";
-import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
+import {
+  LayoutTokens,
+  Motion,
+  Spacing,
+  TypographyTokens,
+} from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
+import { useMotionPreset } from "@/motion";
 
 export interface AetherComposerProps {
   value?: string;
@@ -38,6 +44,8 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   const { colors } = theme;
   const composerTokens = theme.components.composer;
   const reduceMotion = useReducedMotion();
+  const actionEnterPreset = useMotionPreset("surface.release");
+  const actionExitPreset = useMotionPreset("surface.press");
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
@@ -70,13 +78,21 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Open editor"
           android_ripple={{ color: colors.ripple, foreground: true }}
-          hitSlop={getMinimumTouchTargetHitSlop(44, 44, Platform.OS)}
+          hitSlop={getMinimumTouchTargetHitSlop(
+            theme.layout.composerControlSize,
+            theme.layout.composerControlSize,
+            Platform.OS,
+          )}
           interactionRadius={theme.shape.pill}
           minimumTouchTarget={false}
           scaleTo={Motion.iconPressScale}
           style={[styles.iconButton, { borderRadius: theme.shape.pill }]}
         >
-          <Plus size={20} color={composerTokens.icon} strokeWidth={2.2} />
+          <Plus
+            size={theme.layout.composerIconSize}
+            color={composerTokens.icon}
+            strokeWidth={theme.control.composerIconStrokeWidth}
+          />
         </AnimatedPressable>
 
         {/* Text Input */}
@@ -97,15 +113,27 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
         {/* Send Action (only visible when text is present) */}
         {hasText ? (
           <Animated.View
-            entering={reduceMotion ? undefined : FadeIn.duration(150)}
-            exiting={reduceMotion ? undefined : FadeOut.duration(100)}
+            entering={
+              reduceMotion || actionEnterPreset.mode === "none"
+                ? undefined
+                : FadeIn.duration(actionEnterPreset.durationMs)
+            }
+            exiting={
+              reduceMotion || actionExitPreset.mode === "none"
+                ? undefined
+                : FadeOut.duration(actionExitPreset.durationMs)
+            }
           >
             <AnimatedPressable
               onPress={handleSubmit}
               accessibilityRole="button"
               accessibilityLabel="Create reminder"
               android_ripple={{ color: colors.ripple, foreground: true }}
-              hitSlop={getMinimumTouchTargetHitSlop(36, 36, Platform.OS)}
+              hitSlop={getMinimumTouchTargetHitSlop(
+                theme.layout.composerActionSize,
+                theme.layout.composerActionSize,
+                Platform.OS,
+              )}
               interactionRadius={theme.shape.pill}
               minimumTouchTarget={false}
               scaleTo={Motion.iconPressScale}
@@ -116,9 +144,9 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
               ]}
             >
               <ArrowUp
-                size={18}
+                size={theme.layout.composerActionIconSize}
                 color={composerTokens.actionForeground}
-                strokeWidth={2.8}
+                strokeWidth={theme.control.composerActionIconStrokeWidth}
               />
             </AnimatedPressable>
           </Animated.View>
@@ -137,11 +165,6 @@ const styles = StyleSheet.create({
   glassContainer: {
     width: "100%",
     height: LayoutTokens.composerHeight,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
   },
   content: {
     flex: 1,
@@ -153,24 +176,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 44,
-    fontSize: 17,
-    letterSpacing: -0.4,
+    height: LayoutTokens.composerControlSize,
+    fontSize: TypographyTokens.body.fontSize,
+    lineHeight: TypographyTokens.body.lineHeight,
+    letterSpacing: TypographyTokens.body.letterSpacing,
     paddingVertical: Platform.OS === "android" ? 0 : undefined,
     paddingHorizontal: Spacing.sm,
     textAlignVertical: "center",
   },
   iconButton: {
-    width: 44,
-    height: 44,
+    width: LayoutTokens.composerControlSize,
+    height: LayoutTokens.composerControlSize,
     alignItems: "center",
     justifyContent: "center",
   },
   sendButton: {
-    width: 36,
-    height: 36,
+    width: LayoutTokens.composerActionSize,
+    height: LayoutTokens.composerActionSize,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 4,
+    marginRight: Spacing.xs,
   },
 });

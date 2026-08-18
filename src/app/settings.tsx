@@ -14,11 +14,8 @@ import { MotionDiagnosticsCard } from "@/motion/runtime/MotionDiagnosticsCard";
 import { useMotionPreset } from "@/motion";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import {
-  AnimatedPressable,
-  getMinimumTouchTargetHitSlop,
-} from "@/components/ui/AnimatedPressable";
-import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
+import { AetherToolbarButton } from "@/components/ui/AetherToolbarButton";
+import { LayoutTokens, Spacing, TypographyTokens } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import React, { useCallback, useMemo, useState } from "react";
@@ -101,25 +98,15 @@ export default function SettingsScreen() {
         {/* Header */}
         <Animated.View entering={entering} style={styles.header}>
           <View style={styles.headerTopRow}>
-            <AnimatedPressable
+            <AetherToolbarButton
+              icon={ArrowLeft}
               onPress={() => {
                 if (router.canGoBack()) router.back();
                 else router.replace("/");
               }}
-              accessibilityRole="button"
               accessibilityLabel="Back"
               accessibilityHint="Return to previous screen"
-              android_ripple={{ color: colors.ripple, foreground: true }}
-              interactionRadius={aetherTheme.shape.pill}
-              scaleTo={Motion.iconPressScale}
-              hitSlop={getMinimumTouchTargetHitSlop(40, 40, Platform.OS)}
-              style={[
-                styles.backButton,
-                { borderRadius: aetherTheme.shape.pill },
-              ]}
-            >
-              <ArrowLeft size={22} color={colors.textPrimary} strokeWidth={2} />
-            </AnimatedPressable>
+            />
           </View>
           <Typography variant="display" style={styles.headerTitle}>
             Settings
@@ -164,7 +151,6 @@ export default function SettingsScreen() {
             variant="tiny"
             align="center"
             color={colors.textTertiary}
-            style={{ letterSpacing: 0.3 }}
           >
             AETHER v • Powered by AETHER Cloud • © 2026 Enosis Labs, Inc.
           </Typography>
@@ -204,18 +190,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     marginLeft: -Spacing.xs,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   headerTitle: {
-    letterSpacing: -0.8,
+    letterSpacing: TypographyTokens.display.letterSpacing,
   },
   headerSubtitle: {
     marginTop: Spacing.xs,
-    lineHeight: 20,
+    lineHeight: TypographyTokens.body.lineHeight,
   },
   sectionContainer: {
     marginBottom: Spacing.md,

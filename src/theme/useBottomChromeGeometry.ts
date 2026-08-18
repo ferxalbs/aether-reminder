@@ -24,16 +24,17 @@ export function useBottomChromeGeometry() {
     };
   }, []);
 
-  const systemBottomInset = Math.max(12, insets.bottom + 4);
+  const systemBottomInset = Math.max(Spacing.md, insets.bottom + Spacing.xs);
   const navigationHeight = LayoutTokens.navigationHeight;
   const navigationBottom = systemBottomInset;
 
-  const composerNavigationGap = 12;
+  const composerNavigationGap = Spacing.md;
   const composerHeight = LayoutTokens.composerHeight;
 
   // When keyboard is visible, navigation is hidden, so composer hugs cleanly right above the keyboard
   const composerBottom = keyboardVisible
-    ? Math.max(8, insets.bottom) + (Platform.OS === "android" ? 8 : 4)
+    ? Math.max(Spacing.sm, insets.bottom) +
+      (Platform.OS === "android" ? Spacing.sm : Spacing.xs)
     : navigationBottom + navigationHeight + composerNavigationGap;
 
   const contentBottomInset =
@@ -41,7 +42,7 @@ export function useBottomChromeGeometry() {
     navigationHeight +
     composerNavigationGap +
     composerHeight +
-    16;
+    Spacing.lg;
   const settingsContentBottomInset = systemBottomInset + Spacing.lg;
 
   return {

@@ -7,6 +7,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import {
   AnimatedPressable,
@@ -15,6 +16,7 @@ import {
 import { Typography } from "@/components/ui/Typography";
 import { GlassSurface } from "@/components/ui/GlassSurface";
 import { LayoutTokens, Motion, Spacing } from "@/theme/tokens";
+import { useMotionPreset } from "@/motion";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import { useBottomChromeGeometry } from "@/theme/useBottomChromeGeometry";
 import { useAssistantActions, useAssistantActive } from "./AssistantHost";
@@ -118,7 +120,11 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
           )}
           style={[styles.voiceButton, { borderRadius: theme.shape.pill }]}
         >
-          <Mic size={22} color={colors.accent} strokeWidth={2} />
+          <Mic
+            size={theme.layout.navigationVoiceIconSize}
+            color={colors.accent}
+            strokeWidth={theme.control.navigationVoiceIconStrokeWidth}
+          />
         </AnimatedPressable>
       </GlassSurface>
     </View>
@@ -138,15 +144,22 @@ function NavigationButton({
   const { colors } = theme;
   const navigationTokens = theme.components.navigation;
   const reduceMotion = useReducedMotion();
+  const selectionPreset = useMotionPreset("navigation.tab");
   const selected = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
-    selected.value = reduceMotion
-      ? active
-        ? 1
-        : 0
-      : withSpring(active ? 1 : 0, Motion.pressSpring);
-  }, [active, reduceMotion, selected]);
+    const nextValue = active ? 1 : 0;
+    selected.value =
+      reduceMotion || selectionPreset.mode === "none"
+        ? nextValue
+        : selectionPreset.mode === "spring"
+          ? withSpring(nextValue, {
+              damping: selectionPreset.damping,
+              stiffness: selectionPreset.stiffness,
+              mass: selectionPreset.mass,
+            })
+          : withTiming(nextValue, { duration: selectionPreset.durationMs });
+  }, [active, reduceMotion, selected, selectionPreset]);
 
   const indicatorStyle = useAnimatedStyle(() => ({ opacity: selected.value }));
   const Icon = item.icon;
@@ -174,18 +187,21 @@ function NavigationButton({
         ]}
       />
       <Icon
-        size={19}
+        size={theme.layout.navigationIconSize}
         color={
           active ? navigationTokens.iconActive : navigationTokens.iconInactive
         }
-        strokeWidth={active ? 2.3 : 1.8}
+        strokeWidth={
+          active
+            ? theme.control.navigationIconSelectedStrokeWidth
+            : theme.control.navigationIconStrokeWidth
+        }
       />
       <Typography
         variant="tiny"
         color={
           active ? navigationTokens.labelActive : navigationTokens.labelInactive
         }
-        style={styles.label}
         numberOfLines={1}
       >
         {item.label}
@@ -210,11 +226,6 @@ const styles = StyleSheet.create({
   capsule: {
     flex: 1,
     height: LayoutTokens.navigationHeight,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
   },
   navigation: {
     flex: 1,
@@ -227,11 +238,6 @@ const styles = StyleSheet.create({
   voiceCapsule: {
     width: LayoutTokens.navigationHeight,
     height: LayoutTokens.navigationHeight,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
   },
   voiceContent: {
     width: LayoutTokens.navigationHeight,
@@ -247,23 +253,16 @@ const styles = StyleSheet.create({
   },
   item: {
     flex: 1,
-    height: 48,
-    minWidth: 56,
+    height: LayoutTokens.navigationItemHeight,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: Spacing.xs,
   },
   selected: {
     position: "absolute",
-    top: 4,
-    right: 4,
-    bottom: 4,
-    left: 4,
-  },
-  label: {
-    fontSize: 10,
-    lineHeight: 13,
-    textAlign: "center",
-    fontWeight: "500",
+    top: Spacing.xs,
+    right: Spacing.xs,
+    bottom: Spacing.xs,
+    left: Spacing.xs,
   },
 });
