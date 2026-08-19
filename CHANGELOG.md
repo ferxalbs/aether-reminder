@@ -2,6 +2,36 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.18 (1) [Stable Android Blur Navigation]
+
+### RenderNode blur composition under rapid navigation
+
+- Updated only Dimezis BlurView from 3.1.0 to 3.2.0, retaining the existing
+  native RenderNode/RenderEffect path, `setupWith(target, 4f, false)`, real
+  window frame-clear drawable, tint semantics, and exact navigation styling.
+- Added development-only native lifecycle tracing and a dependency-resolution
+  regression test. Physical traces confirmed the two blur views, shared target,
+  dimensions, and controllers remain stable across 45 rapid tab presses with
+  zero remounts or repeated `setupWith` calls.
+- On a 90 Hz Samsung SM-A176B running API 36, the matched debug-build stress
+  capture improved from 27.47% to 18.89% janky frames; calculated frame-overrun
+  p95 improved from 19.52 ms to 5.42 ms. The platform screen recording showed
+  no gray, black, or stale blur frame after the update, but its capture cadence
+  was below the panel's 90 Hz refresh and cannot exclude a sub-frame artifact.
+
+### Validation
+
+- `:aether-motion:compileDebugKotlin`, `:aether-motion:testDebugUnitTest`, and
+  `:app:assembleDebug` passed with Dimezis 3.2.0 resolved. Physical install,
+  launch, repeated navigation, screenshots, screen recordings, lifecycle
+  logcat, and `dumpsys gfxinfo framestats` were captured on the Samsung device.
+- The authenticated EAS Android development build could not start because the
+  account's monthly Android build quota was exhausted. Repository-wide Bun
+  tests retain three unrelated Expo test-harness failures where `__DEV__` is
+  undefined; the focused Android blur regression passed 7/7.
+- No Apple rendering, shared visual styling, blur scale, noise, Reanimated
+  feature flags, or native fallback behavior changed.
+
 ## Unreleased - 2026.08.16 (7) [Cloud-First Usage and BYOK Removal]
 
 ### Hosted capabilities governed by AETHER Cloud

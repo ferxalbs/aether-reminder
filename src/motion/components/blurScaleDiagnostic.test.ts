@@ -67,6 +67,20 @@ describe("Android blur scale diagnostic", () => {
     expect(policy).toContain("1f, 2f, 4f");
   });
 
+  test("uses the Dimezis release with RenderNode auto-update and draw clipping fixes", () => {
+    const gradle = readFileSync(
+      join(ROOT, "modules/aether-motion/android/build.gradle"),
+      "utf8",
+    );
+
+    expect(gradle).toContain(
+      "com.github.Dimezis:BlurView:version-3.2.0",
+    );
+    expect(gradle).not.toContain(
+      "com.github.Dimezis:BlurView:version-3.1.0",
+    );
+  });
+
   test("iOS AdaptiveBlur source still owns the original expo-blur renderer path", () => {
     const adaptiveBlur = readFileSync(
       join(ROOT, "src/motion/components/AdaptiveBlur.tsx"),

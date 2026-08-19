@@ -22,7 +22,7 @@ as a user setting.
 
 ## Native renderer invariant
 
-The Android diagnostic view reuses the Dimezis 3.1.0 dependency and the same
+The Android diagnostic view reuses the Dimezis 3.2.0 dependency and the same
 non-recursive AETHER blur-target topology. Its only renderer variable is the
 scale factor:
 

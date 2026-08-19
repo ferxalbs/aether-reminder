@@ -227,9 +227,10 @@ Telemetry correctness notes that remain in force:
 - Android frame health is `JankStats`. iOS is variable-refresh-aware cadence
   plus system pressure. iOS does **not** expose a trustworthy realtime jank
   ratio; `jankRatio` and `frameOverrunP95Ms` are `null` on iOS.
-- Physical-device FPS, jank, thermal, Power Saver, and touch-latency claims
+- Physical-device thermal, Power Saver, Reduce Motion, and touch-latency claims
   remain OPEN. Unit tests and compile tasks are not substitutes.
-- This telemetry patch did not execute `adb` or any install/launch path.
+- A focused Android blur-navigation pass used ADB on a 90 Hz Samsung SM-A176B;
+  its evidence is recorded under Gate G and does not close the remaining gates.
 
 ### Gate A — TypeScript / lint / unit suite
 
@@ -325,9 +326,20 @@ app and Share Extension, plus an AetherMotion target compile.
 
 ### Gate G — Physical low-end Android
 
-**Status:** OPEN
+**Status:** PARTIALLY VERIFIED
 
-**Current evidence:** None.
+**Current evidence:** A development build was installed and exercised on a
+Samsung SM-A176B running Android 16/API 36 at 90 Hz. Across 45 rapid tab presses,
+development-only native tracing recorded zero blur-view remounts, target changes,
+size changes, prop-driven invalidations, or repeated `setupWith` calls. Updating
+only Dimezis BlurView 3.1.0 to 3.2.0 reduced `dumpsys gfxinfo` janky frames from
+27.47% to 18.89%, p90 from 48 ms to 38 ms, p95 from 61 ms to 53 ms, and calculated
+frame-overrun p95 from 19.52 ms to 5.42 ms in matched debug-build screen-recorded
+stress runs. The post-update recording contained no gray, black, or stale blur
+frame, but its capture cadence was below the panel's refresh and cannot exclude
+a sub-frame artifact visible only at the full 90 Hz cadence. The in-app native diagnostics
+reported 90 Hz, nominal thermal state, no low-power mode, native telemetry, and
+blur enabled.
 
 **Risk:** A budget device may still jank on `standard` if the governor recovers
 too aggressively, or may look overly static if it never climbs.
