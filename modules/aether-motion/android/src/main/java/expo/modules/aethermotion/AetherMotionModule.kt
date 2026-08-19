@@ -46,6 +46,34 @@ class AetherMotionModule : Module() {
     Name("AetherMotion")
     Events(SNAPSHOT_EVENT)
 
+    View(AetherAndroidBlurView::class) {
+      Name("AetherAndroidBlurView")
+
+      Prop("blurTargetId") { view: AetherAndroidBlurView, blurTargetId: Int? ->
+        view.setBlurTargetId(blurTargetId)
+      }
+
+      Prop("intensity") { view: AetherAndroidBlurView, intensity: Float ->
+        view.setBlurRadius(intensity)
+      }
+
+      Prop("tint") { view: AetherAndroidBlurView, tint: String ->
+        view.setTint(tint)
+      }
+
+      Prop("scaleFactor") { view: AetherAndroidBlurView, scaleFactor: Float ->
+        view.setScaleFactor(scaleFactor)
+      }
+
+      OnViewDidUpdateProps { view: AetherAndroidBlurView ->
+        view.applyTint()
+      }
+    }
+
+    View(AetherAndroidBlurTargetView::class) {
+      Name("AetherAndroidBlurTargetView")
+    }
+
     Function("getCapabilities") { capabilities() }
     Function("getSnapshot") { snapshotMap() }
 

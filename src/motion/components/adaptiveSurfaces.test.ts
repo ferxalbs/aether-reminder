@@ -31,15 +31,15 @@ const a11y = {
 };
 
 describe("AdaptiveBlur policy", () => {
-  test("API 30 disables expensive native blur by default", () => {
+  test("API 31+ uses the supported native blur path", () => {
     const decision = resolveAdaptiveBlurPolicy({
-      profile: profile("full", { androidApiLevel: 30 }),
+      profile: profile("full", { androidApiLevel: 31 }),
       accessibility: a11y,
       platform: "android",
-      androidApiLevel: 30,
+      androidApiLevel: 31,
     });
-    expect(decision.mode).toBe("none");
-    expect(decision.reason).toBe("android-api-too-low");
+    expect(decision.mode).toBe("native");
+    expect(decision.reason).toBe("android-native-blur");
   });
 
   test("API 31+ and permitted tier allow SDK 31 blur", () => {
@@ -51,6 +51,17 @@ describe("AdaptiveBlur policy", () => {
     });
     expect(decision.mode).toBe("native");
     expect(decision.blurMethod).toBe("dimezisBlurView");
+  });
+
+  test("unknown Android capability stays conservatively disabled", () => {
+    const decision = resolveAdaptiveBlurPolicy({
+      profile: profile("standard", { androidApiLevel: null }),
+      accessibility: a11y,
+      platform: "android",
+      androidApiLevel: null,
+    });
+    expect(decision.mode).toBe("none");
+    expect(decision.reason).toBe("android-api-unknown");
   });
 
   test("reduced and minimal disable blur", () => {

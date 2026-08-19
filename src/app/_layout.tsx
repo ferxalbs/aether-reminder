@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, StyleSheet, View } from "react-native";
 import { Tabs, usePathname, useRouter } from "expo-router";
-import { BlurTargetView } from "expo-blur";
+import { AetherBlurTargetView } from "@/motion/components/AetherBlurTarget";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { bootstrapAppData } from "@/db/bootstrap";
@@ -363,7 +363,7 @@ export default function RootLayout() {
             because they call getDatabase() synchronously at render time. */}
           <AssistantSurfaceProvider>
             <>
-              <BlurTargetView ref={blurTarget} style={styles.routeTarget}>
+              <AetherBlurTargetView ref={blurTarget} style={styles.routeTarget}>
                 <Tabs
                   tabBar={() => null}
                   screenOptions={{
@@ -392,7 +392,7 @@ export default function RootLayout() {
                   <Tabs.Screen name="transcribe" options={{ href: null }} />
                   <Tabs.Screen name="capture" options={{ href: null }} />
                 </Tabs>
-              </BlurTargetView>
+              </AetherBlurTargetView>
               {boot.phase === "ready" && pathname !== "/capture" && (
                 <>
                   <AppBottomNavigation blurTarget={blurTarget} />

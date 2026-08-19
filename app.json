@@ -74,7 +74,15 @@
       "expo-sqlite",
       "expo-notifications",
       "./modules/aether-capture/app.plugin.js",
-      "./modules/aether-motion/app.plugin.js"
+      "./modules/aether-motion/app.plugin.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 31
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

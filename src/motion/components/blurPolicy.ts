@@ -1,5 +1,4 @@
 import { applyAccessibilityToBudget } from "../accessibility/motionEffects";
-import { ANDROID_NATIVE_BLUR_API } from "../core/thresholds";
 import type { MotionAccessibilityState, MotionProfile } from "../core/types";
 
 type MotionPlatformName = "ios" | "android" | "web" | "windows" | "macos";
@@ -12,8 +11,8 @@ export interface AdaptiveBlurDecision {
   blurMethod: "dimezisBlurView" | undefined;
   reason:
     | "ios-blur"
-    | "android-sdk31"
-    | "android-api-too-low"
+    | "android-native-blur"
+    | "android-api-unknown"
     | "tier-disabled"
     | "accessibility"
     | "runtime-degraded";
@@ -49,20 +48,19 @@ export function resolveAdaptiveBlurPolicy(input: {
     };
   }
   if (input.platform === "android") {
-    if (
-      input.androidApiLevel == null ||
-      input.androidApiLevel < ANDROID_NATIVE_BLUR_API
-    ) {
+    // API 31 is the product minimum. Keep only a conservative unknown-capability
+    // fallback; supported Android devices always take the native blur path.
+    if (input.androidApiLevel == null) {
       return {
         mode: "none",
         blurMethod: undefined,
-        reason: "android-api-too-low",
+        reason: "android-api-unknown",
       };
     }
     return {
       mode: "native",
       blurMethod: "dimezisBlurView",
-      reason: "android-sdk31",
+      reason: "android-native-blur",
     };
   }
   if (input.platform === "ios") {

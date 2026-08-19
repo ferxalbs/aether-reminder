@@ -9,7 +9,6 @@ import {
   subscribeNativeSnapshots,
 } from "../core/nativeBridge";
 import { profilesEqual } from "../core/policy";
-import { ANDROID_NATIVE_BLUR_API } from "../core/thresholds";
 import type {
   MotionAccessibilityState,
   MotionProfile,
@@ -52,10 +51,7 @@ function blurEnabledFor(
   androidApiLevel: number | null,
 ): boolean {
   if (!profile.budget.allowLiveBlur) return false;
-  if (
-    Platform.OS === "android" &&
-    (androidApiLevel == null || androidApiLevel < ANDROID_NATIVE_BLUR_API)
-  ) {
+  if (Platform.OS === "android" && androidApiLevel == null) {
     return false;
   }
   return true;

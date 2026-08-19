@@ -27,8 +27,6 @@ export const MOTION_MEMORY_PRESSURE_COOLDOWN_MS = 180_000;
 
 export const DEFAULT_REFRESH_RATE_HZ = 60;
 
-export const ANDROID_NATIVE_BLUR_API = 31;
-
 export function frameBudgetMs(
   refreshRateHz: number | null | undefined,
 ): number {
