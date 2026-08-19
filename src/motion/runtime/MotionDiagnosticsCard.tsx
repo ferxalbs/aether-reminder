@@ -27,6 +27,24 @@ export function MotionDiagnosticsCard() {
       diagnostics.jankRatio == null ? "n/a" : diagnostics.jankRatio.toFixed(3),
     ],
     [
+      "Frame budget",
+      diagnostics.frameBudgetMs == null
+        ? "n/a"
+        : `${diagnostics.frameBudgetMs.toFixed(2)} ms`,
+    ],
+    [
+      "Average frame",
+      diagnostics.averageFrameDurationMs == null
+        ? "n/a"
+        : `${diagnostics.averageFrameDurationMs.toFixed(2)} ms`,
+    ],
+    [
+      "Overrun p95",
+      diagnostics.frameOverrunP95Ms == null
+        ? "n/a"
+        : `${diagnostics.frameOverrunP95Ms.toFixed(2)} ms`,
+    ],
+    [
       "Cadence interval",
       diagnostics.cadenceIntervalMs == null
         ? "n/a"

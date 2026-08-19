@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ActivityIndicator, AppState, StyleSheet, View } from "react-native";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { AetherBlurTargetView } from "@/motion/components/AetherBlurTarget";
@@ -56,9 +63,24 @@ type NotificationSyncState = {
   message?: string;
 };
 
+const PersistentChrome = memo(function PersistentChrome({
+  blurTarget,
+}: {
+  blurTarget: RefObject<View | null>;
+}) {
+  const pathname = usePathname();
+  if (pathname === "/capture") return null;
+
+  return (
+    <>
+      <AppBottomNavigation blurTarget={blurTarget} />
+      <AssistantHost blurTarget={blurTarget} />
+    </>
+  );
+});
+
 export default function RootLayout() {
   const router = useRouter();
-  const pathname = usePathname();
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const setAdaptiveNudgesPreference = useSettingsStore(
     (s) => s.setAdaptiveNudgesEnabled,
@@ -357,10 +379,7 @@ export default function RootLayout() {
       <MotionProvider>
         <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
         <View style={[styles.root, { backgroundColor: bgColor }]}>
-          {/* Always mount the Tabs navigator so Expo Router's useLinking can apply
-            the initial URL state without the "state update before mount" warning.
-            AssistantHost and AppBottomNavigation are gated on boot.phase === 'ready'
-            because they call getDatabase() synchronously at render time. */}
+          {/* Always mount Tabs so Expo Router can apply initial URL state. */}
           <AssistantSurfaceProvider>
             <>
               <AetherBlurTargetView ref={blurTarget} style={styles.routeTarget}>
@@ -393,12 +412,9 @@ export default function RootLayout() {
                   <Tabs.Screen name="capture" options={{ href: null }} />
                 </Tabs>
               </AetherBlurTargetView>
-              {boot.phase === "ready" && pathname !== "/capture" && (
-                <>
-                  <AppBottomNavigation blurTarget={blurTarget} />
-                  <AssistantHost blurTarget={blurTarget} />
-                </>
-              )}
+              {boot.phase === "ready" ? (
+                <PersistentChrome blurTarget={blurTarget} />
+              ) : null}
             </>
           </AssistantSurfaceProvider>
 

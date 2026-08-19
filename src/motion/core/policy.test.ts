@@ -5,7 +5,7 @@ import {
   profilesEqual,
   reduceMotionState,
 } from "./policy";
-import { frameBudgetMs } from "./thresholds";
+import { frameBudgetMs, frameBudgetNs } from "./thresholds";
 import {
   accessibilityFixture,
   capabilitiesFixture,
@@ -27,6 +27,7 @@ describe("frame budget", () => {
     expect(frameBudgetMs(120)).toBeCloseTo(1000 / 120);
     expect(frameBudgetMs(144)).toBeCloseTo(1000 / 144);
     expect(frameBudgetMs(165)).toBeCloseTo(1000 / 165);
+    expect(frameBudgetNs(90)).toBe(Math.round(1_000_000_000 / 90));
   });
 
   test("invalid refresh rates fall back to 60 Hz", () => {
@@ -98,7 +99,68 @@ describe("hysteresis", () => {
       jankSnapshots(0.12, MOTION_DOWNGRADE_WINDOWS),
     );
     expect(state.runtimeTier).toBe("standard");
-    expect(state.lastDowngradeReason).toBe("jank-full-to-standard");
+    expect(state.lastDowngradeReason).toBe("budget-full-to-standard");
+  });
+
+  test("uses the observed refresh rate when checking a missed budget", () => {
+    let state = createGovernorState(capabilitiesFixture());
+    state = { ...state, runtimeTier: "full" };
+
+    state = applySnapshots(
+      state,
+      Array.from({ length: MOTION_DOWNGRADE_WINDOWS }, () =>
+        snapshotFixture({
+          currentRefreshRateHz: 90,
+          frames: {
+            frameCount: 90,
+            jankCount: 0,
+            jankRatio: 0,
+            averageFrameDurationMs: 10,
+            frameOverrunP95Ms: -1,
+          },
+        }),
+      ),
+    );
+    expect(state.runtimeTier).toBe("full");
+
+    state = applySnapshots(
+      state,
+      Array.from({ length: MOTION_DOWNGRADE_WINDOWS }, () =>
+        snapshotFixture({
+          currentRefreshRateHz: 90,
+          frames: {
+            frameCount: 90,
+            jankCount: 0,
+            jankRatio: 0,
+            averageFrameDurationMs: 12,
+            frameOverrunP95Ms: -1,
+          },
+        }),
+      ),
+    );
+    expect(state.runtimeTier).toBe("standard");
+    expect(state.lastDowngradeReason).toBe("budget-full-to-standard");
+  });
+
+  test("does not downgrade a high-refresh device when frames fit its budget", () => {
+    let state = createGovernorState(capabilitiesFixture());
+    state = { ...state, runtimeTier: "full" };
+    state = applySnapshots(
+      state,
+      Array.from({ length: MOTION_DOWNGRADE_WINDOWS + 1 }, () =>
+        snapshotFixture({
+          currentRefreshRateHz: 120,
+          frames: {
+            frameCount: 120,
+            jankCount: 0,
+            jankRatio: 0,
+            averageFrameDurationMs: 8,
+            frameOverrunP95Ms: -1,
+          },
+        }),
+      ),
+    );
+    expect(state.runtimeTier).toBe("full");
   });
 
   test("tier cannot oscillate rapidly", () => {

@@ -19,7 +19,11 @@ export {
   createGovernorState,
   profileFromState,
 } from "./core/policy";
-export { frameBudgetMs, MOTION_SNAPSHOT_INTERVAL_MS } from "./core/thresholds";
+export {
+  frameBudgetMs,
+  frameBudgetNs,
+  MOTION_SNAPSHOT_INTERVAL_MS,
+} from "./core/thresholds";
 export type {
   MotionBudget,
   MotionDiagnostics,

@@ -6,6 +6,7 @@ import {
   MOTION_JANK_STANDARD_TO_REDUCED,
   MOTION_RECOVERY_WINDOWS,
   budgetForTier,
+  frameBudgetNs,
   thermalCeiling,
   thermalReason,
 } from "./thresholds";
@@ -254,7 +255,9 @@ function applySnapshot(
 
   const jank = snapshot.frames.jankRatio;
   const targetFromJank = jankTarget(jank);
-  if (targetFromJank && rank(targetFromJank) < rank(next.runtimeTier)) {
+  const budgetMissed = frameBudgetMissed(snapshot);
+  const target = budgetMissed ? (targetFromJank ?? "standard") : null;
+  if (target && rank(target) < rank(next.runtimeTier)) {
     const bad = next.consecutiveBadWindows + 1;
     if (bad >= MOTION_DOWNGRADE_WINDOWS) {
       const stepped = clampMotionTier(
@@ -325,11 +328,26 @@ function jankTarget(jankRatio: number | null): MotionTier | null {
   return null;
 }
 
+function frameBudgetMissed(snapshot: NativeMotionSnapshot): boolean {
+  if (snapshot.platform !== "android") return false;
+  const budgetNs = frameBudgetNs(snapshot.currentRefreshRateHz);
+  const averageDurationNs =
+    snapshot.frames.averageFrameDurationMs == null
+      ? null
+      : snapshot.frames.averageFrameDurationMs * 1_000_000;
+  return (
+    (averageDurationNs != null && averageDurationNs > budgetNs) ||
+    (snapshot.frames.frameOverrunP95Ms != null &&
+      snapshot.frames.frameOverrunP95Ms > 0) ||
+    (snapshot.frames.jankRatio != null && snapshot.frames.jankRatio > 0)
+  );
+}
+
 function downgradeReason(from: MotionTier, to: MotionTier): MotionChangeReason {
-  if (from === "full" && to === "standard") return "jank-full-to-standard";
+  if (from === "full" && to === "standard") return "budget-full-to-standard";
   if (from === "standard" && to === "reduced")
-    return "jank-standard-to-reduced";
-  return "jank-reduced-to-minimal";
+    return "budget-standard-to-reduced";
+  return "budget-reduced-to-minimal";
 }
 
 function rank(tier: MotionTier): number {

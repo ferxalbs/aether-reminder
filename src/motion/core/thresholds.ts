@@ -40,6 +40,12 @@ export function frameBudgetMs(
   return 1000 / refreshRateHz;
 }
 
+export function frameBudgetNs(
+  refreshRateHz: number | null | undefined,
+): number {
+  return Math.round(frameBudgetMs(refreshRateHz) * 1_000_000);
+}
+
 export function budgetForTier(tier: MotionTier): {
   maxSecondaryAnimations: number;
   allowContinuousDecorativeMotion: boolean;

@@ -9,6 +9,7 @@ import {
   subscribeNativeSnapshots,
 } from "../core/nativeBridge";
 import { profilesEqual } from "../core/policy";
+import { frameBudgetMs } from "../core/thresholds";
 import type {
   MotionAccessibilityState,
   MotionProfile,
@@ -102,6 +103,9 @@ export function MotionProvider({ children }: MotionProviderProps) {
           snapshot.memoryPressureActive ?? snapshot.lowMemory,
         lowRamDevice: snapshot.lowRamDevice,
         jankRatio: snapshot.frames.jankRatio,
+        averageFrameDurationMs: snapshot.frames.averageFrameDurationMs,
+        frameOverrunP95Ms: snapshot.frames.frameOverrunP95Ms,
+        frameBudgetMs: frameBudgetMs(snapshot.currentRefreshRateHz),
         cadenceIntervalMs: snapshot.frames.cadenceIntervalMs,
         callbackDelayP95Ms: snapshot.frames.callbackDelayP95Ms,
         sampleCount: snapshot.frames.frameCount,

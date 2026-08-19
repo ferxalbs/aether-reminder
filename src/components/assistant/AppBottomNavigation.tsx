@@ -1,4 +1,4 @@
-import React, { type RefObject, useEffect, useState } from "react";
+import React, { type RefObject, useCallback, useEffect, useState } from "react";
 import { Keyboard, Platform, StyleSheet, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import { CalendarDays, CheckCircle2, ListTodo, Mic } from "lucide-react-native";
@@ -33,13 +33,11 @@ interface AppBottomNavigationProps {
   blurTarget?: RefObject<View | null>;
 }
 
-export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
-  const router = useRouter();
+export const AppBottomNavigation = React.memo(function AppBottomNavigation({
+  blurTarget,
+}: AppBottomNavigationProps) {
   const pathname = usePathname();
-  const theme = useAetherTheme();
-  const { colors } = theme;
   const geometry = useBottomChromeGeometry();
-  const { startVoiceAssistant } = useAssistantActions();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const assistantActive = useAssistantActive();
 
@@ -66,86 +64,106 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
     return null;
   }
 
-  const isActive = (destination: Destination) =>
-    pathname === destination || (destination === "/" && pathname === "/index");
-
   return (
     <View
       style={[styles.host, { bottom: geometry.navigationBottom }]}
       pointerEvents="box-none"
     >
-      <GlassSurface
-        blurTarget={blurTarget}
-        borderRadius={theme.shape.pill}
-        intensity={Platform.OS === "ios" ? 65 : 45}
-        tier={Platform.OS === "android" ? "A" : undefined}
-        style={styles.capsule}
-        contentStyle={styles.navigation}
-        accessible
-        accessibilityRole="tablist"
-      >
-        {navigationItems.map((item) => (
-          <NavigationButton
-            key={item.destination}
-            item={item}
-            active={isActive(item.destination)}
-            onPress={() => {
-              if (!isActive(item.destination))
-                router.navigate(item.destination);
-            }}
-          />
-        ))}
-      </GlassSurface>
-
-      <GlassSurface
-        blurTarget={blurTarget}
-        borderRadius={theme.shape.pill}
-        intensity={Platform.OS === "ios" ? 65 : 45}
-        tier={Platform.OS === "android" ? "A" : undefined}
-        style={styles.voiceCapsule}
-        contentStyle={styles.voiceContent}
-      >
-        <AnimatedPressable
-          onPress={startVoiceAssistant}
-          accessibilityRole="button"
-          accessibilityLabel="Start voice input"
-          accessibilityHint="Speak naturally to create or manage reminders"
-          android_ripple={{ color: colors.ripple, foreground: true }}
-          interactionRadius={theme.shape.pill}
-          scaleTo={Motion.iconPressScale}
-          hitSlop={getMinimumTouchTargetHitSlop(
-            LayoutTokens.navigationHeight,
-            LayoutTokens.navigationHeight,
-            Platform.OS,
-          )}
-          style={[styles.voiceButton, { borderRadius: theme.shape.pill }]}
-        >
-          <Mic
-            size={theme.layout.navigationVoiceIconSize}
-            color={colors.accent}
-            strokeWidth={theme.control.navigationVoiceIconStrokeWidth}
-          />
-        </AnimatedPressable>
-      </GlassSurface>
+      <NavigationPill blurTarget={blurTarget} />
+      <VoiceControl blurTarget={blurTarget} />
     </View>
   );
-}
+});
+
+const NavigationPill = React.memo(function NavigationPill({
+  blurTarget,
+}: AppBottomNavigationProps) {
+  const pathname = usePathname();
+  const theme = useAetherTheme();
+
+  const isActive = (destination: Destination) =>
+    pathname === destination || (destination === "/" && pathname === "/index");
+
+  return (
+    <GlassSurface
+      blurTarget={blurTarget}
+      borderRadius={theme.shape.pill}
+      intensity={Platform.OS === "ios" ? 65 : 45}
+      tier={Platform.OS === "android" ? "A" : undefined}
+      style={styles.capsule}
+      contentStyle={styles.navigation}
+      accessible
+      accessibilityRole="tablist"
+    >
+      {navigationItems.map((item) => (
+        <NavigationButton
+          key={item.destination}
+          item={item}
+          active={isActive(item.destination)}
+        />
+      ))}
+    </GlassSurface>
+  );
+});
+
+const VoiceControl = React.memo(function VoiceControl({
+  blurTarget,
+}: AppBottomNavigationProps) {
+  const theme = useAetherTheme();
+  const { colors } = theme;
+  const { startVoiceAssistant } = useAssistantActions();
+
+  return (
+    <GlassSurface
+      blurTarget={blurTarget}
+      borderRadius={theme.shape.pill}
+      intensity={Platform.OS === "ios" ? 65 : 45}
+      tier={Platform.OS === "android" ? "A" : undefined}
+      style={styles.voiceCapsule}
+      contentStyle={styles.voiceContent}
+    >
+      <AnimatedPressable
+        onPress={startVoiceAssistant}
+        accessibilityRole="button"
+        accessibilityLabel="Start voice input"
+        accessibilityHint="Speak naturally to create or manage reminders"
+        android_ripple={{ color: colors.ripple, foreground: true }}
+        interactionRadius={theme.shape.pill}
+        scaleTo={Motion.iconPressScale}
+        hitSlop={getMinimumTouchTargetHitSlop(
+          LayoutTokens.navigationHeight,
+          LayoutTokens.navigationHeight,
+          Platform.OS,
+        )}
+        style={[styles.voiceButton, { borderRadius: theme.shape.pill }]}
+      >
+        <Mic
+          size={theme.layout.navigationVoiceIconSize}
+          color={colors.accent}
+          strokeWidth={theme.control.navigationVoiceIconStrokeWidth}
+        />
+      </AnimatedPressable>
+    </GlassSurface>
+  );
+});
 
 const NavigationButton = React.memo(function NavigationButton({
   item,
   active,
-  onPress,
 }: {
   item: (typeof navigationItems)[number];
   active: boolean;
-  onPress: () => void;
 }) {
+  const router = useRouter();
   const theme = useAetherTheme();
   const { colors } = theme;
   const navigationTokens = theme.components.navigation;
   const reduceMotion = useReducedMotion();
   const selectionPreset = useMotionPreset("navigation.tab");
   const selected = useSharedValue(active ? 1 : 0);
+  const onPress = useCallback(() => {
+    if (!active) router.navigate(item.destination);
+  }, [active, item.destination, router]);
 
   useEffect(() => {
     const nextValue = active ? 1 : 0;

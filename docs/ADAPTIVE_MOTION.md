@@ -77,6 +77,12 @@ Runtime snapshots carry changing signals. The two are not the same thing.
 - `MemoryInfo.lowMemory` as the current `memoryPressureActive` input when a
   snapshot is emitted
 
+The governor derives `budgetNs = 1_000_000_000 / currentRefreshRateHz` for
+each Android snapshot. A downgrade requires two consecutive windows with
+JankStats or frame-duration/overrun evidence against that observed budget;
+the panel maximum never causes a downgrade by itself. A capable high-refresh
+device keeps the full effect ceiling when its measured frames fit its budget.
+
 `FrameAggregator` is thread-safe. `JankStats` and the 750 ms emit timer must
 not be assumed to share a thread. `record()`, `snapshot()`,
 `snapshotAndReset()`, and `reset()` share a small lock around aggregator

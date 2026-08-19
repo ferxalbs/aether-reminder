@@ -339,7 +339,12 @@ stress runs. The post-update recording contained no gray, black, or stale blur
 frame, but its capture cadence was below the panel's refresh and cannot exclude
 a sub-frame artifact visible only at the full 90 Hz cadence. The in-app native diagnostics
 reported 90 Hz, nominal thermal state, no low-power mode, native telemetry, and
-blur enabled.
+blur enabled. A final clean-session run after persistent-shell and budget-governor
+changes completed 36 tab changes across 1,712 rendered frames: `dumpsys gfxinfo`
+reported 4.79% jank, 10 ms p50, 20 ms p95, 161 attached views, and 329.27 kB of
+RenderNode memory. The observed budget was 11.11 ms. Native lifecycle logs showed
+no blur constructor, target, detach/attach, or repeated `setupWith` activity during
+those tab changes.
 
 **Risk:** A budget device may still jank on `standard` if the governor recovers
 too aggressively, or may look overly static if it never climbs.

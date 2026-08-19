@@ -26,9 +26,9 @@ export type MotionChangeReason =
   | "thermal-severe"
   | "thermal-critical"
   | "low-memory"
-  | "jank-full-to-standard"
-  | "jank-standard-to-reduced"
-  | "jank-reduced-to-minimal"
+  | "budget-full-to-standard"
+  | "budget-standard-to-reduced"
+  | "budget-reduced-to-minimal"
   | "recovery-upgrade"
   | "warmup"
   | "native-unavailable"
@@ -117,6 +117,9 @@ export interface MotionDiagnostics {
   memoryPressureActive: boolean | null;
   lowRamDevice: boolean | null;
   jankRatio: number | null;
+  averageFrameDurationMs: number | null;
+  frameOverrunP95Ms: number | null;
+  frameBudgetMs: number | null;
   cadenceIntervalMs: number | null;
   callbackDelayP95Ms: number | null;
   sampleCount: number;

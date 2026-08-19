@@ -28,7 +28,7 @@ export function snapshotFixture(
       jankCount: 1,
       jankRatio: 1 / 90,
       averageFrameDurationMs: 8.3,
-      frameOverrunP95Ms: 0.4,
+      frameOverrunP95Ms: -0.4,
       cadenceIntervalMs: null,
       callbackDelayP95Ms: null,
       ...frames,

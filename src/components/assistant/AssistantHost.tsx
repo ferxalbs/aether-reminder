@@ -52,17 +52,29 @@ const defaultSnapshot: ContextSnapshot = {
   visibleTaskIds: [],
 };
 
-interface AssistantSurfaceContextValue {
+interface AssistantSnapshotContextValue {
   snapshot: ContextSnapshot;
   setSnapshot: (snapshot: ContextSnapshot) => void;
+}
+
+interface AssistantControlContextValue {
   requestAssistant: (mode: keyof AssistantActionHandlers) => void;
   registerAssistantActions: (actions: AssistantActionHandlers | null) => void;
   assistantActive: boolean;
   setAssistantActive: (active: boolean) => void;
 }
 
-const AssistantSurfaceContext =
-  createContext<AssistantSurfaceContextValue | null>(null);
+const AssistantSnapshotContext =
+  createContext<AssistantSnapshotContextValue | null>(null);
+const AssistantControlContext =
+  createContext<AssistantControlContextValue | null>(null);
+
+const defaultAssistantControls: AssistantControlContextValue = {
+  requestAssistant: () => undefined,
+  registerAssistantActions: () => undefined,
+  assistantActive: false,
+  setAssistantActive: () => undefined,
+};
 
 export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({
   children,
@@ -82,32 +94,35 @@ export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({
     },
     [],
   );
-  const value = useMemo(
+  const snapshotValue = useMemo(
+    () => ({ snapshot, setSnapshot }),
+    [setSnapshot, snapshot],
+  );
+  const controlValue = useMemo(
     () => ({
-      snapshot,
-      setSnapshot,
       requestAssistant,
       registerAssistantActions,
       assistantActive,
       setAssistantActive,
     }),
     [
+      assistantActive,
       registerAssistantActions,
       requestAssistant,
-      snapshot,
-      assistantActive,
       setAssistantActive,
     ],
   );
   return (
-    <AssistantSurfaceContext.Provider value={value}>
-      {children}
-    </AssistantSurfaceContext.Provider>
+    <AssistantSnapshotContext.Provider value={snapshotValue}>
+      <AssistantControlContext.Provider value={controlValue}>
+        {children}
+      </AssistantControlContext.Provider>
+    </AssistantSnapshotContext.Provider>
   );
 };
 
 export function useAssistantSurface(snapshot: ContextSnapshot): void {
-  const context = useContext(AssistantSurfaceContext);
+  const context = useContext(AssistantSnapshotContext);
   if (!context)
     throw new Error(
       "useAssistantSurface must be used inside AssistantSurfaceProvider",
@@ -121,7 +136,7 @@ export function useAssistantSurface(snapshot: ContextSnapshot): void {
 }
 
 export function useAssistantActive(): boolean {
-  const context = useContext(AssistantSurfaceContext);
+  const context = useContext(AssistantControlContext);
   return context?.assistantActive ?? false;
 }
 
@@ -129,7 +144,7 @@ export function useAssistantActions(): {
   openTextAssistant: () => void;
   startVoiceAssistant: () => void;
 } {
-  const context = useContext(AssistantSurfaceContext);
+  const context = useContext(AssistantControlContext);
   if (!context)
     throw new Error(
       "useAssistantActions must be used inside AssistantSurfaceProvider",
@@ -144,19 +159,15 @@ export function useAssistantActions(): {
   );
 }
 
-export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
+export const AssistantHost = React.memo(function AssistantHost({
+  blurTarget,
+}: AssistantHostProps) {
   const router = useRouter();
   const { colors } = useAetherTheme();
-  const { snapshot, registerAssistantActions, setAssistantActive } = useContext(
-    AssistantSurfaceContext,
-  ) ?? {
-    snapshot: defaultSnapshot,
-    setSnapshot: () => undefined,
-    requestAssistant: () => undefined,
-    registerAssistantActions: () => undefined,
-    assistantActive: false,
-    setAssistantActive: () => undefined,
-  };
+  const snapshot =
+    useContext(AssistantSnapshotContext)?.snapshot ?? defaultSnapshot;
+  const { registerAssistantActions, setAssistantActive } =
+    useContext(AssistantControlContext) ?? defaultAssistantControls;
   const [surface, setSurface] = useState<AssistantSurfaceState>("closed");
   const [composerValue, setComposerValue] = useState("");
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -425,7 +436,7 @@ export const AssistantHost: React.FC<AssistantHostProps> = ({ blurTarget }) => {
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   scrim: {
