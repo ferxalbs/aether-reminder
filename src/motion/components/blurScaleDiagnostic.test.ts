@@ -73,12 +73,8 @@ describe("Android blur scale diagnostic", () => {
       "utf8",
     );
 
-    expect(gradle).toContain(
-      "com.github.Dimezis:BlurView:version-3.2.0",
-    );
-    expect(gradle).not.toContain(
-      "com.github.Dimezis:BlurView:version-3.1.0",
-    );
+    expect(gradle).toContain("com.github.Dimezis:BlurView:version-3.2.0");
+    expect(gradle).not.toContain("com.github.Dimezis:BlurView:version-3.1.0");
   });
 
   test("iOS AdaptiveBlur source still owns the original expo-blur renderer path", () => {

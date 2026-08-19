@@ -147,11 +147,7 @@ export default function SettingsScreen() {
 
         {/* App Version Footer */}
         <View style={styles.versionFooter}>
-          <Typography
-            variant="tiny"
-            align="center"
-            color={colors.textTertiary}
-          >
+          <Typography variant="tiny" align="center" color={colors.textTertiary}>
             AETHER v • Powered by AETHER Cloud • © 2026 Enosis Labs, Inc.
           </Typography>
         </View>

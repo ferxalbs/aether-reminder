@@ -1,10 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  StatusBar,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Settings } from "lucide-react-native";

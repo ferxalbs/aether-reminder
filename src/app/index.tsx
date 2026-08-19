@@ -241,7 +241,10 @@ export default function TodayScreen() {
           header={
             <View style={styles.headerContent}>
               <View style={styles.headerRow}>
-                <Animated.View entering={titleEntering} style={styles.titleBlock}>
+                <Animated.View
+                  entering={titleEntering}
+                  style={styles.titleBlock}
+                >
                   <Typography variant="display">Today</Typography>
                 </Animated.View>
                 <AetherToolbarButton
