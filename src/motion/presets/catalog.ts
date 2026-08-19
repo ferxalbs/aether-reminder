@@ -161,13 +161,14 @@ export function resolveMotionPreset(
           minimal: "none",
         }),
         durationMs: byTier(tier, {
-          full: 200,
-          standard: 160,
-          reduced: 120,
+          full: 140,
+          standard: 120,
+          reduced: 80,
           minimal: 0,
         }),
-        damping: SPRING.pressSpring.damping,
-        stiffness: SPRING.pressSpring.stiffness,
+        damping: 34,
+        stiffness: 480,
+        mass: 0.4,
         haptic: false,
       });
     case "navigation.modal":

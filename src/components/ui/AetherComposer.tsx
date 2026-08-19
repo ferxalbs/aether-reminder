@@ -18,7 +18,6 @@ import {
   TypographyTokens,
 } from "@/theme/tokens";
 import { useAetherTheme } from "@/theme/useAetherTheme";
-import { useMotionPreset } from "@/motion";
 
 export interface AetherComposerProps {
   value?: string;
@@ -44,8 +43,6 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
   const { colors } = theme;
   const composerTokens = theme.components.composer;
   const reduceMotion = useReducedMotion();
-  const actionEnterPreset = useMotionPreset("surface.release");
-  const actionExitPreset = useMotionPreset("surface.press");
 
   const textValue = externalValue !== undefined ? externalValue : internalValue;
   const setTextValue = (text: string) => {
@@ -113,16 +110,8 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
         {/* Send Action (only visible when text is present) */}
         {hasText ? (
           <Animated.View
-            entering={
-              reduceMotion || actionEnterPreset.mode === "none"
-                ? undefined
-                : FadeIn.duration(actionEnterPreset.durationMs)
-            }
-            exiting={
-              reduceMotion || actionExitPreset.mode === "none"
-                ? undefined
-                : FadeOut.duration(actionExitPreset.durationMs)
-            }
+            entering={reduceMotion ? undefined : FadeIn.duration(120)}
+            exiting={reduceMotion ? undefined : FadeOut.duration(90)}
           >
             <AnimatedPressable
               onPress={handleSubmit}
@@ -136,7 +125,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
               )}
               interactionRadius={theme.shape.pill}
               minimumTouchTarget={false}
-              scaleTo={Motion.iconPressScale}
+              scaleTo={0.96}
               style={[
                 styles.sendButton,
                 { borderRadius: theme.shape.pill },

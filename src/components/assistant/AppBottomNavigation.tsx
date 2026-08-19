@@ -131,7 +131,7 @@ export function AppBottomNavigation({ blurTarget }: AppBottomNavigationProps) {
   );
 }
 
-function NavigationButton({
+const NavigationButton = React.memo(function NavigationButton({
   item,
   active,
   onPress,
@@ -174,7 +174,7 @@ function NavigationButton({
       accessibilityState={{ selected: active }}
       android_ripple={{ color: colors.ripple, foreground: true }}
       interactionRadius={theme.shape.pill}
-      scaleTo={Motion.pressScale}
+      scaleTo={0.98}
       style={[styles.item, { borderRadius: theme.shape.pill }]}
     >
       <Animated.View
@@ -208,7 +208,7 @@ function NavigationButton({
       </Typography>
     </AnimatedPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   host: {

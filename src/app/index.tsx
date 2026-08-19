@@ -296,7 +296,7 @@ export default function TodayScreen() {
         />
 
         {!assistantActive && (
-          <Animated.View
+          <View
             style={[
               styles.composerWrap,
               {
@@ -304,7 +304,6 @@ export default function TodayScreen() {
                 bottom: geometry.composerBottom,
               },
             ]}
-            entering={titleEntering}
           >
             <AetherComposer
               value={quickTitle}
@@ -319,7 +318,7 @@ export default function TodayScreen() {
               onAddLocation={() => openEditor()}
               onAttachFile={() => openEditor()}
             />
-          </Animated.View>
+          </View>
         )}
       </View>
 

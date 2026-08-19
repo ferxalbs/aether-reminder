@@ -1,8 +1,8 @@
 export const MotionSprings = {
   pressSpring: {
-    damping: 28,
-    stiffness: 380,
-    mass: 0.5,
+    damping: 32,
+    stiffness: 480,
+    mass: 0.4,
   },
   toggleSpring: {
     damping: 30,
@@ -20,10 +20,10 @@ export const MotionSprings = {
     stiffness: 300,
     mass: 0.7,
   },
-  buttonPressScale: 0.97,
-  cardPressScale: 0.98,
-  iconPressScale: 0.94,
-  pressScale: 0.96,
+  buttonPressScale: 0.98,
+  cardPressScale: 0.985,
+  iconPressScale: 0.97,
+  pressScale: 0.975,
   reducedMotionDuration: 120,
   screenSpring: {
     damping: 26,
