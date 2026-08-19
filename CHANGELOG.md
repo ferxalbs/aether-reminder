@@ -2,6 +2,65 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.19 (1) [Android Route Render Pipeline]
+
+### Measured route-work correction
+
+- Profiled only the route subtrees on the physical 90 Hz Samsung SM-A176B and
+  identified repeated database projection reads plus assistant snapshot context
+  invalidation as the dominant navigation costs. Before correction,
+  `RemindersScreen` reached 80.85 ms during hot navigation and 447.67 ms during
+  a refresh, `TodayScreen` reached 109.30 ms, and `ScheduleScreen` reached
+  66.09 ms.
+- Added load guards that reuse the Today and Upcoming projections for the current
+  local date, reuse the complete Reminders projection after its initial load, and
+  regenerate Smart Recovery only after the task revision changes. Explicit
+  mutation, capture, assistant, recovery, and database-recreation refresh paths
+  remain authoritative and continue to republish every projection.
+- Split the assistant snapshot reader and stable snapshot writer into separate
+  contexts. Focused routes can publish assistant context without making every
+  mounted route subscribe to changes from another route.
+- After correction, measured route renders fell to 29.14 ms for Today, 12.92 ms
+  for Schedule, and 37.19 ms for Reminders; inactive route callbacks fell to
+  0.04–0.06 ms.
+
+### Release optimization and physical evidence
+
+- Enabled Android release R8/minification and resource shrinking through the
+  versioned `expo-build-properties` configuration. The arm64 release APK reduced
+  from 113 MB to 75 MB. No broad application keep rule or
+  `android.enableR8.fullMode=false` override was added.
+- Verified a non-debuggable production bundle with Hermes bytecode,
+  `__DEV__ = false`, React Native New Architecture, minSdk 31, compile/target SDK
+  36, and no dev-launcher or dev-menu entries in the shrunk APK. Kotlin remains
+  2.1.20 with its existing K2 compiler path; no runtime performance claim is
+  attributed to K2.
+- In matched warmed release navigation, normal p50/p95 improved from 10/44 ms to
+  8/13 ms and jank from 10.74% to 3.91%. The 36-change stress sequence improved
+  from 10/23 ms to 9/18 ms and from 2.43% to 2.15% jank. At the measured 90 Hz
+  refresh rate, budget-relative frame-overrun p95 improved from 32.89 ms to
+  1.89 ms normally and from 11.89 ms to 6.89 ms under stress.
+- Normal PSS/native heap changed from 354,969/77,260 kB to
+  223,822/68,052 kB; stress PSS/native heap changed from
+  278,726/78,636 kB to 250,164/77,976 kB. Attached views remained 83 normally
+  and 256 under stress.
+
+### Validation and preserved rendering
+
+- `bun install --frozen-lockfile`, 390 Bun tests, strict typecheck, Expo lint,
+  AetherMotion Android unit tests, release Kotlin compilation, R8 release
+  assembly, physical release installation, normal/stress navigation, assistant
+  open/close, Android back, screenshots, logcat, `dumpsys gfxinfo`, and
+  `dumpsys meminfo` completed. Lint retains only the pre-existing unreachable-code
+  warning in `src/services/agent/runtime.ts`.
+- The unitary Voice button, navigation geometry, visual design, Reanimated
+  configuration, Dimezis 3.2.0, native blur hierarchy, and
+  `setupWith(target, 4f, false)` are unchanged. Physical validation found no blur,
+  touch, back-navigation, or visual regression.
+- Release builds already consume dependency ART and Startup Profiles. A
+  project-owned Baseline Profile generator and Macrobenchmark module remain the
+  next dedicated performance gate rather than being mixed into the route fix.
+
 ## Unreleased - 2026.08.18 (1) [Stable Android Blur Navigation]
 
 ### RenderNode blur composition under rapid navigation
