@@ -344,7 +344,14 @@ changes completed 36 tab changes across 1,712 rendered frames: `dumpsys gfxinfo`
 reported 4.79% jank, 10 ms p50, 20 ms p95, 161 attached views, and 329.27 kB of
 RenderNode memory. The observed budget was 11.11 ms. Native lifecycle logs showed
 no blur constructor, target, detach/attach, or repeated `setupWith` activity during
-those tab changes.
+those tab changes. A subsequent profileable release build on the same device
+confirmed Hermes bytecode, `__DEV__ = false`, R8/minification, resource shrinking,
+and no packaged dev-launcher or dev-menu entries after shrinking. After caching
+already-loaded route projections and separating the assistant snapshot writer from
+its reader context, a matched 36-change release stress run improved p95 from 23 ms
+to 18 ms and JankStats-compatible jank from 2.43% to 2.15%, with attached views
+unchanged at 256. The matched warmed four-change run improved from 10/44 ms p50/p95
+to 8/13 ms. Blur lifecycle and rendering were unchanged.
 
 **Risk:** A budget device may still jank on `standard` if the governor recovers
 too aggressively, or may look overly static if it never climbs.

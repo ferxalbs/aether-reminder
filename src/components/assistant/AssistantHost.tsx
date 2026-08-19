@@ -52,11 +52,6 @@ const defaultSnapshot: ContextSnapshot = {
   visibleTaskIds: [],
 };
 
-interface AssistantSnapshotContextValue {
-  snapshot: ContextSnapshot;
-  setSnapshot: (snapshot: ContextSnapshot) => void;
-}
-
 interface AssistantControlContextValue {
   requestAssistant: (mode: keyof AssistantActionHandlers) => void;
   registerAssistantActions: (actions: AssistantActionHandlers | null) => void;
@@ -64,8 +59,10 @@ interface AssistantControlContextValue {
   setAssistantActive: (active: boolean) => void;
 }
 
-const AssistantSnapshotContext =
-  createContext<AssistantSnapshotContextValue | null>(null);
+const AssistantSnapshotContext = createContext<ContextSnapshot | null>(null);
+const AssistantSnapshotDispatchContext = createContext<
+  ((snapshot: ContextSnapshot) => void) | null
+>(null);
 const AssistantControlContext =
   createContext<AssistantControlContextValue | null>(null);
 
@@ -94,10 +91,6 @@ export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({
     },
     [],
   );
-  const snapshotValue = useMemo(
-    () => ({ snapshot, setSnapshot }),
-    [setSnapshot, snapshot],
-  );
   const controlValue = useMemo(
     () => ({
       requestAssistant,
@@ -113,21 +106,22 @@ export const AssistantSurfaceProvider: React.FC<React.PropsWithChildren> = ({
     ],
   );
   return (
-    <AssistantSnapshotContext.Provider value={snapshotValue}>
-      <AssistantControlContext.Provider value={controlValue}>
-        {children}
-      </AssistantControlContext.Provider>
+    <AssistantSnapshotContext.Provider value={snapshot}>
+      <AssistantSnapshotDispatchContext.Provider value={setSnapshot}>
+        <AssistantControlContext.Provider value={controlValue}>
+          {children}
+        </AssistantControlContext.Provider>
+      </AssistantSnapshotDispatchContext.Provider>
     </AssistantSnapshotContext.Provider>
   );
 };
 
 export function useAssistantSurface(snapshot: ContextSnapshot): void {
-  const context = useContext(AssistantSnapshotContext);
-  if (!context)
+  const setSnapshot = useContext(AssistantSnapshotDispatchContext);
+  if (!setSnapshot)
     throw new Error(
       "useAssistantSurface must be used inside AssistantSurfaceProvider",
     );
-  const setSnapshot = context.setSnapshot;
   useFocusEffect(
     useCallback(() => {
       setSnapshot(snapshot);
@@ -164,8 +158,7 @@ export const AssistantHost = React.memo(function AssistantHost({
 }: AssistantHostProps) {
   const router = useRouter();
   const { colors } = useAetherTheme();
-  const snapshot =
-    useContext(AssistantSnapshotContext)?.snapshot ?? defaultSnapshot;
+  const snapshot = useContext(AssistantSnapshotContext) ?? defaultSnapshot;
   const { registerAssistantActions, setAssistantActive } =
     useContext(AssistantControlContext) ?? defaultAssistantControls;
   const [surface, setSurface] = useState<AssistantSurfaceState>("closed");

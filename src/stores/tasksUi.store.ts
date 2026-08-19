@@ -63,6 +63,10 @@ export interface TasksUiState {
   upcomingTasks: TaskListItem[];
   /** Complete active inventory for the All surface, including completed items. */
   allTasks: TaskListItem[];
+  todayLoadedDate: string | null;
+  upcomingLoadedDate: string | null;
+  allLoaded: boolean;
+  recoveryLoadedRevision: number | null;
   /** Bumps on every successful mutation so listeners can refetch other surfaces. */
   revision: number;
   /** Most recent reversible task mutation, kept outside persisted state. */
@@ -80,6 +84,10 @@ export interface TasksUiState {
   refreshToday: () => Promise<void>;
   refreshUpcoming: () => Promise<void>;
   refreshAll: () => Promise<void>;
+  ensureToday: () => Promise<void>;
+  ensureUpcoming: () => Promise<void>;
+  ensureAll: () => Promise<void>;
+  ensureRecovery: () => Promise<void>;
   refreshRecovery: () => Promise<void>;
   refreshAttention: () => Promise<void>;
   /** Refresh all task projections concurrently and publish one coherent snapshot. */
@@ -145,6 +153,10 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   todayTasks: [],
   upcomingTasks: [],
   allTasks: [],
+  todayLoadedDate: null,
+  upcomingLoadedDate: null,
+  allLoaded: false,
+  recoveryLoadedRevision: null,
   revision: 0,
   undoReceipt: null,
   undoError: null,
@@ -157,17 +169,41 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   attentionError: null,
   attentionSuppressedTaskIds: [],
 
+  ensureToday: async () => {
+    const localDate = getLocalDateString();
+    if (get().todayLoadedDate === localDate) return;
+    await get().refreshToday();
+  },
+
+  ensureUpcoming: async () => {
+    const localDate = getLocalDateString();
+    if (get().upcomingLoadedDate === localDate) return;
+    await get().refreshUpcoming();
+  },
+
+  ensureAll: async () => {
+    if (get().allLoaded) return;
+    await get().refreshAll();
+  },
+
+  ensureRecovery: async () => {
+    if (get().recoveryLoadedRevision === get().revision) return;
+    await get().refreshRecovery();
+  },
+
   refreshToday: async () => {
+    const localDate = getLocalDateString();
     set({ status: "loading", error: null });
     try {
       const tasks = await (
         await core()
       ).services.tasks.listTasks({
         scope: "today",
-        localDate: getLocalDateString(),
+        localDate,
       });
       set({
         todayTasks: tasks.map(toTaskListItem),
+        todayLoadedDate: localDate,
         status: "ready",
         error: null,
       });
@@ -181,17 +217,19 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
   },
 
   refreshUpcoming: async () => {
+    const localDate = getLocalDateString();
     set({ status: "loading", error: null });
     try {
       const tasks = await (
         await core()
       ).services.tasks.listTasks({
         scope: "upcoming",
-        localDate: getLocalDateString(),
+        localDate,
         limit: 100,
       });
       set({
         upcomingTasks: tasks.map(toTaskListItem),
+        upcomingLoadedDate: localDate,
         status: "ready",
         error: null,
       });
@@ -212,6 +250,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       ).services.tasks.listTasks({ scope: "all" });
       set({
         allTasks: tasks.map(toTaskListItem),
+        allLoaded: true,
         status: "ready",
         error: null,
       });
@@ -230,6 +269,7 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       const plan = await (await core()).services.recovery.generatePlan();
       set({
         recoveryPlan: plan.proposals.length > 0 ? plan : null,
+        recoveryLoadedRevision: get().revision,
         recoveryStatus: "ready",
         recoveryError: null,
       });
@@ -281,6 +321,9 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         todayTasks: today.map(toTaskListItem),
         upcomingTasks: upcoming.map(toTaskListItem),
         allTasks: all.map(toTaskListItem),
+        todayLoadedDate: localDate,
+        upcomingLoadedDate: localDate,
+        allLoaded: true,
         status: "ready",
         error: null,
       });

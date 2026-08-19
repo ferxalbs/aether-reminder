@@ -61,7 +61,7 @@ export default function RemindersScreen() {
   const allTasks = useTasksUiStore((state) => state.allTasks);
   const status = useTasksUiStore((state) => state.status);
   const error = useTasksUiStore((state) => state.error);
-  const refreshAll = useTasksUiStore((state) => state.refreshAll);
+  const ensureAll = useTasksUiStore((state) => state.ensureAll);
   const captureText = useTasksUiStore((state) => state.captureText);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
@@ -121,8 +121,8 @@ export default function RemindersScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refreshAll();
-    }, [refreshAll]),
+      void ensureAll();
+    }, [ensureAll]),
   );
 
   const handleToggle = useCallback(

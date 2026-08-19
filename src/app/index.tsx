@@ -70,7 +70,8 @@ export default function TodayScreen() {
   const error = useTasksUiStore((s) => s.error);
   const attentionPlan = useTasksUiStore((s) => s.attentionPlan);
   const attentionError = useTasksUiStore((s) => s.attentionError);
-  const refreshToday = useTasksUiStore((s) => s.refreshToday);
+  const ensureToday = useTasksUiStore((s) => s.ensureToday);
+  const ensureRecovery = useTasksUiStore((s) => s.ensureRecovery);
   const refreshRecovery = useTasksUiStore((s) => s.refreshRecovery);
   const recoveryPlan = useTasksUiStore((s) => s.recoveryPlan);
   const applyRecovery = useTasksUiStore((s) => s.applyRecovery);
@@ -88,8 +89,8 @@ export default function TodayScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void Promise.all([refreshToday(), refreshRecovery()]);
-    }, [refreshRecovery, refreshToday]),
+      void Promise.all([ensureToday(), ensureRecovery()]);
+    }, [ensureRecovery, ensureToday]),
   );
 
   useEffect(() => {

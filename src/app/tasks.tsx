@@ -46,7 +46,7 @@ export default function ScheduleScreen() {
   const upcomingTasks = useTasksUiStore((state) => state.upcomingTasks);
   const status = useTasksUiStore((state) => state.status);
   const error = useTasksUiStore((state) => state.error);
-  const refreshUpcoming = useTasksUiStore((state) => state.refreshUpcoming);
+  const ensureUpcoming = useTasksUiStore((state) => state.ensureUpcoming);
   const captureText = useTasksUiStore((state) => state.captureText);
   const toggleTask = useTasksUiStore((state) => state.toggleTask);
   const softDeleteTask = useTasksUiStore((state) => state.softDeleteTask);
@@ -122,8 +122,8 @@ export default function ScheduleScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refreshUpcoming();
-    }, [refreshUpcoming]),
+      void ensureUpcoming();
+    }, [ensureUpcoming]),
   );
 
   return (
