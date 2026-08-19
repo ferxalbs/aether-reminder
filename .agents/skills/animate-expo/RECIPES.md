@@ -7,7 +7,7 @@ Ready-to-build implementations for the cases that come up most in a React Native
 ## Setup the recipes assume
 
 ```bash
-npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler expo-haptics
+bunx expo install react-native-reanimated react-native-worklets react-native-gesture-handler expo-haptics
 ```
 
 (`react-native-keyboard-controller` only for the keyboard recipe.) `expo install`, not `npm install` — it resolves the versions that match the SDK. The worklets Babel plugin is configured by `babel-preset-expo` automatically.
