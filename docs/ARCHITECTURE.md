@@ -2,6 +2,41 @@
 
 Status: corrective implementation, 2026-08-07.
 
+## Platform planes
+
+```text
+IDENTITY PLANE
+
+Supabase Auth → verified (issuer, subject) → AETHER Cloud → canonical accountId
+
+PRODUCT PLANE
+
+Android today / native Swift macOS future → AETHER Cloud → AI, Voice, Sync,
+Automation
+
+DATA PLANE
+
+SQLite = local task authority
+Turso PersonalDataPlane = Sync transport/storage behind AETHER Sync v1
+Neon = Cloud control metadata only
+
+COMMERCE PLANE
+
+Android → RevenueCat ─┐
+                      ├→ AetherEntitlement → CommercialPolicy
+Web/macOS → Polar ────┘
+
+CONTROL PLANE UI
+
+AETHER Web owns account, identity/security, devices, plan, billing, usage,
+sync/data controls, downloads, and future integrations. It is not Reminder Web.
+```
+
+Supabase Auth is replaceable because Mobile depends only on the Cloud bearer
+contract and canonical account mapping, not on Supabase IDs. RevenueCat and
+Polar are commerce adapters, not identity providers. Native Reminder remains
+local-first and Cloud never becomes task authority.
+
 ## Five app surfaces
 
 The app keeps five user-facing surfaces:

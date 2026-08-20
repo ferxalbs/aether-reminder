@@ -52,6 +52,9 @@ import {
   initializeCaptureInbox,
 } from "@/services/capture";
 import { MotionProvider } from "@/motion";
+import { isAetherCloudConfigured } from "@/services/cloud/config";
+import { bootstrapCloudIdentity } from "@/services/cloud/bootstrap";
+import { bindRevenueCatAccount } from "@/services/revenuecat/bootstrap";
 
 type BootState =
   | { phase: "loading" }
@@ -324,6 +327,22 @@ export default function RootLayout() {
       cancelled = true;
     };
   }, [refreshAllSurfaces, refreshAttention, router, syncNotifications]);
+
+  useEffect(() => {
+    if (boot.phase !== "ready" || !isAetherCloudConfigured()) return;
+    let disposed = false;
+    void bootstrapCloudIdentity()
+      .then(({ accountId }) => {
+        if (disposed) return;
+        return bindRevenueCatAccount(accountId);
+      })
+      .catch((error: unknown) => {
+        if (!disposed) reportNonFatalError("cloud-identity-bootstrap", error);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [boot.phase]);
 
   useEffect(
     () =>

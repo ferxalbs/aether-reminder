@@ -24,8 +24,15 @@ export {
   decodeUsageSnapshot,
   getAetherCloudClient,
   resetAetherCloudClientForTests,
+  type AetherCloudAccessTokenProvider,
+  type AetherCloudDeviceIdProvider,
   type AetherCloudRequestOptions,
 } from "./client";
+export {
+  bootstrapCloudIdentity,
+  type CloudIdentityBootstrap,
+  type CloudIdentityBootstrapOptions,
+} from "./bootstrap";
 export {
   getCommercialPolicy,
   requireHostedInference,
@@ -33,12 +40,16 @@ export {
   resetCommercialPolicyCacheForTests,
 } from "./policy";
 export type {
+  AetherAccountResponse,
+  AetherDevice,
   AetherUsageSnapshot,
   CommercialPolicy,
   CommercialSource,
   CommercialTier,
   HealthResponse,
   InferenceTurnRequest,
+  RegisterDeviceRequest,
+  RegisterDeviceResponse,
   SubscriptionResponse,
   UsageMetric,
   VoiceAuthorizationRequest,

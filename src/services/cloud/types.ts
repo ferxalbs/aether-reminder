@@ -72,3 +72,31 @@ export type InferenceTurnRequest = {
 export type HealthResponse = {
   status: string;
 };
+
+export type AetherAccountResponse = {
+  account: { id: string };
+};
+
+export type AetherDevice = {
+  id: string;
+  installationId: string;
+  platform: "android" | "ios" | "ipados" | "macos" | null;
+  appVersion: string | null;
+  buildVersion: string | null;
+  syncProtocolVersion: number | null;
+  createdAt: string;
+  lastSeenAt: string;
+  revokedAt: string | null;
+};
+
+export type RegisterDeviceRequest = {
+  installationId: string;
+  platform: "android" | "ios" | "ipados" | "macos";
+  appVersion?: string | null;
+  buildVersion?: string | null;
+  syncProtocolVersion?: number | null;
+};
+
+export type RegisterDeviceResponse = {
+  device: AetherDevice;
+};

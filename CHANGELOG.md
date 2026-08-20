@@ -2,6 +2,20 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.19 (2) [Supabase Auth and Canonical Device Transport]
+
+### Identity and Cloud
+
+- Added a dedicated Supabase Auth session service with persisted anonymous
+  bootstrap, refresh, and future email-linking support.
+- Release Cloud calls now use `Authorization: Bearer <Supabase access token>`;
+  development identity headers remain explicitly scoped to development tooling.
+- Added secure installation/device persistence and canonical Cloud device
+  registration, then correlated Android RevenueCat with the canonical AETHER
+  `accountId` without making billing a prerequisite for identity.
+- Kept local SQLite authority, Polar Web/macOS commerce, and the future native
+  Swift macOS client boundary unchanged.
+
 ## Unreleased - 2026.08.19 (1) [Android Route Render Pipeline]
 
 ### Measured route-work correction

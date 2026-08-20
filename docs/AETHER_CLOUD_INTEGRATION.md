@@ -3,8 +3,8 @@
 AETHER Cloud extends AETHER Reminder. It does not replace local task, reminder,
 SQLite, confirmation, undo, or tool authority.
 
-This document records the local development path that the mobile client now
-implements. It is not a production deployment guide.
+This document records the local development path and the release identity
+boundary. It is not a production deployment guide.
 
 ## Local development connection
 
@@ -30,7 +30,7 @@ read local reminders.
 
 ## Development identity
 
-Physical E2E uses Cloud's existing development headers:
+Local development/E2E may use Cloud's explicitly development-only headers:
 
 ```text
 X-Aether-User-Id
@@ -45,7 +45,43 @@ e2e.device.physical.dev
 ```
 
 These labels are not production JWTs and are not RevenueCat authentication.
-Production JWT/JWKS remains an open Cloud gate.
+They are never selected by the release configuration.
+
+## Release identity and account continuity
+
+Release Android uses Supabase Auth only as an external identity provider:
+
+```text
+fresh install
+  → SecureStore installationId
+  → persisted Supabase anonymous session
+  → Authorization: Bearer <access token>
+  → Cloud verifies issuer/JWKS/audience/expiry
+  → (issuer, subject) → canonical AETHER accountId
+  → POST /v1/me/devices
+  → SecureStore canonical deviceId
+```
+
+The session service initializes Auth once, recovers its persisted session,
+creates an anonymous authenticated session when none exists, and refreshes
+tokens without exposing Supabase to unrelated domain modules. A future email,
+OAuth, or passkey link is added to this external user; Cloud therefore
+resolves the same identity mapping and does not create a second AETHER account.
+This phase only starts the email identity update; Supabase
+confirmation/password completion and OAuth UI remain future client work.
+Signing out or clearing local Auth storage intentionally loses an anonymous
+identity unless it was linked to a recoverable method first.
+
+`installationId` is client-generated and stable per installation where
+possible. `deviceId` is Cloud-generated, account-owned, persisted securely, and
+only sent as `X-Aether-Device-Id` after bearer authentication. It is never
+authentication by itself.
+
+RevenueCat is initialized only for Android commerce and receives the canonical
+AETHER `accountId` through its externally managed App User ID / `logIn` path
+after Cloud identity resolution. A RevenueCat outage cannot block Auth or local
+SQLite. Web/macOS commerce remains Polar-backed; no browser Reminder app is
+planned.
 
 ## Voice authorization
 

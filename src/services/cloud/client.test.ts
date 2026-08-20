@@ -16,6 +16,7 @@ function jsonResponse(
 describe("AetherCloudClient", () => {
   const config = {
     baseUrl: "http://cloud.test",
+    authMode: "development" as const,
     userId: "e2e.mobile.physical.aether-reminder",
     deviceId: "e2e.device.physical.dev",
   };
@@ -32,7 +33,7 @@ describe("AetherCloudClient", () => {
     expect(headers.get("X-Request-Id")).toBeTruthy();
   });
 
-  test("authenticated routes send development identity headers", async () => {
+  test("development tooling sends development identity headers explicitly", async () => {
     const seen: { url: string; headers: Headers }[] = [];
     const client = new AetherCloudClient(config, async (input, init) => {
       seen.push({ url: String(input), headers: new Headers(init?.headers) });
@@ -45,6 +46,51 @@ describe("AetherCloudClient", () => {
     expect(seen[0]?.url).toBe("http://cloud.test/v1/me/subscription");
     expect(seen[0]?.headers.get("X-Aether-User-Id")).toBe(config.userId);
     expect(seen[0]?.headers.get("X-Aether-Device-Id")).toBe(config.deviceId);
+  });
+
+  test("production transport sends a bearer token and canonical device hint", async () => {
+    const seen: { url: string; headers: Headers }[] = [];
+    const client = new AetherCloudClient(
+      {
+        baseUrl: "https://cloud.aether.test",
+        authMode: "bearer",
+        deviceId: null,
+      },
+      async (input, init) => {
+        seen.push({ url: String(input), headers: new Headers(init?.headers) });
+        return jsonResponse(200, { account: { id: "account-1" } });
+      },
+      { getAccessToken: async () => "supabase-access-token" },
+      async () => "canonical-device-1",
+    );
+
+    await expect(client.getMe()).resolves.toEqual({
+      account: { id: "account-1" },
+    });
+    expect(seen[0]?.headers.get("Authorization")).toBe(
+      "Bearer supabase-access-token",
+    );
+    expect(seen[0]?.headers.get("X-Aether-User-Id")).toBeNull();
+    expect(seen[0]?.headers.get("X-Aether-Device-Id")).toBe(
+      "canonical-device-1",
+    );
+  });
+
+  test("production transport fails closed without an access token", async () => {
+    let called = false;
+    const client = new AetherCloudClient(
+      { baseUrl: "https://cloud.aether.test", authMode: "bearer" },
+      async () => {
+        called = true;
+        return jsonResponse(200, { account: { id: "account-1" } });
+      },
+      { getAccessToken: async () => "" },
+    );
+    await expect(client.getMe()).rejects.toMatchObject({
+      name: "AetherCloudError",
+      code: "UNAUTHORIZED",
+    });
+    expect(called).toBe(false);
   });
 
   test("decodes a stable Cloud error envelope", async () => {

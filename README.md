@@ -1,4 +1,35 @@
-# Welcome to your Expo app 👋
+# AETHER Reminder
+
+Native-first, local-first Reminder client for Android today and native
+Swift/SwiftUI macOS in the future. SQLite remains the local operational
+authority; AETHER Cloud provides identity, hosted AI/voice, commercial policy,
+devices, automation, and the AETHER Sync v1 boundary.
+
+Release identity uses a persisted Supabase Auth session only to obtain a bearer
+JWT. AETHER Cloud verifies it and maps `(issuer, subject)` to the canonical
+`accountId`; Supabase is not the application database or domain model.
+
+Android commerce uses RevenueCat after canonical identity resolution. Polar is
+preserved for AETHER Web and direct-distribution macOS commerce. AETHER Web is
+the account/control surface, not a browser Reminder application.
+
+## Repository commands
+
+Use Bun for installation and validation:
+
+```sh
+bun install
+bun run start
+bun test
+bun run typecheck
+bun run lint
+bun run format:check
+```
+
+Release builds require HTTPS Cloud plus Supabase Auth configuration. See
+[`docs/AETHER_CLOUD_INTEGRATION.md`](docs/AETHER_CLOUD_INTEGRATION.md).
+
+## Expo starter notes
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
@@ -7,13 +38,13 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 1. Install dependencies
 
    ```bash
-   npm install
+   bun install
    ```
 
 2. Start the app
 
    ```bash
-   npx expo start
+   bun run start
    ```
 
 In the output, you'll find options to open the app in a
@@ -30,14 +61,14 @@ You can start developing by editing the files inside the **app** directory. This
 When you're ready, run:
 
 ```bash
-npm run reset-project
+bun run reset-project
 ```
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ### Other setup steps
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
+- To set up ESLint for linting, run `bunx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
 - If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
 - Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
 

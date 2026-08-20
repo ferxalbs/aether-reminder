@@ -10,8 +10,10 @@ const DEVICE_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
 export type AetherCloudConfig = {
   baseUrl: string;
-  userId: string;
-  deviceId: string;
+  /** Explicitly selects the transport; production resolution always returns bearer. */
+  authMode?: "development" | "bearer";
+  userId?: string;
+  deviceId?: string | null;
 };
 
 export type AetherRuntimeConfig = {
@@ -95,6 +97,10 @@ export function resolveAetherCloudConfig(
   const baseUrl = readAetherCloudBaseUrl(env, isProduction);
   if (!baseUrl) return null;
 
+  if (isProduction) {
+    return { baseUrl, authMode: "bearer", deviceId: null };
+  }
+
   const userId =
     env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim() || DEFAULT_E2E_USER_ID;
   const deviceId =
@@ -104,7 +110,7 @@ export function resolveAetherCloudConfig(
     throw new Error("AETHER Cloud development identity is invalid.");
   }
 
-  return { baseUrl, userId, deviceId };
+  return { baseUrl, authMode: "development", userId, deviceId };
 }
 
 export function assertProductionCloudConfig(
@@ -122,16 +128,43 @@ export function assertProductionCloudConfig(
       `Invalid production AETHER Cloud URL: ${validation.reason}`,
     );
   }
+  const supabaseUrl = env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? "";
+  const supabaseKey = env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
+  if (!supabaseUrl || !supabaseKey || /\s/.test(supabaseKey)) {
+    throw new Error(
+      "Production AETHER Cloud builds require EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+    );
+  }
+  let parsedSupabaseUrl: URL;
+  try {
+    parsedSupabaseUrl = new URL(supabaseUrl);
+  } catch {
+    throw new Error("EXPO_PUBLIC_SUPABASE_URL must be a valid HTTPS URL.");
+  }
+  if (parsedSupabaseUrl.protocol !== "https:") {
+    throw new Error("Production Supabase Auth URL must use HTTPS.");
+  }
   return { cloudOrigin: validation.normalizedUrl };
 }
 
 export function publicCloudEnvSnapshot(): {
   configured: boolean;
+  authMode: "development" | "bearer" | "unconfigured";
   hasUserOverride: boolean;
   hasDeviceOverride: boolean;
 } {
+  const configured = isAetherCloudConfigured();
+  const production =
+    process.env.NODE_ENV === "production" &&
+    typeof __DEV__ !== "undefined" &&
+    !__DEV__;
   return {
-    configured: isAetherCloudConfigured(),
+    configured,
+    authMode: !configured
+      ? "unconfigured"
+      : production
+        ? "bearer"
+        : "development",
     hasUserOverride: Boolean(
       process.env.EXPO_PUBLIC_AETHER_DEV_USER_ID?.trim(),
     ),

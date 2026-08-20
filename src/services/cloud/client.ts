@@ -7,9 +7,13 @@ import {
 } from "./errors";
 import type {
   AetherUsageSnapshot,
+  AetherAccountResponse,
+  AetherDevice,
   CommercialSource,
   HealthResponse,
   InferenceTurnRequest,
+  RegisterDeviceRequest,
+  RegisterDeviceResponse,
   SubscriptionResponse,
   VoiceAuthorizationRequest,
   VoiceAuthorizationResponse,
@@ -24,10 +28,18 @@ export type AetherCloudRequestOptions = {
   idempotencyKey?: string;
 };
 
+export interface AetherCloudAccessTokenProvider {
+  getAccessToken(): Promise<string>;
+}
+
+export type AetherCloudDeviceIdProvider = () => Promise<string | null>;
+
 export class AetherCloudClient {
   constructor(
     private readonly config: AetherCloudConfig,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly accessTokenProvider?: AetherCloudAccessTokenProvider,
+    private readonly deviceIdProvider?: AetherCloudDeviceIdProvider,
   ) {}
 
   get baseUrl(): string {
@@ -35,7 +47,32 @@ export class AetherCloudClient {
   }
 
   get userId(): string {
-    return this.config.userId;
+    return this.config.userId ?? "";
+  }
+
+  async getMe(
+    options: AetherCloudRequestOptions = {},
+  ): Promise<AetherAccountResponse> {
+    const raw = await this.requestJson<unknown>(
+      "GET",
+      "/v1/me",
+      undefined,
+      options,
+    );
+    return decodeAccountResponse(raw);
+  }
+
+  async registerDevice(
+    body: RegisterDeviceRequest,
+    options: AetherCloudRequestOptions = {},
+  ): Promise<RegisterDeviceResponse> {
+    const raw = await this.requestJson<unknown>(
+      "POST",
+      "/v1/me/devices",
+      body,
+      options,
+    );
+    return decodeDeviceResponse(raw);
   }
 
   async getHealth(
@@ -127,8 +164,36 @@ export class AetherCloudClient {
       "X-Request-Id": requestId,
     };
     if (options.authenticated !== false) {
-      headers["X-Aether-User-Id"] = this.config.userId;
-      headers["X-Aether-Device-Id"] = this.config.deviceId;
+      const authMode =
+        this.config.authMode ??
+        (process.env.NODE_ENV === "production" ? "bearer" : "development");
+      if (authMode === "bearer") {
+        let accessToken: string;
+        try {
+          accessToken = await this.requireAccessToken();
+        } catch (error) {
+          timeout.cleanup();
+          throw error;
+        }
+        headers.Authorization = `Bearer ${accessToken}`;
+      } else {
+        if (!this.config.userId) {
+          timeout.cleanup();
+          throw new AetherCloudError(
+            "UNAUTHORIZED",
+            "AETHER development identity is not configured.",
+          );
+        }
+        headers["X-Aether-User-Id"] = this.config.userId;
+      }
+      let deviceId: string | null;
+      try {
+        deviceId = await this.getDeviceId();
+      } catch (error) {
+        timeout.cleanup();
+        throw error;
+      }
+      if (deviceId) headers["X-Aether-Device-Id"] = deviceId;
     }
     if (body !== undefined) {
       headers["Content-Type"] = "application/json";
@@ -183,6 +248,38 @@ export class AetherCloudClient {
       throw await this.errorFromResponse(response, requestId);
     }
     return response;
+  }
+
+  private async requireAccessToken(): Promise<string> {
+    if (!this.accessTokenProvider) {
+      throw new AetherCloudError(
+        "UNAUTHORIZED",
+        "AETHER identity is unavailable.",
+      );
+    }
+    let token: string;
+    try {
+      token = (await this.accessTokenProvider.getAccessToken()).trim();
+    } catch (error) {
+      if (error instanceof AetherCloudError) throw error;
+      throw new AetherCloudError(
+        "UNAUTHORIZED",
+        "AETHER identity is unavailable.",
+        { cause: error },
+      );
+    }
+    if (!token) {
+      throw new AetherCloudError(
+        "UNAUTHORIZED",
+        "AETHER identity is unavailable.",
+      );
+    }
+    return token;
+  }
+
+  private async getDeviceId(): Promise<string | null> {
+    if (this.deviceIdProvider) return this.deviceIdProvider();
+    return this.config.deviceId ?? null;
   }
 
   private async parseJson<T>(response: Response): Promise<T> {
@@ -393,12 +490,85 @@ export function getAetherCloudClient(): AetherCloudClient {
       "AETHER Cloud is not configured.",
     );
   }
-  const key = `${config.baseUrl}|${config.userId}|${config.deviceId}`;
+  const authMode =
+    config.authMode ??
+    (process.env.NODE_ENV === "production" ? "bearer" : "development");
+  const key = `${config.baseUrl}|${authMode}|${config.userId ?? ""}|${config.deviceId ?? ""}`;
   if (!sharedClient || sharedKey !== key) {
-    sharedClient = new AetherCloudClient(config);
+    const accessTokenProvider =
+      authMode === "bearer"
+        ? {
+            async getAccessToken() {
+              const { getIdentitySessionService } =
+                await import("@/services/identity/session");
+              return (await getIdentitySessionService()).getAccessToken();
+            },
+          }
+        : undefined;
+    const deviceIdProvider =
+      authMode === "bearer"
+        ? async () => {
+            const { getDeviceIdentityStore } =
+              await import("@/services/identity/device");
+            return getDeviceIdentityStore().getCanonicalDeviceId();
+          }
+        : undefined;
+    sharedClient = new AetherCloudClient(
+      config,
+      fetch,
+      accessTokenProvider,
+      deviceIdProvider,
+    );
     sharedKey = key;
   }
   return sharedClient;
+}
+
+function decodeAccountResponse(payload: unknown): AetherAccountResponse {
+  const account =
+    payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).account
+      : null;
+  const id =
+    account && typeof account === "object"
+      ? (account as Record<string, unknown>).id
+      : null;
+  if (typeof id !== "string" || !id.trim()) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "AETHER Cloud returned an invalid account response.",
+    );
+  }
+  return { account: { id } };
+}
+
+function decodeDeviceResponse(payload: unknown): RegisterDeviceResponse {
+  const device =
+    payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).device
+      : null;
+  const id =
+    device && typeof device === "object"
+      ? (device as Record<string, unknown>).id
+      : null;
+  const installationId =
+    device && typeof device === "object"
+      ? (device as Record<string, unknown>).installationId
+      : null;
+  if (
+    !device ||
+    typeof device !== "object" ||
+    typeof id !== "string" ||
+    !id.trim() ||
+    typeof installationId !== "string" ||
+    !installationId.trim()
+  ) {
+    throw new AetherCloudError(
+      "INVALID_RESPONSE",
+      "AETHER Cloud returned an invalid device response.",
+    );
+  }
+  return { device: device as AetherDevice };
 }
 
 export function resetAetherCloudClientForTests(): void {
