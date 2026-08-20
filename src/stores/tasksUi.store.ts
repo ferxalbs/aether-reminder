@@ -32,6 +32,7 @@ import {
   getTaskUndoRestoreFields,
   getTaskUndoTaskId,
 } from "./taskUndo";
+import { preserveTaskListItemIdentity } from "./taskListIdentity";
 import {
   createCaptureEnvelope,
   createCaptureOrchestrator,
@@ -201,12 +202,15 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         scope: "today",
         localDate,
       });
-      set({
-        todayTasks: tasks.map(toTaskListItem),
+      set((state) => ({
+        todayTasks: preserveTaskListItemIdentity(
+          state.todayTasks,
+          tasks.map(toTaskListItem),
+        ),
         todayLoadedDate: localDate,
         status: "ready",
         error: null,
-      });
+      }));
     } catch (error) {
       reportNonFatalError("tasks-refresh-today", error);
       set({
@@ -248,12 +252,15 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
       const tasks = await (
         await core()
       ).services.tasks.listTasks({ scope: "all" });
-      set({
-        allTasks: tasks.map(toTaskListItem),
+      set((state) => ({
+        allTasks: preserveTaskListItemIdentity(
+          state.allTasks,
+          tasks.map(toTaskListItem),
+        ),
         allLoaded: true,
         status: "ready",
         error: null,
-      });
+      }));
     } catch (error) {
       reportNonFatalError("tasks-refresh-all", error);
       set({
@@ -317,16 +324,25 @@ export const useTasksUiStore = create<TasksUiState>((set, get) => ({
         tasks.listTasks({ scope: "upcoming", localDate, limit: 100 }),
         tasks.listTasks({ scope: "all" }),
       ]);
-      set({
-        todayTasks: today.map(toTaskListItem),
-        upcomingTasks: upcoming.map(toTaskListItem),
-        allTasks: all.map(toTaskListItem),
+      set((state) => ({
+        todayTasks: preserveTaskListItemIdentity(
+          state.todayTasks,
+          today.map(toTaskListItem),
+        ),
+        upcomingTasks: preserveTaskListItemIdentity(
+          state.upcomingTasks,
+          upcoming.map(toTaskListItem),
+        ),
+        allTasks: preserveTaskListItemIdentity(
+          state.allTasks,
+          all.map(toTaskListItem),
+        ),
         todayLoadedDate: localDate,
         upcomingLoadedDate: localDate,
         allLoaded: true,
         status: "ready",
         error: null,
-      });
+      }));
     } catch (error) {
       reportNonFatalError("tasks-refresh-surfaces", error);
       set({
