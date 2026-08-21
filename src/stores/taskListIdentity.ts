@@ -19,7 +19,8 @@ export function preserveTaskListItemIdentity(
   const previousById = new Map(previous.map((task) => [task.id, task]));
   return next.map((task) => {
     const prior = previousById.get(task.id);
-    return prior && TASK_LIST_ITEM_FIELDS.every((field) => prior[field] === task[field])
+    return prior &&
+      TASK_LIST_ITEM_FIELDS.every((field) => prior[field] === task[field])
       ? prior
       : task;
   });

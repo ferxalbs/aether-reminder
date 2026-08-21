@@ -148,6 +148,15 @@ quota from receipts or local counters, and an unavailable endpoint is shown as
 unavailable rather than as zero usage. The current plan remains sourced from
 `GET /v1/me/subscription` until Cloud consolidates the responses.
 
+## Sync status
+
+AETHER Cloud owns the provider-neutral Sync v1 contract and PersonalDataPlane
+boundary. The current Reminder client does not yet implement the corresponding
+`/v1/sync/*` client, local outbox, cursor persistence, or reconciliation path.
+Local SQLite therefore remains the only operational data authority in this
+build; the Sync runtime and Mobile physical E2E gates stay open until that
+integration exists and is exercised against the real data plane.
+
 ## Failure and recovery
 
 Cloud-backed voice and assistant actions fail independently. Local reminder

@@ -40,24 +40,36 @@ function makeAuth(
   } = {},
 ): {
   auth: AuthPort;
-  calls: { anonymous: number; refresh: number; updatedEmail?: string };
+  calls: {
+    anonymous: number;
+    refresh: number;
+    session: number;
+    updatedEmail?: string;
+  };
 } {
+  let storedSession = options.session ?? null;
   const calls = {
     anonymous: 0,
     refresh: 0,
+    session: 0,
     updatedEmail: undefined as string | undefined,
   };
   const auth = {
     async getSession() {
+      calls.session += 1;
+      if (calls.session > 1 && options.refreshed) {
+        storedSession = options.refreshed;
+      }
       return {
-        data: { session: options.session ?? null },
+        data: { session: storedSession },
         error: options.sessionError ?? null,
       };
     },
     async signInAnonymously() {
       calls.anonymous += 1;
+      storedSession = options.anonymous ?? makeSession();
       return {
-        data: { session: options.anonymous ?? makeSession() },
+        data: { session: storedSession },
         error: null,
       };
     },
@@ -108,7 +120,7 @@ describe("AETHER identity session", () => {
     expect(calls.anonymous).toBe(0);
   });
 
-  test("refreshes a near-expiry session through the abstraction", async () => {
+  test("uses Supabase-managed session refresh without a second refresh policy", async () => {
     const { auth, calls } = makeAuth({
       session: makeSession({ expires_at: Math.floor(Date.now() / 1000) + 1 }),
       refreshed: makeSession({
@@ -119,7 +131,8 @@ describe("AETHER identity session", () => {
     const service = new AetherIdentitySessionService(auth);
 
     await expect(service.getAccessToken()).resolves.toBe("refreshed-token");
-    expect(calls.refresh).toBe(1);
+    expect(calls.session).toBe(2);
+    expect(calls.refresh).toBe(0);
     expect(service.getSnapshot().status).toBe("authenticated");
   });
 

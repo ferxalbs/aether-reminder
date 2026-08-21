@@ -102,6 +102,7 @@ export default function RootLayout() {
     null,
   );
   const notificationSyncRef = useRef<Promise<void> | null>(null);
+  const cloudBootstrapRef = useRef<Promise<void> | null>(null);
 
   const syncNotifications = useCallback(
     (
@@ -211,6 +212,23 @@ export default function RootLayout() {
       reportNonFatalError("capture-foreground-drain", error);
     }
   }, [refreshAllSurfaces, refreshAttention, router]);
+
+  const runCloudBootstrap = useCallback((): Promise<void> => {
+    if (cloudBootstrapRef.current) return cloudBootstrapRef.current;
+
+    const operation = (async () => {
+      const { accountId } = await bootstrapCloudIdentity();
+      await bindRevenueCatAccount(accountId);
+    })();
+    cloudBootstrapRef.current = operation;
+    const clearInFlight = () => {
+      if (cloudBootstrapRef.current === operation) {
+        cloudBootstrapRef.current = null;
+      }
+    };
+    operation.then(clearInFlight, clearInFlight);
+    return operation;
+  }, []);
 
   const runDatabaseRecovery = useCallback(
     async (mode: Exclude<DatabaseRecoveryMode, "check">) => {
@@ -331,18 +349,56 @@ export default function RootLayout() {
   useEffect(() => {
     if (boot.phase !== "ready" || !isAetherCloudConfigured()) return;
     let disposed = false;
-    void bootstrapCloudIdentity()
-      .then(({ accountId }) => {
-        if (disposed) return;
-        return bindRevenueCatAccount(accountId);
-      })
-      .catch((error: unknown) => {
-        if (!disposed) reportNonFatalError("cloud-identity-bootstrap", error);
-      });
+    let appActive = AppState.currentState === "active";
+    let retryAttempt = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearRetry = () => {
+      if (retryTimer === null) return;
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    };
+
+    const scheduleRetry = () => {
+      if (disposed || !appActive || retryTimer !== null) return;
+      const delayMs = Math.min(60_000, 1_000 * 2 ** Math.min(retryAttempt, 6));
+      retryAttempt = Math.min(retryAttempt + 1, 6);
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        void attemptBootstrap();
+      }, delayMs);
+    };
+
+    const attemptBootstrap = async () => {
+      if (disposed || !appActive) return;
+      clearRetry();
+      try {
+        await runCloudBootstrap();
+        retryAttempt = 0;
+      } catch (error: unknown) {
+        if (disposed || !appActive) return;
+        reportNonFatalError("cloud-identity-bootstrap", error);
+        scheduleRetry();
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      appActive = state === "active";
+      if (!appActive) {
+        clearRetry();
+        return;
+      }
+      retryAttempt = 0;
+      void attemptBootstrap();
+    });
+
+    void attemptBootstrap();
     return () => {
       disposed = true;
+      clearRetry();
+      subscription.remove();
     };
-  }, [boot.phase]);
+  }, [boot.phase, runCloudBootstrap]);
 
   useEffect(
     () =>

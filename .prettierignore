@@ -1,3 +1,11 @@
-# Ignore artifacts:
+# Ignore artifacts
+
 build
 coverage
+
+## Local tooling and the sibling Cloud repository are separate from the Expo app
+
+.agents/
+.claude/
+.codebase-memory/
+aether-cloud/

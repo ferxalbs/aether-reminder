@@ -65,28 +65,24 @@ export class AetherIdentitySessionService implements IdentitySessionService {
 
   async getAccessToken(): Promise<string> {
     await this.initialize();
-    let session = this.providerSession;
-    const expiresSoon =
-      !session?.expires_at || session.expires_at * 1000 <= Date.now() + 30_000;
-
-    if (expiresSoon) {
-      let refreshed;
-      try {
-        refreshed = await this.auth.refreshSession();
-      } catch (error) {
-        throw providerError("SESSION_UNAVAILABLE", "session refresh", error);
-      }
-      if (refreshed.error || !refreshed.data.session) {
-        throw providerError(
-          "SESSION_UNAVAILABLE",
-          "session refresh",
-          refreshed.error,
-        );
-      }
-      this.setProviderSession(refreshed.data.session);
-      session = refreshed.data.session;
+    let current;
+    try {
+      // Supabase Auth owns expiry detection, single-flight refresh, and
+      // persisted-session recovery. Do not maintain a second refresh policy.
+      current = await this.auth.getSession();
+    } catch (error) {
+      throw providerError("SESSION_UNAVAILABLE", "session recovery", error);
+    }
+    if (current.error) {
+      throw providerError(
+        "SESSION_UNAVAILABLE",
+        "session recovery",
+        current.error,
+      );
     }
 
+    const session = current.data.session;
+    this.setProviderSession(session);
     if (!session?.access_token) {
       throw new IdentityError(
         "SESSION_UNAVAILABLE",

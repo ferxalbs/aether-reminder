@@ -127,12 +127,15 @@ export function useVoiceController({
       voiceSession.subscribe((next) => {
         setSnapshot(next);
         if (next.error) {
-          reportNonFatalError(
-            "voice-session",
-            new Error(`code=${next.error.code} message=${next.error.message}`, {
-              cause: next.error.cause,
-            }),
+          const diagnostic = Object.assign(
+            new Error(getVoiceErrorMessage(next.error)),
+            {
+              code: next.error.code,
+              status: next.error.status,
+              requestId: next.error.providerError?.requestId,
+            },
           );
+          reportNonFatalError("voice-session", diagnostic);
         }
       }),
     [voiceSession],

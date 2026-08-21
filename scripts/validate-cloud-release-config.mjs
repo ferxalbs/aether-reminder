@@ -45,3 +45,11 @@ if (!publishableKey || /\s/.test(publishableKey)) {
     "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required for a production AETHER Reminder build.",
   );
 }
+
+const revenueCatAndroidKey =
+  process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY?.trim() ?? "";
+if (/^test_/i.test(revenueCatAndroidKey)) {
+  throw new Error(
+    "Production AETHER Reminder builds must not use a RevenueCat Test Store key.",
+  );
+}

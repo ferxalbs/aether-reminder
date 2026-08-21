@@ -66,7 +66,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "expo lint",
-    "test": "bun test --isolate src",
+    "test": "bun test --isolate ./src",
     "validate:release-config": "bun scripts/validate-cloud-release-config.mjs",
     "eas-build-pre-install": "bun scripts/validate-cloud-release-config.mjs --eas",
     "typecheck": "tsc --noEmit",

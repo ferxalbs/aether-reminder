@@ -46,13 +46,15 @@ export function useAetherUsage(): UseAetherUsageResult {
 
     try {
       const client = getAetherCloudClient();
-      const subscription = await getCommercialPolicy(undefined, client);
+      const [subscription, result] = await Promise.all([
+        getCommercialPolicy(undefined, client),
+        client.getUsage(),
+      ]);
       setPlan({
         tier: subscription.policy.tier,
         displayName:
           subscription.policy.tier === "pro" ? "AETHER Pro" : "AETHER Free",
       });
-      const result = await client.getUsage();
       setSnapshot(result);
       setPlan({ tier: result.plan.tier, displayName: result.plan.displayName });
       setState("loaded");

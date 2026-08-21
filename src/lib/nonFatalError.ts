@@ -19,5 +19,31 @@ export function sanitizeErrorForLogging(error: unknown): string {
 }
 
 export function reportNonFatalError(scope: string, error: unknown): void {
-  console.warn(`[Aether:${scope}] ${sanitizeErrorForLogging(error)}`);
+  const safeScope = scope.slice(0, 96);
+  const details: Record<string, string | number> = {
+    scope: safeScope,
+    error: sanitizeErrorForLogging(error),
+  };
+  if (error && typeof error === "object") {
+    const diagnostic = error as Record<string, unknown>;
+    if (typeof diagnostic.code === "string") {
+      details.code = diagnostic.code.slice(0, 96);
+    }
+    if (
+      typeof diagnostic.status === "number" &&
+      Number.isFinite(diagnostic.status)
+    ) {
+      details.status = diagnostic.status;
+    }
+    if (typeof diagnostic.requestId === "string") {
+      details.requestId = diagnostic.requestId.slice(0, 128);
+    }
+    if (
+      typeof diagnostic.retryAfterSeconds === "number" &&
+      Number.isFinite(diagnostic.retryAfterSeconds)
+    ) {
+      details.retryAfterSeconds = diagnostic.retryAfterSeconds;
+    }
+  }
+  console.warn(`[Aether:${safeScope}] ${JSON.stringify(details)}`);
 }

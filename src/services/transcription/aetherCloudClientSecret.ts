@@ -120,9 +120,18 @@ function voiceMessageForCloud(error: AetherCloudError): string {
       return "Hosted voice usage is exhausted for this period.";
     case "NETWORK_ERROR":
       return "Could not reach AETHER Cloud to authorize live transcription.";
+    case "PROVIDER_UNAVAILABLE":
+    case "NOT_READY":
+      return "AETHER Cloud is temporarily unavailable for live transcription.";
+    case "PROVIDER_TIMEOUT":
+    case "TIMEOUT":
+      return "AETHER Cloud took too long to authorize live transcription.";
+    case "UNAUTHORIZED":
+    case "FORBIDDEN":
+      return "AETHER Cloud authentication is required for live transcription.";
     case "CANCELLED":
       return "Voice authorization was cancelled.";
     default:
-      return error.message || "Could not authorize live transcription.";
+      return "Could not authorize live transcription. Try again shortly.";
   }
 }

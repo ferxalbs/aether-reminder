@@ -15,6 +15,13 @@ export type AetherCloudErrorCode =
   | "PROVIDER_RATE_LIMITED"
   | "PROVIDER_UNAUTHORIZED"
   | "IDEMPOTENCY_CONFLICT"
+  | "SYNC_NOT_PROVISIONED"
+  | "SYNC_PROVIDER_UNAVAILABLE"
+  | "SYNC_CURSOR_INVALID"
+  | "SYNC_NOT_ENTITLED"
+  | "DEVICE_REVOKED"
+  | "DEVICE_NOT_FOUND"
+  | "UNSUPPORTED_SYNC_PROTOCOL"
   | "NOT_READY"
   | "NETWORK_ERROR"
   | "TIMEOUT"
@@ -67,6 +74,13 @@ const KNOWN_CODES = new Set<AetherCloudErrorCode>([
   "PROVIDER_RATE_LIMITED",
   "PROVIDER_UNAUTHORIZED",
   "IDEMPOTENCY_CONFLICT",
+  "SYNC_NOT_PROVISIONED",
+  "SYNC_PROVIDER_UNAVAILABLE",
+  "SYNC_CURSOR_INVALID",
+  "SYNC_NOT_ENTITLED",
+  "DEVICE_REVOKED",
+  "DEVICE_NOT_FOUND",
+  "UNSUPPORTED_SYNC_PROTOCOL",
   "NOT_READY",
   "INTERNAL",
 ]);
@@ -127,6 +141,18 @@ function defaultMessage(code: AetherCloudErrorCode): string {
     case "VOICE_QUOTA_EXCEEDED":
     case "INFERENCE_BUDGET_EXCEEDED":
       return "Hosted usage is exhausted for this period.";
+    case "DEVICE_REVOKED":
+      return "This device is no longer authorized.";
+    case "DEVICE_NOT_FOUND":
+      return "This device is not registered.";
+    case "SYNC_NOT_ENTITLED":
+      return "Hosted Sync is unavailable for the current plan.";
+    case "SYNC_NOT_PROVISIONED":
+    case "SYNC_PROVIDER_UNAVAILABLE":
+      return "AETHER Sync is temporarily unavailable.";
+    case "SYNC_CURSOR_INVALID":
+    case "UNSUPPORTED_SYNC_PROTOCOL":
+      return "AETHER Sync needs to be updated before it can continue.";
     case "PROVIDER_UNAVAILABLE":
       return "AETHER Cloud is temporarily unavailable.";
     case "NETWORK_ERROR":

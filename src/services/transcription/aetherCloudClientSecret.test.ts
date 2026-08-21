@@ -166,4 +166,36 @@ describe("AetherCloudClientSecretProvider", () => {
     ).rejects.toMatchObject({ code: "HOSTED_USAGE_EXHAUSTED" });
     expect(authorizationRequested).toBe(true);
   });
+
+  test("does not surface backend error text in the voice authorization UX", async () => {
+    const client = new AetherCloudClient(
+      {
+        baseUrl: "http://cloud.test",
+        userId: "e2e.mobile.physical.aether-reminder",
+        deviceId: "e2e.device.physical.dev",
+      },
+      async (input) => {
+        if (String(input).endsWith("/v1/me/subscription")) {
+          return subscriptionResponse();
+        }
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "INTERNAL",
+              message: "provider stack trace must stay out of the UI",
+            },
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    );
+
+    await expect(
+      new AetherCloudClientSecretProvider(client).create(
+        defaultRealtimeTranscriptionConfig,
+      ),
+    ).rejects.toMatchObject({
+      message: "Could not authorize live transcription. Try again shortly.",
+    });
+  });
 });
