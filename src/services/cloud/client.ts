@@ -18,6 +18,16 @@ import type {
   VoiceAuthorizationRequest,
   VoiceAuthorizationResponse,
 } from "./types";
+import {
+  AETHER_SYNC_PROTOCOL_VERSION,
+  decodeSyncNegotiation,
+  decodeSyncPullResponse,
+  decodeSyncPushResponse,
+  type AetherSyncMutation,
+  type AetherSyncNegotiation,
+  type AetherSyncPullResponse,
+  type AetherSyncPushResponse,
+} from "./syncTypes";
 
 const JSON_TIMEOUT_MS = 10_000;
 const STREAM_CONNECT_TIMEOUT_MS = 15_000;
@@ -129,6 +139,55 @@ export class AetherCloudClient {
       timeoutMs: options.timeoutMs ?? STREAM_CONNECT_TIMEOUT_MS,
       accept: "text/event-stream",
     });
+  }
+
+  /** Negotiate AETHER Sync v1 through the existing authenticated transport. */
+  async negotiateSync(
+    options: AetherCloudRequestOptions = {},
+  ): Promise<AetherSyncNegotiation> {
+    const raw = await this.requestJson<unknown>(
+      "POST",
+      "/v1/sync/negotiate",
+      { protocolVersion: AETHER_SYNC_PROTOCOL_VERSION },
+      options,
+    );
+    return decodeSyncNegotiation(raw);
+  }
+
+  /** Push one bounded batch. Account/device are resolved by Cloud auth/headers. */
+  async pushSync(
+    mutations: readonly AetherSyncMutation[],
+    options: AetherCloudRequestOptions = {},
+  ): Promise<AetherSyncPushResponse> {
+    const raw = await this.requestJson<unknown>(
+      "POST",
+      "/v1/sync/push",
+      {
+        protocolVersion: AETHER_SYNC_PROTOCOL_VERSION,
+        mutations,
+      },
+      options,
+    );
+    return decodeSyncPushResponse(raw);
+  }
+
+  /** Pull one bounded page. The cursor is opaque and owned by AETHER Cloud. */
+  async pullSync(
+    cursor: string | null,
+    limit = 500,
+    options: AetherCloudRequestOptions = {},
+  ): Promise<AetherSyncPullResponse> {
+    const raw = await this.requestJson<unknown>(
+      "POST",
+      "/v1/sync/pull",
+      {
+        protocolVersion: AETHER_SYNC_PROTOCOL_VERSION,
+        cursor,
+        limit,
+      },
+      options,
+    );
+    return decodeSyncPullResponse(raw);
   }
 
   private async requestJson<T>(

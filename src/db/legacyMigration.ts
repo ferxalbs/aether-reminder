@@ -6,6 +6,7 @@ import { getLocalDateString } from "@/temporal/localCalendar";
 import { DatabaseError } from "./errors";
 import type { SqlDatabase } from "./types";
 import { TasksRepository } from "./repositories/tasksRepository";
+import type { SyncOutboxRepository } from "./repositories/syncOutboxRepository";
 
 /** Zustand persist key from pre-SQLite tasks store. */
 export const LEGACY_TASKS_STORAGE_KEY = "taskflow-tasks-storage";
@@ -185,6 +186,8 @@ export interface LegacyMigrationDeps {
   readLegacy?: () => Promise<string | null>;
   /** Clear legacy only after success (optional) */
   clearLegacy?: () => Promise<void>;
+  /** Shared repository so imported tasks enqueue in the same domain transaction. */
+  sync?: SyncOutboxRepository;
 }
 
 /**
@@ -283,7 +286,7 @@ export async function migrateLegacyTasks(
     };
   }
 
-  const tasksRepo = new TasksRepository(db);
+  const tasksRepo = new TasksRepository(db, deps.sync);
   let importedCount = 0;
 
   // Each create() is its own transaction (task + event). Avoid nested transactions

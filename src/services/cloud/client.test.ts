@@ -183,6 +183,67 @@ describe("AetherCloudClient", () => {
     expect(parsed.capability).toBe("assistant.turn");
   });
 
+  test("Sync v1 endpoints reuse authenticated Cloud transport and exact bodies", async () => {
+    const seen: { url: string; body: unknown; headers: Headers }[] = [];
+    const client = new AetherCloudClient(config, async (input, init) => {
+      const url = String(input);
+      seen.push({
+        url,
+        body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        headers: new Headers(init?.headers),
+      });
+      if (url.endsWith("/negotiate")) {
+        return jsonResponse(200, {
+          protocolVersion: 1,
+          protocolCapabilities: ["push", "pull", "tombstones", "conflicts"],
+          collections: ["tasks", "reminders", "captures", "preferences"],
+          service: { available: true },
+        });
+      }
+      if (url.endsWith("/push")) {
+        return jsonResponse(200, {
+          results: [{ status: "applied", version: 7 }],
+        });
+      }
+      return jsonResponse(200, {
+        changes: [],
+        nextCursor: "cursor-2",
+        hasMore: false,
+      });
+    });
+    const mutation = {
+      mutationId: "mutation-1",
+      collection: "tasks" as const,
+      entityId: "task-1",
+      operation: "upsert" as const,
+      baseVersion: null,
+      payload: { title: "Remember" },
+      clientModifiedAt: "2030-01-01T00:00:00.000Z",
+    };
+
+    await client.negotiateSync();
+    await client.pushSync([mutation]);
+    await client.pullSync("cursor-1", 500);
+
+    expect(seen.map((request) => request.url)).toEqual([
+      "http://cloud.test/v1/sync/negotiate",
+      "http://cloud.test/v1/sync/push",
+      "http://cloud.test/v1/sync/pull",
+    ]);
+    expect(seen[0]?.body).toEqual({ protocolVersion: 1 });
+    expect(seen[1]?.body).toEqual({
+      protocolVersion: 1,
+      mutations: [mutation],
+    });
+    expect(seen[2]?.body).toEqual({
+      protocolVersion: 1,
+      cursor: "cursor-1",
+      limit: 500,
+    });
+    expect(seen[1]?.headers.get("X-Aether-Device-Id")).toBe(config.deviceId);
+    expect(seen[1]?.headers.get("X-Request-Id")).toBeTruthy();
+  });
+
   describe("getUsage", () => {
     test("decodes authoritative Free plan usage snapshot", async () => {
       const client = new AetherCloudClient(config, async (input) => {

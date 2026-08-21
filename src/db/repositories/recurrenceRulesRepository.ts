@@ -8,6 +8,11 @@ import type {
 } from "@/domain/entities";
 import { DatabaseError } from "../errors";
 import type { SqlDatabase } from "../types";
+import { SyncOutboxRepository } from "./syncOutboxRepository";
+import {
+  toSyncRecurrenceEntityId,
+  toSyncRecurrencePayload,
+} from "@/services/sync/mappers";
 
 interface RecurrenceRuleRow {
   id: string;
@@ -45,6 +50,7 @@ function mapRule(row: RecurrenceRuleRow): RecurrenceRule {
   return {
     id: row.id,
     taskId: row.task_id,
+    lastCompletedTaskId: row.last_completed_task_id,
     frequency: row.frequency as RecurrenceFrequency,
     interval: row.interval,
     weekdays: parseNumberArray(row.weekdays_json),
@@ -68,7 +74,10 @@ function serializeArray(value: number[] | null | undefined): string | null {
 }
 
 export class RecurrenceRulesRepository {
-  constructor(private readonly db: SqlDatabase) {}
+  constructor(
+    private readonly db: SqlDatabase,
+    private readonly sync?: SyncOutboxRepository,
+  ) {}
 
   async getById(id: string): Promise<RecurrenceRule | null> {
     const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
@@ -94,6 +103,13 @@ export class RecurrenceRulesRepository {
     return row ? mapRule(row) : null;
   }
 
+  async listAll(): Promise<RecurrenceRule[]> {
+    const rows = await this.db.getAllAsync<RecurrenceRuleRow>(
+      `SELECT * FROM recurrence_rules ORDER BY updated_at ASC, id ASC`,
+    );
+    return rows.map(mapRule);
+  }
+
   async create(input: CreateRecurrenceRuleInput): Promise<RecurrenceRule> {
     if (!input.taskId || !input.startDate) {
       throw new DatabaseError(
@@ -104,30 +120,38 @@ export class RecurrenceRulesRepository {
     const interval = Math.max(1, Math.floor(input.interval ?? 1));
     const id = input.id ?? createId();
     const now = new Date().toISOString();
-    await this.db.runAsync(
-      `INSERT INTO recurrence_rules (
-        id, task_id, last_completed_task_id, frequency, interval, weekdays_json, month_days_json,
-        start_date, end_date, max_occurrences, occurrence_count, mode,
-        timezone, active, created_at, updated_at
-      ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      [
-        id,
-        input.taskId,
-        input.frequency,
-        interval,
-        serializeArray(input.weekdays),
-        serializeArray(input.monthDays),
-        input.startDate,
-        input.endDate ?? null,
-        input.maxOccurrences ?? null,
-        Math.max(1, Math.floor(input.occurrenceCount ?? 1)),
-        input.mode ?? "fixed",
-        input.timezone ?? null,
-        now,
-        now,
-      ],
-    );
-    const created = await this.getById(id);
+    let created: RecurrenceRule | null = null;
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `INSERT INTO recurrence_rules (
+          id, task_id, last_completed_task_id, frequency, interval, weekdays_json, month_days_json,
+          start_date, end_date, max_occurrences, occurrence_count, mode,
+          timezone, active, created_at, updated_at
+        ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+        [
+          id,
+          input.taskId,
+          input.frequency,
+          interval,
+          serializeArray(input.weekdays),
+          serializeArray(input.monthDays),
+          input.startDate,
+          input.endDate ?? null,
+          input.maxOccurrences ?? null,
+          Math.max(1, Math.floor(input.occurrenceCount ?? 1)),
+          input.mode ?? "fixed",
+          input.timezone ?? null,
+          now,
+          now,
+        ],
+      );
+      const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+        `SELECT * FROM recurrence_rules WHERE id = ?`,
+        [id],
+      );
+      created = row ? mapRule(row) : null;
+      if (created) await this.enqueueSyncUpsertInTransaction(created);
+    });
     if (!created)
       throw new DatabaseError(
         "QUERY_FAILED",
@@ -163,26 +187,35 @@ export class RecurrenceRulesRepository {
       timezone:
         input.timezone === undefined ? existing.timezone : input.timezone,
     };
-    await this.db.runAsync(
-      `UPDATE recurrence_rules SET
-        frequency = ?, interval = ?, weekdays_json = ?, month_days_json = ?, start_date = ?,
-        end_date = ?, max_occurrences = ?, mode = ?, timezone = ?, updated_at = ?
-       WHERE id = ?`,
-      [
-        next.frequency,
-        next.interval,
-        serializeArray(next.weekdays),
-        serializeArray(next.monthDays),
-        next.startDate,
-        next.endDate,
-        next.maxOccurrences,
-        next.mode,
-        next.timezone,
-        new Date().toISOString(),
-        id,
-      ],
-    );
-    const updated = await this.getById(id);
+    const now = new Date().toISOString();
+    let updated: RecurrenceRule | null = null;
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE recurrence_rules SET
+          frequency = ?, interval = ?, weekdays_json = ?, month_days_json = ?, start_date = ?,
+          end_date = ?, max_occurrences = ?, mode = ?, timezone = ?, updated_at = ?
+         WHERE id = ?`,
+        [
+          next.frequency,
+          next.interval,
+          serializeArray(next.weekdays),
+          serializeArray(next.monthDays),
+          next.startDate,
+          next.endDate,
+          next.maxOccurrences,
+          next.mode,
+          next.timezone,
+          now,
+          id,
+        ],
+      );
+      const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+        `SELECT * FROM recurrence_rules WHERE id = ?`,
+        [id],
+      );
+      updated = row ? mapRule(row) : null;
+      if (updated) await this.enqueueSyncUpsertInTransaction(updated);
+    });
     if (!updated)
       throw new DatabaseError(
         "QUERY_FAILED",
@@ -192,11 +225,19 @@ export class RecurrenceRulesRepository {
   }
 
   async stop(id: string): Promise<RecurrenceRule> {
-    await this.db.runAsync(
-      `UPDATE recurrence_rules SET active = 0, updated_at = ? WHERE id = ?`,
-      [new Date().toISOString(), id],
-    );
-    const rule = await this.getById(id);
+    let rule: RecurrenceRule | null = null;
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE recurrence_rules SET active = 0, updated_at = ? WHERE id = ?`,
+        [new Date().toISOString(), id],
+      );
+      const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+        `SELECT * FROM recurrence_rules WHERE id = ?`,
+        [id],
+      );
+      rule = row ? mapRule(row) : null;
+      if (rule) await this.enqueueSyncUpsertInTransaction(rule);
+    });
     if (!rule)
       throw new DatabaseError("NOT_FOUND", "Recurrence rule not found.");
     return rule;
@@ -208,20 +249,35 @@ export class RecurrenceRulesRepository {
     nextTaskId: string,
     expectedOccurrenceCount: number,
   ): Promise<boolean> {
-    const result = await this.db.runAsync(
-      `UPDATE recurrence_rules
-       SET task_id = ?, last_completed_task_id = ?, occurrence_count = occurrence_count + 1, updated_at = ?
-       WHERE id = ? AND active = 1 AND task_id = ? AND occurrence_count = ?`,
-      [
-        nextTaskId,
-        previousTaskId,
-        new Date().toISOString(),
-        id,
-        previousTaskId,
-        expectedOccurrenceCount,
-      ],
-    );
-    return result.changes === 1;
+    let advanced = false;
+    await this.db.withTransactionAsync(async () => {
+      const result = await this.db.runAsync(
+        `UPDATE recurrence_rules
+         SET task_id = ?, last_completed_task_id = ?, occurrence_count = occurrence_count + 1, updated_at = ?
+         WHERE id = ? AND active = 1 AND task_id = ? AND occurrence_count = ?`,
+        [
+          nextTaskId,
+          previousTaskId,
+          new Date().toISOString(),
+          id,
+          previousTaskId,
+          expectedOccurrenceCount,
+        ],
+      );
+      advanced = result.changes === 1;
+      if (!advanced) return;
+      const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+        `SELECT * FROM recurrence_rules WHERE id = ?`,
+        [id],
+      );
+      if (!row)
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Recurrence advance verification failed.",
+        );
+      await this.enqueueSyncUpsertInTransaction(mapRule(row));
+    });
+    return advanced;
   }
 
   async rollbackAdvance(
@@ -230,21 +286,49 @@ export class RecurrenceRulesRepository {
     currentTaskId: string,
     expectedOccurrenceCount: number,
   ): Promise<boolean> {
-    const result = await this.db.runAsync(
-      `UPDATE recurrence_rules
-       SET task_id = ?, last_completed_task_id = NULL,
-           occurrence_count = occurrence_count - 1, updated_at = ?
-       WHERE id = ? AND active = 1 AND task_id = ?
-         AND last_completed_task_id = ? AND occurrence_count = ?`,
-      [
-        previousTaskId,
-        new Date().toISOString(),
-        id,
-        currentTaskId,
-        previousTaskId,
-        expectedOccurrenceCount,
-      ],
-    );
-    return result.changes === 1;
+    let rolledBack = false;
+    await this.db.withTransactionAsync(async () => {
+      const result = await this.db.runAsync(
+        `UPDATE recurrence_rules
+         SET task_id = ?, last_completed_task_id = NULL,
+             occurrence_count = occurrence_count - 1, updated_at = ?
+         WHERE id = ? AND active = 1 AND task_id = ?
+           AND last_completed_task_id = ? AND occurrence_count = ?`,
+        [
+          previousTaskId,
+          new Date().toISOString(),
+          id,
+          currentTaskId,
+          previousTaskId,
+          expectedOccurrenceCount,
+        ],
+      );
+      rolledBack = result.changes === 1;
+      if (!rolledBack) return;
+      const row = await this.db.getFirstAsync<RecurrenceRuleRow>(
+        `SELECT * FROM recurrence_rules WHERE id = ?`,
+        [id],
+      );
+      if (!row)
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Recurrence rollback verification failed.",
+        );
+      await this.enqueueSyncUpsertInTransaction(mapRule(row));
+    });
+    return rolledBack;
+  }
+
+  private async enqueueSyncUpsertInTransaction(
+    rule: RecurrenceRule,
+  ): Promise<void> {
+    if (!this.sync) return;
+    await this.sync.enqueueMutationInTransaction({
+      collection: "reminders",
+      entityId: toSyncRecurrenceEntityId(rule.id),
+      operation: "upsert",
+      payload: toSyncRecurrencePayload(rule),
+      clientModifiedAt: rule.updatedAt,
+    });
   }
 }

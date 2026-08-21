@@ -29,7 +29,7 @@ import type { NotificationReconciliationOptions } from "@/services/notifications
 import { getDeviceTimeZone } from "@/temporal/localCalendar";
 import { getAetherCore } from "@/core";
 import { getDatabaseErrorMessage } from "@/db/errors";
-import { useSettingsStore } from "@/stores/settings.store";
+import { initialSettings, useSettingsStore } from "@/stores/settings.store";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { useAetherTheme } from "@/theme/useAetherTheme";
 import {
@@ -54,7 +54,10 @@ import {
 import { MotionProvider } from "@/motion";
 import { isAetherCloudConfigured } from "@/services/cloud/config";
 import { bootstrapCloudIdentity } from "@/services/cloud/bootstrap";
+import { getAetherCloudClient } from "@/services/cloud/client";
 import { bindRevenueCatAccount } from "@/services/revenuecat/bootstrap";
+import { SyncEngine } from "@/services/sync/engine";
+import { hydratePreferencesFromSqlite } from "@/services/sync/preferences";
 
 type BootState =
   | { phase: "loading" }
@@ -103,6 +106,7 @@ export default function RootLayout() {
   );
   const notificationSyncRef = useRef<Promise<void> | null>(null);
   const cloudBootstrapRef = useRef<Promise<void> | null>(null);
+  const syncEngineRef = useRef<SyncEngine | null>(null);
 
   const syncNotifications = useCallback(
     (
@@ -217,8 +221,39 @@ export default function RootLayout() {
     if (cloudBootstrapRef.current) return cloudBootstrapRef.current;
 
     const operation = (async () => {
-      const { accountId } = await bootstrapCloudIdentity();
+      const db = getDatabase();
+      const core = getAetherCore(db);
+      const existingScope = await core.services.repos.sync.getActiveScope();
+      if (existingScope && syncEngineRef.current) {
+        const result = await syncEngineRef.current.runOnce();
+        if (
+          result.phase !== "blocked" ||
+          result.lastFailureCategory !== "unauthorized"
+        ) {
+          return;
+        }
+        // Re-run the canonical device registration flow after revocation or
+        // an account/device authorization change; never bypass it locally.
+        syncEngineRef.current.deactivate();
+        await core.services.repos.sync.clearActiveScope();
+      }
+      const client = getAetherCloudClient();
+      const { accountId, device } = await bootstrapCloudIdentity(client);
       await bindRevenueCatAccount(accountId);
+      await core.services.repos.sync.bindScope({
+        accountId,
+        deviceId: device.id,
+      });
+      useSettingsStore.setState(
+        await hydratePreferencesFromSqlite(initialSettings),
+      );
+      if (!syncEngineRef.current) {
+        syncEngineRef.current = new SyncEngine(db, client, (settings) => {
+          useSettingsStore.setState(settings);
+        });
+      }
+      syncEngineRef.current.activate({ accountId, deviceId: device.id });
+      await syncEngineRef.current.runOnce();
     })();
     cloudBootstrapRef.current = operation;
     const clearInFlight = () => {
@@ -239,6 +274,7 @@ export default function RootLayout() {
           mode === "recreate" ? RECREATE_DATABASE_CONFIRMATION : undefined,
         );
         await bootstrapAppData();
+        await loadSettings();
         if (mode === "recreate") {
           useTasksUiStore.setState({
             status: "idle",
@@ -274,7 +310,7 @@ export default function RootLayout() {
         setBoot({ phase: "error", message: getDatabaseErrorMessage(error) });
       }
     },
-    [refreshAllSurfaces, refreshRecovery, syncNotifications],
+    [loadSettings, refreshAllSurfaces, refreshRecovery, syncNotifications],
   );
 
   const confirmDatabaseRecreation = useCallback(() => {
@@ -322,6 +358,7 @@ export default function RootLayout() {
       try {
         await bootstrapAppData();
         if (cancelled) return;
+        await loadSettings();
         // Task projections are loaded by the focused route. Keeping boot limited
         // to database readiness avoids querying Today twice on cold start.
         setBoot({ phase: "ready" });
@@ -344,7 +381,13 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, [refreshAllSurfaces, refreshAttention, router, syncNotifications]);
+  }, [
+    loadSettings,
+    refreshAllSurfaces,
+    refreshAttention,
+    router,
+    syncNotifications,
+  ]);
 
   useEffect(() => {
     if (boot.phase !== "ready" || !isAetherCloudConfigured()) return;
@@ -352,6 +395,12 @@ export default function RootLayout() {
     let appActive = AppState.currentState === "active";
     let retryAttempt = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const syncTimer = setInterval(() => {
+      if (!appActive) return;
+      void syncEngineRef.current?.runOnce().catch((error: unknown) => {
+        reportNonFatalError("cloud-sync-interval", error);
+      });
+    }, 60_000);
 
     const clearRetry = () => {
       if (retryTimer === null) return;
@@ -396,6 +445,8 @@ export default function RootLayout() {
     return () => {
       disposed = true;
       clearRetry();
+      clearInterval(syncTimer);
+      syncEngineRef.current?.deactivate();
       subscription.remove();
     };
   }, [boot.phase, runCloudBootstrap]);

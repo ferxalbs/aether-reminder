@@ -105,6 +105,27 @@ describe("CaptureOrchestrator", () => {
         assetRef: "task-source://capture-sources/image.png",
       }),
     ]);
+    await repos.captureCommits.replaceImageAssetRef(
+      task.id,
+      "task-source://capture-sources/image.png",
+      "task-source://capture-sources/final.png",
+    );
+    const captureMutations = await repos.db.getAllAsync<{
+      payload_json: string;
+    }>(
+      `SELECT payload_json FROM sync_outbox
+       WHERE collection = 'captures' AND entity_id = ? ORDER BY sequence, mutation_id`,
+      [envelope.id],
+    );
+    const capturePayload = JSON.parse(
+      captureMutations.at(-1)!.payload_json,
+    ) as { sources: { assetRef?: string; hasAsset?: boolean }[] };
+    expect(
+      capturePayload.sources.some((source) => source.hasAsset === true),
+    ).toBe(true);
+    expect(capturePayload.sources.some((source) => source.assetRef)).toBe(
+      false,
+    );
   });
 
   test("creates a dirty reliability projection for timed captured tasks", async () => {

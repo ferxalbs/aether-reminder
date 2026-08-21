@@ -71,7 +71,9 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
     const handleThemeChange = useCallback(
       (val: UserSettings["theme"]) => {
         if (theme === val) return;
-        setTheme(val);
+        void setTheme(val).catch((error: unknown) => {
+          reportNonFatalError("settings-sync-write", error);
+        });
         if (hapticsEnabled) {
           selectionAsync().catch((error: unknown) => {
             reportNonFatalError("haptics", error);
@@ -85,7 +87,7 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
       async (enabled: boolean) => {
         try {
           await persistAdaptiveNudges(enabled);
-          setAdaptiveNudgesPreference(enabled);
+          await setAdaptiveNudgesPreference(enabled);
         } catch (error) {
           onShowAlert({
             title: "Adaptive Nudges Not Updated",
@@ -207,7 +209,13 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
                   value={
                     materialColorsEnabled && aetherTheme.isDynamicColorAvailable
                   }
-                  onValueChange={setMaterialColorsEnabled}
+                  onValueChange={(value) =>
+                    void setMaterialColorsEnabled(value).catch(
+                      (error: unknown) => {
+                        reportNonFatalError("settings-sync-write", error);
+                      },
+                    )
+                  }
                   disabled={!aetherTheme.isDynamicColorAvailable}
                   accessibilityLabel="Dynamic Colors"
                   accessibilityHint="Use wallpaper-derived Material You accents on Android 12 and later"
@@ -229,7 +237,11 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
           trailing={
             <ToggleSwitch
               value={hapticsEnabled}
-              onValueChange={setHapticsEnabled}
+              onValueChange={(value) =>
+                void setHapticsEnabled(value).catch((error: unknown) => {
+                  reportNonFatalError("settings-sync-write", error);
+                })
+              }
               accessibilityLabel="Haptic Feedback"
             />
           }
@@ -247,7 +259,11 @@ export const SettingsPreferencesSection: React.FC<SettingsPreferencesSectionProp
           trailing={
             <ToggleSwitch
               value={autoSummarize}
-              onValueChange={setAutoSummarize}
+              onValueChange={(value) =>
+                void setAutoSummarize(value).catch((error: unknown) => {
+                  reportNonFatalError("settings-sync-write", error);
+                })
+              }
               accessibilityLabel="Auto Task Summarize"
             />
           }

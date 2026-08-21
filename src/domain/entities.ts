@@ -119,6 +119,8 @@ export interface RecurrenceRule {
   id: string;
   /** Current occurrence task. Historical completed tasks remain immutable. */
   taskId: string;
+  /** The completed occurrence that advanced this rule, when present. */
+  lastCompletedTaskId?: string | null;
   frequency: RecurrenceFrequency;
   interval: number;
   /** JS weekday numbers: Sunday=0 ... Saturday=6. */

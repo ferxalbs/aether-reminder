@@ -4,6 +4,8 @@ import {
   migrateLegacyTasks,
   type LegacyMigrationResult,
 } from "./legacyMigration";
+import { SyncOutboxRepository } from "./repositories/syncOutboxRepository";
+import { backfillLocalSyncState } from "@/services/sync/backfill";
 
 export type AppDataStatus = "idle" | "booting" | "ready" | "error";
 
@@ -22,7 +24,10 @@ export interface BootstrapResult {
 export async function bootstrapAppData(): Promise<BootstrapResult> {
   try {
     const handle = await initializeDatabase();
-    const legacy = await migrateLegacyTasks(handle.db);
+    await backfillLocalSyncState(handle.db);
+    const legacy = await migrateLegacyTasks(handle.db, {
+      sync: new SyncOutboxRepository(handle.db),
+    });
     return {
       status: "ready",
       schemaFrom: handle.migration.fromVersion,

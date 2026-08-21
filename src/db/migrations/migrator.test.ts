@@ -23,6 +23,7 @@ describe("schema migrations", () => {
       "0007_notification_reliability",
       "0008_adaptive_nudges",
       "0009_universal_capture",
+      "0010_sync",
     ]);
     expect(await getSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION);
 
@@ -45,6 +46,11 @@ describe("schema migrations", () => {
     expect(names).toContain("notification_action_receipts");
     expect(names).toContain("nudge_events");
     expect(names).toContain("nudge_profiles");
+    expect(names).toContain("sync_runtime");
+    expect(names).toContain("sync_outbox");
+    expect(names).toContain("sync_cursors");
+    expect(names).toContain("sync_entity_state");
+    expect(names).toContain("sync_preferences");
 
     const indexes = await db.getAllAsync<{ name: string }>(
       `SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name`,
@@ -68,7 +74,23 @@ describe("schema migrations", () => {
         "idx_nudge_events_task_time",
         "idx_nudge_events_type_time",
         "idx_nudge_events_nudge_time",
+        "idx_sync_outbox_pending",
+        "idx_sync_outbox_entity",
+        "idx_sync_entity_lookup",
+        "idx_sync_preferences_scope",
       ]),
+    );
+    const syncEntityColumns = await db.getAllAsync<{ name: string }>(
+      `PRAGMA table_info(sync_entity_state)`,
+    );
+    expect(syncEntityColumns.map((column) => column.name)).toContain(
+      "ownership_blocked",
+    );
+    const syncRuntimeColumns = await db.getAllAsync<{ name: string }>(
+      `PRAGMA table_info(sync_runtime)`,
+    );
+    expect(syncRuntimeColumns.map((column) => column.name)).toContain(
+      "next_outbox_sequence",
     );
     await db.closeAsync?.();
   });
@@ -91,6 +113,7 @@ describe("schema migrations", () => {
       "0007_notification_reliability",
       "0008_adaptive_nudges",
       "0009_universal_capture",
+      "0010_sync",
     ]);
     await db.closeAsync?.();
   });

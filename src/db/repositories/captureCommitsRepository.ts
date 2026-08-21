@@ -1,5 +1,7 @@
 import type { CaptureSource, TaskCaptureSource } from "@/domain/entities";
 import type { SqlDatabase } from "@/db/types";
+import { SyncOutboxRepository } from "./syncOutboxRepository";
+import { toSyncCapturePayload } from "@/services/sync/mappers";
 
 interface CaptureCommitRow {
   capture_id: string;
@@ -48,7 +50,10 @@ function mapSource(row: CaptureSourceRow): TaskCaptureSource {
 }
 
 export class CaptureCommitsRepository {
-  constructor(private readonly db: SqlDatabase) {}
+  constructor(
+    private readonly db: SqlDatabase,
+    private readonly sync?: SyncOutboxRepository,
+  ) {}
 
   async get(captureId: string): Promise<CaptureCommit | null> {
     const row = await this.db.getFirstAsync<CaptureCommitRow>(
@@ -74,16 +79,49 @@ export class CaptureCommitsRepository {
     return rows.map(mapSource);
   }
 
+  async listAll(): Promise<CaptureCommit[]> {
+    const rows = await this.db.getAllAsync<CaptureCommitRow>(
+      `SELECT * FROM capture_commits ORDER BY committed_at ASC, capture_id ASC`,
+    );
+    return rows.map((row) => ({
+      captureId: row.capture_id,
+      taskId: row.task_id,
+      ingress: row.ingress,
+      committedAt: row.committed_at,
+    }));
+  }
+
   async replaceImageAssetRef(
     taskId: string,
     from: string,
     to: string,
   ): Promise<void> {
-    await this.db.runAsync(
-      `UPDATE task_capture_sources SET asset_ref = ?
-       WHERE task_id = ? AND kind = 'image' AND asset_ref = ?`,
-      [to, taskId, from],
-    );
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE task_capture_sources SET asset_ref = ?
+         WHERE task_id = ? AND kind = 'image' AND asset_ref = ?`,
+        [to, taskId, from],
+      );
+      if (!this.sync) return;
+      const capture = await this.db.getFirstAsync<CaptureCommitRow>(
+        `SELECT * FROM capture_commits WHERE task_id = ? LIMIT 1`,
+        [taskId],
+      );
+      if (!capture) return;
+      await this.sync.enqueueMutationInTransaction({
+        collection: "captures",
+        entityId: capture.capture_id,
+        operation: "upsert",
+        payload: toSyncCapturePayload({
+          captureId: capture.capture_id,
+          taskId: capture.task_id,
+          ingress: capture.ingress,
+          committedAt: capture.committed_at,
+          sources: await this.listSources(taskId),
+        }),
+        clientModifiedAt: new Date().toISOString(),
+      });
+    });
   }
 
   async listLegacySharedImageAssets(

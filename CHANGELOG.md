@@ -2,6 +2,29 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.21 (1) [Mobile Sync v1]
+
+### Durable local-first convergence
+
+- Added transactional Sync v1 outbox with monotonic mutation ordering,
+  account/device-scoped cursors, entity version state, typed Cloud transport,
+  and bounded foreground push/pull.
+- Integrated task, reminder, recurrence, capture metadata, and preference
+  repository writes with durable Sync intent without making local writes depend
+  on network availability.
+- Added deterministic reconciliation for versions, conflicts, local echoes,
+  pagination, and tombstones while keeping local image paths and local-only
+  project/projection state out of Cloud payloads.
+
+### Validation and runtime boundaries
+
+- Mobile deterministic validation passes with 439 tests, strict typecheck,
+  lint, formatting, and diff checks. Cloud's unchanged deterministic Sync
+  regression suite passes 126 tests.
+- Live Supabase/Cloud/Turso configuration, physical Android Sync E2E, and
+  account-switch behavior for currently device-global local domain rows remain
+  runtime/product gates; no provider mutation or deployment was performed.
+
 ## Unreleased - 2026.08.19 (2) [Supabase Auth and Canonical Device Transport]
 
 ### Identity and Cloud

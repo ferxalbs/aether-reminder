@@ -11,6 +11,11 @@ import { DatabaseError } from "../errors";
 import { mapTaskRow, type TaskRow } from "../mappers";
 import type { SqlDatabase } from "../types";
 import { TaskEventsRepository } from "./taskEventsRepository";
+import { SyncOutboxRepository } from "./syncOutboxRepository";
+import {
+  toSyncCapturePayload,
+  toSyncTaskPayload,
+} from "@/services/sync/mappers";
 
 const ACTIVE = `deleted_at IS NULL`;
 
@@ -53,7 +58,10 @@ function sameSchedule(
 export class TasksRepository {
   private readonly events: TaskEventsRepository;
 
-  constructor(private readonly db: SqlDatabase) {
+  constructor(
+    private readonly db: SqlDatabase,
+    private readonly sync?: SyncOutboxRepository,
+  ) {
     this.events = new TaskEventsRepository(db);
   }
 
@@ -309,6 +317,13 @@ export class TasksRepository {
       input.dueDate === undefined ? getLocalDateString() : input.dueDate;
     const source = input.source ?? "manual";
     const creationOrigin = input.creationOrigin ?? source;
+    const captureSources = capture
+      ? capture.sources.map((source, position) => ({
+          id: createId(),
+          position,
+          source,
+        }))
+      : [];
 
     try {
       await this.db.withTransactionAsync(async () => {
@@ -353,14 +368,15 @@ export class TasksRepository {
         });
 
         if (capture) {
-          for (const [position, captureSource] of capture.sources.entries()) {
+          for (const capturedSource of captureSources) {
+            const { position, source: captureSource } = capturedSource;
             await this.db.runAsync(
               `INSERT INTO task_capture_sources (
                 id, task_id, position, kind, url, asset_ref, mime_type,
                 size_bytes, display_name, created_at
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
-                createId(),
+                capturedSource.id,
                 id,
                 position,
                 captureSource.kind,
@@ -382,6 +398,52 @@ export class TasksRepository {
              VALUES (?, ?, ?, ?)`,
             [capture.captureId, id, capture.ingress, now],
           );
+        }
+
+        const taskRow = await this.db.getFirstAsync<TaskRow>(
+          "SELECT * FROM tasks WHERE id = ?",
+          [id],
+        );
+        if (!taskRow) {
+          throw new DatabaseError(
+            "QUERY_FAILED",
+            "Task insert sync snapshot failed.",
+          );
+        }
+        await this.enqueueTaskUpsertInTransaction(mapTaskRow(taskRow));
+        if (capture && this.sync) {
+          await this.sync.enqueueMutationInTransaction({
+            collection: "captures",
+            entityId: capture.captureId,
+            operation: "upsert",
+            payload: toSyncCapturePayload({
+              captureId: capture.captureId,
+              taskId: id,
+              ingress: capture.ingress,
+              committedAt: now,
+              sources: captureSources.map(({ id: sourceId, source }) =>
+                source.kind === "url"
+                  ? {
+                      id: sourceId,
+                      taskId: id,
+                      createdAt: now,
+                      kind: "url" as const,
+                      url: source.url,
+                    }
+                  : {
+                      id: sourceId,
+                      taskId: id,
+                      createdAt: now,
+                      kind: "image" as const,
+                      assetRef: source.assetRef,
+                      mimeType: source.mimeType,
+                      sizeBytes: source.sizeBytes,
+                      displayName: source.displayName,
+                    },
+              ),
+            }),
+            clientModifiedAt: now,
+          });
         }
       });
     } catch (cause) {
@@ -474,6 +536,18 @@ export class TasksRepository {
         },
         createdAt: now,
       });
+
+      const updatedRow = await this.db.getFirstAsync<TaskRow>(
+        "SELECT * FROM tasks WHERE id = ?",
+        [id],
+      );
+      if (!updatedRow) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Task update sync snapshot failed.",
+        );
+      }
+      await this.enqueueTaskUpsertInTransaction(mapTaskRow(updatedRow));
     });
 
     const task = await this.getById(id);
@@ -571,6 +645,7 @@ export class TasksRepository {
             "QUERY_FAILED",
             "Recovery update verification failed.",
           );
+        await this.enqueueTaskUpsertInTransaction(after);
         outcomes.push({
           taskId: change.taskId,
           applied: true,
@@ -602,6 +677,17 @@ export class TasksRepository {
         payload: { completedAt: now },
         createdAt: now,
       });
+      const updatedRow = await this.db.getFirstAsync<TaskRow>(
+        "SELECT * FROM tasks WHERE id = ?",
+        [id],
+      );
+      if (!updatedRow) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Task completion sync snapshot failed.",
+        );
+      }
+      await this.enqueueTaskUpsertInTransaction(mapTaskRow(updatedRow));
     });
 
     const task = await this.getById(id);
@@ -632,6 +718,17 @@ export class TasksRepository {
         payload: {},
         createdAt: now,
       });
+      const updatedRow = await this.db.getFirstAsync<TaskRow>(
+        "SELECT * FROM tasks WHERE id = ?",
+        [id],
+      );
+      if (!updatedRow) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Task reopen sync snapshot failed.",
+        );
+      }
+      await this.enqueueTaskUpsertInTransaction(mapTaskRow(updatedRow));
     });
 
     const task = await this.getById(id);
@@ -661,6 +758,22 @@ export class TasksRepository {
         payload: { deletedAt: now },
         createdAt: now,
       });
+      await this.db.runAsync(
+        `UPDATE reminders
+         SET projection_dirty = 1, projection_state = 'stale',
+             projection_revision = projection_revision + 1, updated_at = ?
+         WHERE task_id = ?`,
+        [now, id],
+      );
+      if (this.sync) {
+        await this.sync.enqueueMutationInTransaction({
+          collection: "tasks",
+          entityId: id,
+          operation: "delete",
+          payload: null,
+          clientModifiedAt: now,
+        });
+      }
     });
   }
 
@@ -683,6 +796,17 @@ export class TasksRepository {
         payload: { restored: true },
         createdAt: now,
       });
+      const updatedRow = await this.db.getFirstAsync<TaskRow>(
+        "SELECT * FROM tasks WHERE id = ?",
+        [id],
+      );
+      if (!updatedRow) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Task restore sync snapshot failed.",
+        );
+      }
+      await this.enqueueTaskUpsertInTransaction(mapTaskRow(updatedRow));
     });
 
     const task = await this.getById(id);
@@ -699,5 +823,16 @@ export class TasksRepository {
       `SELECT COUNT(*) as c FROM tasks WHERE ${ACTIVE}`,
     );
     return row?.c ?? 0;
+  }
+
+  private async enqueueTaskUpsertInTransaction(task: Task): Promise<void> {
+    if (!this.sync) return;
+    await this.sync.enqueueMutationInTransaction({
+      collection: "tasks",
+      entityId: task.id,
+      operation: "upsert",
+      payload: toSyncTaskPayload(task),
+      clientModifiedAt: task.updatedAt,
+    });
   }
 }

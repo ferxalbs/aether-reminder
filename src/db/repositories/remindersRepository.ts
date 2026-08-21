@@ -9,6 +9,8 @@ import type {
 import { DatabaseError } from "../errors";
 import { mapReminderRow, type ReminderRow } from "../mappers";
 import type { SqlDatabase } from "../types";
+import { SyncOutboxRepository } from "./syncOutboxRepository";
+import { toSyncReminderPayload } from "@/services/sync/mappers";
 
 export interface CreateReminderInput {
   id?: string;
@@ -43,7 +45,10 @@ export interface ProjectionCounts {
 }
 
 export class RemindersRepository {
-  constructor(private readonly db: SqlDatabase) {}
+  constructor(
+    private readonly db: SqlDatabase,
+    private readonly sync?: SyncOutboxRepository,
+  ) {}
 
   async getById(id: string): Promise<Reminder | null> {
     const row = await this.db.getFirstAsync<ReminderRow>(
@@ -103,34 +108,46 @@ export class RemindersRepository {
     }
     const id = input.id ?? createId();
     const now = new Date().toISOString();
-    await this.db.runAsync(
-      `INSERT INTO reminders (
-        id, task_id, scheduled_date, scheduled_time, timezone, semantics, enabled,
-        timing_precision, kind, reason, generation_source, policy_version,
-        idempotency_key, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        input.taskId,
-        input.scheduledDate ?? null,
-        input.scheduledTime ?? null,
-        input.timezone ?? null,
-        input.semantics ?? "floating",
-        input.enabled === false ? 0 : 1,
-        input.timingPrecision ?? "normal",
-        input.kind ?? "primary",
-        input.reason ?? null,
-        input.generationSource ??
-          (input.kind === "adaptive_followup"
-            ? "adaptive_nudge_engine"
-            : "manual"),
-        input.policyVersion ??
-          (input.kind === "adaptive_followup" ? "adaptive-v1" : "baseline-v1"),
-        input.idempotencyKey ?? null,
-        now,
-        now,
-      ],
-    );
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `INSERT INTO reminders (
+          id, task_id, scheduled_date, scheduled_time, timezone, semantics, enabled,
+          timing_precision, kind, reason, generation_source, policy_version,
+          idempotency_key, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          input.taskId,
+          input.scheduledDate ?? null,
+          input.scheduledTime ?? null,
+          input.timezone ?? null,
+          input.semantics ?? "floating",
+          input.enabled === false ? 0 : 1,
+          input.timingPrecision ?? "normal",
+          input.kind ?? "primary",
+          input.reason ?? null,
+          input.generationSource ??
+            (input.kind === "adaptive_followup"
+              ? "adaptive_nudge_engine"
+              : "manual"),
+          input.policyVersion ??
+            (input.kind === "adaptive_followup"
+              ? "adaptive-v1"
+              : "baseline-v1"),
+          input.idempotencyKey ?? null,
+          now,
+          now,
+        ],
+      );
+      const created = await this.getById(id);
+      if (!created) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Reminder insert verification failed.",
+        );
+      }
+      await this.enqueueSyncUpsertInTransaction(created);
+    });
     const reminder = await this.getById(id);
     if (!reminder)
       throw new DatabaseError(
@@ -145,13 +162,21 @@ export class RemindersRepository {
     const nextState = enabled
       ? `CASE WHEN projection_state = 'scheduled' THEN 'stale' ELSE 'pending' END`
       : `'stale'`;
-    await this.db.runAsync(
-      `UPDATE reminders
-       SET enabled = ?, projection_dirty = 1, projection_state = ${nextState},
-           projection_revision = projection_revision + 1, updated_at = ?
-       WHERE id = ?`,
-      [enabled ? 1 : 0, now, id],
-    );
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE reminders
+         SET enabled = ?,
+             cancelled_at = CASE WHEN ? = 1 AND kind = 'primary' THEN NULL ELSE cancelled_at END,
+             consumed_at = CASE WHEN ? = 1 AND kind = 'primary' THEN NULL ELSE consumed_at END,
+             projection_dirty = 1, projection_state = ${nextState},
+             projection_revision = projection_revision + 1, updated_at = ?
+         WHERE id = ?`,
+        [enabled ? 1 : 0, enabled ? 1 : 0, enabled ? 1 : 0, now, id],
+      );
+      const updated = await this.getById(id);
+      if (!updated) throw new DatabaseError("NOT_FOUND", "Reminder not found.");
+      await this.enqueueSyncUpsertInTransaction(updated);
+    });
     const reminder = await this.getById(id);
     if (!reminder) throw new DatabaseError("NOT_FOUND", "Reminder not found.");
     return reminder;
@@ -171,26 +196,36 @@ export class RemindersRepository {
     if (!existing) throw new DatabaseError("NOT_FOUND", "Reminder not found.");
 
     const now = new Date().toISOString();
-    await this.db.runAsync(
-      `UPDATE reminders SET
-        scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?,
-        timing_precision = ?, projection_dirty = 1, projection_state = 'stale',
-        projection_revision = projection_revision + 1, updated_at = ?
-       WHERE id = ?`,
-      [
-        input.scheduledDate !== undefined
-          ? input.scheduledDate
-          : existing.scheduledDate,
-        input.scheduledTime !== undefined
-          ? input.scheduledTime
-          : existing.scheduledTime,
-        input.timezone !== undefined ? input.timezone : existing.timezone,
-        input.semantics ?? existing.semantics,
-        input.timingPrecision ?? existing.timingPrecision,
-        now,
-        id,
-      ],
-    );
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync(
+        `UPDATE reminders SET
+          scheduled_date = ?, scheduled_time = ?, timezone = ?, semantics = ?,
+          timing_precision = ?, projection_dirty = 1, projection_state = 'stale',
+          projection_revision = projection_revision + 1, updated_at = ?
+         WHERE id = ?`,
+        [
+          input.scheduledDate !== undefined
+            ? input.scheduledDate
+            : existing.scheduledDate,
+          input.scheduledTime !== undefined
+            ? input.scheduledTime
+            : existing.scheduledTime,
+          input.timezone !== undefined ? input.timezone : existing.timezone,
+          input.semantics ?? existing.semantics,
+          input.timingPrecision ?? existing.timingPrecision,
+          now,
+          id,
+        ],
+      );
+      const updated = await this.getById(id);
+      if (!updated) {
+        throw new DatabaseError(
+          "QUERY_FAILED",
+          "Reminder update verification failed.",
+        );
+      }
+      await this.enqueueSyncUpsertInTransaction(updated);
+    });
     const reminder = await this.getById(id);
     if (!reminder)
       throw new DatabaseError(
@@ -202,6 +237,36 @@ export class RemindersRepository {
 
   async listAdaptiveNudgesForTask(taskId: string): Promise<Reminder[]> {
     return this.listForTask(taskId, { kind: "adaptive_followup" });
+  }
+
+  /** Delete a reminder definition and record a v1 tombstone atomically. */
+  async delete(id: string): Promise<void> {
+    await this.db.withTransactionAsync(async () => {
+      const existing = await this.getById(id);
+      if (!existing)
+        throw new DatabaseError("NOT_FOUND", "Reminder not found.");
+      // Keep the row long enough for the notification projection to cancel
+      // any native schedule. The Sync tombstone, not a hard delete, is the
+      // durable deletion intent.
+      const now = new Date().toISOString();
+      await this.db.runAsync(
+        `UPDATE reminders SET
+           enabled = 0, cancelled_at = COALESCE(cancelled_at, ?),
+           projection_dirty = 1, projection_state = 'stale',
+           projection_revision = projection_revision + 1, updated_at = ?
+         WHERE id = ?`,
+        [now, now, id],
+      );
+      if ((existing.kind ?? "primary") === "primary" && this.sync) {
+        await this.sync.enqueueMutationInTransaction({
+          collection: "reminders",
+          entityId: id,
+          operation: "delete",
+          payload: null,
+          clientModifiedAt: new Date().toISOString(),
+        });
+      }
+    });
   }
 
   async listAdaptiveNudges(limit?: number): Promise<Reminder[]> {
@@ -562,5 +627,20 @@ export class RemindersRepository {
       scheduled: row?.scheduled ?? 0,
       notRequired: row?.not_required ?? 0,
     };
+  }
+
+  private async enqueueSyncUpsertInTransaction(
+    reminder: Reminder,
+  ): Promise<void> {
+    if (!this.sync) return;
+    const payload = toSyncReminderPayload(reminder);
+    if (!payload) return;
+    await this.sync.enqueueMutationInTransaction({
+      collection: "reminders",
+      entityId: reminder.id,
+      operation: "upsert",
+      payload,
+      clientModifiedAt: reminder.updatedAt,
+    });
   }
 }
