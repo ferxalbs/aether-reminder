@@ -75,7 +75,10 @@ identity unless it was linked to a recoverable method first.
 `installationId` is client-generated and stable per installation where
 possible. `deviceId` is Cloud-generated, account-owned, persisted securely, and
 only sent as `X-Aether-Device-Id` after bearer authentication. It is never
-authentication by itself.
+authentication by itself. If Cloud reports that the canonical device has been
+revoked, Mobile clears that device identity, rotates the installation ID once,
+and repeats the same authenticated registration flow; it does not bypass Cloud
+authorization or discard local data.
 
 RevenueCat is initialized only for Android commerce and receives the canonical
 AETHER `accountId` through its externally managed App User ID / `logIn` path

@@ -35,6 +35,19 @@ export class DeviceIdentityStore {
     return installationId;
   }
 
+  /**
+   * Rotate the installation identity after Cloud permanently revokes it.
+   * The canonical device is cleared so the next registration cannot continue
+   * sending requests under the revoked device identity.
+   */
+  async rotateInstallationId(): Promise<string> {
+    await this.requireAvailable();
+    const installationId = createId();
+    await this.store.setItemAsync(INSTALLATION_ID_KEY, installationId);
+    await this.store.deleteItemAsync(DEVICE_ID_KEY);
+    return installationId;
+  }
+
   async setActiveAccount(accountId: string): Promise<void> {
     await this.requireAvailable();
     const previous = await this.store.getItemAsync(DEVICE_ACCOUNT_ID_KEY);

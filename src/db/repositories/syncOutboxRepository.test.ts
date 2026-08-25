@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { applyPragmas, runMigrations } from "../migrator";
 import { createBunSqliteDatabase } from "../bunSqliteAdapter";
 import type { SqlBindParams, SqlDatabase } from "../types";
 import { createRepositories } from ".";
 import { SyncOutboxRepository } from "./syncOutboxRepository";
 
-async function readyDb(): Promise<SqlDatabase> {
-  const db = createBunSqliteDatabase();
+async function readyDb(filename = ":memory:"): Promise<SqlDatabase> {
+  const db = createBunSqliteDatabase(filename);
   await applyPragmas(db);
   await runMigrations(db);
   return db;
@@ -61,6 +64,40 @@ describe("SyncOutboxRepository", () => {
       await base.getFirstAsync<{ c: number }>(
         "SELECT COUNT(*) AS c FROM tasks WHERE id = ?",
         ["task-rollback"],
+      ),
+    ).toEqual({ c: 0 });
+    expect(
+      await base.getFirstAsync<{ c: number }>(
+        "SELECT COUNT(*) AS c FROM sync_outbox",
+      ),
+    ).toEqual({ c: 0 });
+    await base.closeAsync?.();
+  });
+
+  test("domain failure rolls back before creating a sync intent", async () => {
+    const base = await readyDb();
+    const wrapped: SqlDatabase = {
+      execAsync: (source) => base.execAsync(source),
+      getFirstAsync: (source, params) => base.getFirstAsync(source, params),
+      getAllAsync: (source, params) => base.getAllAsync(source, params),
+      closeAsync: () => base.closeAsync?.(),
+      runAsync: async (source: string, params?: SqlBindParams) => {
+        if (source.includes("INSERT INTO task_events")) {
+          throw new Error("forced domain failure");
+        }
+        return base.runAsync(source, params);
+      },
+      withTransactionAsync: (task) => base.withTransactionAsync(task),
+    };
+    const repos = createRepositories(wrapped);
+
+    await expect(
+      repos.tasks.create({ id: "task-domain-failure", title: "Rollback" }),
+    ).rejects.toThrow("forced domain failure");
+    expect(
+      await base.getFirstAsync<{ c: number }>(
+        "SELECT COUNT(*) AS c FROM tasks WHERE id = ?",
+        ["task-domain-failure"],
       ),
     ).toEqual({ c: 0 });
     expect(
@@ -187,6 +224,36 @@ describe("SyncOutboxRepository", () => {
       await sync.getCursor({ accountId: "account-b", deviceId: "device-b" }),
     ).toBe("cursor-b");
     await db.closeAsync?.();
+  });
+
+  test("pending outbox mutations survive a database reopen", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "aether-sync-restart-"));
+    const filename = join(directory, "aether.db");
+    try {
+      const firstDb = await readyDb(filename);
+      const firstRepos = createRepositories(firstDb);
+      await firstRepos.sync.bindScope({
+        accountId: "account-restart",
+        deviceId: "device-restart",
+      });
+      await firstRepos.tasks.create({
+        id: "restart-task",
+        title: "Survive restart",
+      });
+      await firstDb.closeAsync?.();
+
+      const reopenedDb = await readyDb(filename);
+      const reopenedSync = new SyncOutboxRepository(reopenedDb);
+      await expect(
+        reopenedSync.listPending({
+          accountId: "account-restart",
+          deviceId: "device-restart",
+        }),
+      ).resolves.toHaveLength(1);
+      await reopenedDb.closeAsync?.();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   test("account transition quarantines mutations created while identity is unresolved", async () => {

@@ -31,6 +31,18 @@ describe("AETHER installation and canonical device storage", () => {
     await expect(store.getCanonicalDeviceId()).resolves.toBeNull();
   });
 
+  test("rotates a revoked installation and clears its canonical device", async () => {
+    const store = new DeviceIdentityStore(makeStore());
+    const original = await store.getOrCreateInstallationId();
+    await store.setCanonicalDeviceId("device-revoked");
+
+    const replacement = await store.rotateInstallationId();
+
+    expect(replacement).not.toBe(original);
+    await expect(store.getOrCreateInstallationId()).resolves.toBe(replacement);
+    await expect(store.getCanonicalDeviceId()).resolves.toBeNull();
+  });
+
   test("rejects malformed canonical device IDs", async () => {
     const store = new DeviceIdentityStore(makeStore());
     await expect(store.setCanonicalDeviceId("bad id")).rejects.toMatchObject({

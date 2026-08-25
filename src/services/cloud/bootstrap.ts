@@ -50,13 +50,31 @@ export async function bootstrapCloudIdentity(
         ? String(Constants.expoConfig.android.versionCode)
         : null;
   }
-  const device = await client.registerDevice({
+  const registration = {
     installationId,
     platform,
     appVersion,
     buildVersion,
     syncProtocolVersion: 1,
-  });
-  await deviceStore.setCanonicalDeviceId(device.device.id);
-  return { accountId: account.account.id, device: device.device };
+  } as const;
+  let deviceResponse;
+  try {
+    deviceResponse = await client.registerDevice(registration);
+  } catch (error) {
+    if (
+      !(error instanceof AetherCloudError) ||
+      error.code !== "DEVICE_REVOKED"
+    ) {
+      throw error;
+    }
+
+    // Cloud intentionally keeps revoked installations unusable. Rotate once,
+    // then use the normal registration endpoint to obtain a new device.
+    deviceResponse = await client.registerDevice({
+      ...registration,
+      installationId: await deviceStore.rotateInstallationId(),
+    });
+  }
+  await deviceStore.setCanonicalDeviceId(deviceResponse.device.id);
+  return { accountId: account.account.id, device: deviceResponse.device };
 }

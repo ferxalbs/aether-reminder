@@ -2,6 +2,23 @@
 
 All notable changes to AETHER are documented here.
 
+## Unreleased - 2026.08.24 (1) [Revoked Device Recovery]
+
+### Canonical device re-registration
+
+- When Cloud rejects a previously registered installation with
+  `DEVICE_REVOKED`, Mobile rotates the installation identity once, clears the
+  revoked canonical device, and retries the existing `/v1/me/devices` flow.
+  Local SQLite data and Sync outbox rows remain intact; no development device
+  identity is used as a bypass.
+
+### Validation
+
+- Mobile deterministic validation passes with 443 tests, strict typecheck,
+  lint, formatting, and diff checks. Live Supabase/Cloud/Turso configuration,
+  app installation on the connected Android device, and physical Sync E2E
+  remain open gates.
+
 ## Unreleased - 2026.08.21 (1) [Mobile Sync v1]
 
 ### Durable local-first convergence
