@@ -154,11 +154,13 @@ unavailable rather than as zero usage. The current plan remains sourced from
 ## Sync status
 
 AETHER Cloud owns the provider-neutral Sync v1 contract and PersonalDataPlane
-boundary. Mobile now participates in that contract through a bounded local-first
-Sync engine. SQLite remains the operational authority; Cloud only coordinates
-replication, identity, device authorization, and commercial policy.
+boundary. Mobile retains the typed local-first Sync implementation and migration
+history, but the current mobile release does not activate its Sync engine.
+SQLite remains the operational authority; Cloud only coordinates replication,
+identity, device authorization, and commercial policy when a later release
+enables multi-device Sync.
 
-The Mobile implementation is composed of:
+The retained Mobile implementation is composed of:
 
 - migration `0010_sync`, which adds account/device-scoped outbox, cursor,
   entity-version, runtime, and preference-sync state;
@@ -194,23 +196,25 @@ declared rule remains exact `baseVersion` equality with the current entity
 version; Mobile does not apply last-write-wins.
 
 Pull applies every page and its next cursor in one SQLite transaction. A failed
-reconciliation leaves the prior cursor, so the page can replay safely.
+reconciliation leaves the prior cursor, so the page can replay safely when the
+engine is enabled.
 Account/device-scoped cursors and outbox rows are never reused for another
 canonical account. A rejected cursor is discarded only for that scope and
 retried once from the beginning. Because domain rows are still device-global,
 same-ID account collisions are durably marked and skipped rather than allowed
 to overwrite or delete the existing local row; full account-partitioned local
-data remains a future product decision. Startup renders local data before
-Cloud bootstrap; Sync runs after account/device readiness, on foreground retry,
-and on a bounded active interval while the app is active. A local mutation never waits for
-network; its durable outbox intent is picked up by the next bounded Sync run.
-No long-running background-sync mechanism is assumed.
+data remains a future product decision. Startup renders local data before hosted
+services bootstrap. The current release does not bind a Sync scope, construct a
+`SyncEngine`, or run periodic/foreground Sync. Local mutations remain immediate
+SQLite operations; their durable outbox intents are retained for a later
+multi-device release. No background-sync mechanism is assumed.
 
 Deterministic Mobile coverage proves atomic outbox writes, stable retry
 identity, push retention and acknowledgements, pull replay and pagination,
 all four collections, tombstones, conflicts, restart persistence, and
-account/device isolation. Live Cloud/Turso configuration and physical
-Android Sync E2E remain separate runtime gates.
+account/device isolation. Those tests protect the retained implementation;
+live Cloud/Turso configuration and physical Android Sync E2E remain post-launch
+runtime gates rather than current mobile release gates.
 
 ## Failure and recovery
 

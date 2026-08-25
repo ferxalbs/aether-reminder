@@ -11,8 +11,9 @@ Supabase Auth → verified (issuer, subject) → AETHER Cloud → canonical acco
 
 PRODUCT PLANE
 
-Android today / native Swift macOS future → AETHER Cloud → AI, Voice, Sync,
-Automation
+Android/iOS/iPadOS mobile → AETHER Cloud → hosted AI, Voice, and policy
+
+Post-launch platform scope → Sync and Automation
 
 DATA PLANE
 
@@ -65,6 +66,13 @@ Realtime WebSocket.
 When the URL is unset in development, hosted AI and voice are unavailable; no
 provider-key fallback exists. Local task and reminder behavior remains
 available. Release builds require a valid HTTPS Cloud origin.
+
+The current mobile release is local-first: SQLite and local notifications remain
+the operational reminder authority. Hosted-services bootstrap restores the
+authenticated Cloud/device identity and binds RevenueCat when configured, but it
+does not construct or run the retained Sync v1 engine. Multi-device Sync remains
+post-launch scope without deleting its migrations, repositories, or Cloud
+contract.
 
 ## Credentials
 
