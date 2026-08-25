@@ -44,28 +44,28 @@ export function getAIErrorMessage(error: unknown): string {
   if (error instanceof AIProviderError) {
     switch (error.code) {
       case "INSUFFICIENT_CREDITS":
-        return "Hosted AI usage is exhausted for this period.";
+        return "Assistant usage is exhausted for this period.";
       case "RATE_LIMITED":
         return error.retryAfterSeconds
-          ? `AETHER Cloud rate limit reached. Try again in about ${error.retryAfterSeconds} seconds.`
-          : `AETHER Cloud rate limit reached. Try again shortly.`;
+          ? `Assistant is busy right now. Try again in about ${error.retryAfterSeconds} seconds.`
+          : "Assistant is busy right now. Try again shortly.";
       case "PROVIDER_UNAVAILABLE":
-        return "AETHER AI is temporarily unavailable. Try again shortly.";
+        return "Assistant is temporarily unavailable. Try again shortly.";
       case "INVALID_REQUEST":
-        return "AETHER Cloud could not process this request.";
+        return "Assistant could not process this request.";
       case "NETWORK_ERROR":
-        return "Could not reach AETHER Cloud. Check your connection.";
+        return "Could not reach the assistant. Check your connection.";
       case "TIMEOUT":
-        return "AETHER Cloud took too long to respond. Try again.";
+        return "The assistant took too long to respond. Try again.";
       case "INVALID_RESPONSE":
-        return "AETHER Cloud returned an unexpected response. Try again.";
+        return "The assistant returned an unexpected response. Try again.";
       case "AUTH_REQUIRED":
-        return "AETHER Cloud authentication is required.";
+        return "Assistant access needs attention. Try again shortly.";
       default:
-        return "AETHER Cloud could not complete the request. Try again shortly.";
+        return "The assistant could not complete the request. Try again shortly.";
     }
   }
-  return "AETHER AI is temporarily unavailable.";
+  return "Assistant is temporarily unavailable.";
 }
 
 export function isRetryableAIProviderErrorCode(code: string): boolean {

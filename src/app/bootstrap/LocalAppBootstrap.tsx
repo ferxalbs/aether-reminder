@@ -88,6 +88,9 @@ function useLocalAppBootstrapState(): LocalAppBootstrapState & {
   const refreshAllSurfaces = useTasksUiStore(
     (state) => state.refreshAllSurfaces,
   );
+  const ensureToday = useTasksUiStore((state) => state.ensureToday);
+  const ensureUpcoming = useTasksUiStore((state) => state.ensureUpcoming);
+  const ensureAll = useTasksUiStore((state) => state.ensureAll);
   const refreshRecovery = useTasksUiStore((state) => state.refreshRecovery);
   const refreshAttention = useTasksUiStore((state) => state.refreshAttention);
   const [phase, setPhase] = useState<LocalBootstrapPhase>("loading");
@@ -188,11 +191,22 @@ function useLocalAppBootstrapState(): LocalAppBootstrapState & {
             : "foreground-repair"
           : "foreground-dirty",
       });
-      await refreshRecovery();
+      await Promise.all([
+        ensureToday(),
+        ensureUpcoming(),
+        ensureAll(),
+        refreshRecovery(),
+      ]);
     } catch (error) {
       reportNonFatalError("notifications-foreground-select", error);
     }
-  }, [refreshRecovery, syncNotifications]);
+  }, [
+    ensureAll,
+    ensureToday,
+    ensureUpcoming,
+    refreshRecovery,
+    syncNotifications,
+  ]);
 
   const syncForegroundCaptures = useCallback(async () => {
     try {

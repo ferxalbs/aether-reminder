@@ -90,7 +90,7 @@ export default function SettingsScreen() {
           styles.scrollContent,
           { paddingBottom: geometry.settingsContentBottomInset },
         ]}
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

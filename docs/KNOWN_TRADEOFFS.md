@@ -237,7 +237,7 @@ Telemetry correctness notes that remain in force:
 **Status:** PASS
 
 **Current evidence:** `bun run typecheck` exit 0. `bun test --isolate ./src`
-ran 445 tests with 445 passed and 0 failed. `bun run lint` exits 0 with 0
+ran 448 tests with 448 passed and 0 failed. `bun run lint` exits 0 with 0
 errors and one pre-existing unreachable-code warning in
 `src/services/agent/runtime.ts:725`.
 

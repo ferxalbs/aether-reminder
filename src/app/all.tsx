@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  Keyboard,
   StatusBar,
   StyleSheet,
   TextInput,
@@ -52,8 +53,10 @@ export default function RemindersScreen() {
   const [query, setQuery] = useState("");
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [editorInitialTitle, setEditorInitialTitle] = useState("");
   const [quickTitle, setQuickTitle] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
   const assistantActive = useAssistantActive();
@@ -77,14 +80,14 @@ export default function RemindersScreen() {
       if (!rawTitle || quickSaving) return;
 
       setQuickSaving(true);
+      setQuickError(null);
       try {
         await captureText(rawTitle);
         setQuickTitle("");
       } catch (errorValue) {
-        reportNonFatalError(
-          "reminders-quick-capture",
-          getDatabaseErrorMessage(errorValue),
-        );
+        const message = getDatabaseErrorMessage(errorValue);
+        setQuickError(message);
+        reportNonFatalError("reminders-quick-capture", message);
       } finally {
         setQuickSaving(false);
       }
@@ -143,12 +146,21 @@ export default function RemindersScreen() {
     [softDeleteTask],
   );
 
-  const openEditor = useCallback((task?: TaskListItem) => {
+  const openEditor = useCallback((task?: TaskListItem, initialTitle = "") => {
+    Keyboard.dismiss();
+    setEditorInitialTitle(initialTitle);
     setEditingTask(task ?? null);
     setEditorVisible(true);
   }, []);
 
+  const openComposerEditor = useCallback(() => {
+    const initialTitle = quickTitle.trim();
+    setQuickTitle("");
+    openEditor(undefined, initialTitle);
+  }, [openEditor, quickTitle]);
+
   const closeEditor = useCallback(() => {
+    setEditorInitialTitle("");
     setEditorVisible(false);
     setEditingTask(null);
   }, []);
@@ -232,7 +244,7 @@ export default function RemindersScreen() {
                 </View>
               ) : null}
 
-              {error ? (
+              {error || quickError ? (
                 <View
                   style={[
                     styles.errorToast,
@@ -246,7 +258,7 @@ export default function RemindersScreen() {
                     color={colors.textPrimary}
                     accessibilityRole="alert"
                   >
-                    {error}
+                    {error || quickError}
                   </Typography>
                 </View>
               ) : null}
@@ -277,13 +289,17 @@ export default function RemindersScreen() {
           >
             <AetherComposer
               value={quickTitle}
-              onChangeText={setQuickTitle}
+              onChangeText={(value) => {
+                setQuickTitle(value);
+                if (quickError) setQuickError(null);
+              }}
               onSubmit={(text) => void handleQuickCapture(text)}
               onVoicePress={startVoiceAssistant}
-              onAddDate={() => openEditor()}
-              onSetPriority={() => openEditor()}
-              onAddLocation={() => openEditor()}
-              onAttachFile={() => openEditor()}
+              onAddDate={openComposerEditor}
+              onSetPriority={openComposerEditor}
+              onAddLocation={openComposerEditor}
+              onAttachFile={openComposerEditor}
+              disabled={quickSaving}
             />
           </View>
         )}
@@ -294,6 +310,7 @@ export default function RemindersScreen() {
         onClose={closeEditor}
         mode={editingTask ? "edit" : "create"}
         task={editingTask}
+        initialTitle={editorInitialTitle}
       />
     </SafeAreaView>
   );

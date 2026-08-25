@@ -137,6 +137,37 @@ describe("TasksRepository", () => {
     await db.closeAsync?.();
   });
 
+  test("orders scheduled tasks by date and time before unscheduled work", async () => {
+    const db = await readyDb();
+    const tasks = new TasksRepository(db);
+
+    await tasks.create({
+      title: "Later afternoon",
+      priority: "high",
+      dueDate: "2030-01-02",
+      dueTime: "15:00",
+    });
+    await tasks.create({
+      title: "Later morning",
+      priority: "low",
+      dueDate: "2030-01-02",
+      dueTime: "09:00",
+    });
+    await tasks.create({
+      title: "Later anytime",
+      priority: "high",
+      dueDate: "2030-01-02",
+    });
+
+    const upcoming = await tasks.listUpcoming("2030-01-01");
+    expect(upcoming.map((task) => task.title)).toEqual([
+      "Later morning",
+      "Later afternoon",
+      "Later anytime",
+    ]);
+    await db.closeAsync?.();
+  });
+
   test("attention candidate query stays bounded and includes active nudge work", async () => {
     const db = await readyDb();
     const tasks = new TasksRepository(db);

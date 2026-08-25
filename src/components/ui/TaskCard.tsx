@@ -11,6 +11,7 @@ import Animated, {
 import { Check, Trash2, Clock, Sparkles } from "lucide-react-native";
 import type { TaskListItem } from "@/domain/entities";
 import { Motion, Radius, Spacing } from "@/theme/tokens";
+import { formatTaskSchedule } from "@/temporal/localCalendar";
 import { useMotionPreset } from "@/motion";
 import { useSemanticColors } from "@/theme/useSemanticColors";
 import { Typography } from "./Typography";
@@ -34,6 +35,7 @@ export interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = React.memo(
   ({ task, onToggle, onDelete, onPress }) => {
     const colors = useSemanticColors();
+    const scheduleLabel = formatTaskSchedule(task.dueDate, task.dueTime);
     const reduceMotion = useReducedMotion();
     const completePreset = useMotionPreset("task.complete");
 
@@ -173,7 +175,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
             </View>
           )}
 
-          {task.dueDate && (
+          {scheduleLabel && (
             <View style={styles.dateMeta}>
               <Clock size={11} color={colors.textTertiary} />
               <Typography
@@ -181,8 +183,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(
                 color={colors.textSecondary}
                 style={styles.dateText}
               >
-                {task.dueDate}
-                {task.dueTime ? ` · ${task.dueTime}` : ""}
+                {scheduleLabel}
               </Typography>
             </View>
           )}

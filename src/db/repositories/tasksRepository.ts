@@ -84,6 +84,9 @@ export class TasksRepository {
          AND (due_date = ? OR due_date IS NULL)
        ORDER BY
          completed ASC,
+         CASE WHEN due_date IS NULL THEN 1 ELSE 0 END,
+         CASE WHEN due_time IS NULL THEN 1 ELSE 0 END,
+         due_time ASC,
          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
          created_at DESC`,
       [localDate],
@@ -215,6 +218,8 @@ export class TasksRepository {
          AND due_date IS NOT NULL
          AND due_date > ?
        ORDER BY due_date ASC,
+         CASE WHEN due_time IS NULL THEN 1 ELSE 0 END,
+         due_time ASC,
          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
          created_at DESC,
          id ASC
@@ -233,6 +238,8 @@ export class TasksRepository {
          completed ASC,
          CASE WHEN due_date IS NULL THEN 1 ELSE 0 END,
          due_date ASC,
+         CASE WHEN due_time IS NULL THEN 1 ELSE 0 END,
+         due_time ASC,
          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
          updated_at DESC,
          id ASC`,

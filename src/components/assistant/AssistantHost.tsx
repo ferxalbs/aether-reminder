@@ -18,7 +18,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, usePathname, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTasksUiStore } from "@/stores/tasksUi.store";
 import { useSettingsStore } from "@/stores/settings.store";
@@ -157,6 +157,7 @@ export const AssistantHost = React.memo(function AssistantHost({
   blurTarget,
 }: AssistantHostProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { colors } = useAetherTheme();
   const snapshot = useContext(AssistantSnapshotContext) ?? defaultSnapshot;
   const { registerAssistantActions, setAssistantActive } =
@@ -166,6 +167,7 @@ export const AssistantHost = React.memo(function AssistantHost({
   const [reduceMotion, setReduceMotion] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousPathnameRef = useRef(pathname);
   const refreshAllSurfaces = useTasksUiStore(
     (state) => state.refreshAllSurfaces,
   );
@@ -334,16 +336,29 @@ export const AssistantHost = React.memo(function AssistantHost({
   }, [reduceMotion, voice]);
 
   useEffect(() => {
-    if (Platform.OS !== "android" || surface === "closed") return;
+    if (
+      Platform.OS !== "android" ||
+      surface === "closed" ||
+      surface === "closing"
+    )
+      return;
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        if (surface !== "closing") closeAssistant();
+        closeAssistant();
         return true;
       },
     );
     return () => subscription.remove();
   }, [closeAssistant, surface]);
+
+  useEffect(() => {
+    if (previousPathnameRef.current === pathname) return;
+    previousPathnameRef.current = pathname;
+    if (surface === "closed" || surface === "closing") return;
+    const timer = setTimeout(closeAssistant, 0);
+    return () => clearTimeout(timer);
+  }, [closeAssistant, pathname, surface]);
 
   const openMicrophoneSettings = useCallback(() => {
     closeAssistant();

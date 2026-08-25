@@ -111,35 +111,35 @@ export function getVoiceErrorMessage(error: VoiceError): string {
     case "REALTIME_AUTH_FAILED":
       return "Live transcription could not be authorized. Try again.";
     case "INVALID_CREDENTIAL":
-      return "Live transcription authorization was rejected by AETHER Cloud.";
+      return "Live transcription authorization was rejected. Try again.";
     case "ACCOUNT_NOT_AUTHORIZED":
-      return "Your account is not authorized to use hosted live transcription.";
+      return "Your account is not authorized to use live transcription.";
     case "HOSTED_USAGE_EXHAUSTED":
-      return "Hosted voice usage is exhausted for this period.";
+      return "Voice usage is exhausted for this period.";
     case "TIER_NOT_SUPPORTED":
-      return "Hosted live transcription is unavailable for this account.";
+      return "Live transcription is unavailable for this account.";
     case "SESSION_CONFIGURATION_INVALID":
-      return "AETHER voice could not configure this transcription session.";
+      return "Voice capture could not configure this transcription session.";
     case "MODEL_TEMPORARILY_UNAVAILABLE":
-      return "AETHER voice is temporarily unavailable. Try again shortly.";
+      return "Live transcription is temporarily unavailable. Try again shortly.";
     case "REALTIME_CONNECT_FAILED":
-      return "Could not connect to AETHER voice. Check your connection.";
+      return "Could not connect to live transcription. Check your connection.";
     case "REALTIME_CONNECTION_LOST":
       return "The realtime transcription connection was interrupted.";
     case "REALTIME_TIMEOUT":
-      return "AETHER voice did not respond in time. Try again.";
+      return "Live transcription did not respond in time. Try again.";
     case "REALTIME_BACKPRESSURE":
       return "Realtime transcription could not keep up with microphone audio. Try again.";
     case "REALTIME_PROTOCOL_ERROR":
-      return "AETHER voice returned an unexpected response.";
+      return "Live transcription returned an unexpected response.";
     case "TRANSCRIPTION_FAILED":
-      return "AETHER voice could not transcribe this voice turn.";
+      return "Live transcription could not transcribe this voice turn.";
     case "TRANSCRIPTION_TIMEOUT":
       return "The final transcript took too long to arrive. Try again.";
     case "EMPTY_TRANSCRIPT":
-      return "No speech was recognized. Nothing was sent to AETHER.";
+      return "No speech was recognized. Nothing was sent.";
     case "PARSING_FAILED":
-      return "AETHER could not interpret that transcript. Try again.";
+      return "The reminder could not be understood. Try again.";
     case "CANCELLED":
       return "Voice capture was cancelled.";
     default:

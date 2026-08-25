@@ -5,19 +5,17 @@ import { LayoutTokens, Spacing } from "@/theme/tokens";
 
 export function useBottomChromeGeometry() {
   const insets = useSafeAreaInsets();
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showEvent =
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent =
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, () =>
-      setKeyboardVisible(true),
+    const showSub = Keyboard.addListener(showEvent, (event) =>
+      setKeyboardHeight(Math.max(0, event.endCoordinates.height)),
     );
-    const hideSub = Keyboard.addListener(hideEvent, () =>
-      setKeyboardVisible(false),
-    );
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -32,9 +30,9 @@ export function useBottomChromeGeometry() {
   const composerHeight = LayoutTokens.composerHeight;
 
   // When keyboard is visible, navigation is hidden, so composer hugs cleanly right above the keyboard
+  const keyboardVisible = keyboardHeight > 0;
   const composerBottom = keyboardVisible
-    ? Math.max(Spacing.sm, insets.bottom) +
-      (Platform.OS === "android" ? Spacing.sm : Spacing.xs)
+    ? keyboardHeight + Spacing.sm
     : navigationBottom + navigationHeight + composerNavigationGap;
 
   const contentBottomInset =
@@ -54,5 +52,6 @@ export function useBottomChromeGeometry() {
     contentBottomInset,
     settingsContentBottomInset,
     keyboardVisible,
+    keyboardHeight,
   };
 }

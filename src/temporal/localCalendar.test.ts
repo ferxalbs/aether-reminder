@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   addLocalCalendarDays,
   compareLocalDates,
+  formatLocalTimeLabel,
+  formatTaskSchedule,
   getLocalDateString,
   getLocalTimeString,
   getZonedDateTimeStrings,
@@ -35,6 +37,18 @@ describe("getLocalTimeString", () => {
   test("formats HH:mm", () => {
     const d = new Date(2026, 0, 1, 9, 5, 0);
     expect(getLocalTimeString(d)).toBe("09:05");
+  });
+});
+
+describe("schedule display helpers", () => {
+  test("uses relative labels for near-term local dates", () => {
+    const now = new Date(2026, 0, 5, 12, 0, 0);
+    expect(formatTaskSchedule("2026-01-05", "09:05", now)).toContain("Today");
+    expect(formatTaskSchedule("2026-01-06", null, now)).toBe("Tomorrow");
+  });
+
+  test("formats stored time with the device time convention", () => {
+    expect(formatLocalTimeLabel("09:05")).toContain("9:05");
   });
 });
 

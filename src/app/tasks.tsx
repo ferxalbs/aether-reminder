@@ -1,5 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import {
+  Keyboard,
+  StatusBar,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Settings } from "lucide-react-native";
@@ -37,8 +43,10 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [editorInitialTitle, setEditorInitialTitle] = useState("");
   const [quickTitle, setQuickTitle] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
   const { startVoiceAssistant } = useAssistantActions();
   const geometry = useBottomChromeGeometry();
   const assistantActive = useAssistantActive();
@@ -62,16 +70,16 @@ export default function ScheduleScreen() {
       if (!rawTitle || quickSaving) return;
 
       setQuickSaving(true);
+      setQuickError(null);
       try {
         await captureText(rawTitle, "in_app", {
           defaultDueDate: addLocalCalendarDays(getLocalDateString(), 1),
         });
         setQuickTitle("");
       } catch (errorValue) {
-        reportNonFatalError(
-          "schedule-quick-capture",
-          getDatabaseErrorMessage(errorValue),
-        );
+        const message = getDatabaseErrorMessage(errorValue);
+        setQuickError(message);
+        reportNonFatalError("schedule-quick-capture", message);
       } finally {
         setQuickSaving(false);
       }
@@ -97,12 +105,21 @@ export default function ScheduleScreen() {
     [softDeleteTask],
   );
 
-  const openEditor = useCallback((task?: TaskListItem) => {
+  const openEditor = useCallback((task?: TaskListItem, initialTitle = "") => {
+    Keyboard.dismiss();
+    setEditorInitialTitle(initialTitle);
     setEditingTask(task ?? null);
     setEditorVisible(true);
   }, []);
 
+  const openComposerEditor = useCallback(() => {
+    const initialTitle = quickTitle.trim();
+    setQuickTitle("");
+    openEditor(undefined, initialTitle);
+  }, [openEditor, quickTitle]);
+
   const closeEditor = useCallback(() => {
+    setEditorInitialTitle("");
     setEditorVisible(false);
     setEditingTask(null);
   }, []);
@@ -177,7 +194,7 @@ export default function ScheduleScreen() {
                 />
               </View>
 
-              {error ? (
+              {error || quickError ? (
                 <View
                   style={[
                     styles.errorToast,
@@ -191,7 +208,7 @@ export default function ScheduleScreen() {
                     color={colors.textPrimary}
                     accessibilityRole="alert"
                   >
-                    {error}
+                    {error || quickError}
                   </Typography>
                 </View>
               ) : null}
@@ -220,13 +237,17 @@ export default function ScheduleScreen() {
           >
             <AetherComposer
               value={quickTitle}
-              onChangeText={setQuickTitle}
+              onChangeText={(value) => {
+                setQuickTitle(value);
+                if (quickError) setQuickError(null);
+              }}
               onSubmit={(text) => void handleQuickCapture(text)}
               onVoicePress={startVoiceAssistant}
-              onAddDate={() => openEditor()}
-              onSetPriority={() => openEditor()}
-              onAddLocation={() => openEditor()}
-              onAttachFile={() => openEditor()}
+              onAddDate={openComposerEditor}
+              onSetPriority={openComposerEditor}
+              onAddLocation={openComposerEditor}
+              onAttachFile={openComposerEditor}
+              disabled={quickSaving}
             />
           </View>
         )}
@@ -237,6 +258,7 @@ export default function ScheduleScreen() {
         onClose={closeEditor}
         mode={editingTask ? "edit" : "create"}
         task={editingTask}
+        initialTitle={editorInitialTitle}
       />
     </SafeAreaView>
   );

@@ -10,6 +10,10 @@ import { Button } from "./Button";
 import { Typography } from "./Typography";
 import { LayoutTokens, Radius, Spacing } from "@/theme/tokens";
 import { useSemanticColors } from "@/theme/useSemanticColors";
+import {
+  formatLocalTimeLabel,
+  formatTaskSchedule,
+} from "@/temporal/localCalendar";
 
 export interface AttentionSurfaceProps {
   plan: AttentionPlan | null;
@@ -26,7 +30,8 @@ function itemExplanation(item: AttentionItem): string {
   if (item.reasonCodes.includes("manual_focus")) return "Focused by you";
   if (item.reasonCodes.includes("due_now")) return "Due now";
   if (item.reasonCodes.includes("due_imminent")) {
-    return item.dueTime ? `Due at ${item.dueTime}` : "Due soon";
+    const time = formatLocalTimeLabel(item.dueTime);
+    return time ? `Due at ${time}` : "Due soon";
   }
   if (item.reasonCodes.includes("adaptive_followup_due"))
     return "Good follow-up time";
@@ -35,9 +40,8 @@ function itemExplanation(item: AttentionItem): string {
   if (item.reasonCodes.includes("due_today")) return "Scheduled today";
   if (item.reasonCodes.includes("recovered_recently"))
     return "Recovered for now";
-  if (item.dueDate && item.dueTime)
-    return `Scheduled ${item.dueDate} · ${item.dueTime}`;
-  if (item.dueDate) return `Scheduled ${item.dueDate}`;
+  const schedule = formatTaskSchedule(item.dueDate, item.dueTime);
+  if (schedule) return `Scheduled ${schedule}`;
   return "Selected as a possible next step";
 }
 

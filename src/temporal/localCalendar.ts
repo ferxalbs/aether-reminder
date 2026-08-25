@@ -22,6 +22,60 @@ export function getLocalTimeString(date: Date = new Date()): string {
   return `${hours}:${minutes}`;
 }
 
+function parseLocalDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+  return getLocalDateString(date) === value ? date : null;
+}
+
+/** Display a stored HH:mm value using the device's local time convention. */
+export function formatLocalTimeLabel(time?: string | null): string | null {
+  if (!time) return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!match) return time;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return time;
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(2000, 0, 1, hours, minutes));
+}
+
+/** Display a stored local schedule without exposing storage-shaped dates. */
+export function formatTaskSchedule(
+  dueDate?: string | null,
+  dueTime?: string | null,
+  now: Date = new Date(),
+): string | null {
+  if (!dueDate) return null;
+  const parsedDate = parseLocalDate(dueDate);
+  if (!parsedDate) return dueTime ? `${dueDate} · ${dueTime}` : dueDate;
+
+  const today = getLocalDateString(now);
+  const tomorrow = addLocalCalendarDays(today, 1);
+  const dateLabel =
+    dueDate === today
+      ? "Today"
+      : dueDate === tomorrow
+        ? "Tomorrow"
+        : new Intl.DateTimeFormat(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            ...(parsedDate.getFullYear() !== now.getFullYear()
+              ? { year: "numeric" as const }
+              : {}),
+          }).format(parsedDate);
+  const timeLabel = formatLocalTimeLabel(dueTime);
+  return timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel;
+}
+
 /** Calendar date/time represented by an instant in an explicit IANA timezone. */
 export function getZonedDateTimeStrings(
   date: Date,

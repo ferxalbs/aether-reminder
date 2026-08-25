@@ -52,10 +52,16 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
 
   const handleSubmit = () => {
     const trimmed = textValue.trim();
-    if (!trimmed) return;
+    if (disabled || !trimmed) return;
     if (onSubmit) onSubmit(trimmed);
-    setTextValue("");
+    if (externalValue === undefined) setInternalValue("");
     Keyboard.dismiss();
+  };
+
+  const handleAddDate = () => {
+    if (disabled) return;
+    Keyboard.dismiss();
+    onAddDate?.();
   };
 
   const hasText = textValue.trim().length > 0;
@@ -71,7 +77,8 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
       >
         {/* Plus quick actions button */}
         <AnimatedPressable
-          onPress={onAddDate}
+          onPress={handleAddDate}
+          disabled={disabled}
           accessibilityRole="button"
           accessibilityLabel="Open editor"
           android_ripple={{ color: colors.ripple, foreground: true }}
@@ -115,6 +122,7 @@ export const AetherComposer: React.FC<AetherComposerProps> = ({
           >
             <AnimatedPressable
               onPress={handleSubmit}
+              disabled={disabled}
               accessibilityRole="button"
               accessibilityLabel="Create reminder"
               android_ripple={{ color: colors.ripple, foreground: true }}

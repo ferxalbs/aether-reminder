@@ -1,5 +1,5 @@
-import React, { type RefObject, useCallback, useEffect, useState } from "react";
-import { Keyboard, Platform, StyleSheet, View } from "react-native";
+import React, { type RefObject, useCallback, useEffect } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import { CalendarDays, CheckCircle2, ListTodo, Mic } from "lucide-react-native";
 import Animated, {
@@ -38,22 +38,8 @@ export const AppBottomNavigation = React.memo(function AppBottomNavigation({
 }: AppBottomNavigationProps) {
   const pathname = usePathname();
   const geometry = useBottomChromeGeometry();
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const { keyboardVisible } = geometry;
   const assistantActive = useAssistantActive();
-
-  useEffect(() => {
-    const show = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => setKeyboardVisible(true),
-    );
-    const hide = Keyboard.addListener("keyboardDidHide", () =>
-      setKeyboardVisible(false),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   if (
     keyboardVisible ||

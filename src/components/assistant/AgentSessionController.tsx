@@ -39,7 +39,7 @@ function messageId(prefix: string): string {
 
 function runStartErrorMessage(caught: unknown): string {
   if (caught instanceof AIProviderError) return getAIErrorMessage(caught);
-  return "AETHER AI is temporarily unavailable.";
+  return "Assistant is temporarily unavailable.";
 }
 
 export function useAgentSessionController({
@@ -88,7 +88,7 @@ export function useAgentSessionController({
 
       if (!isAetherCloudConfigured()) {
         setSemanticState("error");
-        setError("AETHER Cloud is not configured.");
+        setError("Assistant setup is unavailable right now.");
         setCanRetry(false);
         return false;
       }

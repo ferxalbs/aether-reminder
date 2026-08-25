@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import {
+  Keyboard,
+  StatusBar,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -63,6 +69,7 @@ export default function TodayScreen() {
   const [quickError, setQuickError] = useState<string | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskListItem | null>(null);
+  const [editorInitialTitle, setEditorInitialTitle] = useState("");
   const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const todayTasks = useTasksUiStore((s) => s.todayTasks);
@@ -186,12 +193,21 @@ export default function TodayScreen() {
     [rejectAttention],
   );
 
-  const openEditor = useCallback((task?: TaskListItem) => {
+  const openEditor = useCallback((task?: TaskListItem, initialTitle = "") => {
+    Keyboard.dismiss();
+    setEditorInitialTitle(initialTitle);
     setEditingTask(task ?? null);
     setEditorVisible(true);
   }, []);
 
+  const openComposerEditor = useCallback(() => {
+    const initialTitle = quickTitle.trim();
+    setQuickTitle("");
+    openEditor(undefined, initialTitle);
+  }, [openEditor, quickTitle]);
+
   const closeEditor = useCallback(() => {
+    setEditorInitialTitle("");
     setEditorVisible(false);
     setEditingTask(null);
   }, []);
@@ -317,10 +333,11 @@ export default function TodayScreen() {
               }}
               onSubmit={(text) => void handleQuickCapture(text)}
               onVoicePress={startVoiceAssistant}
-              onAddDate={() => openEditor()}
-              onSetPriority={() => openEditor()}
-              onAddLocation={() => openEditor()}
-              onAttachFile={() => openEditor()}
+              onAddDate={openComposerEditor}
+              onSetPriority={openComposerEditor}
+              onAddLocation={openComposerEditor}
+              onAttachFile={openComposerEditor}
+              disabled={quickSaving}
             />
           </View>
         )}
@@ -331,6 +348,7 @@ export default function TodayScreen() {
         onClose={closeEditor}
         mode={editingTask ? "edit" : "create"}
         task={editingTask}
+        initialTitle={editorInitialTitle}
       />
       {recoveryPlan ? (
         <RecoverySheet

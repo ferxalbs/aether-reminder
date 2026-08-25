@@ -30,6 +30,7 @@ import {
 } from "@/services/capture";
 import type { CaptureSource } from "@/domain/entities";
 import { getDatabaseErrorMessage } from "@/db/errors";
+import { formatTaskSchedule } from "@/temporal/localCalendar";
 import { reportNonFatalError } from "@/lib/nonFatalError";
 
 function sourcesFrom(envelope: CaptureEnvelope): CaptureSource[] {
@@ -48,6 +49,7 @@ export default function CaptureRoute() {
   const [draft, setDraft] = useState<CaptureDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refreshAllSurfaces = useTasksUiStore(
     (state) => state.refreshAllSurfaces,
@@ -121,7 +123,8 @@ export default function CaptureRoute() {
   );
 
   const save = useCallback(async () => {
-    if (!envelope || !draft || !draft.title.trim() || saving) return;
+    if (!envelope || !draft || !draft.title.trim() || saving || discarding)
+      return;
     setSaving(true);
     setError(null);
     try {
@@ -175,30 +178,46 @@ export default function CaptureRoute() {
     } catch (cause) {
       reportNonFatalError("capture-route-save", cause);
       setError(
-        cause instanceof Error ? cause.message : "Capture could not be saved.",
+        cause instanceof CaptureError
+          ? cause.message
+          : getDatabaseErrorMessage(cause),
       );
     } finally {
       setSaving(false);
     }
-  }, [draft, envelope, refreshAllSurfaces, refreshAttention, saving]);
+  }, [
+    discarding,
+    draft,
+    envelope,
+    refreshAllSurfaces,
+    refreshAttention,
+    saving,
+  ]);
 
   const discard = useCallback(() => {
-    if (!envelope) return;
+    if (discarding) return;
+    if (!envelope) {
+      router.replace("/");
+      return;
+    }
+    setDiscarding(true);
     void (async () => {
       const inbox = await initializeCaptureInbox();
       if (await inbox.get(envelope.id)) await inbox.discard(envelope.id);
       await discardNativeCaptureAssets(envelope.id);
       clearPendingNativeCaptureId(envelope.id);
       router.replace("/");
-    })().catch((cause: unknown) => {
-      reportNonFatalError("capture-route-discard", cause);
-      setError("Capture could not be discarded safely.");
-    });
-  }, [envelope]);
+    })()
+      .catch((cause: unknown) => {
+        reportNonFatalError("capture-route-discard", cause);
+        setError("Capture could not be discarded safely.");
+      })
+      .finally(() => setDiscarding(false));
+  }, [discarding, envelope]);
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.root, { backgroundColor: background }]}
     >
       <ScrollView
@@ -209,6 +228,7 @@ export default function CaptureRoute() {
             paddingBottom: insets.bottom + Spacing.xl,
           },
         ]}
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
@@ -273,8 +293,7 @@ export default function CaptureRoute() {
           ) : null}
           {draft?.dueDate ? (
             <Typography variant="caption" color={secondary}>
-              {draft.dueDate}
-              {draft.dueTime ? ` · ${draft.dueTime}` : ""}
+              {formatTaskSchedule(draft.dueDate, draft.dueTime)}
             </Typography>
           ) : null}
           <View style={styles.actions}>
@@ -284,14 +303,14 @@ export default function CaptureRoute() {
                 void save();
               }}
               loading={saving}
-              disabled={!draft?.title.trim() || loading}
+              disabled={!draft?.title.trim() || loading || discarding}
               fullWidth
             />
             <Button
               label="Cancel"
               onPress={discard}
               variant="ghost"
-              disabled={saving}
+              disabled={saving || discarding}
               fullWidth
             />
           </View>
